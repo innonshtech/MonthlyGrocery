@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 9 — Bulk-SKU-delete (backend + Inventory UI) + Super Admin View-As toggle. Backend: 113/113 pytest passing (102 prior + 11 new in test_bulk_delete.py). New tests cover: auth guard (401 guest, 403 consumer, 403 pending admin), id-list bulk delete happy path with GET-verified persistence (only selected products vanish, non-selected remain), invalid ObjectId → 400, empty ids with all=false → 400, audit_log entry `sku.bulk_delete` written per call, wipe-all requires confirm='DELETE ALL' (missing → 400, wrong string → 400, valid 'DELETE ALL' + case-insensitive 'delete all' both wipe catalog & write `sku.bulk_delete_all` audit entry). Note: audit collection is `audit_log` (singular) — request said `audit_logs` — tests updated to match actual code. Snapshot/restore around wipe-all tests preserves 24-SKU catalog. Frontend Playwright (JWT-injected access_token cookie for approved admin, pending admin, and super admin): 29/29 UI assertions passed. Approved admin at /admin/inventory: `data-testid=inv-wipe-all` and `select-all` header render; clicking select-all reveals `bulk-toolbar` and `bulk-delete-selected` with correct SKU count (e.g. '29 SKUs selected'); deselecting hides the toolbar; individual `prod-select-<id>` checkboxes toggle correctly; `bulk-delete-confirm` dialog fires POST /api/products/mine/bulk-delete and removes exactly the selected rows (verified via /products/mine round-trip) while keeping the unselected row. `inv-wipe-all` opens a red-danger Dialog with disabled `wipe-confirm` initially; disabled with 'delete something'; enabled once input reads 'DELETE ALL' (also enabled case-insensitively with 'delete all'). Pending admin: both `inv-wipe-all` and `select-all` render as DISABLED. Regular approved admin does NOT see `view-as-toggle`, and a stale localStorage `mg_view_as_v1='consumer'` value is auto-cleared on next auth refresh. Super admin at /admin/dashboard: `view-as-toggle` visible, opens `view-as-menu` with all three items (`view-as-super_admin`, `view-as-admin`, `view-as-consumer`). Selecting view-as-admin shows `viewing-as-badge`, hides all 4 super-only nav items (approvals, banners, twilio-logs, activity), persists across reload via localStorage `mg_view_as_v1=admin`. Selecting view-as-consumer navigates to /shop and shows floating `view-as-consumer-banner` pill; clicking `view-as-exit` returns to /admin/dashboard AND clears localStorage. No regressions in prior 102 pytest cases (banners, min_order=2500, city pricing, guest+checkout, OTP, admin approvals).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "internal audit", "issue": "review_request referenced `audit_logs` collection but code writes to `db.audit_log` (singular). Tests were adjusted to match; consider aligning docs/spec so future readers aren't confused."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_bulk_delete.py",
+    "/app/backend/tests/test_banners_and_min_order.py",
+    "/app/backend/tests/test_guest_and_checkout.py",
+    "/app/backend/tests/test_city_pricing.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Non-blocking) Align review_request wording — audit collection is `audit_log` (singular) not `audit_logs`. Either rename collection or update the spec.",
+    "(Pre-existing, not iteration-9) /admin/inventory route is gated by roles=['admin'] only, so a super_admin's raw JWT cannot reach it without switching via view-as-admin. Not a regression — worth noting because it means bulk-delete UI is unreachable for a super_admin unless viewAs is used. If desired, add super_admin to roles=['admin','super_admin'] for /inventory /orders /store-profile /analytics to let super admins operate directly."
+  ],
+  "critical_code_review_comments": [
+    "bulk_delete_products handler correctly scopes deletion by shop_id — safe against cross-shop deletion.",
+    "The wipe-all path calls count_documents THEN delete_many — two round-trips, non-atomic. If a product is added between the two, the reported `deleted` may exceed `total`. Not a correctness issue for the audit log field, but consider using result.deleted_count only.",
+    "BulkDeleteRequest.ids uses List[str] but doesn't cap the array size. A hostile approved admin could pass 100k ids. Consider max_items=1000 on the Pydantic field or slice in-handler.",
+    "Frontend Inventory bulk-toolbar count label reads '{n} SKUs selected' via a single string — good. Consider a subtle destructive-red border on the toolbar itself when count>0 to reinforce the destructive intent (currently green DCFCE7 which reads as 'safe').",
+    "AuthContext auto-clears stale viewAs on non-super users via useEffect — works but relies on refresh() completing first. On a slow /auth/me, there's a small window where a non-super might see admin-scoped UI. Acceptable given effectiveRole is UI-only and backend still enforces the real JWT role.",
+    "ViewAsBanner correctly skips rendering on /admin/* paths — no confusing double-badge on admin surface. Uses fixed bottom pill with z-60 so it stays above cart pills."
+  ],
+  "updated_files": ["/app/backend/tests/test_bulk_delete.py"],
+  "success_rate": {"backend": "100% (113/113 pytest)", "frontend": "100% (29/29 Playwright assertions across approved-admin bulk-delete UI, pending-admin disabled controls, regular-admin safety, super-admin view-as flow)"},
+  "test_credentials": "Ephemeral TEST_UIAdmin (+9198…, admin/approved) and TEST_UIPending (+9198…, admin/pending) minted directly in Mongo with JWT tokens using JWT_SECRET; cleaned up at end. Super admin +919833833498 (pre-seeded) JWT injected as access_token cookie for view-as tests. All test SKUs prefixed TEST_bulk_ and cleaned via API after each block.",
+  "seed_data_creation": "3 TEST_bulk_ products seeded per Inventory UI run (POST /api/products/mine as approved admin). Cleaned via DELETE /api/products/mine/<id> and a name-prefix Mongo sweep at end. Wipe-all backend test uses snapshot/restore to preserve the 24-SKU seeded catalog (no permanent mutation).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run `cd /app/backend && python -m pytest tests/ -o addopts=''` for full regression — expect 113/113 pass. New file tests/test_bulk_delete.py covers 11 cases for POST /api/products/mine/bulk-delete (auth, ids mode, wipe-all confirm gating, audit_log writes). IMPORTANT: audit collection is `db.audit_log` (singular). For UI tests of /admin/inventory, mint a JWT with role='admin', status='approved' (a super_admin JWT will be REJECTED by the inner ProtectedRoute which requires roles=['admin'] — pre-existing routing choice). For super-admin view-as UI, mint super_admin JWT and hit /admin/dashboard. LocalStorage key is `mg_view_as_v1`. ViewAsBanner pill only renders on non-/admin/* routes when isSuper && viewAs==='consumer'."
+}

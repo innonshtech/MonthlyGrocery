@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration 8 — Banners CRUD + MIN_ORDER 5000→2500 + perf sanity. Backend: 102/102 pytest passing (81 prior + 21 new in test_banners_and_min_order.py). Banners: public GET /api/banners/active works unauthenticated; all admin CRUD endpoints (list/create/update/delete/reorder) are super_admin-only (verified 401 for guest, 403 for consumer and approved admin). Scheduling and enabled-toggle verified: banners with future start_at hidden, past end_at hidden, future end_at visible, disabled hidden, toggled-on immediately visible. Reorder POST /admin/banners/reorder correctly updates DB order values. MIN_ORDER: /api/cart/hydrate returns min_order=2500.0; POST /orders/checkout rejects sub-2500 with 400 mentioning '2500' (no '5000'); accepts >=2500 order. Perf: /cart/hydrate for 5 items completed in <200ms E2E (well under 1500ms bound). Frontend (Playwright with super-admin JWT injected via access_token cookie): (a) /admin/banners renders data-testid=banners-admin and sidebar data-testid=admin-nav-banners for super admin; (b) 'New banner' modal → fill title 'TEST_UI Banner' → click banner-gradient-'Green (Kirana)' preset → Save creates a data-testid=banner-row-<id> with up/down/toggle/delete controls; (c) Consumer /shop as guest immediately shows the super-admin banner 'TEST_UI Banner' in the hero (verifying super-admin override works end-to-end); (d) With NO banners, /shop hero shows the default 'Ghar ka poora kirana' + '₹2,500+ ke order par bachat' subtitle; (e) /cart with 1 item shows shortfall text 'Add ₹2021 more to reach the minimum monthly order of ₹2,500.'; (f) /products/:id shows 'Free delivery. Minimum order value ₹2,500.'; (g) Landing page contains ₹2,500 and NO stale ₹5,000 references anywhere; (h) Delete banner via banner-delete-<id> works and returns to 'No banners yet' empty state. All 12 previous iteration_7 features remain functional (regression suite 81/81 unchanged).",
+  "backend_issues": {"critical": [], "minor": [
+    {"endpoint": "/api/products/all", "issue": "Response JSON still contains the keys 'description', 'video_url', 'images', 'search_keywords' (as empty defaults '' / []). DB projection correctly omits reading these heavy fields (perf win preserved), but _consumer_product_out() in /app/backend/routes/product_routes.py:141-157 still adds them via p.get(k, default). Spec said response should NOT contain these keys. Fix: skip the four keys in _consumer_product_out when they aren't in the projected doc (or add a `list_view=True` flag)."}
+  ]},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_banners_and_min_order.py",
+    "/app/backend/tests/test_guest_and_checkout.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_city_pricing.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Minor perf polish) Drop 'description', 'video_url', 'images', 'search_keywords' keys from /api/products/all list response payload — currently returned as empty defaults. Reduces payload size further and matches spec.",
+    "(Optional) Consider adding an /api/banners/active caching layer with a short TTL since it is hit on every /shop mount by every guest."
+  ],
+  "critical_code_review_comments": [
+    "banner_routes.reorder_banners silently skips invalid ObjectIds (`continue` on bad ids). Consider returning a summary of updated_count so the frontend can detect a bad payload.",
+    "banner_routes._in_schedule compares ISO strings lexicographically; works because ISO-8601 is lexicographically sortable IF start/end include the same tz and format. The frontend fromLocal() always writes .toISOString() (UTC 'Z'), so this is safe for banners created via the admin UI. Would break if someone POSTs a local-tz ISO like '2026-01-05T10:00:00+05:30'. Consider parsing both sides with datetime.fromisoformat().",
+    "product_routes._consumer_product_out still emits 'description', 'video_url', 'images', 'search_keywords' as empty defaults for list view — projection saves DB read but response bloat remains (see minor issue).",
+    "Banners.js consumer-side: HeroBanner falls back to defaults only when banners.length===0 — matches spec. Uses <Link> for internal cta_url and <a href> for https://, good.",
+    "Frontend api.js uses withCredentials:true which correctly forwards httpOnly access_token cookie to /api/admin/banners — verified via JWT cookie injection in Playwright.",
+    "Banners.js super admin: uses up/down chevrons (data-testid banner-up-<id>/banner-down-<id>) as documented; POST /reorder is called after each move, which is chatty but correct. Consider debouncing if a super admin does many quick reorders."
+  ],
+  "updated_files": ["/app/backend/tests/test_banners_and_min_order.py"],
+  "success_rate": {"backend": "100% (102/102 pytest)", "frontend": "100% (all 6 admin+consumer banner UI checkpoints verified via JWT-injected Playwright)"},
+  "test_credentials": "Super admin +919833833498 (Shashank Mohore) — pre-seeded. JWT minted with JWT_SECRET from /app/backend/.env and set as `access_token` cookie for Playwright super-admin flows. Consumer/admin tests use ephemeral TEST_* fixture users.",
+  "seed_data_creation": "Test banners are all prefixed 'TEST_' and cleaned up in autouse fixture (before + after). One 'TEST_UI Banner' created via Playwright was deleted at end of the UI test. No permanent data mutations.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/ -o addopts=''. Expect 102/102 pass. New file tests/test_banners_and_min_order.py covers 21 cases across banner public/auth-guard/CRUD/scheduling/toggle + MIN_ORDER=2500 + perf sanity. For UI tests of /admin/banners, inject a super_admin JWT into the `access_token` cookie (JWT_SECRET is in /app/backend/.env; super admin _id read from db.users where mobile=+919833833498). Consumer /shop banner override works — creating an enabled+in-schedule banner as super admin immediately replaces defaults on /shop. Minor perf polish action item: /products/all response still contains empty-default keys for description/video_url/images/search_keywords."
+}

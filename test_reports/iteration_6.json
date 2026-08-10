@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 6 — City-aware pricing + Excel import/export backend tests. 68/68 pytest passing (50 regression from iter-5 + 18 new). New coverage in /app/backend/tests/test_city_pricing.py: (1) GET /api/products/cities public, returns {name, sku_count} for all 3 seeded cities Mumbai/Pune/Bengaluru with positive sku_count; (2) GET /api/products/all?city=Mumbai — wholesaler_price and city_prices keys are NEVER present in consumer response; mrp/price/discount_percent/city are present; (3) ?city=NonExistent returns []; (4) no-city call returns products via legacy defaults (backwards compat holds); (5) GET /api/products/{id}?city=Mumbai hides wholesaler_price, returns 404 after admin toggles is_live=false; (6) Admin GET /products/mine exposes city_prices matrix with wholesaler_price per city and discount_percent; (7) PUT /products/mine/{id} with city_prices[Mumbai].is_live=false hides SKU from /all?city=Mumbai and restore=true brings it back; (8) /products/cities recomputes: creating an SKU live in a novel city adds it, toggling is_live=false drops it; (9) GET /products/export-excel returns xlsx (spreadsheet content-type, parseable, correct headers) for super-admin and admin, 403 for consumer; (10) GET /products/excel-template returns xlsx with header + 2 sample rows; (11) POST /products/import-excel creates new products (rows_processed/created/updated returned correctly), updates existing by name case-insensitively, 403 for consumer; (12) Cart POST /cart/add with city=Mumbai persists city on cart; changing city via /cart/set-city wipes items; cart hydration uses city-specific price (verified with a product priced Mumbai=150, Pune=175 — line item price matched the active city). Full regression suite (auth OTP, role guards, SKU model, search, cart, checkout, super-admin approvals, Twilio admin) all green.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/products/all?city=X", "issue": "Legacy products with empty/missing city_prices are still returned when a city filter is applied (by design — `{city_prices: {$in: [None, {}]}}` clause in the Mongo query keeps them visible for backwards compat). All 23 seeded products have city_prices, so this is currently a no-op, but future imports that omit the city column would create SKUs visible in every city. Consider documenting this fallback or making city filter strict once the migration completes."},
+      {"endpoint": "POST /api/products/import-excel", "issue": "Row-level errors are captured (errors[:20] in response), but a malformed cell value fails the entire row silently (only the errors array flags it). No partial-column rollback. Acceptable for MVP; consider returning row numbers with human-readable messages."},
+      {"endpoint": "POST /api/products/import-excel", "issue": "Legacy top-level mrp/price/wholesaler_price on an existing product are overwritten by the LAST live row processed (by whichever city is imported last), not deterministically by 'first live city' as the docstring implies. For products imported with multiple cities in one file the legacy defaults end up city-order-dependent."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_city_pricing.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "None required — all 68 tests pass, feature works end-to-end.",
+    "(Optional) Clarify backward-compat behaviour: legacy products with empty city_prices leak into every city filter. Either strip that OR document it.",
+    "(Optional) Make legacy mrp/price/wholesaler_price mirror deterministic in import-excel (e.g., pick alphabetically first live city, not last-write-wins).",
+    "(Optional) Add ?limit / pagination to /products/mine and /export-excel — currently caps at 2000 / 5000 products."
+  ],
+  "critical_code_review_comments": [
+    "product_routes._consumer_product_out correctly strips wholesaler_price and city_prices; returns None when city passed and either city missing or is_live=false — good gating.",
+    "product_routes._city_pricing_out exposes wholesaler_price ONLY in admin response — verified via /products/mine returning it and /products/all NOT returning it.",
+    "The /cities aggregation pipeline uses $objectToArray → $unwind → $match is_live → $group. Efficient for current 23-product catalog; at 10k+ SKUs consider an index on city_prices.*.is_live or a materialized cities collection.",
+    "cart_routes._apply_city wipes cart items when city changes — correct for city-scoped pricing safety, but consumer will lose selections silently. Frontend should confirm before switching city.",
+    "cart_routes._hydrate_cart falls back to legacy price if city cp is missing or not live — good defensive behaviour; means an SKU turned off mid-session still renders (won't crash).",
+    "import-excel matches by case-insensitive name regex without escaping — a product with regex special chars in name (e.g., '(500g)') could produce a bad regex. Recommend re.escape(name).",
+    "product_routes.import_excel: no file-size limit / no MIME check — a malicious admin could upload a huge xlsx. openpyxl load can be memory-heavy. Add size guard (e.g., 5MB) and validate extension.",
+    "product_routes.list_all_products limit param defaults to 500; unauthenticated user can request limit=<huge>. Cap it server-side.",
+    "product_routes.CityPricing model has no validators for negative prices or price > mrp — admin can create SKU with wholesaler_price > selling_price. Add pydantic validators.",
+    "openpyxl 3.1.5 confirmed installed and working via export/template/import round-trip."
+  ],
+  "updated_files": ["/app/backend/tests/test_city_pricing.py"],
+  "success_rate": {"backend": "100% (68/68 pytest)", "frontend": "not tested (backend-only scope)"},
+  "test_credentials": "Super admin +919833833498. JWTs minted directly with JWT_SECRET from /app/backend/.env. Twilio NOT hit.",
+  "seed_data_creation": "Ephemeral TEST_Consumer, TEST_AdminApproved users; test SKUs prefixed TEST_ (all cleaned up in try/finally). No permanent data mutations.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Run: cd /app/backend && python -m pytest tests/ -v -o addopts=''. Expect 68/68 pass. New file tests/test_city_pricing.py covers the city-aware pricing rewrite (cities endpoint, /all?city= filter, wholesaler_price hidden from consumers, admin city_prices matrix, is_live toggle, Excel export/template/import round-trip, cart city persistence + change-clears-items + city-specific pricing). Never hit real Twilio. Seeded catalog has 23 SKUs all live in Mumbai/Pune/Bengaluru. If a test imports a product with a novel city, that city will appear in /products/cities until the test SKU is deleted (all tests use try/finally cleanup).",
+  "rca of the issue": "N/A — no failures. All 13 features listed in the review request verified working."
+}

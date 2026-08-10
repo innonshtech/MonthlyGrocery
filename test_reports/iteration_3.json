@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 3 — Single-seller pivot verified end-to-end. Backend: 19/19 pytest cases pass (auth incl. merchant-register rejection + merchant login gone, public /products/all with auto-computed discount_percent, admin-only /mine CRUD with photos[]/video_url, admin-only /shops/mine, consumer 403 on all /mine and AI endpoints, cart+checkout with 5000 min-order + 0 fees, admin sees ALL orders and can transition placed→accepted→preparing→packed→ready→out_for_delivery→delivered, AI product-description via Claude Sonnet 4.5). Frontend: Landing has no 'I'm a merchant' CTA; Login has no Consumer/Merchant tabs; Register has no merchant option; Consumer /shop shows 9 grocery-only categories (Atta & Rice, Pulses & Grains, Cooking Essentials, Dairy Staples, Snacks, Beverages, Household, Personal Care, Instant Food), no 'Partner stores'/'Nearby shops' sections, All-products grid renders 19 add-cart buttons, category filter + clear-filters works; Product detail shows product-price/mrp/discount/description/media testids; Cart shows min-order-warning and disables cart-checkout below ₹5,000; Admin login redirects to /admin/dashboard with all KPI cards (Revenue, Orders, Pending, Delivered, SKU count, Avg order, Customers, Low stock), 5 sidebar entries (Dashboard, Orders, SKUs & Inventory, Store profile, Analytics), no 'Shops' nav; Inventory Add-SKU dialog has all fields incl. pf-mrp/pf-price/pf-discount-display (auto-computes 20% for 500/400), pf-photo-input, pf-photo-add, pf-video, pf-description, ai-generate-desc, pf-save; Legacy /merchant/dashboard redirects to /admin/dashboard. All acceptance criteria met.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "admin/Inventory Add-SKU dialog pf-discount-display", "issue": "Text content is '20%auto-computed' with no separator between percentage and 'auto-computed' label — likely two adjacent spans without whitespace. Cosmetic only.", "selector": "[data-testid='pf-discount-display']", "priority": "LOW"},
+      {"component": "admin/Dashboard Revenue chart", "issue": "Recharts responsive container throws 'width(-1) and height(-1) should be greater than 0' warnings on first render (parent has no explicit min-height before layout settles). Chart still renders correctly but console shows warnings.", "selector": "ResponsiveContainer in Dashboard.js", "priority": "LOW"},
+      {"component": "shadcn Dialog in Inventory", "issue": "Console warning: 'Missing Description or aria-describedby={undefined} for {DialogContent}'. Add DialogDescription or aria-describedby for a11y compliance.", "selector": "DialogContent in admin/Inventory.js", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "(LOW) Add a space between the '%' number and the 'auto-computed' label inside pf-discount-display.",
+    "(LOW) Set an explicit min-height / height on the Recharts ResponsiveContainer parent in admin/Dashboard.js to silence the width/height warnings on first render.",
+    "(LOW) Add <DialogDescription> or aria-describedby to the Add-SKU DialogContent in admin/Inventory.js for a11y compliance."
+  ],
+  "critical_code_review_comments": [
+    "auth.py::seed_admin correctly (1) creates admin if missing, (2) resets password if changed, (3) migrates any pre-existing shop to admin ownership, (4) deletes all merchant users on startup — single-seller invariant enforced.",
+    "product_routes._product_out correctly auto-computes discount_percent = round((1 - price/mrp)*100), guards against price>mrp and mrp<=0, and excludes MongoDB _id.",
+    "order_routes.checkout enforces MIN_ORDER=5000 per shop with detail containing '5000'; delivery_fee=0 and platform_fee=0 as spec'd.",
+    "order_routes.my_orders returns ALL orders for admin (single-seller) and restricts consumers to their own — no merchant path remains.",
+    "auth_routes.register hard-blocks any role != 'consumer' with HTTP 400 detail 'Only consumer accounts can self-register'.",
+    "ai_routes both endpoints use require_role('admin'); consumer correctly gets 403.",
+    "Frontend App.js: /merchant/* wildcard redirects to /admin (verified — /merchant/dashboard → /admin/dashboard).",
+    "Cookies set with httpOnly=True, secure=True, samesite='none' — matches auth playbook. bcrypt hashes verified via login flow."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (19/19)", "frontend": "100% (all acceptance criteria met, only 3 LOW-priority cosmetic issues)"},
+  "test_credentials": "admin@zopin.com / Admin@123 ; consumer@test.com / Test@1234 ; merchant@test.com is INTENTIONALLY DELETED",
+  "seed_data_creation": "None. Reused existing MonthlyMart Store with 14 seeded products (now owned by admin). Test-created products (TEST_*) are cleaned up in-test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run pytest serially: `cd /app/backend && python -m pytest tests/backend_test.py -v -o addopts=''`. Iteration 3 pivot fully green. Admin dashboard chart has cosmetic recharts width warnings on first paint; not a blocker. pf-discount-display renders as '<n>%auto-computed' concatenated — cosmetic only.",
+  "rca of the issue": "N/A — no functional issues found. Single-seller pivot is correctly implemented across backend (seed migration, role-guards, discount computation, min-order rule, admin-sees-all-orders) and frontend (all merchant UI removed, admin sidebar covers full lifecycle, /merchant/* legacy routes redirect)."
+}

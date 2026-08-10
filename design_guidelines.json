@@ -1,0 +1,125 @@
+{
+  "theme": "light",
+  "typography": {
+    "headings": {
+      "font_family": "SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif",
+      "rules": "Must use tight letter spacing (tracking-tight or tracking-tighter). Use this for all headings to avoid the generic Inter look.",
+      "sizes": {
+        "h1": "text-4xl sm:text-5xl font-bold tracking-tighter",
+        "h2": "text-2xl sm:text-3xl font-semibold tracking-tight",
+        "h3": "text-xl sm:text-2xl font-medium tracking-tight",
+        "h4": "text-lg sm:text-xl font-medium"
+      }
+    },
+    "body": {
+      "font_family": "Inter, sans-serif",
+      "rules": "Clean, readable, loose line-height (leading-relaxed).",
+      "sizes": {
+        "base": "text-base leading-relaxed",
+        "small": "text-sm",
+        "micro": "text-xs uppercase tracking-widest font-semibold"
+      }
+    }
+  },
+  "colors": {
+    "primary": "#6C3BFF",
+    "secondary": "#FFFFFF",
+    "accent": "#22C55E",
+    "background": "#F9FAFB",
+    "surface": "#FFFFFF",
+    "text": {
+      "primary": "#111827",
+      "secondary": "#4B5563",
+      "muted": "#9CA3AF"
+    },
+    "border": "#F3F4F6",
+    "rules": "No full-screen gradients. Use Primary Purple (#6C3BFF) for main CTAs and Accent Green (#22C55E) for success/delivery status. Text on primary elements MUST be white for APCA/WCAG contrast compliance."
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "soft": "shadow-[0_8px_30px_rgb(0,0,0,0.04)]",
+      "hover": "shadow-[0_20px_40px_rgb(0,0,0,0.08)]",
+      "inner": "shadow-inner"
+    },
+    "radii": {
+      "cards": "rounded-[20px]",
+      "buttons": "rounded-full",
+      "inputs": "rounded-xl"
+    },
+    "glassmorphism": "backdrop-blur-xl bg-white/70 border-b border-gray-100. Apply to sticky headers, bottom navigation, and modal overlays. NEVER use completely transparent backgrounds.",
+    "borders": "1px solid border-gray-100 to ground cards and neumorphic elements."
+  },
+  "layouts": {
+    "consumer_app": {
+      "strategy": "Mobile-first, Quick-commerce optimized (Zepto/Blinkit).",
+      "structure": "Sticky top bar (location + search). Horizontal scroll snap categories (snap-x snap-mandatory). Fixed bottom navigation.",
+      "spacing": "p-4 or p-6. Generous vertical spacing between sections (gap-8)."
+    },
+    "merchant_dashboard": {
+      "strategy": "Stripe-like authority, High-Density Grid.",
+      "structure": "Sidebar navigation. Top bar for user profile. Main content uses grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with gap-6. Single-metric focus on KPIs.",
+      "spacing": "p-8. Cards use p-6 internal padding."
+    }
+  },
+  "motion": {
+    "hover": "Slight lift (-translate-y-1) and shadow increase on cards. Color darkening on buttons (hover:brightness-95).",
+    "click": "Scale down (active:scale-95) for micro-interactions.",
+    "page_transition": "Framer motion fade and slight slide-up.",
+    "rules": "Respect prefers-reduced-motion. Disable transforms on universal transitions."
+  },
+  "components": {
+    "cards": "Flat background, soft 16-20px radius, 1px subtle border, soft shadow.",
+    "buttons": "Pill-shaped (rounded-full) for primary CTAs (Apple style). Heavy font weight (font-semibold).",
+    "inputs": "Shadcn based. rounded-xl, subtle border, focus:ring-2 focus:ring-[#6C3BFF]/20 focus:border-[#6C3BFF].",
+    "navigation": "Bottom nav for consumer (mobile), Sidebar for Admin. Always include a visible navigation bar.",
+    "charts": "Shadcn charts or Recharts. Use primary and accent colors."
+  },
+  "accessibility": {
+    "contrast": "Ensure 4.5:1 ratio for normal text. White text on primary purple.",
+    "testing": "All interactive elements MUST have data-testid attributes (e.g., data-testid='login-submit-btn').",
+    "focus": "Clear focus rings on all focusable elements."
+  },
+  "media": {
+    "image_urls": {
+      "consumer_hero": "https://images.unsplash.com/photo-1542838132-92c53300491e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHByb2R1Y2UlMjBncm9jZXJpZXMlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4NDAyNjkzN3ww&ixlib=rb-4.1.0&q=85",
+      "store_banner": "https://images.unsplash.com/photo-1759323321196-2813db509285?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwzfHxncm9jZXJ5JTIwc3RvcmUlMjBpbnRlcmlvciUyMHByZW1pdW18ZW58MHx8fHwxNzg0MDI2OTM2fDA&ixlib=rb-4.1.0&q=85",
+      "delivery_tracking": "https://images.unsplash.com/photo-1572195577046-2f25894c06fc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTN8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBkZWxpdmVyeSUyMHBlcnNvbiUyMGVsZWN0cmljJTIwc2Nvb3RlcnxlbnwwfHx8fDE3ODQwMjY5Mzd8MA&ixlib=rb-4.1.0&q=85",
+      "featured_product_1": "https://images.unsplash.com/photo-1601600576337-c1d8a0d1373c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwzfHxmcmVzaCUyMHByb2R1Y2UlMjBncm9jZXJpZXMlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4NDAyNjkzN3ww&ixlib=rb-4.1.0&q=85",
+      "featured_product_2": "https://images.unsplash.com/photo-1579113800032-c38bd7635818?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHw0fHxmcmVzaCUyMHByb2R1Y2UlMjBncm9jZXJpZXMlMjBiYWNrZ3JvdW5kfGVufDB8fHx8MTc4NDAyNjkzN3ww&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "libraries": {
+    "icons": "lucide-react",
+    "motion": "framer-motion",
+    "toast": "sonner",
+    "charts": "recharts (integrated via shadcn)"
+  },
+  "instructions_to_main_agent": [
+    "This is a JS environment. Make sure all Shadcn components and logic use .js/.jsx, NOT .tsx.",
+    "Prioritize mobile-first layouts for the Consumer Portal and high-density, job-based layouts for the Merchant Dashboard.",
+    "Use SF Pro Display (or system sans-serif fallback) for headings with tight tracking, and Inter for body text.",
+    "Implement glassmorphism using 'backdrop-blur-xl bg-white/70' on sticky headers and bottom navs. Never use completely transparent backgrounds over scrollable content.",
+    "Add 'data-testid' attributes to all interactive elements.",
+    "Avoid standard Tailwind card styling; use the defined soft shadows and 16-20px border radii.",
+    "For the dashboard, mimic Stripe's 'Single-Metric Focus' by giving the primary KPI (e.g., Gross Volume/Revenue) the largest visual weight.",
+    "For the Consumer app, mimic Blinkit/Zepto by placing the 'Add to Cart' button within immediate thumb reach and keeping the checkout flow to a single screen.",
+    "Avoid applying 'transition: all' in CSS; explicitly specify properties to prevent breaking transforms.",
+    "Do not center-align the main app container; text should naturally flow from the left.",
+    "Do not use generic emojis for icons. Use lucide-react.",
+    "In the Merchant Dashboard, use Shadcn tables and layout elements strictly but inject ZOPIN's spacing and border-radius rules."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "You tend to converge toward generic outputs. Avoid the 'AI slop' aesthetic by applying the custom shadow, spacing, and border-radius tokens defined here.",
+    "Dark colors look good independently; DO NOT use dark colors as gradients.",
+    "Create depth through layered design elements with z-index hierarchy and glassmorphism (12-24px blur).",
+    "MUST NOT apply universal transitions (e.g., transition: all). Add transitions for specific interactive elements only.",
+    "MUST NOT center align the app container. Do not add '.App { text-align: center; }' in the css file.",
+    "Always use modern button styles (pill-shaped or sharp) with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 for icons.",
+    "Every interaction needs micro-animations (hover states, transitions).",
+    "Use generous spacing (2-3x more than standard).",
+    "Use sonner for toasts. Note that sonner components are located in .js files (e.g., /app/src/components/ui/sonner.js).",
+    "Do not use HTML-based components for advanced interactions. Use Shadcn components and customize them.",
+    "Ensure all mock data looks realistic, and use the provided image URLs instead of placeholders."
+  ]
+}
