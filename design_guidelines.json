@@ -106,7 +106,7 @@
     "Avoid applying 'transition: all' in CSS; explicitly specify properties to prevent breaking transforms.",
     "Do not center-align the main app container; text should naturally flow from the left.",
     "Do not use generic emojis for icons. Use lucide-react.",
-    "In the Merchant Dashboard, use Shadcn tables and layout elements strictly but inject ZOPIN's spacing and border-radius rules."
+    "In the Merchant Dashboard, use Shadcn tables and layout elements strictly but inject the design system's spacing and border-radius rules."
   ],
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
     "You tend to converge toward generic outputs. Avoid the 'AI slop' aesthetic by applying the custom shadow, spacing, and border-radius tokens defined here.",

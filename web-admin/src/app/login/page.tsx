@@ -1,0 +1,192 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Phone, Shield, ArrowRight, Loader2 } from 'lucide-react';
+
+export default function LoginPage() {
+  const [mobile, setMobile] = useState('');
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [step, setStep] = useState<1 | 2>(1); // 1: mobile, 2: OTP
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!mobile || mobile.trim().length < 10) {
+      setError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile: mobile.trim(), role: 'super_admin' })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send OTP');
+      }
+      setStep(2);
+    } catch (err: any) {
+      setError(err.message || 'Connection error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!code || code.trim().length < 6) {
+      setError('Please enter the 6-digit verification code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mobile: mobile.trim(),
+          code: code.trim(),
+          name: name.trim(),
+          role: 'super_admin'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Verification failed');
+      }
+
+      // STRICT ROLE CHECK: Only allow super_admin on this web panel
+      if (data.user.role !== 'super_admin') {
+        throw new Error('Access Denied: Only the Super Admin is authorized to log in to this web dashboard.');
+      }
+
+      // Save token and redirect
+      localStorage.setItem('@admin_token', data.token);
+      localStorage.setItem('@admin_user', JSON.stringify(data.user));
+      router.replace('/');
+    } catch (err: any) {
+      setError(err.message || 'Verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-[#FFF8ED] flex items-center justify-center p-6">
+      <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-[#F1EAD8] shadow-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 bg-[#0B1220] rounded-xl text-white">
+            <Shield className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-[#0B1220] tracking-tight">MonthlyGrocery</h1>
+            <p className="text-xs text-gray-500 font-semibold tracking-wider uppercase">Super Admin Portal</p>
+          </div>
+        </div>
+
+        {step === 1 ? (
+          <form onSubmit={handleSendOtp} className="space-y-5">
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Sign In</h2>
+              <p className="text-sm text-gray-500 mt-1">Enter your super admin mobile number to receive an OTP.</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">Mobile Number</label>
+              <div className="flex items-center rounded-xl bg-gray-50 border-2 border-[#F1EAD8] focus-within:border-[#0B1220] transition-colors p-1.5 pl-4">
+                <span className="text-gray-500 font-bold mr-1">+91</span>
+                <input
+                  type="tel"
+                  placeholder="8830480015"
+                  value={mobile}
+                  onChange={(e) => setMobile(e.target.value.replace(/[^\d]/g, '').slice(0, 10))}
+                  required
+                  className="w-full h-10 bg-transparent outline-none text-base text-gray-800"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-100 text-sm text-red-600 rounded-xl">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-[#0B1220] hover:bg-[#1a263e] text-white rounded-full font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send OTP <ArrowRight className="w-4 h-4" /></>}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleVerifyOtp} className="space-y-5">
+            <div>
+              <button
+                type="button"
+                onClick={() => { setStep(1); setCode(''); setError(''); }}
+                className="text-sm text-gray-500 hover:text-[#0B1220] underline mb-2 cursor-pointer"
+              >
+                ← Change number
+              </button>
+              <h2 className="text-xl font-bold text-gray-800">Verify OTP</h2>
+              <p className="text-sm text-gray-500 mt-1">Sent code to +91 {mobile}. Enter <strong>123456</strong> in development.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">OTP Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="••••••"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, ''))}
+                  required
+                  className="w-full h-12 rounded-xl bg-gray-50 border-2 border-[#F1EAD8] focus:border-[#0B1220] outline-none text-center text-xl font-bold tracking-[0.5em]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Your Name (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full h-11 rounded-xl bg-gray-50 border-2 border-[#F1EAD8] focus:border-[#0B1220] outline-none px-4 text-base"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-100 text-sm text-red-600 rounded-xl">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 bg-[#0B1220] hover:bg-[#1a263e] text-white rounded-full font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify & Login'}
+            </button>
+          </form>
+        )}
+      </div>
+    </main>
+  );
+}
