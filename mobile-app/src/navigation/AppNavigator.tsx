@@ -7,7 +7,17 @@ import { CartProvider } from '../context/CartContext';
 
 import LoginScreen from '../screens/LoginScreen';
 import LandingScreen from '../screens/LandingScreen';
-import ShopScreen from '../screens/customer/ShopScreen';
+import SplashScreen from '../screens/SplashScreen';
+import ValueIntroScreen from '../screens/ValueIntroScreen';
+import CitySelectionScreen from '../screens/CitySelectionScreen';
+import AreaSelectionScreen from '../screens/AreaSelectionScreen';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
+import MainTabScreen from '../screens/customer/MainTabScreen';
+import CategoryProductsScreen from '../screens/customer/CategoryProductsScreen';
+import ProductDetailScreen from '../screens/customer/ProductDetailScreen';
+import MyMonthlyGroceryHub from '../screens/customer/MyMonthlyGroceryHub';
+import CheckoutScreen from '../screens/customer/CheckoutScreen';
+import OrderSuccessScreen from '../screens/customer/OrderSuccessScreen';
 import CartScreen from '../screens/customer/CartScreen';
 import OrdersScreen from '../screens/customer/OrdersScreen';
 import OrdersDashboard from '../screens/merchant/OrdersDashboard';
@@ -28,23 +38,29 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <CartProvider>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {token === null ? (
-            // 1. Auth Flow
+        <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
+          {token !== null && user?.role !== 'consumer' ? (
+            // 1. Merchant Portal Flow (role: admin, super_admin)
+            <Stack.Screen name="MerchantDashboard" component={OrdersDashboard} />
+          ) : (
+            // 2. Customer & Guest Flow
             <>
+              <Stack.Screen name="Splash" component={SplashScreen} />
+              <Stack.Screen name="ValueIntro" component={ValueIntroScreen} />
+              <Stack.Screen name="CitySelection" component={CitySelectionScreen} />
+              <Stack.Screen name="AreaSelection" component={AreaSelectionScreen} />
+              <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
               <Stack.Screen name="Landing" component={LandingScreen} />
               <Stack.Screen name="Login" component={LoginScreen} />
-            </>
-          ) : user?.role === 'consumer' ? (
-            // 2. Customer Portal Flow
-            <>
-              <Stack.Screen name="Shop" component={ShopScreen} />
+              <Stack.Screen name="Shop" component={MainTabScreen} />
+              <Stack.Screen name="CategoryProducts" component={CategoryProductsScreen} />
+              <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+              <Stack.Screen name="MyMonthlyGroceryHub" component={MyMonthlyGroceryHub} />
+              <Stack.Screen name="Checkout" component={CheckoutScreen} />
+              <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
               <Stack.Screen name="Cart" component={CartScreen} />
               <Stack.Screen name="Orders" component={OrdersScreen} />
             </>
-          ) : (
-            // 3. Merchant Portal Flow (role: admin, super_admin)
-            <Stack.Screen name="MerchantDashboard" component={OrdersDashboard} />
           )}
         </Stack.Navigator>
       </CartProvider>

@@ -25,6 +25,14 @@ app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/shops', shopsRouter);
 
+// Public Config Endpoint
+app.get('/api/config', (req, res) => {
+  res.json({
+    success: true,
+    min_order_limit: parseInt(process.env.MIN_ORDER_LIMIT || '2500', 10)
+  });
+});
+
 // Basic health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });

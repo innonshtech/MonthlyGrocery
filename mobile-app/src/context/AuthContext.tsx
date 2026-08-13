@@ -13,6 +13,9 @@ interface AuthContextType {
   token: string | null;
   user: User | null;
   loading: boolean;
+  city: string | null;
+  area: string | null;
+  setCityAndArea: (city: string | null, area: string | null) => Promise<void>;
   sendOtp: (mobile: string, role: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (mobile: string, code: string, name?: string, role?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -23,13 +26,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [city, setCityState] = useState<string | null>(null);
+  const [area, setAreaState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 1. Check for persisted session on launch
+  // 1. Check for persisted session and location on launch
   useEffect(() => {
     const loadSession = async () => {
       try {
         const savedToken = await AsyncStorage.getItem('@auth_token');
+        const savedCity = await AsyncStorage.getItem('@user_city');
+        const savedArea = await AsyncStorage.getItem('@user_area');
+        
+        if (savedCity) setCityState(savedCity);
+        if (savedArea) setAreaState(savedArea);
+
         if (savedToken) {
           // Verify token and fetch profile
           const res = await fetch(`${API_BASE}/auth/me`, {
@@ -96,7 +107,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 4. Logout
+  // 4. Set Location
+  const setCityAndArea = async (newCity: string | null, newArea: string | null) => {
+    try {
+      if (newCity) {
+        await AsyncStorage.setItem('@user_city', newCity);
+      } else {
+        await AsyncStorage.removeItem('@user_city');
+      }
+      if (newArea) {
+        await AsyncStorage.setItem('@user_area', newArea);
+      } else {
+        await AsyncStorage.removeItem('@user_area');
+      }
+      setCityState(newCity);
+      setAreaState(newArea);
+    } catch (err) {
+      console.error('Failed to save location details:', err);
+    }
+  };
+
+  // 5. Logout
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('@auth_token');
@@ -108,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, loading, sendOtp, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ token, user, loading, city, area, setCityAndArea, sendOtp, verifyOtp, logout }}>
       {children}
     </AuthContext.Provider>
   );

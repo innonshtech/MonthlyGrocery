@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
-export default function LoginScreen() {
+export default function LoginScreen({ route, navigation }: any) {
   const [role, setRole] = useState<'consumer' | 'admin'>('consumer');
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
@@ -48,7 +48,16 @@ export default function LoginScreen() {
     setLoading(true);
     const res = await verifyOtp(mobile, code, name, role);
     setLoading(false);
-    if (!res.success) {
+    if (res.success) {
+      if (role === 'consumer') {
+        const redirect = route.params?.redirect || 'Shop';
+        if (name.trim()) {
+          navigation.replace('ProfileSetup', { redirect });
+        } else {
+          navigation.replace(redirect);
+        }
+      }
+    } else {
       setError(res.error || 'Invalid OTP code');
     }
   };

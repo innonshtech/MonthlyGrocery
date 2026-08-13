@@ -18,68 +18,27 @@ import { API_BASE } from '../../config/api';
 
 export default function CartScreen({ navigation }: any) {
   const { token } = useAuth();
-  const { items, updateQuantity, clearCart, totalAmount } = useCart();
-  const [address, setAddress] = useState('Flat 402, Building A, Sunrise Apartment, Mumbai');
+  const { items, minOrderLimit, updateQuantity, clearCart, totalAmount } = useCart();
   const [loading, setLoading] = useState(false);
 
   const deliveryCharge = totalAmount >= 1000 ? 0 : 49;
   const grandTotal = totalAmount + deliveryCharge;
 
-  const handleCheckout = async () => {
-    if (!address.trim()) {
-      Alert.alert('Error', 'Please enter a delivery address');
-      return;
-    }
-
+  const handleCheckout = () => {
     if (items.length === 0) {
       Alert.alert('Error', 'Your cart is empty');
       return;
     }
 
-    setLoading(true);
-    try {
-      // Create request payload
-      const orderItems = items.map((it) => ({
-        product_id: it.product.id,
-        quantity: it.quantity,
-        price: it.product.price,
-      }));
-
-      const payload = {
-        shop_id: items[0].product.shop_id, // associate with the first product's shop
-        items: orderItems,
-        total_amount: grandTotal,
-        delivery_address: address.trim(),
-      };
-
-      const res = await fetch(`${API_BASE}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        Alert.alert('Success', 'Order placed successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              clearCart();
-              navigation.navigate('Orders');
-            }
-          }
-        ]);
-      } else {
-        Alert.alert('Checkout Failed', data.error || 'Failed to place order');
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Connection error during checkout. Please try again.');
-    } finally {
-      setLoading(false);
+    if (!token) {
+      Alert.alert('Login Required', 'You must log in to proceed to checkout.', [
+        { text: 'Cancel' },
+        { text: 'Login', onPress: () => navigation.navigate('Login', { redirect: 'Checkout' }) }
+      ]);
+      return;
     }
+
+    navigation.navigate('Checkout');
   };
 
   const renderCartItem = ({ item }: { item: any }) => (
@@ -134,16 +93,29 @@ export default function CartScreen({ navigation }: any) {
         contentContainerStyle={styles.listContainer}
         ListFooterComponent={
           <View style={styles.footer}>
-            {/* Delivery address */}
-            <Text style={styles.sectionTitle}>Delivery Address</Text>
-            <TextInput
-              style={styles.addressInput}
-              placeholder="Enter complete delivery address"
-              multiline
-              numberOfLines={3}
-              value={address}
-              onChangeText={setAddress}
-            />
+            {/* Minimum Order Limit Progress Bar */}
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressTitle}>Monthly Order Progress</Text>
+                <Text style={styles.progressValue}>₹{totalAmount} / ₹{minOrderLimit}</Text>
+              </View>
+              
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${Math.min((totalAmount / minOrderLimit) * 100, 100)}%` }]} />
+              </View>
+
+              {totalAmount < minOrderLimit ? (
+                <Text style={styles.progressTip}>
+                  💡 Add <Text style={{fontWeight: 'bold'}}>₹{minOrderLimit - totalAmount}</Text> more to place order.
+                </Text>
+              ) : (
+                <Text style={[styles.progressTip, { color: '#22C55E', fontWeight: 'bold' }]}>
+                  🎉 Minimum order limit met!
+                </Text>
+              )}
+            </View>
+
+
 
             {/* Bill Details */}
             <Text style={styles.sectionTitle}>Bill Summary</Text>
@@ -165,11 +137,17 @@ export default function CartScreen({ navigation }: any) {
             </View>
 
             {/* Checkout button */}
-            <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout} disabled={loading}>
+            <TouchableOpacity 
+              style={[styles.checkoutBtn, totalAmount < minOrderLimit && styles.checkoutBtnDisabled]} 
+              onPress={handleCheckout} 
+              disabled={loading || totalAmount < minOrderLimit}
+            >
               {loading ? (
                 <ActivityIndicator color="#fff" />
+              ) : totalAmount < minOrderLimit ? (
+                <Text style={styles.checkoutTextDisabled}>Add ₹{minOrderLimit - totalAmount} more to checkout</Text>
               ) : (
-                <Text style={styles.checkoutText}>Place Order · ₹{grandTotal}</Text>
+                <Text style={styles.checkoutText}>Proceed to Checkout · ₹{grandTotal}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -333,10 +311,60 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 3,
   },
+  checkoutBtnDisabled: {
+    backgroundColor: '#E5E7EB',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   checkoutText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  checkoutTextDisabled: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  progressCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#F1EAD8',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  progressTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0B1220',
+  },
+  progressValue: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#6C3BFF',
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F3F4F6',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#22C55E',
+    borderRadius: 4,
+  },
+  progressTip: {
+    fontSize: 12,
+    color: '#666',
   },
   emptyContainer: {
     flex: 1,

@@ -8,11 +8,13 @@ import {
   SafeAreaView,
   StatusBar
 } from 'react-native';
+import { useCart } from '../context/CartContext';
 
 export default function LandingScreen({ navigation }: any) {
+  const { minOrderLimit } = useCart();
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF8ED" />
+      <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
         {/* Header */}
@@ -81,7 +83,7 @@ export default function LandingScreen({ navigation }: any) {
           </View>
           <View>
             <Text style={styles.statBoxLabel}>MINIMUM ORDER</Text>
-            <Text style={styles.statBoxVal}>₹2,500</Text>
+            <Text style={styles.statBoxVal}>₹{minOrderLimit}</Text>
           </View>
           <View style={styles.ratingBadge}>
             <Text style={styles.ratingText}>⭐ 4.9/5</Text>
