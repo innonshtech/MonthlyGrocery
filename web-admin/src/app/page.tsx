@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   MapPin,
   BarChart3,
-  Image as ImageIcon,
+  ImageIcon,
   MessageSquare,
   Plus,
   Trash2
@@ -414,8 +414,8 @@ export default function DashboardPage() {
 
   if (!user || !token) {
     return (
-      <div className="min-h-screen bg-[#FFF8ED] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-[#0B1220] animate-spin" />
+      <div className="min-h-screen bg-[#090D16] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#10B981] animate-spin" />
       </div>
     );
   }
@@ -423,28 +423,30 @@ export default function DashboardPage() {
   const stats = calculateAnalytics();
 
   return (
-    <div className="min-h-screen bg-[#FFF8ED] text-gray-800 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] text-slate-100 flex flex-col md:flex-row font-sans">
       
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-[#F1EAD8] flex flex-col justify-between p-6">
+      <aside className="w-full md:w-64 bg-[#090D16]/65 border-b md:border-b-0 md:border-r border-slate-800/80 backdrop-blur-xl flex flex-col justify-between p-6">
         <div className="space-y-8">
           {/* Logo Header */}
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#0B1220] rounded-xl text-white">
+            <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
               <Shield className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-[#0B1220]">MonthlyGrocery</h1>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Super Admin Console</p>
+              <h1 className="text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
+              <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col gap-1.5">
             <button
               onClick={() => setActiveTab('shops')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'shops' ? 'bg-[#0B1220] text-white' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'shops' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
               <Store className="w-4 h-4" /> Store Approvals
@@ -453,7 +455,9 @@ export default function DashboardPage() {
             <button
               onClick={() => setActiveTab('locations')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'locations' ? 'bg-[#0B1220] text-white' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'locations' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
               <MapPin className="w-4 h-4" /> Localities Mapping
@@ -462,7 +466,9 @@ export default function DashboardPage() {
             <button
               onClick={() => setActiveTab('analytics')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'analytics' ? 'bg-[#0B1220] text-white' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'analytics' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
               <BarChart3 className="w-4 h-4" /> Platform Analytics
@@ -471,7 +477,9 @@ export default function DashboardPage() {
             <button
               onClick={() => setActiveTab('banners')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'banners' ? 'bg-[#0B1220] text-white' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'banners' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
               <ImageIcon className="w-4 h-4" /> Festive Campaigns
@@ -480,7 +488,9 @@ export default function DashboardPage() {
             <button
               onClick={() => setActiveTab('franchise')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'franchise' ? 'bg-[#0B1220] text-white' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'franchise' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
               <MessageSquare className="w-4 h-4" /> Franchise Inquiries
@@ -489,7 +499,9 @@ export default function DashboardPage() {
             <button
               onClick={() => setActiveTab('bulk-loader')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'bulk-loader' ? 'bg-[#0B1220] text-white' : 'text-gray-600 hover:bg-gray-50'
+                activeTab === 'bulk-loader' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
               }`}
             >
               <FileSpreadsheet className="w-4 h-4" /> Bulk SKU Loader
@@ -498,14 +510,14 @@ export default function DashboardPage() {
         </div>
 
         {/* User profile / Logout */}
-        <div className="mt-8 pt-6 border-t border-gray-100 space-y-4">
+        <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-4">
           <div>
-            <p className="text-sm font-bold text-[#0B1220]">{user.name}</p>
-            <p className="text-xs text-gray-400">Owner Mobile: {user.mobile}</p>
+            <p className="text-sm font-bold text-slate-100">{user.name}</p>
+            <p className="text-[11px] text-slate-500">Super Admin Mobile: {user.mobile}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/15 rounded-xl transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" /> Log Out
           </button>
@@ -515,49 +527,51 @@ export default function DashboardPage() {
       {/* Main Content Area */}
       <main className="flex-1 p-8 overflow-y-auto">
         {loading && (
-          <div className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-500 bg-white border border-[#F1EAD8] px-4 py-2.5 rounded-xl w-max">
-            <Loader2 className="w-4 h-4 animate-spin text-[#0B1220]" /> Fetching data...
+          <div className="flex items-center gap-2 mb-4 text-xs font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-4 py-2.5 rounded-xl w-max shadow-sm backdrop-blur-md">
+            <Loader2 className="w-4 h-4 animate-spin" /> Querying API Database...
           </div>
         )}
 
         {/* 1. STORE APPROVALS TAB */}
         {activeTab === 'shops' && (
-          <section className="bg-white rounded-3xl p-6 border border-[#F1EAD8] max-w-5xl">
+          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-[#0B1220] flex items-center gap-2">🏪 Store Registration Whitelisting</h2>
-              <button onClick={fetchData} className="text-xs font-bold text-gray-500 hover:text-gray-800">Refresh</button>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
+              </h2>
+              <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     <th className="pb-3">Store Name</th>
                     <th className="pb-3">Owner Contact</th>
                     <th className="pb-3">Status</th>
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 text-sm">
+                <tbody className="divide-y divide-slate-800/30 text-sm">
                   {shops.map((shop) => (
-                    <tr key={shop.id} className="hover:bg-gray-50/50">
-                      <td className="py-4 pr-3 font-semibold text-gray-900">{shop.shop_name}</td>
+                    <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
+                      <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
                       <td className="py-4 pr-3">
-                        <p className="font-medium text-gray-700">{shop.profiles?.name || 'Owner'}</p>
-                        <p className="text-xs text-gray-400">+{shop.profiles?.phone}</p>
+                        <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
+                        <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
                       </td>
                       <td className="py-4 pr-3">
                         {shop.status === 'approved' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700">
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             Approved
                           </span>
                         )}
                         {shop.status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700">
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
                             Rejected
                           </span>
                         )}
                         {shop.status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 animate-pulse">
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
                             Pending
                           </span>
                         )}
@@ -566,7 +580,7 @@ export default function DashboardPage() {
                         {shop.status !== 'approved' && (
                           <button
                             onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
-                            className="text-xs font-bold px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors cursor-pointer"
+                            className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
                           >
                             Approve
                           </button>
@@ -574,7 +588,7 @@ export default function DashboardPage() {
                         {shop.status !== 'rejected' && (
                           <button
                             onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
-                            className="text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors cursor-pointer"
+                            className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
                           >
                             Reject
                           </button>
@@ -592,40 +606,42 @@ export default function DashboardPage() {
         {activeTab === 'locations' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
             {/* Left Column: List of Mapped Zones */}
-            <section className="lg:col-span-2 bg-white rounded-3xl p-6 border border-[#F1EAD8]">
-              <h2 className="text-lg font-bold text-[#0B1220] mb-6 flex items-center gap-2">📍 Serviceable Delivery Localities</h2>
+            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-emerald-400" /> Serviceable Delivery Localities
+              </h2>
               
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       <th className="pb-3">City / Locality</th>
                       <th className="pb-3">PIN Code</th>
                       <th className="pb-3">Assigned Merchant</th>
                       <th className="pb-3 text-right">Delete</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50 text-sm">
+                  <tbody className="divide-y divide-slate-800/30 text-sm">
                     {locations.map((loc) => {
                       const matchedShop = shops.find(s => s.id === loc.shop_id);
                       return (
-                        <tr key={loc.id} className="hover:bg-gray-50/50">
+                        <tr key={loc.id} className="hover:bg-slate-800/20 transition-colors">
                           <td className="py-4 pr-3 font-semibold">
-                            <span className="text-gray-900">{loc.area_name}</span>
-                            <span className="text-xs text-gray-400 block">{loc.city}</span>
+                            <span className="text-white">{loc.area_name}</span>
+                            <span className="text-xs text-slate-500 block">{loc.city}</span>
                           </td>
-                          <td className="py-4 pr-3 text-gray-600 font-mono font-semibold">{loc.pincode}</td>
+                          <td className="py-4 pr-3 text-slate-300 font-mono font-bold">{loc.pincode}</td>
                           <td className="py-4 pr-3">
                             {matchedShop ? (
-                              <span className="text-blue-600 font-semibold">{matchedShop.shop_name}</span>
+                              <span className="text-emerald-400 font-semibold">{matchedShop.shop_name}</span>
                             ) : (
-                              <span className="text-gray-400 italic">No Shop Assigned</span>
+                              <span className="text-slate-500 italic">No Shop Assigned</span>
                             )}
                           </td>
                           <td className="py-4 text-right">
                             <button
                               onClick={() => handleDeleteLocation(loc.id)}
-                              className="text-red-500 hover:text-red-700 cursor-pointer"
+                              className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4 inline" />
                             </button>
@@ -639,14 +655,14 @@ export default function DashboardPage() {
             </section>
 
             {/* Right Column: Add Location form */}
-            <section className="bg-white rounded-3xl p-6 border border-[#F1EAD8] h-max">
-              <h3 className="text-base font-bold text-[#0B1220] mb-4 flex items-center gap-2">➕ Add Serviceable Zone</h3>
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Add Serviceable Zone</h3>
               
               <form onSubmit={handleAddLocation} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">City Location</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">City Location</label>
                   <select
-                    className="w-full mt-1.5 h-11 px-3 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={locCity}
                     onChange={(e) => setLocCity(e.target.value)}
                   >
@@ -658,32 +674,32 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Locality Name</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Locality Name</label>
                   <input
                     type="text"
                     placeholder="e.g. Andheri West"
-                    className="w-full mt-1.5 h-11 px-4 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={locArea}
                     onChange={(e) => setLocArea(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">6-Digit PIN Code</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">6-Digit PIN Code</label>
                   <input
                     type="text"
                     maxLength={6}
                     placeholder="e.g. 400053"
-                    className="w-full mt-1.5 h-11 px-4 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={locPin}
                     onChange={(e) => setLocPin(e.target.value.replace(/[^\d]/g, ''))}
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Assign Shop</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Assign Shop</label>
                   <select
-                    className="w-full mt-1.5 h-11 px-3 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={locShop}
                     onChange={(e) => setLocShop(e.target.value)}
                   >
@@ -696,7 +712,7 @@ export default function DashboardPage() {
 
                 <button
                   type="submit"
-                  className="w-full h-11 bg-[#0B1220] hover:bg-[#1a263e] text-white rounded-full font-bold transition-all mt-4 cursor-pointer"
+                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
                 >
                   Save Local Zone
                 </button>
@@ -710,48 +726,50 @@ export default function DashboardPage() {
           <div className="space-y-8 max-w-6xl">
             {/* Sales Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-2xl p-6 border border-[#F1EAD8]">
-                <p className="text-xs font-bold text-gray-400 uppercase">Platform GMV</p>
-                <p className="text-2xl font-bold text-green-600 mt-2">₹{stats.gmv.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Delivered orders revenue</p>
+              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Platform GMV</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-2">₹{stats.gmv.toLocaleString('en-IN')}</p>
+                <p className="text-[9px] text-slate-500 mt-1">Delivered orders revenue</p>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 border border-[#F1EAD8]">
-                <p className="text-xs font-bold text-gray-400 uppercase">Total Orders</p>
-                <p className="text-2xl font-bold text-gray-800 mt-2">{stats.totalOrders}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Total placed platform orders</p>
+              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Orders</p>
+                <p className="text-2xl font-bold text-slate-200 mt-2">{stats.totalOrders}</p>
+                <p className="text-[9px] text-slate-500 mt-1">Total placed orders</p>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 border border-[#F1EAD8]">
-                <p className="text-xs font-bold text-gray-400 uppercase">Active Orders</p>
-                <p className="text-2xl font-bold text-amber-500 mt-2">{stats.activeOrders}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Orders in processing pipeline</p>
+              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Orders</p>
+                <p className="text-2xl font-bold text-amber-400 mt-2">{stats.activeOrders}</p>
+                <p className="text-[9px] text-slate-500 mt-1">In processing pipeline</p>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 border border-[#F1EAD8]">
-                <p className="text-xs font-bold text-gray-400 uppercase">Average Order Value (AOV)</p>
-                <p className="text-2xl font-bold text-blue-600 mt-2">₹{stats.aov.toLocaleString('en-IN')}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Average spent per basket</p>
+              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Average Order (AOV)</p>
+                <p className="text-2xl font-bold text-blue-400 mt-2">₹{stats.aov.toLocaleString('en-IN')}</p>
+                <p className="text-[9px] text-slate-500 mt-1">Average spent per basket</p>
               </div>
             </div>
 
             {/* Merchant Rankings */}
-            <section className="bg-white rounded-3xl p-6 border border-[#F1EAD8]">
-              <h3 className="text-base font-bold text-[#0B1220] mb-4 flex items-center gap-2">📈 Merchant Sales Rankings</h3>
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-400" /> Merchant Sales Rankings
+              </h3>
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     <th className="pb-3">Shop Partner</th>
                     <th className="pb-3 text-center">Orders Placed</th>
                     <th className="pb-3 text-right">Revenue (GMV)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 text-sm">
+                <tbody className="divide-y divide-slate-800/30 text-sm">
                   {stats.rankedShops.map((item: any, i: number) => (
-                    <tr key={i} className="hover:bg-gray-50/50">
-                      <td className="py-4 pr-3 font-semibold text-gray-900">{item.name}</td>
-                      <td className="py-4 pr-3 text-center text-gray-600">{item.count} orders</td>
-                      <td className="py-4 text-right font-bold text-green-600">₹{item.total.toLocaleString('en-IN')}</td>
+                    <tr key={i} className="hover:bg-slate-800/20 transition-colors">
+                      <td className="py-4 pr-3 font-semibold text-white">{item.name}</td>
+                      <td className="py-4 pr-3 text-center text-slate-400">{item.count} orders</td>
+                      <td className="py-4 text-right font-bold text-emerald-400">₹{item.total.toLocaleString('en-IN')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -764,20 +782,22 @@ export default function DashboardPage() {
         {activeTab === 'banners' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
             {/* Left Column: Banners List */}
-            <section className="lg:col-span-2 bg-white rounded-3xl p-6 border border-[#F1EAD8]">
-              <h2 className="text-lg font-bold text-[#0B1220] mb-6 flex items-center gap-2">🎏 Promotional Festive Banners</h2>
+            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-400" /> Promotional Festive Banners
+              </h2>
               
               <div className="space-y-4">
                 {banners.map((b) => (
-                  <div key={b.id} className="flex gap-4 p-4 border border-[#F1EAD8] rounded-2xl items-center bg-gray-50/50">
-                    <img src={b.image_url} alt={b.title} className="w-24 h-16 object-cover rounded-lg bg-gray-200 border" />
+                  <div key={b.id} className="flex gap-4 p-4 border border-slate-800/80 rounded-2xl items-center bg-slate-950/40">
+                    <img src={b.image_url} alt={b.title} className="w-24 h-16 object-cover rounded-lg bg-slate-900 border border-slate-800" />
                     <div className="flex-1">
-                      <h4 className="font-bold text-sm text-gray-800">{b.title}</h4>
-                      <p className="text-xs text-gray-400 mt-1">Deep Link: {b.action_link || 'None'}</p>
+                      <h4 className="font-bold text-sm text-slate-200">{b.title}</h4>
+                      <p className="text-xs text-slate-500 mt-1">Deep Link: {b.action_link || 'None'}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteBanner(b.id)}
-                      className="text-red-500 hover:text-red-700 cursor-pointer"
+                      className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -787,38 +807,38 @@ export default function DashboardPage() {
             </section>
 
             {/* Right Column: Add Banner Form */}
-            <section className="bg-white rounded-3xl p-6 border border-[#F1EAD8] h-max">
-              <h3 className="text-base font-bold text-[#0B1220] mb-4 flex items-center gap-2">➕ Publish New Campaign</h3>
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Publish New Campaign</h3>
               
               <form onSubmit={handleAddBanner} className="space-y-4">
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Banner Title</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Banner Title</label>
                   <input
                     type="text"
                     placeholder="e.g. Save 10% on Oils!"
-                    className="w-full mt-1.5 h-11 px-4 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={bannerTitle}
                     onChange={(e) => setBannerTitle(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Image URL</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Image URL</label>
                   <input
                     type="text"
                     placeholder="e.g. https://images.unsplash.com/..."
-                    className="w-full mt-1.5 h-11 px-4 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={bannerImage}
                     onChange={(e) => setBannerImage(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wide">Action Deep Link</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Deep Link</label>
                   <input
                     type="text"
                     placeholder="e.g. CategoryProducts?category=Oil"
-                    className="w-full mt-1.5 h-11 px-4 border border-gray-200 rounded-xl text-sm"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={bannerLink}
                     onChange={(e) => setBannerLink(e.target.value)}
                   />
@@ -826,7 +846,7 @@ export default function DashboardPage() {
 
                 <button
                   type="submit"
-                  className="w-full h-11 bg-[#0B1220] hover:bg-[#1a263e] text-white rounded-full font-bold transition-all mt-4 cursor-pointer"
+                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
                 >
                   Publish Campaign Banner
                 </button>
@@ -837,30 +857,32 @@ export default function DashboardPage() {
 
         {/* 5. FRANCHISE REQUESTS TAB */}
         {activeTab === 'franchise' && (
-          <section className="bg-white rounded-3xl p-6 border border-[#F1EAD8] max-w-5xl">
-            <h2 className="text-lg font-bold text-[#0B1220] mb-6 flex items-center gap-2">🤝 Franchise Partnership Requests</h2>
+          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
+            <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-emerald-400" /> Franchise Partnership Requests
+            </h2>
             
             <div className="space-y-4">
               {franchiseRequests.length === 0 ? (
-                <p className="text-sm text-gray-500 py-6 text-center">No partnership leads received yet.</p>
+                <p className="text-sm text-slate-500 py-6 text-center">No partnership leads received yet.</p>
               ) : (
                 franchiseRequests.map((req) => (
-                  <div key={req.id} className="p-5 border border-[#F1EAD8] rounded-2xl bg-gray-50/30 space-y-2">
+                  <div key={req.id} className="p-5 border border-slate-800/80 rounded-2xl bg-slate-950/20 space-y-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-bold text-base text-[#0B1220]">{req.name}</h4>
-                        <p className="text-xs text-gray-500">📞 +91 {req.phone} | ✉️ {req.email || 'No email'}</p>
+                        <h4 className="font-bold text-base text-slate-100">{req.name}</h4>
+                        <p className="text-xs text-slate-500">📞 +91 {req.phone} | ✉️ {req.email || 'No email'}</p>
                       </div>
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                      <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         {req.city} Hub request
                       </span>
                     </div>
                     {req.message && (
-                      <div className="mt-3 p-3 bg-white rounded-xl border border-gray-100 text-sm text-gray-600">
+                      <div className="mt-3 p-3 bg-slate-950 rounded-xl border border-slate-900 text-sm text-slate-400">
                         {req.message}
                       </div>
                     )}
-                    <p className="text-[10px] text-gray-400 text-right">Received: {new Date(req.created_at).toLocaleDateString()}</p>
+                    <p className="text-[9px] text-slate-600 text-right">Received: {new Date(req.created_at).toLocaleDateString()}</p>
                   </div>
                 ))
               )}
@@ -870,46 +892,46 @@ export default function DashboardPage() {
 
         {/* 6. BULK SKU LOADER TAB */}
         {activeTab === 'bulk-loader' && (
-          <section className="bg-white rounded-3xl p-6 border border-[#F1EAD8] max-w-md">
+          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-md shadow-xl">
             <div className="flex items-center gap-2.5 mb-6">
-              <FileSpreadsheet className="w-5 h-5 text-[#0B1220]" />
-              <h2 className="text-lg font-bold text-[#0B1220]">Bulk Inventory Loader</h2>
+              <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-lg font-bold text-white">Bulk Inventory Loader</h2>
             </div>
 
             <div className="space-y-6">
               <div className="space-y-2">
-                <h3 className="text-sm font-bold text-gray-700">1. Download Template Sheet</h3>
-                <p className="text-xs text-gray-500">Download the layout template containing configuration keys and products schema.</p>
+                <h3 className="text-sm font-bold text-slate-200">1. Download Template Sheet</h3>
+                <p className="text-xs text-slate-500">Download the standard layout template containing configurations schema.</p>
                 <button
                   onClick={handleDownloadTemplate}
-                  className="w-full py-2.5 border-2 border-dashed border-[#F1EAD8] hover:border-[#0B1220] rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-800 transition-colors cursor-pointer"
+                  className="w-full py-2.5 border-2 border-dashed border-slate-800 hover:border-emerald-500 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Download template.xlsx
                 </button>
               </div>
 
-              <hr className="border-gray-100" />
+              <hr className="border-slate-850" />
 
               <form onSubmit={handleExcelUpload} className="space-y-4">
-                <h3 className="text-sm font-bold text-gray-700">2. Upload Spreadsheet</h3>
-                <p className="text-xs text-gray-500">Select the updated spreadsheet file containing SKUs to upload.</p>
+                <h3 className="text-sm font-bold text-slate-200">2. Upload Spreadsheet</h3>
+                <p className="text-xs text-slate-500">Select the updated spreadsheet file containing SKUs to upload.</p>
                 
-                <div className="relative border-2 border-dashed border-gray-200 hover:border-gray-300 rounded-2xl p-6 text-center cursor-pointer">
+                <div className="relative border-2 border-dashed border-slate-850 hover:border-slate-700 rounded-2xl p-6 text-center cursor-pointer">
                   <input
                     type="file"
                     accept=".xlsx, .xls"
                     onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
-                  <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm font-bold text-gray-700">
+                  <Upload className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-slate-300">
                     {excelFile ? excelFile.name : 'Choose Excel File'}
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">supports .xlsx up to 5MB</p>
+                  <p className="text-xs text-slate-500 mt-1">supports .xlsx up to 5MB</p>
                 </div>
 
                 {excelError && (
-                  <div className="p-3 bg-red-50 border border-red-100 text-xs text-red-600 rounded-xl">
+                  <div className="p-3 bg-red-500/10 border border-red-500/15 text-xs text-red-400 rounded-xl">
                     {excelError}
                   </div>
                 )}
@@ -918,7 +940,7 @@ export default function DashboardPage() {
                   type="submit"
                   disabled={uploadingExcel || !excelFile}
                   className={`w-full h-11 rounded-full font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    excelFile ? 'bg-[#0B1220] hover:bg-[#1a263e] text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    excelFile ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/10' : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                   }`}
                 >
                   {uploadingExcel ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Bulk Import'}
@@ -926,22 +948,22 @@ export default function DashboardPage() {
               </form>
 
               {excelReport && (
-                <div className="p-4 bg-green-50 border border-green-100 rounded-2xl space-y-3">
-                  <div className="flex items-center gap-2 text-green-800 font-bold text-sm">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/15 rounded-2xl space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
                     <CheckCircle className="w-4 h-4" /> Bulk Import Finished
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-white p-2 rounded-lg border border-green-100">
-                      <p className="text-gray-400">Processed</p>
-                      <p className="text-base font-bold text-gray-800">{excelReport.rows_processed}</p>
+                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/10">
+                      <p className="text-slate-500">Processed</p>
+                      <p className="text-base font-bold text-slate-200">{excelReport.rows_processed}</p>
                     </div>
-                    <div className="bg-white p-2 rounded-lg border border-green-100">
-                      <p className="text-gray-400">Created</p>
-                      <p className="text-base font-bold text-green-600">{excelReport.created}</p>
+                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/10">
+                      <p className="text-slate-500">Created</p>
+                      <p className="text-base font-bold text-emerald-400">{excelReport.created}</p>
                     </div>
-                    <div className="bg-white p-2 rounded-lg border border-green-100">
-                      <p className="text-gray-400">Updated</p>
-                      <p className="text-base font-bold text-blue-600">{excelReport.updated}</p>
+                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/10">
+                      <p className="text-slate-500">Updated</p>
+                      <p className="text-base font-bold text-blue-400">{excelReport.updated}</p>
                     </div>
                   </div>
                 </div>

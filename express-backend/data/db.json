@@ -1,0 +1,77 @@
+{
+  "serviceable_locations": [
+    {
+      "id": "loc-1",
+      "city": "Mumbai",
+      "area_name": "Andheri West",
+      "pincode": "400053",
+      "is_serviceable": true,
+      "shop_id": null
+    },
+    {
+      "id": "loc-2",
+      "city": "Mumbai",
+      "area_name": "Bandra West",
+      "pincode": "400050",
+      "is_serviceable": true,
+      "shop_id": null
+    },
+    {
+      "id": "loc-3",
+      "city": "Mumbai",
+      "area_name": "Powai",
+      "pincode": "400076",
+      "is_serviceable": true,
+      "shop_id": null
+    },
+    {
+      "id": "loc-4",
+      "city": "Mumbai",
+      "area_name": "Juhu",
+      "pincode": "400049",
+      "is_serviceable": true,
+      "shop_id": null
+    },
+    {
+      "id": "loc-5",
+      "city": "Pune",
+      "area_name": "Baner",
+      "pincode": "411045",
+      "is_serviceable": true,
+      "shop_id": null
+    },
+    {
+      "id": "loc-6",
+      "city": "Pune",
+      "area_name": "Kothrud",
+      "pincode": "411038",
+      "is_serviceable": true,
+      "shop_id": null
+    },
+    {
+      "id": "loc-7",
+      "city": "Pune",
+      "area_name": "Hinjawadi Phase 1",
+      "pincode": "411057",
+      "is_serviceable": true,
+      "shop_id": null
+    }
+  ],
+  "promotional_banners": [
+    {
+      "id": "banner-1",
+      "title": "Monthly Super Saver: Flat 10% Off on Staples!",
+      "image_url": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
+      "action_link": "CategoryProducts?category=Atta%20%26%20Rice",
+      "active": true
+    },
+    {
+      "id": "banner-2",
+      "title": "Free Delivery on Orders Over ₹3,000",
+      "image_url": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80",
+      "action_link": "Cart",
+      "active": true
+    }
+  ],
+  "franchise_requests": []
+}

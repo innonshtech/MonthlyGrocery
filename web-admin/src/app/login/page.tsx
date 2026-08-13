@@ -83,42 +83,42 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FFF8ED] flex items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-3xl p-8 border border-[#F1EAD8] shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2.5 bg-[#0B1220] rounded-xl text-white">
+    <main className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] flex items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-md bg-[#090D16]/65 backdrop-blur-xl rounded-3xl p-8 border border-slate-800/80 shadow-2xl">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-2.5 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
             <Shield className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#0B1220] tracking-tight">MonthlyGrocery</h1>
-            <p className="text-xs text-gray-500 font-semibold tracking-wider uppercase">Super Admin Portal</p>
+            <h1 className="text-xl font-bold text-white tracking-tight">MonthlyGrocery</h1>
+            <p className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">Super Admin Portal</p>
           </div>
         </div>
 
         {step === 1 ? (
           <form onSubmit={handleSendOtp} className="space-y-5">
             <div>
-              <h2 className="text-xl font-bold text-gray-800">Sign In</h2>
-              <p className="text-sm text-gray-500 mt-1">Enter your super admin mobile number to receive an OTP.</p>
+              <h2 className="text-lg font-bold text-white">Sign In</h2>
+              <p className="text-xs text-slate-400 mt-1">Enter your super admin mobile number to receive an OTP.</p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Mobile Number</label>
-              <div className="flex items-center rounded-xl bg-gray-50 border-2 border-[#F1EAD8] focus-within:border-[#0B1220] transition-colors p-1.5 pl-4">
-                <span className="text-gray-500 font-bold mr-1">+91</span>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Mobile Number</label>
+              <div className="flex items-center rounded-xl bg-slate-950 border border-slate-800 focus-within:border-emerald-500 transition-colors p-1.5 pl-4">
+                <span className="text-slate-500 font-bold mr-1.5 text-sm">+91</span>
                 <input
                   type="tel"
                   placeholder="8830480015"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value.replace(/[^\d]/g, '').slice(0, 10))}
                   required
-                  className="w-full h-10 bg-transparent outline-none text-base text-gray-800"
+                  className="w-full h-10 bg-transparent outline-none text-base text-white"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-100 text-sm text-red-600 rounded-xl">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 rounded-xl">
                 {error}
               </div>
             )}
@@ -126,7 +126,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-[#0B1220] hover:bg-[#1a263e] text-white rounded-full font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send OTP <ArrowRight className="w-4 h-4" /></>}
             </button>
@@ -137,17 +137,17 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => { setStep(1); setCode(''); setError(''); }}
-                className="text-sm text-gray-500 hover:text-[#0B1220] underline mb-2 cursor-pointer"
+                className="text-xs text-slate-400 hover:text-white underline mb-3 cursor-pointer"
               >
                 ← Change number
               </button>
-              <h2 className="text-xl font-bold text-gray-800">Verify OTP</h2>
-              <p className="text-sm text-gray-500 mt-1">Sent code to +91 {mobile}. Enter <strong>123456</strong> in development.</p>
+              <h2 className="text-lg font-bold text-white">Verify OTP</h2>
+              <p className="text-xs text-slate-400 mt-1">Sent code to +91 {mobile}. Enter <strong>123456</strong> in development.</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">OTP Code</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">OTP Code</label>
                 <input
                   type="text"
                   maxLength={6}
@@ -155,24 +155,24 @@ export default function LoginPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, ''))}
                   required
-                  className="w-full h-12 rounded-xl bg-gray-50 border-2 border-[#F1EAD8] focus:border-[#0B1220] outline-none text-center text-xl font-bold tracking-[0.5em]"
+                  className="w-full h-12 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 outline-none text-center text-xl font-bold tracking-[0.5em] text-white"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Your Name (Optional)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Your Name (Optional)</label>
                 <input
                   type="text"
                   placeholder="Full Name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full h-11 rounded-xl bg-gray-50 border-2 border-[#F1EAD8] focus:border-[#0B1220] outline-none px-4 text-base"
+                  className="w-full h-11 rounded-xl bg-slate-950 border border-slate-800 focus:border-emerald-500 outline-none px-4 text-base text-white"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="p-3 bg-red-50 border border-red-100 text-sm text-red-600 rounded-xl">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400 rounded-xl">
                 {error}
               </div>
             )}
@@ -180,7 +180,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-[#0B1220] hover:bg-[#1a263e] text-white rounded-full font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Verify & Login'}
             </button>
