@@ -346,4 +346,103 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
   }
 });
 
+// 5. GET /mine: Retrieve all products belonging to the active merchant's shop
+router.get('/mine', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const { data: shop, error: shopError } = await supabase
+      .from('shops')
+      .select('*')
+      .eq('owner_id', req.user!.id)
+      .maybeSingle();
+
+    if (shopError || !shop) {
+      return res.status(400).json({ success: false, error: 'Merchant shop not found.' });
+    }
+
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('shop_id', shop.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, products: products || [] });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 6. PUT /:product_id: Update product price, stock, and availability
+router.put('/:product_id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { product_id } = req.params;
+  const data = req.body;
+
+  try {
+    const { data: shop, error: shopError } = await supabase
+      .from('shops')
+      .select('*')
+      .eq('owner_id', req.user!.id)
+      .maybeSingle();
+
+    if (shopError || !shop) {
+      return res.status(400).json({ success: false, error: 'Merchant shop not found.' });
+    }
+
+    // Verify the product belongs to this merchant
+    const { data: product, error: findError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', product_id)
+      .eq('shop_id', shop.id)
+      .maybeSingle();
+
+    if (findError || !product) {
+      return res.status(404).json({ success: false, error: 'Product not found or access denied.' });
+    }
+
+    const updatedData = {
+      name: data.name !== undefined ? data.name : product.name,
+      sku: data.sku !== undefined ? data.sku : product.sku,
+      barcode: data.barcode !== undefined ? data.barcode : product.barcode,
+      primary_category: data.primary_category !== undefined ? data.primary_category : product.primary_category,
+      secondary_category: data.secondary_category !== undefined ? data.secondary_category : product.secondary_category,
+      brand: data.brand !== undefined ? data.brand : product.brand,
+      company: data.company !== undefined ? data.company : product.company,
+      description: data.description !== undefined ? data.description : product.description,
+      short_description: data.short_description !== undefined ? data.short_description : product.short_description,
+      place: data.place !== undefined ? data.place : product.place,
+      image_url: data.image_url !== undefined ? data.image_url : product.image_url,
+      mrp: data.mrp !== undefined ? parseFloat(data.mrp) : product.mrp,
+      price: data.price !== undefined ? parseFloat(data.price) : product.price,
+      stock: data.stock !== undefined ? parseInt(data.stock) : product.stock,
+      unit: data.unit !== undefined ? data.unit : product.unit,
+      available: data.available !== undefined ? !!data.available : product.available,
+      is_veg: data.is_veg !== undefined ? !!data.is_veg : product.is_veg,
+      featured: data.featured !== undefined ? !!data.featured : product.featured,
+      todays_deal: data.todays_deal !== undefined ? !!data.todays_deal : product.todays_deal,
+      best_seller: data.best_seller !== undefined ? !!data.best_seller : product.best_seller,
+    };
+
+    const { data: updatedProduct, error: updateError } = await supabase
+      .from('products')
+      .update(updatedData)
+      .eq('id', product_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return res.status(400).json({ success: false, error: updateError.message });
+    }
+
+    return res.json({ success: true, product: updatedProduct });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 export default router;

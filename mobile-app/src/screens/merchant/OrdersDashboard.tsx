@@ -7,16 +7,19 @@ import {
   ActivityIndicator,
   SafeAreaView,
   TouchableOpacity,
-  Alert
+  Alert,
+  Image,
+  ScrollView
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../config/api';
 
 export default function OrdersDashboard() {
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -29,7 +32,7 @@ export default function OrdersDashboard() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setOrders(data.orders);
+        setOrders(data.orders || []);
       } else {
         setError(data.error || 'Failed to fetch incoming orders');
       }
@@ -49,7 +52,7 @@ export default function OrdersDashboard() {
     
     Alert.alert(
       'Update Order Status',
-      `Current status: ${currentStatus.toUpperCase()}`,
+      `Current: ${currentStatus.toUpperCase()}`,
       statuses.map(st => ({
         text: st.toUpperCase().replace(/_/g, ' '),
         onPress: async () => {
@@ -90,6 +93,33 @@ export default function OrdersDashboard() {
     }
   };
 
+  const getStatusIndex = (status: string) => {
+    const sequence = ['pending', 'confirmed', 'packing', 'out_for_delivery', 'delivered'];
+    return sequence.indexOf(status);
+  };
+
+  const renderTimelineHeader = (currentStatus: string) => {
+    if (currentStatus === 'cancelled') {
+      return <Text style={styles.cancelledText}>🔴 Cancelled</Text>;
+    }
+    const sequence = ['Placed', 'Confirm', 'Pack', 'Ship', 'Done'];
+    const activeIndex = getStatusIndex(currentStatus);
+
+    return (
+      <View style={styles.miniTimeline}>
+        {sequence.map((step, idx) => {
+          const isDone = activeIndex >= idx;
+          return (
+            <View key={step} style={styles.miniStep}>
+              <View style={[styles.miniDot, isDone && styles.miniDotActive]} />
+              <Text style={[styles.miniLabel, isDone && styles.miniLabelActive]}>{step}</Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderOrderCard = ({ item }: { item: any }) => {
     const date = new Date(item.created_at).toLocaleDateString('en-IN', {
       day: 'numeric',
@@ -98,13 +128,22 @@ export default function OrdersDashboard() {
       minute: '2-digit'
     });
 
+    const isExpanded = expandedOrderId === item.id;
+    const itemsSummary = item.order_items.map((oi: any) => 
+      `${oi.products?.name || 'Product'} (x${oi.quantity})`
+    ).join(', ');
+
     return (
       <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View>
+        <TouchableOpacity 
+          style={styles.cardHeader}
+          onPress={() => setExpandedOrderId(isExpanded ? null : item.id)}
+        >
+          <View style={{ flex: 1 }}>
             <Text style={styles.orderIdText}>Order #{item.id.slice(0, 8)}</Text>
             <Text style={styles.dateText}>{date}</Text>
           </View>
+          
           <TouchableOpacity
             style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}
             onPress={() => handleUpdateStatus(item.id, item.status)}
@@ -113,22 +152,46 @@ export default function OrdersDashboard() {
               {item.status.toUpperCase().replace(/_/g, ' ')} ✏️
             </Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.cardBody}>
-          <Text style={styles.detailLabel}>Customer Details:</Text>
-          <Text style={styles.detailValue}>
-            👤 {item.profiles?.name || 'Customer'} ({item.profiles?.phone || 'No phone'})
+        {/* Mini status visual line */}
+        <TouchableOpacity 
+          style={styles.timelineRow}
+          onPress={() => setExpandedOrderId(isExpanded ? null : item.id)}
+        >
+          {renderTimelineHeader(item.status)}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.cardBodySummary}
+          onPress={() => setExpandedOrderId(isExpanded ? null : item.id)}
+        >
+          <Text style={styles.customerSummary}>
+            👤 {item.profiles?.name || 'Customer'} · 📞 +91 {item.profiles?.phone ? item.profiles.phone.slice(2) : ''}
           </Text>
-          <Text style={styles.detailValue}>📍 {item.delivery_address}</Text>
+          <Text style={styles.itemsSummaryText} numberOfLines={isExpanded ? undefined : 1}>
+            {itemsSummary}
+          </Text>
+        </TouchableOpacity>
 
-          <Text style={[styles.detailLabel, { marginTop: 10 }]}>Order Items:</Text>
-          {item.order_items.map((oi: any) => (
-            <Text key={oi.id} style={styles.itemRow}>
-              • {oi.products?.name} x {oi.quantity} ({oi.products?.unit}) - <Text style={{fontWeight: 'bold'}}>₹{oi.unit_price * oi.quantity}</Text>
-            </Text>
-          ))}
-        </View>
+        {isExpanded && (
+          <View style={styles.expandedContent}>
+            <Text style={styles.sectionTitle}>Full Delivery Address</Text>
+            <Text style={styles.addressValue}>📍 {item.delivery_address}</Text>
+
+            <Text style={[styles.sectionTitle, { marginTop: 15 }]}>Order Items List</Text>
+            {item.order_items.map((oi: any) => (
+              <View key={oi.id} style={styles.productRow}>
+                <Image source={{ uri: oi.products?.image_url }} style={styles.productThumb} resizeMode="contain" />
+                <View style={styles.productMeta}>
+                  <Text style={styles.productName} numberOfLines={1}>{oi.products?.name || 'Product'}</Text>
+                  <Text style={styles.productQty}>Qty: {oi.quantity} · Unit Price: ₹{oi.unit_price}</Text>
+                </View>
+                <Text style={styles.productTotal}>₹{oi.unit_price * oi.quantity}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.cardFooter}>
           <Text style={styles.totalLabel}>Total Payout:</Text>
@@ -142,22 +205,17 @@ export default function OrdersDashboard() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Merchant Portal</Text>
-          <Text style={styles.headerSubtitle}>Incoming Orders & Delivery Manager</Text>
+          <Text style={styles.headerTitle}>Incoming Orders</Text>
+          <Text style={styles.headerSubtitle}>Delivery Pipeline Management</Text>
         </View>
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionBtn} onPress={fetchOrders}>
-            <Text style={styles.actionText}>Reload</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.logoutBtn]} onPress={logout}>
-            <Text style={[styles.actionText, styles.logoutText]}>Logout</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.refreshBtn} onPress={fetchOrders}>
+          <Text style={styles.refreshBtnText}>Reload</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#0B1220" />
+          <ActivityIndicator size="large" color="#22C55E" />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
@@ -176,6 +234,7 @@ export default function OrdersDashboard() {
           keyExtractor={(item) => item.id}
           renderItem={renderOrderCard}
           contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
         />
       )}
     </SafeAreaView>
@@ -191,7 +250,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
     paddingTop: 15,
     paddingBottom: 15,
     backgroundColor: '#fff',
@@ -199,7 +258,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1EAD8',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#0B1220',
   },
@@ -208,26 +267,16 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  refreshBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 50,
     backgroundColor: '#F3F4F6',
   },
-  actionText: {
+  refreshBtnText: {
     fontSize: 12,
     color: '#4B5563',
     fontWeight: '600',
-  },
-  logoutBtn: {
-    backgroundColor: '#EF444415',
-  },
-  logoutText: {
-    color: '#EF4444',
   },
   centerContainer: {
     flex: 1,
@@ -240,14 +289,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 5,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#F1EAD8',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -258,13 +304,13 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   orderIdText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#0B1220',
   },
   dateText: {
     fontSize: 12,
-    color: '#999',
+    color: '#9CA3AF',
     marginTop: 2,
   },
   statusBadge: {
@@ -276,28 +322,101 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
   },
-  cardBody: {
+  timelineRow: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  cancelledText: {
+    fontSize: 11,
+    color: '#EF4444',
+    fontWeight: 'bold',
+  },
+  miniTimeline: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  miniStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  miniDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+  },
+  miniDotActive: {
+    backgroundColor: '#22C55E',
+  },
+  miniLabel: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#9CA3AF',
+  },
+  miniLabelActive: {
+    color: '#0B1220',
+  },
+  cardBodySummary: {
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  detailLabel: {
-    fontSize: 12,
+  customerSummary: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  itemsSummaryText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  expandedContent: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  sectionTitle: {
+    fontSize: 11,
     fontWeight: 'bold',
-    color: '#999',
-    marginBottom: 4,
+    color: '#9CA3AF',
     textTransform: 'uppercase',
+    marginBottom: 8,
   },
-  detailValue: {
-    fontSize: 14,
-    color: '#0B1220',
-    marginBottom: 6,
-  },
-  itemRow: {
+  addressValue: {
     fontSize: 13,
     color: '#4B5563',
     lineHeight: 18,
-    marginTop: 2,
+  },
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  productThumb: {
+    width: 36,
+    height: 36,
+    marginRight: 12,
+  },
+  productMeta: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0B1220',
+  },
+  productQty: {
+    fontSize: 11,
+    color: '#666',
+    marginTop: 1,
+  },
+  productTotal: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0B1220',
   },
   cardFooter: {
     flexDirection: 'row',
@@ -312,16 +431,16 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0B1220',
+    color: '#22C55E',
   },
   errorText: {
     fontSize: 14,
-    color: '#DC2626',
+    color: '#EF4444',
     textAlign: 'center',
   },
   retryBtn: {
     marginTop: 15,
-    backgroundColor: '#0B1220',
+    backgroundColor: '#22C55E',
     paddingVertical: 8,
     paddingHorizontal: 20,
     borderRadius: 50,

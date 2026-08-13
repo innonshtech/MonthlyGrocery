@@ -20,7 +20,7 @@ import CheckoutScreen from '../screens/customer/CheckoutScreen';
 import OrderSuccessScreen from '../screens/customer/OrderSuccessScreen';
 import CartScreen from '../screens/customer/CartScreen';
 import OrdersScreen from '../screens/customer/OrdersScreen';
-import OrdersDashboard from '../screens/merchant/OrdersDashboard';
+import MerchantTabScreen from '../screens/merchant/MerchantTabScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -41,7 +41,7 @@ export default function AppNavigator() {
         <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
           {token !== null && user?.role !== 'consumer' ? (
             // 1. Merchant Portal Flow (role: admin, super_admin)
-            <Stack.Screen name="MerchantDashboard" component={OrdersDashboard} />
+            <Stack.Screen name="MerchantDashboard" component={MerchantTabScreen} />
           ) : (
             // 2. Customer & Guest Flow
             <>

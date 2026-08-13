@@ -198,4 +198,37 @@ router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_ad
   }
 });
 
+// 5. GET /platform/all: Retrieve all orders platform-wide (Super Admin only)
+router.get('/platform/all', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        total_amount,
+        status,
+        delivery_address,
+        created_at,
+        shop_id,
+        shops (
+          shop_name
+        ),
+        profiles (
+          name,
+          phone
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, orders: orders || [] });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 export default router;
