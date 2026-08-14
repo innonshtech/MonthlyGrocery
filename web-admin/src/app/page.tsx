@@ -108,6 +108,11 @@ export default function DashboardPage() {
   const [newAreaName, setNewAreaName] = useState('');
   const [selectedCityId, setSelectedCityId] = useState('');
 
+  // Forms for Store registration
+  const [regShopName, setRegShopName] = useState('');
+  const [regOwnerName, setRegOwnerName] = useState('');
+  const [regOwnerMobile, setRegOwnerMobile] = useState('');
+
   // Loading & error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -395,6 +400,41 @@ export default function DashboardPage() {
     }
   };
 
+  // Store registration handler
+  const handleRegisterShop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !regShopName.trim() || !regOwnerName.trim() || !regOwnerMobile.trim()) {
+      alert('Please fill out all fields');
+      return;
+    }
+    try {
+      const res = await fetch('http://localhost:8001/api/shops/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          shop_name: regShopName.trim(),
+          owner_name: regOwnerName.trim(),
+          owner_mobile: regOwnerMobile.trim()
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('Store and owner profile registered successfully!');
+        setRegShopName('');
+        setRegOwnerName('');
+        setRegOwnerMobile('');
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to register store');
+      }
+    } catch (err) {
+      alert('Error creating store');
+    }
+  };
+
   // Add festive promotional banner
   const handleAddBanner = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -675,72 +715,123 @@ export default function DashboardPage() {
 
         {/* 1. STORE APPROVALS TAB */}
         {activeTab === 'shops' && (
-          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
-              </h2>
-              <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-3">Store Name</th>
-                    <th className="pb-3">Owner Contact</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30 text-sm">
-                  {shops.map((shop) => (
-                    <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
-                      <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
-                      <td className="py-4 pr-3">
-                        <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
-                        <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
-                      </td>
-                      <td className="py-4 pr-3">
-                        {shop.status === 'approved' && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            Approved
-                          </span>
-                        )}
-                        {shop.status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                            Rejected
-                          </span>
-                        )}
-                        {shop.status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
-                            Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-4 text-right space-x-2">
-                        {shop.status !== 'approved' && (
-                          <button
-                            onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
-                            className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {shop.status !== 'rejected' && (
-                          <button
-                            onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
-                            className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
-                          >
-                            Reject
-                          </button>
-                        )}
-                      </td>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
+            {/* Left: Store Whitelisting table */}
+            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
+                </h2>
+                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3">Store Name</th>
+                      <th className="pb-3">Owner Contact</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30 text-sm">
+                    {shops.map((shop) => (
+                      <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
+                        <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
+                        <td className="py-4 pr-3">
+                          <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
+                          <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
+                        </td>
+                        <td className="py-4 pr-3">
+                          {shop.status === 'approved' && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              Approved
+                            </span>
+                          )}
+                          {shop.status === 'rejected' && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                              Rejected
+                            </span>
+                          )}
+                          {shop.status === 'pending' && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 text-right space-x-2">
+                          {shop.status !== 'approved' && (
+                            <button
+                              onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
+                              className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {shop.status !== 'rejected' && (
+                            <button
+                              onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
+                              className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Right: Register New Store form */}
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Register New Store</h3>
+              
+              <form onSubmit={handleRegisterShop} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Store / Shop Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Thorat Wholesalers"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regShopName}
+                    onChange={(e) => setRegShopName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regOwnerName}
+                    onChange={(e) => setRegOwnerName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Mobile Number</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    placeholder="e.g. 9876543210"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regOwnerMobile}
+                    onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
+                >
+                  Register Store
+                </button>
+              </form>
+            </section>
+          </div>
         )}
 
         {/* 2. LOCALITIES MAPPING TAB */}

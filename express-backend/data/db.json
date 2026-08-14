@@ -73,5 +73,84 @@
       "active": true
     }
   ],
-  "franchise_requests": []
+  "franchise_requests": [],
+  "cities": [
+    {
+      "id": "city-1",
+      "name": "Mumbai"
+    },
+    {
+      "id": "city-2",
+      "name": "Pune"
+    },
+    {
+      "id": "city-3",
+      "name": "Bengaluru"
+    },
+    {
+      "id": "city-4",
+      "name": "Delhi NCR"
+    },
+    {
+      "id": "city-1786686694575",
+      "name": "Noida"
+    }
+  ],
+  "areas": [
+    {
+      "id": "area-1",
+      "city_id": "city-1",
+      "name": "Andheri West"
+    },
+    {
+      "id": "area-2",
+      "city_id": "city-1",
+      "name": "Bandra West"
+    },
+    {
+      "id": "area-3",
+      "city_id": "city-1",
+      "name": "Powai"
+    },
+    {
+      "id": "area-4",
+      "city_id": "city-1",
+      "name": "Juhu"
+    },
+    {
+      "id": "area-5",
+      "city_id": "city-2",
+      "name": "Baner"
+    },
+    {
+      "id": "area-6",
+      "city_id": "city-2",
+      "name": "Kothrud"
+    },
+    {
+      "id": "area-7",
+      "city_id": "city-2",
+      "name": "Hinjawadi Phase 1"
+    },
+    {
+      "id": "area-8",
+      "city_id": "city-3",
+      "name": "Koramangala"
+    },
+    {
+      "id": "area-9",
+      "city_id": "city-3",
+      "name": "Indiranagar"
+    },
+    {
+      "id": "area-10",
+      "city_id": "city-4",
+      "name": "Connaught Place"
+    },
+    {
+      "id": "area-11",
+      "city_id": "city-4",
+      "name": "Noida Sec-62"
+    }
+  ]
 }

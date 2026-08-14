@@ -76,4 +76,105 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
   }
 });
 
+// 3. POST /register: Create/Register a new shop and owner profile (Super Admin only)
+router.post('/register', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { shop_name, owner_name, owner_mobile } = req.body;
+
+  if (!shop_name || !shop_name.trim() || !owner_name || !owner_name.trim() || !owner_mobile) {
+    return res.status(400).json({ success: false, error: 'Shop name, owner name, and owner mobile number are required' });
+  }
+
+  // Normalize phone (pure digits, 10 digit check)
+  let cleanMobile = owner_mobile.replace(/[^\d]/g, '');
+  if (cleanMobile.length === 10) {
+    cleanMobile = '91' + cleanMobile;
+  }
+
+  try {
+    // 1. Check if the owner profile already exists in public.profiles (case of returning consumer upgraded to merchant)
+    let { data: existingProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('phone', cleanMobile)
+      .maybeSingle();
+
+    let ownerId: string;
+
+    if (existingProfile) {
+      ownerId = existingProfile.id;
+      // Upgrade role to admin if not already, and update name
+      const { error: updateRoleError } = await supabase
+        .from('profiles')
+        .update({ role: 'admin', name: owner_name.trim() })
+        .eq('id', ownerId);
+
+      if (updateRoleError) {
+        return res.status(500).json({ success: false, error: 'Failed to update owner profile role: ' + updateRoleError.message });
+      }
+    } else {
+      // Create a new auth user in Supabase Auth using Auth Admin API
+      const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
+        phone: cleanMobile,
+        phone_confirm: true,
+        user_metadata: { name: owner_name.trim(), role: 'admin' }
+      });
+
+      if (createUserError || !newUser.user) {
+        return res.status(500).json({ success: false, error: createUserError?.message || 'Failed to create owner user' });
+      }
+
+      ownerId = newUser.user.id;
+
+      // Upsert profiles row
+      const { error: insertProfileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: ownerId,
+          phone: cleanMobile,
+          role: 'admin',
+          name: owner_name.trim()
+        });
+
+      if (insertProfileError) {
+        console.error('Failed to create profile row:', insertProfileError.message);
+      }
+    }
+
+    // 2. Check if this owner already owns a shop
+    let { data: existingShop, error: shopCheckError } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('owner_id', ownerId)
+      .maybeSingle();
+
+    if (existingShop) {
+      return res.status(400).json({ success: false, error: 'This owner already has a registered shop.' });
+    }
+
+    // 3. Create the new shop
+    const { data: newShop, error: createShopError } = await supabase
+      .from('shops')
+      .insert({
+        owner_id: ownerId,
+        shop_name: shop_name.trim(),
+        status: 'approved' // Direct Super Admin registration is auto-approved
+      })
+      .select()
+      .single();
+
+    if (createShopError || !newShop) {
+      return res.status(500).json({ success: false, error: createShopError?.message || 'Failed to create shop' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Store registered successfully',
+      shop: newShop
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 export default router;
