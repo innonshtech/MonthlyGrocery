@@ -185,4 +185,117 @@ router.post('/franchise', async (req, res) => {
   }
 });
 
+// ==========================================
+// 4. Master Cities & Areas Manager
+// ==========================================
+
+// GET /cities: Get all registered cities (Public)
+router.get('/cities', async (req, res) => {
+  try {
+    const db = readDb();
+    return res.json({ success: true, cities: db.cities || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /cities: Add a new city (Super Admin only)
+router.post('/cities', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, error: 'City name is required' });
+  }
+
+  try {
+    const db = readDb();
+    // Check if city name already exists (case-insensitive)
+    const exists = db.cities.some(c => c.name.toLowerCase() === name.trim().toLowerCase());
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'City is already registered' });
+    }
+
+    const newCity = {
+      id: `city-${Date.now()}`,
+      name: name.trim()
+    };
+    db.cities.push(newCity);
+    writeDb(db);
+    return res.json({ success: true, cities: db.cities });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /cities/:id: Delete a city and its areas (Super Admin only)
+router.delete('/cities/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  try {
+    const db = readDb();
+    db.cities = db.cities.filter(c => c.id !== id);
+    // Cascade delete areas belonging to this city
+    db.areas = db.areas.filter(a => a.city_id !== id);
+    writeDb(db);
+    return res.json({ success: true, cities: db.cities });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /areas: Get all areas (Public)
+router.get('/areas', async (req, res) => {
+  try {
+    const db = readDb();
+    return res.json({ success: true, areas: db.areas || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /areas: Add a new area/locality under a city (Super Admin only)
+router.post('/areas', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { city_id, name } = req.body;
+  if (!city_id || !name || !name.trim()) {
+    return res.status(400).json({ success: false, error: 'City ID and Area name are required' });
+  }
+
+  try {
+    const db = readDb();
+    // Verify city exists
+    const cityExists = db.cities.some(c => c.id === city_id);
+    if (!cityExists) {
+      return res.status(400).json({ success: false, error: 'Invalid City ID' });
+    }
+
+    // Check if area already exists in this city (case-insensitive)
+    const exists = db.areas.some(a => a.city_id === city_id && a.name.toLowerCase() === name.trim().toLowerCase());
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'Area/locality is already registered under this city' });
+    }
+
+    const newArea = {
+      id: `area-${Date.now()}`,
+      city_id,
+      name: name.trim()
+    };
+    db.areas.push(newArea);
+    writeDb(db);
+    return res.json({ success: true, areas: db.areas });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /areas/:id: Delete an area (Super Admin only)
+router.delete('/areas/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  try {
+    const db = readDb();
+    db.areas = db.areas.filter(a => a.id !== id);
+    writeDb(db);
+    return res.json({ success: true, areas: db.areas });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;

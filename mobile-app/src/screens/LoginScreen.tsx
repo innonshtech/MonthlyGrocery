@@ -21,7 +21,7 @@ export default function LoginScreen({ route, navigation }: any) {
   const [step, setStep] = useState<1 | 2>(1); // 1: Enter mobile, 2: Enter OTP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { sendOtp, verifyOtp } = useAuth();
+  const { sendOtp, verifyOtp, city, area } = useAuth();
 
   const handleSendOtp = async () => {
     if (mobile.length < 10) {
@@ -50,7 +50,8 @@ export default function LoginScreen({ route, navigation }: any) {
     setLoading(false);
     if (res.success) {
       if (role === 'consumer') {
-        const redirect = route.params?.redirect || 'Shop';
+        const defaultTarget = (city && area) ? 'Shop' : 'CitySelection';
+        const redirect = route.params?.redirect || defaultTarget;
         if (name.trim()) {
           navigation.replace('ProfileSetup', { redirect });
         } else {

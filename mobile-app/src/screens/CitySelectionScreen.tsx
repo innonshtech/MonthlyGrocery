@@ -1,31 +1,78 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, FlatList, TextInput, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, FlatList, TextInput, StatusBar, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE } from '../config/api';
 
-const CITIES = [
-  { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
-  { id: 'mumbai', name: 'Mumbai', desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
-  { id: 'pune', name: 'Pune', desc: 'Active local hub & 4-hour delivery', icon: '🌆' },
-  { id: 'bengaluru', name: 'Bengaluru', desc: 'Coming soon - Order preview active', icon: '🌳' },
-  { id: 'delhi', name: 'Delhi NCR', desc: 'Coming soon - Order preview active', icon: '🏛️' }
-];
+interface CityItem {
+  id: string;
+  name: string;
+  desc: string;
+  icon: string;
+}
+
+const KNOWN_CITIES: { [key: string]: { desc: string; icon: string } } = {
+  'Mumbai': { desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
+  'Pune': { desc: 'Active local hub & 4-hour delivery', icon: '🌆' },
+  'Bengaluru': { desc: 'Coming soon - Order preview active', icon: '🌳' },
+  'Delhi NCR': { desc: 'Coming soon - Order preview active', icon: '🏛️' },
+  'Pan India': { desc: 'Deliver anywhere in India', icon: '🇮🇳' }
+};
 
 export default function CitySelectionScreen({ navigation }: any) {
   const { setCityAndArea } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [cities, setCities] = useState<CityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/locations`);
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const uniqueCities = Array.from(new Set(data.locations.map((loc: any) => loc.city))) as string[];
+          const citiesList: CityItem[] = [
+            { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
+            ...uniqueCities.map(cName => ({
+              id: cName.toLowerCase().replace(/\s+/g, '-'),
+              name: cName,
+              desc: KNOWN_CITIES[cName]?.desc || 'Active local hub & delivery active',
+              icon: KNOWN_CITIES[cName]?.icon || '📍'
+            }))
+          ];
+          setCities(citiesList);
+        } else {
+          // Fallback
+          setCities([
+            { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
+            { id: 'mumbai', name: 'Mumbai', desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
+            { id: 'pune', name: 'Pune', desc: 'Active local hub & 4-hour delivery', icon: '🌆' }
+          ]);
+        }
+      } catch (err) {
+        setCities([
+          { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
+          { id: 'mumbai', name: 'Mumbai', desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
+          { id: 'pune', name: 'Pune', desc: 'Active local hub & 4-hour delivery', icon: '🌆' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCities();
+  }, []);
 
   const handleCitySelect = async (city: string) => {
     if (city === 'Pan India') {
       await setCityAndArea('Pan India', 'All Areas');
-      navigation.navigate('Landing');
+      navigation.navigate('Shop');
     } else {
-      // Set city, and reset area first, then go to AreaSelection
       await setCityAndArea(city, null);
       navigation.navigate('AreaSelection', { cityName: city });
     }
   };
 
-  const filteredCities = CITIES.filter(c => 
+  const filteredCities = cities.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -52,27 +99,33 @@ export default function CitySelectionScreen({ navigation }: any) {
         </View>
 
         {/* City list */}
-        <FlatList
-          data={filteredCities}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={styles.cityCard}
-              onPress={() => handleCitySelect(item.name)}
-            >
-              <View style={styles.cityIconBg}>
-                <Text style={styles.cityIcon}>{item.icon}</Text>
-              </View>
-              <View style={styles.cityInfo}>
-                <Text style={styles.cityName}>{item.name}</Text>
-                <Text style={styles.cityDesc}>{item.desc}</Text>
-              </View>
-              <Text style={styles.arrow}>➔</Text>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="small" color="#22C55E" />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredCities}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.cityCard}
+                onPress={() => handleCitySelect(item.name)}
+              >
+                <View style={styles.cityIconBg}>
+                  <Text style={styles.cityIcon}>{item.icon}</Text>
+                </View>
+                <View style={styles.cityInfo}>
+                  <Text style={styles.cityName}>{item.name}</Text>
+                  <Text style={styles.cityDesc}>{item.desc}</Text>
+                </View>
+                <Text style={styles.arrow}>➔</Text>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

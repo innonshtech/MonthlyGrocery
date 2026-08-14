@@ -30,10 +30,23 @@ export interface FranchiseRequest {
   created_at: string;
 }
 
+export interface City {
+  id: string;
+  name: string;
+}
+
+export interface Area {
+  id: string;
+  city_id: string;
+  name: string;
+}
+
 interface LocalDbSchema {
   serviceable_locations: ServiceableLocation[];
   promotional_banners: PromotionalBanner[];
   franchise_requests: FranchiseRequest[];
+  cities: City[];
+  areas: Area[];
 }
 
 const defaultDb: LocalDbSchema = {
@@ -63,7 +76,26 @@ const defaultDb: LocalDbSchema = {
       active: true
     }
   ],
-  franchise_requests: []
+  franchise_requests: [],
+  cities: [
+    { id: 'city-1', name: 'Mumbai' },
+    { id: 'city-2', name: 'Pune' },
+    { id: 'city-3', name: 'Bengaluru' },
+    { id: 'city-4', name: 'Delhi NCR' }
+  ],
+  areas: [
+    { id: 'area-1', city_id: 'city-1', name: 'Andheri West' },
+    { id: 'area-2', city_id: 'city-1', name: 'Bandra West' },
+    { id: 'area-3', city_id: 'city-1', name: 'Powai' },
+    { id: 'area-4', city_id: 'city-1', name: 'Juhu' },
+    { id: 'area-5', city_id: 'city-2', name: 'Baner' },
+    { id: 'area-6', city_id: 'city-2', name: 'Kothrud' },
+    { id: 'area-7', city_id: 'city-2', name: 'Hinjawadi Phase 1' },
+    { id: 'area-8', city_id: 'city-3', name: 'Koramangala' },
+    { id: 'area-9', city_id: 'city-3', name: 'Indiranagar' },
+    { id: 'area-10', city_id: 'city-4', name: 'Connaught Place' },
+    { id: 'area-11', city_id: 'city-4', name: 'Noida Sec-62' }
+  ]
 };
 
 // Initialize db.json file if not exists
@@ -82,7 +114,11 @@ export function readDb(): LocalDbSchema {
   initDb();
   try {
     const data = fs.readFileSync(DB_PATH, 'utf-8');
-    return JSON.parse(data);
+    const db = JSON.parse(data);
+    // Backward compatibility auto backfill
+    if (!db.cities) db.cities = defaultDb.cities;
+    if (!db.areas) db.areas = defaultDb.areas;
+    return db;
   } catch (err) {
     console.error('Failed to read local JSON database, returning defaults:', err);
     return defaultDb;

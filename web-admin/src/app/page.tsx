@@ -75,7 +75,18 @@ interface PlatformOrder {
   };
 }
 
-type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'franchise' | 'bulk-loader';
+interface City {
+  id: string;
+  name: string;
+}
+
+interface Area {
+  id: string;
+  city_id: string;
+  name: string;
+}
+
+type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'franchise' | 'bulk-loader' | 'cities-areas';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -89,6 +100,13 @@ export default function DashboardPage() {
   const [banners, setBanners] = useState<PromotionalBanner[]>([]);
   const [franchiseRequests, setFranchiseRequests] = useState<FranchiseRequest[]>([]);
   const [orders, setOrders] = useState<PlatformOrder[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
+
+  // Forms for City / Area registration
+  const [newCityName, setNewCityName] = useState('');
+  const [newAreaName, setNewAreaName] = useState('');
+  const [selectedCityId, setSelectedCityId] = useState('');
 
   // Loading & error states
   const [loading, setLoading] = useState(false);
@@ -135,6 +153,20 @@ export default function DashboardPage() {
         const data = await res.json();
         if (res.ok && data.success) {
           setShops(data.shops);
+        }
+      }
+
+      if (activeTab === 'locations' || activeTab === 'cities-areas') {
+        const resCities = await fetch('http://localhost:8001/api/admin/cities');
+        const dataCities = await resCities.json();
+        if (resCities.ok && dataCities.success) {
+          setCities(dataCities.cities);
+        }
+
+        const resAreas = await fetch('http://localhost:8001/api/admin/areas');
+        const dataAreas = await resAreas.json();
+        if (resAreas.ok && dataAreas.success) {
+          setAreas(dataAreas.areas);
         }
       }
 
@@ -214,8 +246,8 @@ export default function DashboardPage() {
   // Add serviceable locations PIN mapping
   const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !locArea || !locPin) {
-      alert('Please fill out all location fields');
+    if (!token || !locCity.trim() || !locArea.trim() || !locPin.trim()) {
+      alert('Please fill out all location fields (including City name)');
       return;
     }
     try {
@@ -226,15 +258,16 @@ export default function DashboardPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          city: locCity,
-          area_name: locArea,
-          pincode: locPin,
+          city: locCity.trim(),
+          area_name: locArea.trim(),
+          pincode: locPin.trim(),
           shop_id: locShop || null
         })
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setLocations(data.locations);
+        setLocCity('');
         setLocArea('');
         setLocPin('');
         setLocShop('');
@@ -262,6 +295,103 @@ export default function DashboardPage() {
       }
     } catch (err) {
       alert('Failed to delete locality');
+    }
+  };
+
+  // City operations
+  const handleAddCity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !newCityName.trim()) {
+      alert('Please enter a city name');
+      return;
+    }
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/cities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newCityName.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCities(data.cities);
+        setNewCityName('');
+        alert('City registered successfully!');
+      } else {
+        alert(data.error || 'Failed to register city');
+      }
+    } catch (err) {
+      alert('Error creating city');
+    }
+  };
+
+  const handleDeleteCity = async (cityId: string) => {
+    if (!token) return;
+    if (!confirm('Are you sure you want to delete this city? This will also delete all registered areas under it.')) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/cities/${cityId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCities(data.cities);
+        const resAreas = await fetch('http://localhost:8001/api/admin/areas');
+        const dataAreas = await resAreas.json();
+        if (resAreas.ok && dataAreas.success) {
+          setAreas(dataAreas.areas);
+        }
+      }
+    } catch (err) {
+      alert('Failed to delete city');
+    }
+  };
+
+  // Area operations
+  const handleAddArea = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !selectedCityId || !newAreaName.trim()) {
+      alert('Please select a city and enter area name');
+      return;
+    }
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/areas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ city_id: selectedCityId, name: newAreaName.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAreas(data.areas);
+        setNewAreaName('');
+        alert('Area/locality registered successfully!');
+      } else {
+        alert(data.error || 'Failed to register area');
+      }
+    } catch (err) {
+      alert('Error creating area');
+    }
+  };
+
+  const handleDeleteArea = async (areaId: string) => {
+    if (!token) return;
+    if (!confirm('Are you sure you want to delete this area?')) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/areas/${areaId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAreas(data.areas);
+      }
+    } catch (err) {
+      alert('Failed to delete area');
     }
   };
 
@@ -450,6 +580,17 @@ export default function DashboardPage() {
               }`}
             >
               <Store className="w-4 h-4" /> Store Approvals
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cities-areas')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'cities-areas' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <MapPin className="w-4 h-4" /> Cities & Localities
             </button>
 
             <button
@@ -664,24 +805,36 @@ export default function DashboardPage() {
                   <select
                     className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={locCity}
-                    onChange={(e) => setLocCity(e.target.value)}
+                    onChange={(e) => {
+                      setLocCity(e.target.value);
+                      setLocArea('');
+                    }}
                   >
-                    <option value="Mumbai">Mumbai</option>
-                    <option value="Pune">Pune</option>
-                    <option value="Bengaluru">Bengaluru</option>
-                    <option value="Delhi NCR">Delhi NCR</option>
+                    <option value="">Select registered city...</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Locality Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Andheri West"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                  <select
+                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    disabled={!locCity}
                     value={locArea}
                     onChange={(e) => setLocArea(e.target.value)}
-                  />
+                  >
+                    <option value="">Select registered locality...</option>
+                    {areas
+                      .filter((area) => {
+                        const cityObj = cities.find(c => c.name === locCity);
+                        return cityObj ? area.city_id === cityObj.id : false;
+                      })
+                      .map((area) => (
+                        <option key={area.id} value={area.name}>{area.name}</option>
+                      ))}
+                  </select>
                 </div>
 
                 <div>
@@ -970,6 +1123,122 @@ export default function DashboardPage() {
               )}
             </div>
           </section>
+        )}
+
+        {/* 7. CITIES & LOCALITIES TAB */}
+        {activeTab === 'cities-areas' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl">
+            {/* Left: Manage Cities */}
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Store className="w-5 h-5 text-emerald-400" /> Register City
+              </h2>
+              
+              <form onSubmit={handleAddCity} className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="e.g. Nashik"
+                  className="flex-1 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                  value={newCityName}
+                  onChange={(e) => setNewCityName(e.target.value)}
+                />
+                <button
+                  type="submit"
+                  className="h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </form>
+
+              <div className="border-t border-slate-850 pt-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Registered Cities</h3>
+                <div className="divide-y divide-slate-800/30 max-h-96 overflow-y-auto pr-1">
+                  {cities.map((city) => (
+                    <div key={city.id} className="flex justify-between items-center py-3">
+                      <span className="text-sm font-semibold text-slate-200">{city.name}</span>
+                      <button
+                        onClick={() => handleDeleteCity(city.id)}
+                        className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {cities.length === 0 && (
+                    <p className="text-xs text-slate-500 py-4 italic text-center">No cities registered yet.</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Right: Manage Areas/Localities */}
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-emerald-400" /> Register Locality / Area
+              </h2>
+
+              <form onSubmit={handleAddArea} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Select City</label>
+                  <select
+                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={selectedCityId}
+                    onChange={(e) => setSelectedCityId(e.target.value)}
+                  >
+                    <option value="">Choose registered city...</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Area / Locality Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. College Road"
+                      className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                      value={newAreaName}
+                      onChange={(e) => setNewAreaName(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </div>
+              </form>
+
+              <div className="border-t border-slate-850 pt-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Registered Localities</h3>
+                <div className="divide-y divide-slate-800/30 max-h-80 overflow-y-auto pr-1">
+                  {areas.map((area) => {
+                    const matchedCity = cities.find(c => c.id === area.city_id);
+                    return (
+                      <div key={area.id} className="flex justify-between items-center py-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-200">{area.name}</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{matchedCity?.name || 'Unknown City'}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteArea(area.id)}
+                          className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {areas.length === 0 && (
+                    <p className="text-xs text-slate-500 py-4 italic text-center">No areas registered yet.</p>
+                  )}
+                </div>
+              </div>
+            </section>
+          </div>
         )}
 
       </main>

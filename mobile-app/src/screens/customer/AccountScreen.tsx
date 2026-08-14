@@ -29,12 +29,20 @@ export default function AccountScreen({ navigation }: any) {
               {user?.name ? user.name.charAt(0).toUpperCase() : 'G'}
             </Text>
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.userName}>{user?.name || 'Guest Shopper'}</Text>
             <Text style={styles.userPhone}>
               {user?.mobile ? `+91 ${user.mobile.slice(2)}` : 'Browsing as Guest'}
             </Text>
           </View>
+          {!user && (
+            <TouchableOpacity 
+              style={styles.inlineLoginBtn} 
+              onPress={() => navigation.navigate('Login')}
+            >
+              <Text style={styles.inlineLoginText}>Login</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Info Card */}
@@ -85,10 +93,19 @@ export default function AccountScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>{user ? 'Log Out' : 'Clear Guest Session'}</Text>
-        </TouchableOpacity>
+        {/* Auth Button */}
+        {user ? (
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={styles.loginBtn} 
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.loginBtnText}>Log In / Sign Up</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -225,6 +242,30 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#EF4444',
     fontSize: 15,
+    fontWeight: 'bold',
+  },
+  loginBtn: {
+    backgroundColor: '#22C55E',
+    height: 52,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  loginBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  inlineLoginBtn: {
+    backgroundColor: '#22C55E',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  inlineLoginText: {
+    color: '#FFF',
+    fontSize: 13,
     fontWeight: 'bold',
   },
 });

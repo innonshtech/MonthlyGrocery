@@ -1,30 +1,7 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, FlatList, TextInput, StatusBar, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, FlatList, TextInput, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-
-const AREAS_MAP: { [key: string]: { id: string; name: string; serviceable: boolean }[] } = {
-  'Mumbai': [
-    { id: 'm-andheri', name: 'Andheri West', serviceable: true },
-    { id: 'm-bandra', name: 'Bandra West', serviceable: true },
-    { id: 'm-powai', name: 'Powai', serviceable: true },
-    { id: 'm-juhu', name: 'Juhu', serviceable: true },
-    { id: 'm-other', name: 'Other Mumbai Suburbs (Not Serviceable)', serviceable: false }
-  ],
-  'Pune': [
-    { id: 'p-baner', name: 'Baner', serviceable: true },
-    { id: 'p-kothrud', name: 'Kothrud', serviceable: true },
-    { id: 'p-hinjawadi', name: 'Hinjawadi Phase 1', serviceable: true },
-    { id: 'p-other', name: 'Other Pune Areas (Not Serviceable)', serviceable: false }
-  ],
-  'Bengaluru': [
-    { id: 'b-koramangala', name: 'Koramangala (Coming Soon)', serviceable: false },
-    { id: 'b-indiranagar', name: 'Indiranagar (Coming Soon)', serviceable: false }
-  ],
-  'Delhi NCR': [
-    { id: 'd-connaught', name: 'Connaught Place (Coming Soon)', serviceable: false },
-    { id: 'd-noida', name: 'Noida Sec-62 (Coming Soon)', serviceable: false }
-  ]
-};
+import { API_BASE } from '../config/api';
 
 export default function AreaSelectionScreen({ route, navigation }: any) {
   const { setCityAndArea } = useAuth();
@@ -32,17 +9,52 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   const [notServiceableMode, setNotServiceableMode] = useState(false);
   const [selectedAreaName, setSelectedAreaName] = useState('');
+  const [areas, setAreas] = useState<{ id: string; name: string; serviceable: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const areas = AREAS_MAP[cityName] || [
-    { id: 'gen-area1', name: 'Sector 1', serviceable: true },
-    { id: 'gen-area2', name: 'Sector 2', serviceable: false }
-  ];
+  useEffect(() => {
+    const fetchAreas = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/locations`);
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const matched = data.locations.filter((loc: any) => loc.city.toLowerCase() === cityName.toLowerCase());
+          const mapped = matched.map((loc: any) => ({
+            id: loc.id,
+            name: loc.area_name,
+            serviceable: loc.is_serviceable
+          }));
+          // Add default fallback other areas
+          mapped.push({
+            id: `other-${Date.now()}`,
+            name: `Other ${cityName} Areas (Not Serviceable)`,
+            serviceable: false
+          });
+          setAreas(mapped);
+        } else {
+          // Fallback
+          setAreas([
+            { id: 'fall-1', name: 'Main Sector', serviceable: true },
+            { id: 'fall-2', name: 'Other Sector (Not Serviceable)', serviceable: false }
+          ]);
+        }
+      } catch (err) {
+        setAreas([
+          { id: 'fall-1', name: 'Main Sector', serviceable: true },
+          { id: 'fall-2', name: 'Other Sector (Not Serviceable)', serviceable: false }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAreas();
+  }, [cityName]);
 
   const handleAreaSelect = async (area: { name: string; serviceable: boolean }) => {
     setSelectedAreaName(area.name);
     if (area.serviceable) {
       await setCityAndArea(cityName, area.name);
-      navigation.navigate('Landing');
+      navigation.navigate('Shop');
     } else {
       setNotServiceableMode(true);
     }
@@ -116,24 +128,30 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
         </View>
 
         {/* Area list */}
-        <FlatList
-          data={filteredAreas}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={styles.areaCard}
-              onPress={() => handleAreaSelect(item)}
-            >
-              <Text style={styles.areaName}>{item.name}</Text>
-              {!item.serviceable && (
-                <Text style={styles.badgeUnserviceable}>Not Serviceable</Text>
-              )}
-              <Text style={styles.arrow}>➔</Text>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="small" color="#22C55E" />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredAreas}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.areaCard}
+                onPress={() => handleAreaSelect(item)}
+              >
+                <Text style={styles.areaName}>{item.name}</Text>
+                {!item.serviceable && (
+                  <Text style={styles.badgeUnserviceable}>Not Serviceable</Text>
+                )}
+                <Text style={styles.arrow}>➔</Text>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

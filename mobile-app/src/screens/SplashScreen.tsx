@@ -15,14 +15,8 @@ export default function SplashScreen({ navigation }: any) {
         // Return consumer -> go to Shop
         navigation.replace('Shop');
       } else {
-        // No token (Guest)
-        if (city && area) {
-          // Returning guest with location set -> go straight to Shop
-          navigation.replace('Shop');
-        } else {
-          // Fresh install or no location -> go to Value Intro onboarding
-          navigation.replace('ValueIntro');
-        }
+        // No token (Unauthenticated) -> Go directly to Login page!
+        navigation.replace('Login');
       }
     }, 1500);
 
