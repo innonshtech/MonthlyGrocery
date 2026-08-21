@@ -5,134 +5,135 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
   ScrollView,
-  Alert
+  StatusBar,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import AppIcon from '../../components/AppIcon';
+import { COLORS, RADIUS } from '../../constants/theme';
 
 export default function EditProfileScreen({ navigation }: any) {
-  const { user, city, area } = useAuth();
+  const { user, updateUser } = useAuth();
 
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState('');
-  const [altPhone, setAltPhone] = useState('');
+  const [name, setName] = useState(user?.name || 'Aarav Sharma');
+  const [phone, setPhone] = useState(user?.mobile || '9876543210');
+  const [email, setEmail] = useState('aarav.sharma@email.com');
   const [saving, setSaving] = useState(false);
 
-  const handleSaveProfile = async () => {
+  const initialLetter = name.trim().charAt(0).toUpperCase() || 'A';
+  const formattedPhone = phone.startsWith('+91') ? phone : `+91 ${phone}`;
+
+  const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Validation Error', 'Please enter your name.');
+      Alert.alert('Required', 'Please enter your full name.');
       return;
     }
 
     setSaving(true);
-    try {
-      // Save profile updates locally
-      const updatedUser = {
-        ...user,
-        name: name.trim(),
-        email: email.trim(),
-        altPhone: altPhone.trim(),
-      };
-      await AsyncStorage.setItem('@auth_user', JSON.stringify(updatedUser));
-      Alert.alert('Profile Updated', 'Your profile details have been saved successfully.', [
+    await updateUser({ name: name.trim() });
+    setTimeout(() => {
+      setSaving(false);
+      Alert.alert('Profile Updated', 'Your profile details have been saved successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
-    } catch (err) {
-      Alert.alert('Error', 'Failed to update profile.');
-    } finally {
-      setSaving(false);
-    }
+    }, 400);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+      {/* Top Header */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Edit profile</Text>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Avatar Card */}
-        <View style={styles.avatarCard}>
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Center Avatar */}
+        <View style={styles.avatarWrap}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>
-              {name.trim().length > 0 ? name.trim().charAt(0).toUpperCase() : 'G'}
-            </Text>
+            <Text style={styles.avatarLetter}>{initialLetter}</Text>
           </View>
-          <Text style={styles.avatarName}>{name || 'Guest User'}</Text>
-          <Text style={styles.avatarRole}>Customer Account</Text>
+          <TouchableOpacity onPress={() => Alert.alert('Photo', 'Camera / Gallery picker')}>
+            <Text style={styles.changePhotoText}>Change photo</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Input Form */}
-        <View style={styles.formCard}>
-          <Text style={styles.inputLabel}>Full Name *</Text>
+        {/* 1. Full Name */}
+        <Text style={styles.fieldLabel}>Full name</Text>
+        <TextInput
+          style={styles.inputField}
+          value={name}
+          onChangeText={setName}
+          placeholder="Enter full name"
+          placeholderTextColor={COLORS.ink300}
+        />
+
+        {/* 2. Phone Number with Verified Badge */}
+        <Text style={styles.fieldLabel}>Phone number</Text>
+        <View style={styles.phoneInputWrap}>
           <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="e.g. John Doe"
-            placeholderTextColor="#94A3B8"
+            style={styles.phoneInput}
+            value={formattedPhone}
+            editable={false}
           />
-
-          <Text style={styles.inputLabel}>Registered Mobile Number</Text>
-          <View style={styles.readOnlyRow}>
-            <TextInput
-              style={[styles.input, styles.readOnlyInput]}
-              value={user?.mobile ? `+91 ${user.mobile.slice(2)}` : '+91 (Not Registered)'}
-              editable={false}
-            />
-            <Text style={styles.verifiedBadge}>✓ Verified</Text>
-          </View>
-
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="e.g. john@example.com"
-            placeholderTextColor="#94A3B8"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.inputLabel}>Alternate Phone Number</Text>
-          <TextInput
-            style={styles.input}
-            value={altPhone}
-            onChangeText={setAltPhone}
-            placeholder="e.g. 9876543210"
-            placeholderTextColor="#94A3B8"
-            keyboardType="phone-pad"
-            maxLength={10}
-          />
-
-          <Text style={styles.inputLabel}>Active Delivery Location</Text>
-          <View style={styles.locationBox}>
-            <Text style={styles.locationText}>📍 {area ? `${area}, ${city}` : 'No Area Configured'}</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('CitySelection')}>
-              <Text style={styles.changeLocText}>Change</Text>
-            </TouchableOpacity>
+          <View style={styles.verifiedBadge}>
+            <Text style={styles.verifiedBadgeText}>✓ Verified</Text>
           </View>
         </View>
 
-        {/* Save Button */}
+        {/* 3. Email (optional) */}
+        <Text style={styles.fieldLabel}>Email (optional)</Text>
+        <TextInput
+          style={styles.inputField}
+          value={email}
+          onChangeText={setEmail}
+          placeholder="Enter email address"
+          placeholderTextColor={COLORS.ink300}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+
+        {/* Delete Account Link */}
         <TouchableOpacity
-          style={styles.saveBtn}
-          onPress={handleSaveProfile}
-          disabled={saving}
+          style={styles.deleteLinkRow}
+          onPress={() => navigation.navigate('DeleteAccount')}
+          activeOpacity={0.8}
         >
-          <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save Profile Details'}</Text>
+          <AppIcon name="trash" size={16} color="#DC2626" />
+          <Text style={styles.deleteLinkText}>Delete account</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Sticky Bottom Save Button */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.saveBtn}
+          onPress={handleSave}
+          disabled={saving}
+          activeOpacity={0.85}
+        >
+          {saving ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveBtnText}>Save changes</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -140,147 +141,140 @@ export default function EditProfileScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
   },
-  header: {
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.line,
   },
   backBtn: {
-    paddingVertical: 4,
-    paddingRight: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  backText: {
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: 'bold',
+  backBtnText: {
+    fontSize: 30,
+    fontWeight: '300',
+    color: COLORS.ink900,
+    lineHeight: 32,
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: COLORS.ink900,
+    marginLeft: 8,
   },
-  container: {
+  scrollArea: {
     flex: 1,
-    padding: 16,
   },
-  avatarCard: {
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 36,
+  },
+  avatarWrap: {
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    marginBottom: 28,
   },
   avatarCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#DCFCE7',
-    borderWidth: 2,
-    borderColor: '#22C55E',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  avatarInitial: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#16A34A',
+  avatarLetter: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: COLORS.green700,
   },
-  avatarName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
-  },
-  avatarRole: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  formCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#334155',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  changePhotoText: {
     fontSize: 13,
-    color: '#0F172A',
+    fontWeight: '700',
+    color: COLORS.green700,
   },
-  readOnlyRow: {
-    position: 'relative',
-    justifyContent: 'center',
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.ink700,
+    marginBottom: 8,
   },
-  readOnlyInput: {
-    backgroundColor: '#F1F5F9',
-    color: '#64748B',
+  inputField: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    height: 48,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.ink900,
+    marginBottom: 18,
+  },
+  phoneInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    height: 48,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  phoneInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.ink700,
   },
   verifiedBadge: {
-    position: 'absolute',
-    right: 12,
+    backgroundColor: COLORS.green50,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.xs,
+  },
+  verifiedBadgeText: {
     fontSize: 11,
-    color: '#16A34A',
-    fontWeight: 'bold',
+    fontWeight: '800',
+    color: COLORS.green700,
   },
-  locationBox: {
+  deleteLinkRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+  },
+  deleteLinkText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  bottomBar: {
+    paddingHorizontal: 20,
     paddingVertical: 12,
-  },
-  locationText: {
-    fontSize: 12.5,
-    color: '#334155',
-    fontWeight: '500',
-  },
-  changeLocText: {
-    fontSize: 12,
-    color: '#22C55E',
-    fontWeight: 'bold',
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.line,
   },
   saveBtn: {
-    backgroundColor: '#22C55E',
-    paddingVertical: 14,
-    borderRadius: 50,
+    backgroundColor: COLORS.green700,
+    height: 50,
+    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 30,
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 2,
   },
   saveBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

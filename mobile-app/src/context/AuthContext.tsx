@@ -18,6 +18,7 @@ interface AuthContextType {
   setCityAndArea: (city: string | null, area: string | null) => Promise<void>;
   sendOtp: (mobile: string, role: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (mobile: string, code: string, name?: string, role?: string) => Promise<{ success: boolean; error?: string }>;
+  updateUser: (updatedFields: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -127,7 +128,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 5. Logout
+  // 5. Update User Profile
+  const updateUser = async (updatedFields: Partial<User>) => {
+    if (user) {
+      const updated = { ...user, ...updatedFields };
+      setUser(updated);
+    }
+  };
+
+  // 6. Logout
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('@auth_token');
@@ -143,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, loading, city, area, setCityAndArea, sendOtp, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ token, user, loading, city, area, setCityAndArea, sendOtp, verifyOtp, updateUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

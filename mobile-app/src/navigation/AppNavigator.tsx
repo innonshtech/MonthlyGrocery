@@ -25,6 +25,7 @@ import OrderDetailScreen from '../screens/customer/OrderDetailScreen';
 import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
 import EditProfileScreen from '../screens/customer/EditProfileScreen';
+import DeleteAccountScreen from '../screens/customer/DeleteAccountScreen';
 import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
 import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
 import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
@@ -76,6 +77,7 @@ export default function AppNavigator() {
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+          <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
         </Stack.Navigator>
       </CartProvider>
     </NavigationContainer>

@@ -4,172 +4,163 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
-  TextInput,
-  Modal,
-  StatusBar,
   ScrollView,
+  Modal,
+  TextInput,
+  StatusBar,
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../../components/AppIcon';
 import { COLORS, RADIUS } from '../../constants/theme';
 
-export interface SavedAddress {
+export interface AddressItem {
   id: string;
-  tag: 'Home' | 'Work' | 'Other';
-  name: string;
+  tag: string;
   flat: string;
   street: string;
-  landmark: string;
-  city: string;
-  area: string;
-  pin: string;
-  phone?: string;
+  landmark?: string;
+  pincode: string;
+  phone: string;
   isDefault?: boolean;
 }
 
-export default function SavedAddressesScreen({ route, navigation }: any) {
-  const { user, city: authCity, area: authArea } = useAuth();
-  const selectMode = route?.params?.selectMode !== false; // default true for checkout flow
-  const currentSelectedId = route?.params?.selectedAddress?.id || 'addr_1';
+const INITIAL_ADDRESSES: AddressItem[] = [
+  {
+    id: 'addr-1',
+    tag: 'Home',
+    flat: 'Flat 402, Green Acres',
+    street: 'Paud Road, Kothrud, Pune',
+    pincode: '411038',
+    phone: '9876543210',
+    isDefault: true,
+  },
+  {
+    id: 'addr-2',
+    tag: 'Work',
+    flat: '4th Floor, Tech Center',
+    street: 'Magarpatta Road, Pune',
+    pincode: '411028',
+    phone: '9876543210',
+    isDefault: false,
+  },
+  {
+    id: 'addr-3',
+    tag: "Mom's House",
+    flat: 'Bungalow 17',
+    street: 'Samarth Nagar, Pune',
+    pincode: '411004',
+    phone: '9876543210',
+    isDefault: false,
+  }
+];
 
-  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
-  const [selectedId, setSelectedId] = useState<string>(currentSelectedId);
+export default function SavedAddressesScreen({ navigation, route }: any) {
+  const [addresses, setAddresses] = useState<AddressItem[]>(INITIAL_ADDRESSES);
+  const [selectedId, setSelectedId] = useState<string>('addr-1');
+
+  // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Form states (E3)
-  const [tag, setTag] = useState<'Home' | 'Work' | 'Other'>('Home');
+  const [tag, setTag] = useState('Home');
   const [flat, setFlat] = useState('');
   const [street, setStreet] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [pin, setPin] = useState('411038');
-  const [phone, setPhone] = useState('');
-
-  const loadAddresses = async () => {
-    try {
-      const saved = await AsyncStorage.getItem('@saved_user_addresses');
-      if (saved) {
-        setAddresses(JSON.parse(saved));
-      } else {
-        const initialList: SavedAddress[] = [
-          {
-            id: 'addr_1',
-            tag: 'Home',
-            name: user?.name || 'Aarav Sharma',
-            flat: 'Flat 402, Green Acres',
-            street: 'Paud Road, Kothrud',
-            landmark: 'Near Gandhi Bhavan',
-            city: authCity || 'Pune',
-            area: authArea || 'Kothrud',
-            pin: '411038',
-            phone: '98765 43210',
-            isDefault: true,
-          },
-          {
-            id: 'addr_2',
-            tag: 'Work',
-            name: user?.name || 'Aarav Sharma',
-            flat: 'Tower B, 6th Floor, Tech Park',
-            street: 'Hinjewadi Phase 1',
-            landmark: 'Opposite Wipro Circle',
-            city: authCity || 'Pune',
-            area: 'Hinjewadi',
-            pin: '411057',
-            phone: '98765 43210',
-            isDefault: false,
-          }
-        ];
-        setAddresses(initialList);
-        await AsyncStorage.setItem('@saved_user_addresses', JSON.stringify(initialList));
-      }
-    } catch (err) {
-      console.error('Failed to load saved addresses:', err);
-    }
-  };
+  const [pincode, setPincode] = useState('411038');
+  const [phone, setPhone] = useState('9876543210');
 
   useEffect(() => {
-    loadAddresses();
+    const loadStoredAddresses = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@user_addresses');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.length > 0) setAddresses(parsed);
+        }
+      } catch (err) {}
+    };
+    loadStoredAddresses();
   }, []);
 
-  const handleSelectAddress = (addr: SavedAddress) => {
-    setSelectedId(addr.id);
-    if (selectMode) {
-      navigation.navigate('Checkout', { selectedAddress: addr });
-    }
+  const saveToStorage = async (newList: AddressItem[]) => {
+    setAddresses(newList);
+    try {
+      await AsyncStorage.setItem('@user_addresses', JSON.stringify(newList));
+    } catch (err) {}
   };
 
-  const openAddModal = () => {
+  const handleOpenAdd = () => {
     setEditingId(null);
     setTag('Home');
     setFlat('');
     setStreet('');
     setLandmark('');
-    setPin('411038');
-    setPhone(user?.mobile || (user as any)?.phone || '98765 43210');
+    setPincode('411038');
+    setPhone('9876543210');
     setModalVisible(true);
   };
 
-  const openEditModal = (addr: SavedAddress) => {
+  const handleOpenEdit = (addr: AddressItem) => {
     setEditingId(addr.id);
     setTag(addr.tag);
     setFlat(addr.flat);
     setStreet(addr.street);
-    setLandmark(addr.landmark);
-    setPin(addr.pin);
-    setPhone(addr.phone || '98765 43210');
+    setLandmark(addr.landmark || '');
+    setPincode(addr.pincode);
+    setPhone(addr.phone);
     setModalVisible(true);
   };
 
-  const handleSaveAddress = async () => {
-    if (!flat.trim() || !street.trim() || !pin.trim()) {
-      Alert.alert('Required Fields', 'Please fill in house/flat number, street name, and pincode.');
+  const handleDelete = (addrId: string) => {
+    Alert.alert('Delete Address', 'Are you sure you want to remove this delivery address?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          const updated = addresses.filter((a) => a.id !== addrId);
+          saveToStorage(updated);
+        }
+      }
+    ]);
+  };
+
+  const handleSaveModal = () => {
+    if (!flat.trim() || !street.trim() || !pincode.trim()) {
+      Alert.alert('Incomplete Details', 'Please fill in flat/house, area/street, and pincode.');
       return;
     }
 
-    let updated: SavedAddress[];
     if (editingId) {
-      updated = addresses.map((a) =>
+      const updated = addresses.map((a) =>
         a.id === editingId
-          ? {
-              ...a,
-              tag,
-              flat: flat.trim(),
-              street: street.trim(),
-              landmark: landmark.trim(),
-              pin: pin.trim(),
-              phone: phone.trim(),
-            }
+          ? { ...a, tag, flat: flat.trim(), street: street.trim(), landmark: landmark.trim(), pincode: pincode.trim(), phone: phone.trim() }
           : a
       );
+      saveToStorage(updated);
     } else {
-      const newAddr: SavedAddress = {
-        id: `addr_${Date.now()}`,
+      const newAddr: AddressItem = {
+        id: `addr-${Date.now()}`,
         tag,
-        name: user?.name || 'Aarav Sharma',
         flat: flat.trim(),
         street: street.trim(),
         landmark: landmark.trim(),
-        city: authCity || 'Pune',
-        area: authArea || 'Kothrud',
-        pin: pin.trim(),
+        pincode: pincode.trim(),
         phone: phone.trim(),
         isDefault: addresses.length === 0,
       };
-      updated = [newAddr, ...addresses];
-      setSelectedId(newAddr.id);
+      saveToStorage([...addresses, newAddr]);
     }
 
-    setAddresses(updated);
-    await AsyncStorage.setItem('@saved_user_addresses', JSON.stringify(updated));
     setModalVisible(false);
+  };
 
-    if (selectMode && updated.length > 0) {
-      const selected = updated.find((a) => a.id === (editingId || updated[0].id)) || updated[0];
-      navigation.navigate('Checkout', { selectedAddress: selected });
+  const handleSelectAddress = (addr: AddressItem) => {
+    setSelectedId(addr.id);
+    if (route.params?.onSelect) {
+      route.params.onSelect(addr);
+      navigation.goBack();
     }
   };
 
@@ -177,9 +168,7 @@ export default function SavedAddressesScreen({ route, navigation }: any) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* =========================================================================
-         1. TOP HEADER (E2)
-         ========================================================================= */}
+      {/* Top Header */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -188,93 +177,72 @@ export default function SavedAddressesScreen({ route, navigation }: any) {
         >
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Delivery address</Text>
+        <Text style={styles.headerTitle}>Saved addresses</Text>
       </View>
 
-      <View style={styles.content}>
-        {/* =========================================================================
-           2. ADD NEW ADDRESS BUTTON CARD (E2)
-           ========================================================================= */}
-        <TouchableOpacity
-          style={styles.addNewCard}
-          onPress={openAddModal}
-          activeOpacity={0.8}
-        >
-          <View style={styles.addIconCircle}>
-            <Text style={styles.addPlusIcon}>+</Text>
-          </View>
-          <Text style={styles.addNewText}>Add new address</Text>
-        </TouchableOpacity>
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Addresses List */}
+        {addresses.map((addr) => {
+          const isHome = addr.tag.toLowerCase() === 'home';
 
-        {/* =========================================================================
-           3. SAVED ADDRESSES LIST (E2)
-           ========================================================================= */}
-        <Text style={styles.sectionHeading}>SAVED ADDRESSES</Text>
-
-        <FlatList
-          data={addresses}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContainer}
-          renderItem={({ item }) => {
-            const isSelected = selectedId === item.id;
-
-            return (
+          return (
+            <View key={addr.id} style={styles.addressCard}>
               <TouchableOpacity
-                style={[
-                  styles.addressCard,
-                  isSelected && styles.addressCardSelected
-                ]}
-                onPress={() => handleSelectAddress(item)}
-                activeOpacity={0.85}
+                style={{ flex: 1 }}
+                onPress={() => handleSelectAddress(addr)}
+                activeOpacity={0.8}
               >
-                {/* Radio Circle */}
-                <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                  {isSelected && <View style={styles.radioDot} />}
+                {/* Tag Badge */}
+                <View style={[styles.tagBadge, isHome ? styles.homeTagBadge : styles.grayTagBadge]}>
+                  <Text style={[styles.tagBadgeText, isHome ? styles.homeTagText : styles.grayTagText]}>
+                    {addr.tag}
+                  </Text>
                 </View>
 
-                {/* Info */}
-                <View style={styles.addressInfo}>
-                  <View style={styles.tagRow}>
-                    <View style={styles.tagBadge}>
-                      <Text style={styles.tagBadgeText}>{item.tag}</Text>
-                    </View>
-                    {item.isDefault && (
-                      <Text style={styles.defaultLabel}>Default</Text>
-                    )}
-                  </View>
-
-                  <Text style={styles.addressLine} numberOfLines={2}>
-                    {item.flat}, {item.street}
-                  </Text>
-                  {item.landmark ? (
-                    <Text style={styles.landmarkLine}>{item.landmark}</Text>
-                  ) : null}
-                  <Text style={styles.cityPinLine}>
-                    {item.city}, Maharashtra {item.pin}
-                  </Text>
-                  {item.phone ? (
-                    <Text style={styles.phoneLine}>Phone: {item.phone}</Text>
-                  ) : null}
-                </View>
-
-                {/* Edit Button */}
-                <TouchableOpacity
-                  style={styles.editBtn}
-                  onPress={() => openEditModal(item)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text style={styles.editText}>Edit</Text>
-                </TouchableOpacity>
+                {/* Full Address Text */}
+                <Text style={styles.addressLineText}>
+                  {addr.flat}, {addr.street} — {addr.pincode}
+                </Text>
               </TouchableOpacity>
-            );
-          }}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
-      </View>
+
+              {/* Action Buttons: Edit & Delete */}
+              <View style={styles.cardActionsRow}>
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => handleOpenEdit(addr)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.editActionEmoji}>✏️</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={() => handleDelete(addr.id)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <AppIcon name="trash" size={16} color={COLORS.ink500} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+
+        {/* Add New Address Dashed Button */}
+        <TouchableOpacity
+          style={styles.addDashedBtn}
+          onPress={handleOpenAdd}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.addDashedText}>+ Add a new address</Text>
+        </TouchableOpacity>
+      </ScrollView>
 
       {/* =========================================================================
-         4. ADD / EDIT ADDRESS MODAL SHEET (E3)
+         ADD / EDIT ADDRESS MODAL SHEET (G3 DOWN SLIDE)
          ========================================================================= */}
       <Modal
         visible={modalVisible}
@@ -292,102 +260,79 @@ export default function SavedAddressesScreen({ route, navigation }: any) {
           <View style={styles.sheetContainer}>
             <View style={styles.sheetHandle} />
 
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>
-                {editingId ? 'Edit address' : 'Add new address'}
-              </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeBtnText}>✕</Text>
-              </TouchableOpacity>
+            <Text style={styles.sheetTitle}>
+              {editingId ? 'Edit Address' : 'Add New Address'}
+            </Text>
+
+            {/* Tag Selection */}
+            <Text style={styles.fieldLabel}>Save as</Text>
+            <View style={styles.tagOptionsRow}>
+              {['Home', 'Work', 'Other'].map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.tagSelectPill, tag === t && styles.tagSelectPillActive]}
+                  onPress={() => setTag(t)}
+                >
+                  <Text style={[styles.tagSelectText, tag === t && styles.tagSelectTextActive]}>
+                    {t}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
-              {/* Tag Selector */}
-              <Text style={styles.fieldLabel}>Save address as</Text>
-              <View style={styles.tagSelectorRow}>
-                {(['Home', 'Work', 'Other'] as const).map((t) => (
-                  <TouchableOpacity
-                    key={t}
-                    style={[styles.tagPill, tag === t && styles.tagPillActive]}
-                    onPress={() => setTag(t)}
-                  >
-                    <Text style={[styles.tagPillText, tag === t && styles.tagPillTextActive]}>
-                      {t}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            {/* Flat / House No */}
+            <Text style={styles.fieldLabel}>Flat / House No / Building</Text>
+            <TextInput
+              style={styles.sheetInput}
+              value={flat}
+              onChangeText={setFlat}
+              placeholder="e.g. Flat 402, Green Acres"
+              placeholderTextColor={COLORS.ink300}
+            />
+
+            {/* Street / Area */}
+            <Text style={styles.fieldLabel}>Area / Street / Society</Text>
+            <TextInput
+              style={styles.sheetInput}
+              value={street}
+              onChangeText={setStreet}
+              placeholder="e.g. Paud Road, Kothrud, Pune"
+              placeholderTextColor={COLORS.ink300}
+            />
+
+            {/* Pincode & Landmark Row */}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Pincode</Text>
+                <TextInput
+                  style={styles.sheetInput}
+                  value={pincode}
+                  onChangeText={setPincode}
+                  placeholder="411038"
+                  keyboardType="numeric"
+                  placeholderTextColor={COLORS.ink300}
+                />
               </View>
-
-              {/* Flat / Building */}
-              <Text style={styles.fieldLabel}>Flat, House No., Building Name *</Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="e.g. Flat 402, Green Acres"
-                placeholderTextColor={COLORS.ink300}
-                value={flat}
-                onChangeText={setFlat}
-              />
-
-              {/* Street / Area */}
-              <Text style={styles.fieldLabel}>Street, Society or Area *</Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="e.g. Paud Road, Kothrud"
-                placeholderTextColor={COLORS.ink300}
-                value={street}
-                onChangeText={setStreet}
-              />
-
-              {/* Landmark */}
-              <Text style={styles.fieldLabel}>Landmark (Optional)</Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="e.g. Near Gandhi Bhavan"
-                placeholderTextColor={COLORS.ink300}
-                value={landmark}
-                onChangeText={setLandmark}
-              />
-
-              {/* Pin & Phone Row */}
-              <View style={styles.dualFieldRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>Pincode *</Text>
-                  <TextInput
-                    style={styles.inputField}
-                    placeholder="411038"
-                    placeholderTextColor={COLORS.ink300}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    value={pin}
-                    onChangeText={setPin}
-                  />
-                </View>
-
-                <View style={{ flex: 1.2 }}>
-                  <Text style={styles.fieldLabel}>Contact Phone</Text>
-                  <TextInput
-                    style={styles.inputField}
-                    placeholder="98765 43210"
-                    placeholderTextColor={COLORS.ink300}
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    value={phone}
-                    onChangeText={setPhone}
-                  />
-                </View>
+              <View style={{ flex: 1.2 }}>
+                <Text style={styles.fieldLabel}>Landmark (optional)</Text>
+                <TextInput
+                  style={styles.sheetInput}
+                  value={landmark}
+                  onChangeText={setLandmark}
+                  placeholder="Near temple"
+                  placeholderTextColor={COLORS.ink300}
+                />
               </View>
+            </View>
 
-              {/* Save CTA */}
-              <TouchableOpacity
-                style={styles.saveAddressBtn}
-                onPress={handleSaveAddress}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.saveAddressBtnText}>
-                  {editingId ? 'Save changes' : 'Save address & proceed'}
-                </Text>
-              </TouchableOpacity>
-            </ScrollView>
+            {/* Save Address Button */}
+            <TouchableOpacity
+              style={styles.saveSheetBtn}
+              onPress={handleSaveModal}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.saveSheetBtnText}>Save address</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -426,149 +371,85 @@ const styles = StyleSheet.create({
     color: COLORS.ink900,
     marginLeft: 8,
   },
-  content: {
+  scrollArea: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 18,
     paddingTop: 16,
+    paddingBottom: 36,
   },
-  addNewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.green600,
-    borderStyle: 'dashed',
-    borderRadius: RADIUS.md,
-    height: 52,
-    paddingHorizontal: 16,
-    marginBottom: 24,
-    gap: 12,
-  },
-  addIconCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.green50,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addPlusIcon: {
-    fontSize: 18,
-    color: COLORS.green700,
-    fontWeight: 'bold',
-    lineHeight: 20,
-  },
-  addNewText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  sectionHeading: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  listContainer: {
-    paddingBottom: 28,
-  },
+  /* Address Card */
   addressCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    padding: 14,
-  },
-  addressCardSelected: {
-    borderColor: COLORS.green700,
-    backgroundColor: COLORS.surface,
-  },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.8,
-    borderColor: COLORS.ink300,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
-  },
-  radioCircleActive: {
-    borderColor: COLORS.green700,
-  },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.green700,
-  },
-  addressInfo: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    padding: 16,
+    marginBottom: 12,
   },
   tagBadge: {
-    backgroundColor: COLORS.green50,
-    borderWidth: 1,
-    borderColor: COLORS.green100,
+    alignSelf: 'flex-start',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: RADIUS.xs,
+    marginBottom: 8,
+  },
+  homeTagBadge: {
+    backgroundColor: COLORS.green50,
+  },
+  homeTagText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.green700,
+  },
+  grayTagBadge: {
+    backgroundColor: '#F3F4F6',
+  },
+  grayTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.ink700,
   },
   tagBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.green700,
+    textTransform: 'uppercase',
   },
-  defaultLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.ink500,
-  },
-  addressLine: {
+  addressLineText: {
     fontSize: 13.5,
-    fontWeight: '700',
     color: COLORS.ink900,
     lineHeight: 18,
-    marginBottom: 2,
+    paddingRight: 8,
   },
-  landmarkLine: {
-    fontSize: 12,
-    color: COLORS.ink500,
-    marginBottom: 2,
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 4,
   },
-  cityPinLine: {
-    fontSize: 12.5,
-    color: COLORS.ink700,
-    marginBottom: 4,
+  iconBtn: {
+    padding: 4,
   },
-  phoneLine: {
-    fontSize: 11.5,
-    color: COLORS.ink500,
+  editActionEmoji: {
+    fontSize: 14,
   },
-  editBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  addDashedBtn: {
+    borderWidth: 1.5,
+    borderColor: COLORS.green700,
+    borderStyle: 'dashed',
+    borderRadius: RADIUS.md,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: COLORS.surface,
   },
-  editText: {
-    fontSize: 13,
-    fontWeight: '700',
+  addDashedText: {
+    fontSize: 13.5,
+    fontWeight: '800',
     color: COLORS.green700,
   },
-  separator: {
-    height: 12,
-  },
-  /* Modal Sheet (E3) */
+  /* Modal Sheet */
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -581,10 +462,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingTop: 12,
-    paddingBottom: 28,
-    maxHeight: '85%',
+    paddingBottom: 32,
   },
   sheetHandle: {
     width: 40,
@@ -592,88 +472,65 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: COLORS.line,
     alignSelf: 'center',
-    marginBottom: 14,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 16,
   },
   sheetTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: COLORS.ink900,
-  },
-  closeBtnText: {
-    fontSize: 16,
-    color: COLORS.ink500,
-    fontWeight: 'bold',
-    padding: 4,
-  },
-  sheetScroll: {
-    paddingBottom: 16,
+    marginBottom: 16,
   },
   fieldLabel: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.ink700,
     marginBottom: 6,
-    marginTop: 8,
   },
-  tagSelectorRow: {
+  tagOptionsRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 8,
+    marginBottom: 14,
   },
-  tagPill: {
-    flex: 1,
-    height: 38,
+  tagSelectPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: COLORS.paper,
   },
-  tagPillActive: {
-    backgroundColor: COLORS.green700,
+  tagSelectPillActive: {
     borderColor: COLORS.green700,
+    backgroundColor: COLORS.green50,
   },
-  tagPillText: {
-    fontSize: 13,
-    fontWeight: '600',
+  tagSelectText: {
+    fontSize: 12.5,
+    fontWeight: '700',
     color: COLORS.ink700,
   },
-  tagPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  tagSelectTextActive: {
+    color: COLORS.green700,
   },
-  inputField: {
+  sheetInput: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    height: 48,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    height: 46,
+    paddingHorizontal: 12,
+    fontSize: 13.5,
     color: COLORS.ink900,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  dualFieldRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  saveAddressBtn: {
+  saveSheetBtn: {
     backgroundColor: COLORS.green700,
-    height: 52,
+    height: 50,
     borderRadius: RADIUS.pill,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 18,
-    marginBottom: 20,
+    marginTop: 8,
   },
-  saveAddressBtnText: {
+  saveSheetBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',

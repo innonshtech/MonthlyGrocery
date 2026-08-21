@@ -12,6 +12,7 @@ import productsRouter from './routes/products';
 import ordersRouter from './routes/orders';
 import shopsRouter from './routes/shops';
 import adminRouter from './routes/adminControls';
+import couponsRouter from './routes/coupons';
 
 const app = express();
 const PORT = process.env.PORT || 8001;
@@ -26,6 +27,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/shops', shopsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/coupons', couponsRouter);
 
 // Public Config Endpoint
 app.get('/api/config', (req, res) => {

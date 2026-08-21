@@ -5,76 +5,53 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Linking,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppIcon from '../../components/AppIcon';
+import { COLORS, RADIUS } from '../../constants/theme';
 
-interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-  category: string;
-}
-
-const FAQS: FAQItem[] = [
+const FAQS = [
   {
-    id: '1',
-    category: 'Orders & Limits',
-    question: 'What is the ₹2,500 minimum monthly order limit?',
-    answer: 'MonthlyGrocery operates on a planned monthly restocking model. By delivering full household grocery baskets in single batches instead of multiple daily 10-minute micro-orders, we save heavily on logistics and pass maximum wholesale savings and free delivery directly to you.'
+    q: 'Where do you deliver?',
+    a: 'We currently deliver across Pune (Kothrud, Baner, Aundh, Hinjewadi, Wakad, Viman Nagar) with expanding coverage across Maharashtra.'
   },
   {
-    id: '2',
-    category: 'Orders & Limits',
-    question: 'How does the "One-Click Monthly Cart" work?',
-    answer: 'Our smart algorithm reviews your previous monthly order history and household size (2, 4, 6+ members) to automatically populate a balanced basket of daily essentials like Atta, Rice, Cooking Oil, Pulses, Ghee, and Spices with a single tap.'
+    q: 'How does the ₹2,000 minimum work?',
+    a: 'To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,000.'
   },
   {
-    id: '3',
-    category: 'Delivery',
-    question: 'How does scheduled monthly delivery work?',
-    answer: 'During checkout, you can select your preferred delivery date (Tomorrow, Day After, or Next Monday) along with a convenient time window (Morning 8 AM - 12 PM, Afternoon 12 PM - 4 PM, or Evening 4 PM - 8 PM).'
+    q: 'Can I edit or cancel a placed order?',
+    a: 'Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket.'
   },
   {
-    id: '4',
-    category: 'Delivery',
-    question: 'What are the delivery charges?',
-    answer: 'Delivery is 100% FREE for all standard monthly orders above ₹1,000. Orders below ₹1,000 carry a nominal ₹49 delivery charge.'
+    q: 'How do subscriptions & baskets work?',
+    a: 'You can tap "Save as a basket" on any active cart to create a reusable template. Next month, open Saved Baskets and reorder in 1 tap with verified live rates.'
   },
   {
-    id: '5',
-    category: 'Payments & Refunds',
-    question: 'What payment options are supported?',
-    answer: 'We support Cash on Delivery (COD), UPI (Google Pay, PhonePe, Paytm), Credit & Debit Cards, and Net Banking.'
-  },
-  {
-    id: '6',
-    category: 'Payments & Refunds',
-    question: 'What if an item is damaged or missing?',
-    answer: 'You can check your order upon delivery. If any item is missing or damaged, contact our WhatsApp support within 24 hours for an instant replacement or full refund.'
+    q: 'Delivery slots and timing',
+    a: 'We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM).'
   }
 ];
 
 export default function HelpSupportScreen({ navigation }: any) {
-  const [expandedFaqId, setExpandedFaqId] = useState<string | null>('1');
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
-  const handleWhatsAppSupport = () => {
-    Linking.openURL('https://wa.me/918830480015?text=Hi%20MonthlyGrocery%20Support%2C%20I%20need%20assistance%20with%20my%20order.').catch(() => {
-      Alert.alert('Support Contact', 'WhatsApp: +91 8830480015\nEmail: support@monthlygrocery.in');
+  const toggleFaq = (idx: number) => {
+    setExpandedIdx(expandedIdx === idx ? null : idx);
+  };
+
+  const handleChatWhatsApp = () => {
+    Linking.openURL('https://wa.me/919876543210?text=Hi%20MonthlyGrocery%20Support').catch(() => {
+      Alert.alert('Support Chat', 'Connecting with customer care executive...');
     });
   };
 
-  const handleCallSupport = () => {
-    Linking.openURL('tel:+918830480015').catch(() => {
-      Alert.alert('Customer Care', 'Helpline: +91 8830480015 (9:00 AM - 8:00 PM)');
-    });
-  };
-
-  const handleEmailSupport = () => {
-    Linking.openURL('mailto:support@monthlygrocery.in?subject=Customer%20Support%20Inquiry').catch(() => {
-      Alert.alert('Email Support', 'Please email us at support@monthlygrocery.in');
+  const handleCallUs = () => {
+    Linking.openURL('tel:+919876543210').catch(() => {
+      Alert.alert('Helpline', 'Call our support team at +91 98765 43210 (7:00 AM - 10:00 PM daily).');
     });
   };
 
@@ -82,63 +59,80 @@ export default function HelpSupportScreen({ navigation }: any) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+      {/* Top Header */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & Support</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Help & support</Text>
       </View>
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Contact Us Card */}
-        <View style={styles.contactCard}>
-          <Text style={styles.contactTitle}>Need Fast Assistance?</Text>
-          <Text style={styles.contactSubtitle}>Our support team is available everyday from 9:00 AM to 8:00 PM.</Text>
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Top 2 Quick Contact Cards */}
+        <View style={styles.contactRow}>
+          {/* Chat with us */}
+          <TouchableOpacity
+            style={styles.contactCard}
+            onPress={handleChatWhatsApp}
+            activeOpacity={0.85}
+          >
+            <View style={styles.contactIconBox}>
+              <AppIcon name="help" size={20} color={COLORS.green700} />
+            </View>
+            <Text style={styles.contactTitle}>Chat with us</Text>
+            <Text style={styles.contactSub}>Avg reply: &lt; 5 min</Text>
+          </TouchableOpacity>
 
-          <View style={styles.channelRow}>
-            <TouchableOpacity style={[styles.channelBtn, styles.waBtn]} onPress={handleWhatsAppSupport}>
-              <Text style={styles.channelEmoji}>💬</Text>
-              <Text style={styles.channelLabel}>WhatsApp</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.channelBtn, styles.callBtn]} onPress={handleCallSupport}>
-              <Text style={styles.channelEmoji}>📞</Text>
-              <Text style={styles.channelLabel}>Call Us</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.channelBtn, styles.mailBtn]} onPress={handleEmailSupport}>
-              <Text style={styles.channelEmoji}>✉️</Text>
-              <Text style={styles.channelLabel}>Email</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Call us */}
+          <TouchableOpacity
+            style={styles.contactCard}
+            onPress={handleCallUs}
+            activeOpacity={0.85}
+          >
+            <View style={styles.contactIconBox}>
+              <AppIcon name="phone" size={20} color={COLORS.green700} />
+            </View>
+            <Text style={styles.contactTitle}>Call us</Text>
+            <Text style={styles.contactSub}>7:00 AM - 10:00 PM daily</Text>
+          </TouchableOpacity>
         </View>
 
         {/* FAQs Section */}
-        <Text style={styles.sectionHeading}>Frequently Asked Questions</Text>
+        <Text style={styles.sectionHeading}>FREQUENTLY ASKED QUESTIONS</Text>
 
-        {FAQS.map((faq) => {
-          const isExpanded = expandedFaqId === faq.id;
-          return (
-            <TouchableOpacity
-              key={faq.id}
-              style={[styles.faqCard, isExpanded && styles.faqCardExpanded]}
-              onPress={() => setExpandedFaqId(isExpanded ? null : faq.id)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.faqHeader}>
-                <Text style={[styles.faqQuestion, isExpanded && styles.faqQuestionActive]}>{faq.question}</Text>
-                <Text style={styles.faqToggleText}>{isExpanded ? '▲' : '▼'}</Text>
+        <View style={styles.faqsCard}>
+          {FAQS.map((faq, idx) => {
+            const isExpanded = expandedIdx === idx;
+            const isLast = idx === FAQS.length - 1;
+
+            return (
+              <View key={idx} style={[styles.faqItem, !isLast && styles.faqBorder]}>
+                <TouchableOpacity
+                  style={styles.faqQuestionRow}
+                  onPress={() => toggleFaq(idx)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.faqQuestionText}>{faq.q}</Text>
+                  <Text style={[styles.faqChevron, isExpanded && styles.faqChevronRotated]}>
+                    {isExpanded ? '⌃' : '⌄'}
+                  </Text>
+                </TouchableOpacity>
+
+                {isExpanded && (
+                  <Text style={styles.faqAnswerText}>{faq.a}</Text>
+                )}
               </View>
-              {isExpanded && (
-                <Text style={styles.faqAnswer}>{faq.answer}</Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-
-        <View style={{ height: 40 }} />
+            );
+          })}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -147,144 +141,121 @@ export default function HelpSupportScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
   },
-  header: {
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.line,
   },
   backBtn: {
-    paddingVertical: 4,
-    paddingRight: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  backText: {
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: 'bold',
+  backBtnText: {
+    fontSize: 30,
+    fontWeight: '300',
+    color: COLORS.ink900,
+    lineHeight: 32,
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: COLORS.ink900,
+    marginLeft: 8,
   },
-  container: {
+  scrollArea: {
     flex: 1,
-    padding: 16,
+  },
+  scrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 36,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
   },
   contactCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 24,
+    flex: 1,
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    padding: 16,
+  },
+  contactIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.xs,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   contactTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.ink900,
+    marginBottom: 2,
   },
-  contactSubtitle: {
-    fontSize: 12.5,
-    color: '#64748B',
-    marginTop: 4,
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  channelRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  channelBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  waBtn: {
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-  },
-  callBtn: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#93C5FD',
-  },
-  mailBtn: {
-    backgroundColor: '#F3E8FF',
-    borderWidth: 1,
-    borderColor: '#D8B4FE',
-  },
-  channelEmoji: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  channelLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1E293B',
+  contactSub: {
+    fontSize: 11,
+    color: COLORS.ink500,
   },
   sectionHeading: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#334155',
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.ink500,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
     marginBottom: 12,
-    letterSpacing: 0.3,
   },
-  faqCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
+  faqsCard: {
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 16,
   },
-  faqCardExpanded: {
-    borderColor: '#22C55E',
-    backgroundColor: '#F8FAFC',
+  faqItem: {
+    paddingVertical: 14,
   },
-  faqHeader: {
+  faqBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+  },
+  faqQuestionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  faqQuestion: {
+  faqQuestionText: {
     flex: 1,
     fontSize: 13.5,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: COLORS.ink900,
     paddingRight: 10,
-    lineHeight: 18,
   },
-  faqQuestionActive: {
-    color: '#16A34A',
+  faqChevron: {
+    fontSize: 16,
+    color: COLORS.ink500,
     fontWeight: 'bold',
   },
-  faqToggleText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: 'bold',
+  faqChevronRotated: {
+    color: COLORS.green700,
   },
-  faqAnswer: {
+  faqAnswerText: {
     fontSize: 12.5,
-    color: '#475569',
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    color: COLORS.ink500,
     lineHeight: 18,
+    marginTop: 8,
+    paddingTop: 4,
   },
 });

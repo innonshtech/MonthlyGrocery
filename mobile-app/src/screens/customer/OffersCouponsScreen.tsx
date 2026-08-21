@@ -3,104 +3,74 @@ import {
   StyleSheet,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
+  StatusBar,
   Alert,
-  StatusBar
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE } from '../../config/api';
-import AppIcon from '../../components/AppIcon';
 import { COLORS, RADIUS } from '../../constants/theme';
 
-interface CouponItem {
+export interface CouponItem {
   id: string;
   code: string;
-  discount_type: 'flat' | 'percentage';
-  value: number;
-  min_order: number;
-  max_discount?: number;
-  description: string;
+  title: string;
+  discount_type: 'fixed' | 'percentage';
+  discount_value: number;
+  min_order_amount: number;
+  max_discount: number;
+  expires_at: string;
+  badge?: string;
+  description?: string;
 }
 
-const DEFAULT_COUPONS: CouponItem[] = [
-  {
-    id: 'c-1',
-    code: 'MONTHLY100',
-    discount_type: 'flat',
-    value: 100,
-    min_order: 2000,
-    description: '₹100 off on orders above ₹2,000\nValid once per calendar month',
-  },
-  {
-    id: 'c-2',
-    code: 'FIRSTSAVE',
-    discount_type: 'percentage',
-    value: 15,
-    min_order: 1500,
-    max_discount: 200,
-    description: '15% off up to ₹200 on your first order\nNew users only · min ₹1,500',
-  },
-  {
-    id: 'c-3',
-    code: 'BASKET50',
-    discount_type: 'flat',
-    value: 50,
-    min_order: 1000,
-    description: '₹50 off your monthly basket\nApplied to this order',
-  },
-];
+export default function OffersCouponsScreen({ navigation, route }: any) {
+  const [coupons, setCoupons] = useState<CouponItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-export default function OffersCouponsScreen({ route, navigation }: any) {
-  const { currentTotal = 2500 } = route.params || {};
-  const [couponCode, setCouponCode] = useState('');
-  const [coupons, setCoupons] = useState<CouponItem[]>(DEFAULT_COUPONS);
-  const [appliedCode, setAppliedCode] = useState<string>('BASKET50');
+  const cartAmount = route.params?.cartAmount || 0;
 
   useEffect(() => {
-    const fetchCoupons = async () => {
+    const fetchLiveCoupons = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/products/coupons/all`);
+        const res = await fetch(`${API_BASE}/coupons`);
         const data = await res.json();
-        if (res.ok && data.success && data.coupons && data.coupons.length > 0) {
+        if (res.ok && data.success && data.coupons) {
           setCoupons(data.coupons);
         }
       } catch (err) {
-        setCoupons(DEFAULT_COUPONS);
+        console.error('Coupons fetch notice:', err);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchCoupons();
+
+    fetchLiveCoupons();
   }, []);
 
   const handleApplyCoupon = (coupon: CouponItem) => {
-    if (currentTotal < coupon.min_order) {
+    if (cartAmount > 0 && cartAmount < coupon.min_order_amount) {
       Alert.alert(
-        'Minimum order not met',
-        `This coupon requires a minimum order of ₹${coupon.min_order}. Current total: ₹${currentTotal}`
+        'Minimum Order Not Met',
+        `Add ₹${coupon.min_order_amount - cartAmount} more to your basket to apply code ${coupon.code}.`
       );
       return;
     }
 
-    setAppliedCode(coupon.code);
-    Alert.alert('Coupon Applied', `Code "${coupon.code}" has been applied to your cart!`, [
-      {
-        text: 'View Cart',
-        onPress: () => navigation.navigate('Cart', { appliedCoupon: coupon })
-      }
-    ]);
-  };
+    setCopiedCode(coupon.code);
 
-  const handleManualApply = () => {
-    if (!couponCode.trim()) return;
-    const match = coupons.find(
-      (c) => c.code.toLowerCase() === couponCode.trim().toLowerCase()
-    );
-
-    if (match) {
-      handleApplyCoupon(match);
+    if (route.params?.onSelectCoupon) {
+      route.params.onSelectCoupon(coupon);
+      navigation.goBack();
     } else {
-      Alert.alert('Invalid Code', `Coupon code "${couponCode}" is not valid or expired.`);
+      Alert.alert(
+        'Coupon Copied!',
+        `Code "${coupon.code}" copied to clipboard! It will be auto-applied when your cart reaches ₹${coupon.min_order_amount}.`
+      );
     }
   };
 
@@ -108,9 +78,7 @@ export default function OffersCouponsScreen({ route, navigation }: any) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* =========================================================================
-         1. TOP HEADER ROW (C3)
-         ========================================================================= */}
+      {/* Top Header */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -119,85 +87,65 @@ export default function OffersCouponsScreen({ route, navigation }: any) {
         >
           <Text style={styles.backBtnText}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Offers & coupons</Text>
+        <Text style={styles.headerTitle}>My coupons</Text>
       </View>
 
-      <View style={styles.contentContainer}>
-        {/* =========================================================================
-           2. ENTER COUPON INPUT CARD (C3)
-           ========================================================================= */}
-        <View style={styles.inputCard}>
-          <TextInput
-            style={styles.couponInput}
-            placeholder="Enter coupon code"
-            placeholderTextColor={COLORS.ink300}
-            value={couponCode}
-            onChangeText={setCouponCode}
-            autoCapitalize="characters"
-          />
-          <TouchableOpacity
-            style={[
-              styles.applyInputBtn,
-              couponCode.trim().length > 0 ? styles.applyInputBtnActive : null
-            ]}
-            onPress={handleManualApply}
-            disabled={!couponCode.trim()}
-          >
-            <Text style={styles.applyInputBtnText}>Apply</Text>
-          </TouchableOpacity>
+      {loading ? (
+        <View style={styles.centerWrap}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
         </View>
-
-        {/* =========================================================================
-           3. AVAILABLE COUPONS LIST (C3)
-           ========================================================================= */}
-        <Text style={styles.sectionHeading}>AVAILABLE COUPONS</Text>
-
-        <FlatList
-          data={coupons}
-          keyExtractor={(item) => item.id}
+      ) : (
+        <ScrollView
+          style={styles.scrollArea}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.couponsList}
-          renderItem={({ item }) => {
-            const isApplied = appliedCode.toUpperCase() === item.code.toUpperCase();
+        >
+          {/* Coupon Cards */}
+          {coupons.map((coupon) => {
+            const isCopied = copiedCode === coupon.code;
+            const isEligible = cartAmount === 0 || cartAmount >= coupon.min_order_amount;
 
             return (
-              <View style={styles.couponCard}>
-                {/* Left % Badge */}
-                <View style={styles.percentBadge}>
-                  <Text style={styles.percentSymbol}>%</Text>
+              <View key={coupon.code} style={styles.couponCard}>
+                {/* Left Orange Percentage Box */}
+                <View style={styles.percentBox}>
+                  <Text style={styles.percentText}>%</Text>
                 </View>
 
-                {/* Info */}
+                {/* Middle Details */}
                 <View style={styles.couponInfo}>
-                  <Text style={styles.couponCodeText}>{item.code}</Text>
-                  <Text style={styles.couponDescText}>{item.description}</Text>
+                  <View style={styles.codeRow}>
+                    <Text style={styles.couponCodeText}>{coupon.code}</Text>
+                    {coupon.badge && (
+                      <View style={styles.badgePill}>
+                        <Text style={styles.badgeText}>{coupon.badge}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.couponTitleText}>{coupon.title}</Text>
+                  <Text style={styles.couponExpiryText}>Expires {coupon.expires_at}</Text>
                 </View>
 
-                {/* Action Button */}
-                {isApplied ? (
-                  <View style={styles.appliedPill}>
-                    <Text style={styles.appliedPillText}>✓ APPLIED</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.applyBtn}
-                    onPress={() => handleApplyCoupon(item)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.applyBtnText}>APPLY</Text>
-                  </TouchableOpacity>
-                )}
+                {/* Right Action Button */}
+                <TouchableOpacity
+                  style={[styles.copyBtn, !isEligible && styles.copyBtnDisabled]}
+                  onPress={() => handleApplyCoupon(coupon)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.copyBtnText}>
+                    {isCopied ? 'APPLIED' : route.params?.onSelectCoupon ? 'APPLY' : 'COPY'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             );
-          }}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          ListFooterComponent={
-            <Text style={styles.footnoteText}>
-              Only one coupon can be applied per order. Savings show in your bill at checkout.
-            </Text>
-          }
-        />
-      </View>
+          })}
+
+          {/* Bottom Helper Note */}
+          <Text style={styles.footerNoteText}>
+            Coupons apply automatically on checkout based on eligibility.
+          </Text>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -233,55 +181,18 @@ const styles = StyleSheet.create({
     color: COLORS.ink900,
     marginLeft: 8,
   },
-  contentContainer: {
+  centerWrap: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollArea: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 18,
     paddingTop: 16,
-  },
-  inputCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md, // 12px
-    height: 50,
-    paddingLeft: 16,
-    paddingRight: 6,
-    marginBottom: 24,
-  },
-  couponInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.ink900,
-    padding: 0,
-  },
-  applyInputBtn: {
-    backgroundColor: COLORS.green700,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: RADIUS.sm,
-    opacity: 0.6,
-  },
-  applyInputBtnActive: {
-    opacity: 1,
-  },
-  applyInputBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  sectionHeading: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 14,
-  },
-  couponsList: {
-    paddingBottom: 28,
+    paddingBottom: 36,
   },
   couponCard: {
     flexDirection: 'row',
@@ -290,70 +201,82 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    padding: 14,
+    padding: 16,
+    marginBottom: 12,
   },
-  percentBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.marigold100, // #FDEFD3
+  percentBox: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.xs,
+    backgroundColor: '#FEF3C7',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
-  percentSymbol: {
+  percentText: {
     fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.marigold700, // #8A5200
+    fontWeight: '900',
+    color: COLORS.marigold500,
   },
   couponInfo: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 10,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 3,
   },
   couponCodeText: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 14.5,
+    fontWeight: '900',
     color: COLORS.ink900,
-    marginBottom: 2,
+    letterSpacing: 0.5,
   },
-  couponDescText: {
-    fontSize: 11.5,
-    color: COLORS.ink500,
-    lineHeight: 16,
-  },
-  applyBtn: {
-    borderWidth: 1.5,
-    borderColor: COLORS.green700,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: RADIUS.sm,
-  },
-  applyBtnText: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: COLORS.green700,
-  },
-  appliedPill: {
+  badgePill: {
     backgroundColor: COLORS.green50,
-    borderWidth: 1,
-    borderColor: COLORS.green500,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: RADIUS.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: RADIUS.xs,
   },
-  appliedPillText: {
-    fontSize: 10.5,
+  badgeText: {
+    fontSize: 9.5,
     fontWeight: '800',
     color: COLORS.green700,
   },
-  separator: {
-    height: 12,
-  },
-  footnoteText: {
-    fontSize: 11.5,
-    color: COLORS.ink500,
-    marginTop: 18,
+  couponTitleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.ink700,
     lineHeight: 16,
+    marginBottom: 3,
+  },
+  couponExpiryText: {
+    fontSize: 11,
+    color: COLORS.ink500,
+  },
+  copyBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.green50,
+  },
+  copyBtnDisabled: {
+    opacity: 0.5,
+  },
+  copyBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.green700,
+    letterSpacing: 0.5,
+  },
+  footerNoteText: {
+    fontSize: 12,
+    color: COLORS.ink500,
     textAlign: 'center',
+    lineHeight: 17,
+    marginTop: 12,
+    paddingHorizontal: 16,
   },
 });
