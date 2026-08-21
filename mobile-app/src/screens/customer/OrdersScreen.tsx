@@ -197,10 +197,32 @@ export default function OrdersScreen({ navigation }: any) {
 
       {/* Top Header */}
       <View style={styles.topHeader}>
-        <Text style={styles.headerTitle}>Orders & Tracking</Text>
+        <Text style={styles.headerTitle}>{token ? 'Orders & Tracking' : 'Your orders'}</Text>
       </View>
 
-      {loading ? (
+      {!token ? (
+        /* =========================================================================
+           STATE: GUEST ORDERS SIGN IN GATE (F1 GUEST IN FIGMA)
+           ========================================================================= */
+        <View style={styles.guestOrdersWrap}>
+          <View style={styles.guestOrdersMintCircle}>
+            <AppIcon name="shopping-bag" size={32} color={COLORS.green700} />
+          </View>
+
+          <Text style={styles.guestOrdersHeadline}>Sign in to see your orders</Text>
+          <Text style={styles.guestOrdersSubtitle}>
+            Track deliveries and reorder your monthly baskets once you sign in.
+          </Text>
+
+          <TouchableOpacity
+            style={styles.guestOrdersBtn}
+            onPress={() => navigation.navigate('Login', { redirect: 'Orders' })}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.guestOrdersBtnText}>Continue with phone number</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading ? (
         <View style={styles.centerWrap}>
           <ActivityIndicator size="large" color={COLORS.green700} />
         </View>
@@ -219,7 +241,7 @@ export default function OrdersScreen({ navigation }: any) {
             onPress={() => navigation.navigate('Shop')}
             activeOpacity={0.85}
           >
-            <Text style={styles.startShopBtnText}>Start monthly shopping</Text>
+            <Text style={styles.startShopBtnText}>Start monthly shopping ›</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -683,6 +705,50 @@ const styles = StyleSheet.create({
   startShopBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '800',
+  },
+  /* Guest State Styles */
+  guestOrdersWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  guestOrdersMintCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  guestOrdersHeadline: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: COLORS.ink900,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  guestOrdersSubtitle: {
+    fontSize: 13.5,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 28,
+    paddingHorizontal: 12,
+  },
+  guestOrdersBtn: {
+    width: '100%',
+    backgroundColor: COLORS.green700,
+    height: 50,
+    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  guestOrdersBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '800',
   },
 });

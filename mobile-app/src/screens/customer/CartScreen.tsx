@@ -15,11 +15,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, CartItem } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
 import { COLORS, RADIUS } from '../../constants/theme';
+import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
 
 export default function CartScreen({ route, navigation }: any) {
   const { token } = useAuth();
   const { items, minOrderLimit = 2000, updateQuantity, addToCart } = useCart();
   const [appliedCoupon, setAppliedCoupon] = useState<any>(route?.params?.appliedCoupon || null);
+  const [authGateVisible, setAuthGateVisible] = useState(false);
+  const [authGateType, setAuthGateType] = useState<AuthGateType>('checkout');
 
   const minLimit = minOrderLimit || 2000;
 
@@ -63,10 +66,8 @@ export default function CartScreen({ route, navigation }: any) {
     }
 
     if (!token) {
-      Alert.alert('Login Required', 'Please log in to proceed to checkout.', [
-        { text: 'Cancel' },
-        { text: 'Login', onPress: () => navigation.navigate('Login', { redirect: 'Checkout' }) }
-      ]);
+      setAuthGateType('checkout');
+      setAuthGateVisible(true);
       return;
     }
 
@@ -74,10 +75,13 @@ export default function CartScreen({ route, navigation }: any) {
   };
 
   const handleSaveAsBasket = () => {
-    Alert.alert(
-      'Basket Saved',
-      'This cart has been saved to your Saved Baskets! You can reorder it anytime in one tap.'
-    );
+    if (!token) {
+      setAuthGateType('save_basket');
+      setAuthGateVisible(true);
+      return;
+    }
+
+    navigation.navigate('SavedBaskets');
   };
 
   const handleReorderLastBasket = () => {
@@ -330,6 +334,17 @@ export default function CartScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Auth Gate Modal Sheet (Flow 8) */}
+      <AuthGateModal
+        visible={authGateVisible}
+        type={authGateType}
+        onClose={() => setAuthGateVisible(false)}
+        onContinue={() => {
+          setAuthGateVisible(false);
+          navigation.navigate('Login', { redirect: authGateType === 'checkout' ? 'Checkout' : 'SavedBaskets' });
+        }}
+      />
     </SafeAreaView>
   );
 }
