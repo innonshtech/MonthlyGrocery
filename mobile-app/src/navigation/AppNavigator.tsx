@@ -28,6 +28,9 @@ import EditProfileScreen from '../screens/customer/EditProfileScreen';
 import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
 import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
 import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
+import OneClickCartScreen from '../screens/customer/OneClickCartScreen';
+import CopyLastMonthScreen from '../screens/customer/CopyLastMonthScreen';
+import SavedBasketsScreen from '../screens/customer/SavedBasketsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,6 +61,9 @@ export default function AppNavigator() {
           <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="MyMonthlyGroceryHub" component={MyMonthlyGroceryHub} />
+          <Stack.Screen name="OneClickCart" component={OneClickCartScreen} />
+          <Stack.Screen name="CopyLastMonth" component={CopyLastMonthScreen} />
+          <Stack.Screen name="SavedBaskets" component={SavedBasketsScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />
