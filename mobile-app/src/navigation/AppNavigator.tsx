@@ -21,11 +21,13 @@ import CheckoutScreen from '../screens/customer/CheckoutScreen';
 import OrderSuccessScreen from '../screens/customer/OrderSuccessScreen';
 import CartScreen from '../screens/customer/CartScreen';
 import OrdersScreen from '../screens/customer/OrdersScreen';
+import OrderDetailScreen from '../screens/customer/OrderDetailScreen';
 import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
-import MyCouponsScreen from '../screens/customer/MyCouponsScreen';
 import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
 import EditProfileScreen from '../screens/customer/EditProfileScreen';
 import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
+import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
+import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -60,8 +62,11 @@ export default function AppNavigator() {
           <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />
           <Stack.Screen name="Orders" component={OrdersScreen} />
+          <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
           <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
-          <Stack.Screen name="MyCoupons" component={MyCouponsScreen} />
+          <Stack.Screen name="DeliveryAddress" component={SavedAddressesScreen} />
+          <Stack.Screen name="DeliverySlot" component={DeliverySlotScreen} />
+          <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />

@@ -1,72 +1,99 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppIcon from '../../components/AppIcon';
+import { COLORS, RADIUS } from '../../constants/theme';
 
 export default function OrderSuccessScreen({ route, navigation }: any) {
-  const { orderId, total, deliveryDay, deliveryTime } = route.params || {
-    orderId: 'ORD-98402',
-    total: 3049,
-    deliveryDay: 'Tomorrow',
-    deliveryTime: '8:00 AM - 12:00 PM'
-  };
+  const {
+    orderId = 'MG-849201',
+    total = 2160,
+    savings = 340,
+    deliveryDay = 'Tomorrow',
+    deliveryTime = '7:00 AM - 10:00 AM',
+    address = 'Flat 402, Green Acres, Paud Road, Pune 411038',
+  } = route?.params || {};
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      
-      <View style={styles.container}>
+
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Success Icon */}
-        <View style={styles.iconCircle}>
-          <Text style={styles.successIcon}>🎉</Text>
+        <View style={styles.successIconCircle}>
+          <Text style={styles.checkTick}>✓</Text>
         </View>
 
-        <Text style={styles.title}>Order Placed Successfully!</Text>
-        <Text style={styles.subtitle}>
-          Thank you for choosing MonthlyGrocery. Your restocking schedule has been confirmed with the store.
+        {/* Title & Subtitle */}
+        <Text style={styles.successTitle}>Order confirmed!</Text>
+        <Text style={styles.successSubtitle}>
+          Your monthly grocery basket has been placed and scheduled for delivery.
         </Text>
 
         {/* Order Details Card */}
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.label}>Order Reference ID</Text>
-            <Text style={styles.value} numberOfLines={1}>{orderId}</Text>
+        <View style={styles.detailsCard}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Order ID</Text>
+            <Text style={styles.detailValBold}>#{orderId}</Text>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Amount Billed</Text>
-            <Text style={[styles.value, { color: '#22C55E' }]}>₹{total}</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Delivery slot</Text>
+            <Text style={styles.detailVal}>{deliveryDay} · {deliveryTime}</Text>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Scheduled Slot</Text>
-            <Text style={styles.value}>{deliveryDay} ({deliveryTime})</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Delivery address</Text>
+            <Text style={[styles.detailVal, { flex: 1, textAlign: 'right' }]} numberOfLines={2}>
+              {address}
+            </Text>
           </View>
 
-          <View style={[styles.row, { borderBottomWidth: 0, paddingBottom: 0 }]}>
-            <Text style={styles.label}>Estimated Delivery</Text>
-            <Text style={styles.value}>⚡ Within 4 Hours of Slot Start</Text>
+          <View style={styles.divider} />
+
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Total paid</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.totalPaidText}>₹{total}</Text>
+              {savings > 0 && (
+                <Text style={styles.savedText}>You saved ₹{savings}</Text>
+              )}
+            </View>
           </View>
         </View>
+      </ScrollView>
 
-        {/* Help Tip */}
-        <View style={styles.tipBox}>
-          <Text style={styles.tipText}>
-            💡 You can modify items, adjust repeating slot frequencies, or request cancellations directly from the Order History page.
-          </Text>
-        </View>
-
-        {/* Actions */}
-        <TouchableOpacity 
-          style={styles.primaryBtn}
+      {/* Bottom Actions */}
+      <View style={styles.bottomBar}>
+        <TouchableOpacity
+          style={styles.trackBtn}
           onPress={() => navigation.navigate('Orders')}
+          activeOpacity={0.85}
         >
-          <Text style={styles.primaryBtnText}>Track Order Live ➔</Text>
+          <Text style={styles.trackBtnText}>Track order status</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.secondaryBtn}
+        <TouchableOpacity
+          style={styles.homeBtn}
           onPress={() => navigation.navigate('Shop')}
+          activeOpacity={0.8}
         >
-          <Text style={styles.secondaryBtnText}>Back to Home Feed</Text>
+          <Text style={styles.homeBtnText}>Continue shopping</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -76,117 +103,120 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFF8ED',
+    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
   },
-  container: {
+  scrollArea: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
-  iconCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 36,
+    paddingBottom: 28,
     alignItems: 'center',
-    marginBottom: 25,
+  },
+  successIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.green50,
     borderWidth: 2,
-    borderColor: '#22C55E',
-  },
-  successIcon: {
-    fontSize: 44,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#0B1220',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 19,
-    paddingHorizontal: 15,
-    marginBottom: 30,
-  },
-  card: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
+    borderColor: COLORS.green500,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
   },
-  row: {
+  checkTick: {
+    fontSize: 38,
+    fontWeight: '900',
+    color: COLORS.green700,
+  },
+  successTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.ink900,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 290,
+    marginBottom: 32,
+  },
+  detailsCard: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    padding: 18,
+  },
+  detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    alignItems: 'center',
+    paddingVertical: 4,
   },
-  label: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-  },
-  value: {
+  detailLabel: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: '#0B1220',
-    maxWidth: '60%',
-    textAlign: 'right',
+    color: COLORS.ink500,
   },
-  tipBox: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 35,
+  detailVal: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.ink900,
   },
-  tipText: {
-    fontSize: 12,
-    color: '#666',
-    lineHeight: 16,
+  detailValBold: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.green700,
   },
-  primaryBtn: {
-    width: '100%',
-    backgroundColor: '#22C55E',
+  totalPaidText: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: COLORS.ink900,
+  },
+  savedText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: COLORS.green700,
+    marginTop: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.line,
+    marginVertical: 12,
+  },
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.line,
+    gap: 10,
+  },
+  trackBtn: {
+    backgroundColor: COLORS.green700,
     height: 52,
-    borderRadius: 50,
+    borderRadius: RADIUS.pill,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 3,
   },
-  primaryBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  secondaryBtn: {
-    width: '100%',
-    height: 52,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#6C3BFF',
-  },
-  secondaryBtnText: {
-    color: '#6C3BFF',
+  trackBtnText: {
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  homeBtn: {
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  homeBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.green700,
   },
 });
