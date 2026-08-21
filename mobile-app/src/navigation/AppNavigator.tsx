@@ -26,6 +26,7 @@ import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
 import EditProfileScreen from '../screens/customer/EditProfileScreen';
 import DeleteAccountScreen from '../screens/customer/DeleteAccountScreen';
+import SystemStateScreen from '../screens/customer/SystemStateScreen';
 import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
 import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
 import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
@@ -78,6 +79,11 @@ export default function AppNavigator() {
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+          <Stack.Screen name="SystemState" component={SystemStateScreen} />
+          <Stack.Screen name="AreaNotServiceable" component={SystemStateScreen} initialParams={{ type: 'unserviceable' }} />
+          <Stack.Screen name="OfflineState" component={SystemStateScreen} initialParams={{ type: 'offline' }} />
+          <Stack.Screen name="GenericError" component={SystemStateScreen} initialParams={{ type: 'error' }} />
+          <Stack.Screen name="MaintenanceState" component={SystemStateScreen} initialParams={{ type: 'maintenance' }} />
         </Stack.Navigator>
       </CartProvider>
     </NavigationContainer>
