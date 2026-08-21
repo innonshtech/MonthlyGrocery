@@ -5,7 +5,6 @@ import {
   Text,
   FlatList,
   ActivityIndicator,
-  SafeAreaView,
   TouchableOpacity,
   Alert,
   Image,
@@ -261,7 +260,7 @@ export default function OrdersDashboard() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       {/* Top Bar */}
       <View style={styles.header}>
@@ -329,7 +328,7 @@ export default function OrdersDashboard() {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

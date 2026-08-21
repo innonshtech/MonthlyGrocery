@@ -115,8 +115,8 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 router.post('/checkout', authMiddleware, handleCheckout);
 router.post('/', authMiddleware, handleCheckout);
 
-// 2. GET /mine: Consumer order history (Swiggy/Zomato Real-time sync)
-router.get('/mine', authMiddleware, async (req: AuthRequest, res) => {
+// 2. GET /mine & /my: Consumer order history (Swiggy/Zomato Real-time sync)
+const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
   try {
     const { readDb } = require('../config/localDb');
     const db = readDb();
@@ -178,7 +178,10 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res) => {
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
-});
+};
+
+router.get('/mine', authMiddleware, handleFetchMyOrders);
+router.get('/my', authMiddleware, handleFetchMyOrders);
 
 // 3. GET /merchant/all: Merchant incoming orders list
 router.get('/merchant/all', authMiddleware, async (req: AuthRequest, res) => {

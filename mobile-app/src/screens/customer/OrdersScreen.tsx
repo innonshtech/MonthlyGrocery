@@ -34,104 +34,12 @@ export default function OrdersScreen({ navigation }: any) {
         }
       });
       const data = await res.json();
-      if (res.ok && data.success && data.orders?.length > 0) {
+      if (res.ok && data.success && Array.isArray(data.orders)) {
         setOrders(data.orders);
       } else {
-        // Sample orders matching Figma F1 design
-        setOrders([
-          {
-            id: 'MG-849201',
-            status: 'out_for_delivery',
-            created_at: new Date().toISOString(),
-            delivery_slot: 'Today, 7:00 AM - 10:00 AM',
-            shipping_address: 'Flat 402, Green Acres, Paud Road, Kothrud, Pune 411038',
-            total_amount: 2450,
-            discount_amount: 100,
-            delivery_otp: '4819',
-            payment_method: 'UPI',
-            order_items: [
-              {
-                product_id: 'p-1',
-                product_name: 'Aashirvaad Select Atta (5 kg)',
-                quantity: 1,
-                unit_price: 255,
-                mrp: 310,
-                unit: '5 kg',
-                image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80'
-              },
-              {
-                product_id: 'p-2',
-                product_name: 'Fortune Sunflower Oil (1 L)',
-                quantity: 2,
-                unit_price: 135,
-                mrp: 165,
-                unit: '1 L',
-                image_url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&q=80'
-              },
-              {
-                product_id: 'p-3',
-                product_name: 'India Gate Basmati Rice (5 kg)',
-                quantity: 1,
-                unit_price: 525,
-                mrp: 640,
-                unit: '5 kg',
-                image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&q=80'
-              },
-              {
-                product_id: 'p-4',
-                product_name: 'Tata Sampann Toor Dal (1 kg)',
-                quantity: 2,
-                unit_price: 142,
-                mrp: 180,
-                unit: '1 kg',
-                image_url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=600&q=80'
-              }
-            ]
-          },
-          {
-            id: 'MG-732109',
-            status: 'delivered',
-            created_at: '2026-07-28T10:30:00.000Z',
-            delivery_slot: '28 Jul, Morning Slot',
-            shipping_address: 'Flat 402, Green Acres, Paud Road, Kothrud, Pune 411038',
-            total_amount: 3120,
-            discount_amount: 200,
-            delivery_otp: '1934',
-            payment_method: 'UPI',
-            order_items: [
-              {
-                product_id: 'p-1',
-                product_name: 'Aashirvaad Select Atta (5 kg)',
-                quantity: 2,
-                unit_price: 255,
-                mrp: 310,
-                unit: '5 kg',
-                image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80'
-              },
-              {
-                product_id: 'p-5',
-                product_name: 'Amul Pure Ghee (1 L)',
-                quantity: 1,
-                unit_price: 649,
-                mrp: 700,
-                unit: '1 L',
-                image_url: 'https://images.unsplash.com/photo-1528825871115-3581a5387919?w=600&q=80'
-              },
-              {
-                product_id: 'p-6',
-                product_name: 'Tata Tea Gold (500 g)',
-                quantity: 2,
-                unit_price: 285,
-                mrp: 340,
-                unit: '500 g',
-                image_url: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=600&q=80'
-              }
-            ]
-          }
-        ]);
+        setOrders([]);
       }
     } catch (err) {
-      // Fallback sample
       setOrders([]);
     } finally {
       setLoading(false);

@@ -61,14 +61,14 @@
     {
       "id": "banner-1",
       "title": "Monthly Super Saver: Flat 10% Off on Staples!",
-      "image_url": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/banners/banner_staples_discount.png",
       "action_link": "CategoryProducts?category=Atta%20%26%20Rice",
       "active": true
     },
     {
       "id": "banner-2",
       "title": "Free Delivery on Orders Over ₹3,000",
-      "image_url": "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/banners/banner_free_delivery.png",
       "action_link": "Cart",
       "active": true
     }

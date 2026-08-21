@@ -9,7 +9,6 @@ import {
   Modal,
   ActivityIndicator,
   Switch,
-  SafeAreaView,
   Alert,
   Image,
   ScrollView,
@@ -239,7 +238,7 @@ export default function MerchantCatalogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       {/* Header */}
       <View style={styles.topBar}>
@@ -370,7 +369,7 @@ export default function MerchantCatalogScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

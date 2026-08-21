@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   ScrollView,
   Alert,
   Linking,
@@ -30,7 +29,7 @@ export default function StoreSettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
@@ -103,7 +102,7 @@ export default function StoreSettingsScreen() {
           <Text style={styles.logoutText}>Log Out from Store Console</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

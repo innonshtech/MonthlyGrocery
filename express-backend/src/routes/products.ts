@@ -871,4 +871,40 @@ router.post('/coupons/validate', async (req, res) => {
   }
 });
 
+// 12. POST /upload-image: Upload image directly to Supabase Storage bucket
+router.post('/upload-image', authMiddleware, requireRole(['admin', 'super_admin']), upload.single('image'), async (req: AuthRequest, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'No image file uploaded' });
+  }
+
+  try {
+    const fileExt = req.file.originalname.split('.').pop() || 'png';
+    const fileName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `products/${fileName}`;
+
+    // Upload to Supabase storage bucket 'product-images'
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: true
+      });
+
+    if (uploadError) {
+      return res.status(500).json({ success: false, error: uploadError.message });
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(filePath);
+
+    return res.json({
+      success: true,
+      image_url: publicUrlData.publicUrl
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Image upload failed' });
+  }
+});
+
 export default router;

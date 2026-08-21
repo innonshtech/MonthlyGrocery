@@ -18,63 +18,25 @@ export default function OrderDetailScreen({ route, navigation }: any) {
   const { order = {} } = route?.params || {};
   const { addToCart } = useCart();
 
+  const isConfirmed = ['confirmed', 'packed', 'out_for_delivery', 'delivered'].includes(order.status);
+  const isPacked = ['packed', 'out_for_delivery', 'delivered'].includes(order.status);
+  const isOutForDelivery = ['out_for_delivery', 'delivered'].includes(order.status);
   const isDelivered = order.status === 'delivered';
-  const isOutForDelivery = order.status === 'out_for_delivery' || !order.status;
-  const isPacked = ['packed', 'dispatched'].includes(order.status);
 
-  // Items fallback
-  const orderItems = (order.order_items && order.order_items.length > 0)
-    ? order.order_items
-    : [
-        {
-          product_id: 'p-1',
-          product_name: 'Aashirvaad Select Atta (5 kg)',
-          quantity: 1,
-          unit_price: 255,
-          mrp: 310,
-          unit: '5 kg',
-          image_url: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80'
-        },
-        {
-          product_id: 'p-2',
-          product_name: 'Fortune Sunflower Oil (1 L)',
-          quantity: 2,
-          unit_price: 135,
-          mrp: 165,
-          unit: '1 L',
-          image_url: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&q=80'
-        },
-        {
-          product_id: 'p-3',
-          product_name: 'India Gate Basmati Rice (5 kg)',
-          quantity: 1,
-          unit_price: 525,
-          mrp: 640,
-          unit: '5 kg',
-          image_url: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&q=80'
-        },
-        {
-          product_id: 'p-4',
-          product_name: 'Tata Sampann Toor Dal (1 kg)',
-          quantity: 2,
-          unit_price: 142,
-          mrp: 180,
-          unit: '1 kg',
-          image_url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=600&q=80'
-        }
-      ];
+  // Dynamic items directly from real order
+  const orderItems = order.order_items && Array.isArray(order.order_items) ? order.order_items : [];
 
-  const totalPaid = parseFloat(order.total_amount as any) || 2450;
-  const discountAmount = parseFloat(order.discount_amount as any) || 100;
+  const totalPaid = parseFloat(order.total_amount as any) || 0;
+  const discountAmount = parseFloat(order.discount_amount as any) || 0;
   const itemTotal = totalPaid + discountAmount;
-  const deliveryOtp = order.delivery_otp || (isDelivered ? null : '4819');
+  const deliveryOtp = order.delivery_otp || (isDelivered ? null : '----');
 
   // Timeline steps
   const steps = [
-    { id: 1, title: 'Order Confirmed', time: '10:30 AM', completed: true },
-    { id: 2, title: 'Packed at Pune Hub', time: '11:15 AM', completed: isPacked || isOutForDelivery || isDelivered },
-    { id: 3, title: 'Out for Delivery', time: 'In transit', completed: isOutForDelivery || isDelivered, active: isOutForDelivery && !isDelivered },
-    { id: 4, title: 'Delivered', time: isDelivered ? 'Delivered' : 'Expected today', completed: isDelivered },
+    { id: 1, title: 'Order Confirmed', time: 'Confirmed', completed: isConfirmed },
+    { id: 2, title: 'Packed at Hub', time: isPacked ? 'Ready' : 'Pending', completed: isPacked },
+    { id: 3, title: 'Out for Delivery', time: isOutForDelivery ? 'In transit' : 'Pending', completed: isOutForDelivery, active: isOutForDelivery && !isDelivered },
+    { id: 4, title: 'Delivered', time: isDelivered ? 'Delivered' : 'Expected', completed: isDelivered },
   ];
 
   const handleReorder = () => {

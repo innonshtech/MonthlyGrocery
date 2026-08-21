@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
@@ -34,10 +35,16 @@ const CATEGORIES_LIST: CategoryItem[] = [
 ];
 
 export default function HomeScreen({ navigation }: any) {
-  const { city, area } = useAuth();
+  const { city, area, token } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orderStats, setOrderStats] = useState<{ totalSavings: number; orderCount: number; lastOrder: any | null }>({
+    totalSavings: 0,
+    orderCount: 0,
+    lastOrder: null
+  });
+  const [savedBasketsCount, setSavedBasketsCount] = useState<number>(0);
 
   const displayLocation = area ? `${area}, ${city || 'Pune'}` : (city || 'Kothrud, Pune');
 
@@ -60,6 +67,55 @@ export default function HomeScreen({ navigation }: any) {
     };
     fetchFeatured();
   }, [city, area]);
+
+  // Fetch dynamic user order stats & saved baskets
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      // 1. Fetch saved baskets count from AsyncStorage
+      try {
+        const saved = await AsyncStorage.getItem('@mg_saved_baskets');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setSavedBasketsCount(Array.isArray(parsed) ? parsed.length : 0);
+        } else {
+          setSavedBasketsCount(0);
+        }
+      } catch (err) {
+        setSavedBasketsCount(0);
+      }
+
+      // 2. Fetch real user orders if logged in
+      if (token) {
+        try {
+          const res = await fetch(`${API_BASE}/orders/my`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          if (res.ok && data.success && Array.isArray(data.orders) && data.orders.length > 0) {
+            const userOrders = data.orders;
+            const savings = userOrders.reduce((sum: number, o: any) => sum + (parseFloat(o.discount_amount) || 0), 0);
+            setOrderStats({
+              totalSavings: savings,
+              orderCount: userOrders.length,
+              lastOrder: userOrders[0]
+            });
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to fetch user order stats:', err);
+        }
+      }
+
+      // Fallback for first-timers / guest users
+      setOrderStats({
+        totalSavings: 0,
+        orderCount: 0,
+        lastOrder: null
+      });
+    };
+
+    fetchUserStats();
+  }, [token]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -123,13 +179,23 @@ export default function HomeScreen({ navigation }: any) {
       </TouchableOpacity>
 
       {/* =========================================================================
-         4. MONTHLY SAVINGS HIGHLIGHT CARD (SIGNATURE SHOWPIECE)
+         4. MONTHLY SAVINGS HIGHLIGHT CARD (DYNAMIC & FIRST-TIMER VARIANT)
          ========================================================================= */}
       <View style={styles.savingsCard}>
         <View style={styles.savingsLeft}>
-          <Text style={styles.savingsLabel}>SAVED THIS MONTH</Text>
-          <Text style={styles.savingsAmount}>₹1,240</Text>
-          <Text style={styles.savingsSubtitle}>across 3 monthly orders</Text>
+          <Text style={styles.savingsLabel}>
+            {orderStats.orderCount > 0 ? 'SAVED THIS MONTH' : 'START YOUR MONTHLY SAVINGS'}
+          </Text>
+          <Text style={styles.savingsAmount}>
+            {orderStats.orderCount > 0 
+              ? `₹${orderStats.totalSavings.toLocaleString('en-IN')}` 
+              : 'Save up to 20%'}
+          </Text>
+          <Text style={styles.savingsSubtitle}>
+            {orderStats.orderCount > 0 
+              ? `across ${orderStats.orderCount} monthly order${orderStats.orderCount > 1 ? 's' : ''}` 
+              : 'on planned household grocery baskets'}
+          </Text>
         </View>
 
         <View style={styles.coinCircle}>
@@ -138,33 +204,45 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       {/* =========================================================================
-         5. DUAL QUICK ACTION CARDS (Reorder & Saved Baskets)
+         5. DUAL QUICK ACTION CARDS (Dynamic Reorder & Saved Baskets)
          ========================================================================= */}
       <View style={styles.dualCardsRow}>
-        {/* Left: Reorder Last Basket */}
+        {/* Left: Reorder Last Basket OR Create 1st Basket */}
         <TouchableOpacity 
           style={styles.quickCard}
-          onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
+          onPress={() => {
+            if (orderStats.orderCount > 0) {
+              navigation.navigate('CopyLastMonth');
+            } else {
+              navigation.navigate('OneClickCart');
+            }
+          }}
           activeOpacity={0.8}
         >
           <View style={styles.quickIconCircle}>
-            <Text style={styles.quickIcon}>↻</Text>
+            <Text style={styles.quickIcon}>{orderStats.orderCount > 0 ? '↻' : '✦'}</Text>
           </View>
-          <Text style={styles.quickTitle}>Reorder last basket</Text>
-          <Text style={styles.quickSubtitle}>28 items · ₹3,120</Text>
+          <Text style={styles.quickTitle}>
+            {orderStats.orderCount > 0 ? 'Reorder last basket' : 'Build 1st basket'}
+          </Text>
+          <Text style={styles.quickSubtitle}>
+            {orderStats.orderCount > 0 && orderStats.lastOrder
+              ? `${orderStats.lastOrder.order_items?.length || 0} items · ₹${orderStats.lastOrder.total_amount}`
+              : 'Curated essentials'}
+          </Text>
         </TouchableOpacity>
 
-        {/* Right: Saved Baskets */}
+        {/* Right: Saved Baskets (Dynamic AsyncStorage Count) */}
         <TouchableOpacity 
           style={styles.quickCard}
-          onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
+          onPress={() => navigation.navigate('SavedBaskets')}
           activeOpacity={0.8}
         >
           <View style={styles.quickIconCircle}>
             <Text style={styles.quickIcon}>🔖</Text>
           </View>
           <Text style={styles.quickTitle}>Saved baskets</Text>
-          <Text style={styles.quickSubtitle}>3 saved</Text>
+          <Text style={styles.quickSubtitle}>{savedBasketsCount} saved</Text>
         </TouchableOpacity>
       </View>
 

@@ -4,7 +4,6 @@ import {
   View,
   Text,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
   StatusBar
@@ -49,7 +48,7 @@ export default function MerchantAnalyticsScreen() {
   const avgOrderValue = orders.length > 0 ? (totalSales / (orders.length - cancelledOrdersCount || 1)) : 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
@@ -145,7 +144,7 @@ export default function MerchantAnalyticsScreen() {
           </View>
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
