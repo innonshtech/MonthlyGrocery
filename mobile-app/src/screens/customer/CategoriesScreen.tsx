@@ -1,133 +1,179 @@
-import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, FlatList, SafeAreaView, Dimensions, StatusBar } from 'react-native';
-
-const CATEGORIES = [
-  { id: 'cat1', name: 'Atta & Flour', emoji: '🌾', count: '12 items' },
-  { id: 'cat2', name: 'Rice', emoji: '🍚', count: '8 items' },
-  { id: 'cat3', name: 'Dal & Pulses', emoji: '🥜', count: '15 items' },
-  { id: 'cat4', name: 'Oil & Ghee', emoji: '🧴', count: '10 items' },
-  { id: 'cat5', name: 'Sugar & Salt', emoji: '🍬', count: '6 items' },
-  { id: 'cat6', name: 'Spices & Masala', emoji: '🌶️', count: '24 items' },
-  { id: 'cat7', name: 'Dry Fruits', emoji: '🌰', count: '14 items' },
-  { id: 'cat8', name: 'Tea & Coffee', emoji: '☕', count: '18 items' },
-  { id: 'cat9', name: 'Breakfast Products', emoji: '🥣', count: '11 items' },
-  { id: 'cat10', name: 'Biscuits & Snacks', emoji: '🍪', count: '20 items' },
-  { id: 'cat11', name: 'Beverages', emoji: '🥤', count: '15 items' },
-  { id: 'cat12', name: 'Cleaning Products', emoji: '🧼', count: '16 items' },
-  { id: 'cat13', name: 'Laundry', emoji: '🧺', count: '9 items' },
-  { id: 'cat14', name: 'Kitchen Essentials', emoji: '🍽️', count: '12 items' },
-  { id: 'cat15', name: 'Home Care', emoji: '🏠', count: '7 items' },
-  { id: 'cat16', name: 'Personal Care', emoji: '🧴', count: '22 items' },
-  { id: 'cat17', name: 'Baby Care', emoji: '🍼', count: '8 items' },
-  { id: 'cat18', name: 'Health & Wellness', emoji: '💊', count: '13 items' },
-  { id: 'cat19', name: 'Fruits & Vegetables', emoji: '🍎', count: '30 items' },
-  { id: 'cat20', name: 'Dairy & Bakery', emoji: '🧀', count: '12 items' }
-];
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  TextInput,
+  Dimensions,
+  StatusBar
+} from 'react-native';
+import AppIcon, { IconName } from '../../components/AppIcon';
+import { COLORS, RADIUS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 60) / 3;
+
+interface CategoryTile {
+  id: string;
+  name: string;
+  icon: IconName;
+}
+
+const ALL_CATEGORIES: CategoryTile[] = [
+  { id: 'atta-rice', name: 'Atta & Rice', icon: 'cat-atta-rice' },
+  { id: 'oils-ghee', name: 'Oils & Ghee', icon: 'cat-oils-ghee' },
+  { id: 'dals-pulses', name: 'Dals & Pulses', icon: 'cat-dals-pulses' },
+  { id: 'spices-masala', name: 'Spices & Masala', icon: 'cat-spices-masala' },
+  { id: 'dry-fruits', name: 'Dry Fruits', icon: 'cat-dry-fruits' },
+  { id: 'snacks', name: 'Snacks', icon: 'cat-snacks' },
+  { id: 'beverages', name: 'Beverages', icon: 'cat-beverages' },
+  { id: 'biscuits', name: 'Biscuits', icon: 'cat-biscuits' },
+  { id: 'cleaning', name: 'Cleaning', icon: 'cat-cleaning' },
+  { id: 'personal-care', name: 'Personal Care', icon: 'cat-personal-care' },
+  { id: 'home-kitchen', name: 'Home & Kitchen', icon: 'cat-home-kitchen' },
+  { id: 'baby-care', name: 'Baby Care', icon: 'cat-baby-care' },
+];
 
 export default function CategoriesScreen({ navigation }: any) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCategories = ALL_CATEGORIES.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>All Categories</Text>
-        <Text style={styles.headerSubtitle}>Select a category to browse products</Text>
+
+      {/* =========================================================================
+         1. TITLE HEADER
+         ========================================================================= */}
+      <View style={styles.headerBlock}>
+        <Text style={styles.mainTitle}>Categories</Text>
       </View>
 
+      {/* =========================================================================
+         2. SEARCH BAR
+         ========================================================================= */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchBar}>
+          <AppIcon name="search" size={18} color={COLORS.ink300} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search categories & products"
+            placeholderTextColor={COLORS.ink300}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Text style={styles.clearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* =========================================================================
+         3. 3-COLUMN CATEGORY GRID (12 EXACT FIGMA TILES)
+         ========================================================================= */}
       <FlatList
-        data={CATEGORIES}
+        data={filteredCategories}
         keyExtractor={(item) => item.id}
         numColumns={3}
-        contentContainerStyle={styles.gridContent}
-        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.gridContainer}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={styles.card}
-            onPress={() => navigation.navigate('CategoryProducts', { categoryName: item.name })}
+          <TouchableOpacity
+            style={styles.categoryCard}
+            onPress={() =>
+              navigation.navigate('CategoryProducts', {
+                categoryId: item.id,
+                categoryName: item.name,
+              })
+            }
+            activeOpacity={0.75}
           >
-            <View style={styles.emojiBg}>
-              <Text style={styles.emoji}>{item.emoji}</Text>
+            <View style={styles.iconBox}>
+              <AppIcon name={item.icon} size={30} color={COLORS.green700} />
             </View>
-            <Text style={styles.catName} numberOfLines={2}>{item.name}</Text>
-            <Text style={styles.catCount}>{item.count}</Text>
+            <Text style={styles.categoryLabel} numberOfLines={2}>
+              {item.name}
+            </Text>
           </TouchableOpacity>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#FFF8ED',
+    backgroundColor: '#FFFFFF', // Pure clean surface
   },
-  header: {
+  headerBlock: {
     paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1EAD8',
+    paddingTop: 16,
+    paddingBottom: 4,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#0B1220',
+  mainTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.ink900,
+    letterSpacing: -0.4,
   },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+  searchSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  gridContent: {
-    padding: 15,
-  },
-  columnWrapper: {
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  card: {
-    backgroundColor: '#fff',
-    width: cardWidth,
-    borderRadius: 20,
-    padding: 12,
+  searchBar: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.01,
-    shadowRadius: 5,
-    elevation: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md, // 12px
+    height: 50,
+    paddingHorizontal: 14,
+    gap: 10,
   },
-  emojiBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    backgroundColor: '#FFF8ED',
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.ink900,
+    padding: 0,
+  },
+  clearText: {
+    fontSize: 14,
+    color: COLORS.ink300,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
+  },
+  gridContainer: {
+    paddingHorizontal: 14,
+    paddingBottom: 32,
+  },
+  categoryCard: {
+    width: (width - 28) / 3,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    marginBottom: 20,
+  },
+  iconBox: {
+    width: '100%',
+    height: 78,
+    borderRadius: RADIUS.lg, // 16px rounded corners matching screenshot
+    backgroundColor: COLORS.green50, // #F2F9F5 soft mint fill
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
-  emoji: {
-    fontSize: 22,
-  },
-  catName: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#0B1220',
+  categoryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.ink900, // #17251E
     textAlign: 'center',
-    height: 32,
-    lineHeight: 15,
-  },
-  catCount: {
-    fontSize: 9,
-    color: '#999',
-    marginTop: 2,
-    fontWeight: '500',
+    lineHeight: 16,
   },
 });

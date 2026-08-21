@@ -152,5 +152,81 @@
       "city_id": "city-4",
       "name": "Noida Sec-62"
     }
+  ],
+  "shop_products": [
+    {
+      "id": "sp-1786699510538-g4wsui6w8",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "1afe95da-97a4-4e7a-9389-f4d37f8d2533",
+      "selling_price": 425,
+      "discount_percentage": 15,
+      "stock": 0,
+      "available": false,
+      "status": "pending"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-1",
+      "name": "Atta & Rice"
+    },
+    {
+      "id": "cat-2",
+      "name": "Cooking Essentials"
+    },
+    {
+      "id": "cat-3",
+      "name": "Dairy Staples"
+    },
+    {
+      "id": "cat-4",
+      "name": "Pulses & Grains"
+    },
+    {
+      "id": "cat-5",
+      "name": "Packaged Foods"
+    },
+    {
+      "id": "cat-6",
+      "name": "Household Items"
+    },
+    {
+      "id": "cat-7",
+      "name": "Beverages"
+    },
+    {
+      "id": "cat-8",
+      "name": "Personal Care"
+    },
+    {
+      "id": "cat-9",
+      "name": "Snacks"
+    }
+  ],
+  "coupons": [
+    {
+      "id": "cp-1",
+      "code": "GROCERY10",
+      "discount_type": "percentage",
+      "value": 10,
+      "min_order": 500,
+      "active": true
+    },
+    {
+      "id": "cp-2",
+      "code": "WELCOME50",
+      "discount_type": "flat",
+      "value": 50,
+      "min_order": 300,
+      "active": true
+    },
+    {
+      "id": "cp-3",
+      "code": "SUPER300",
+      "discount_type": "flat",
+      "value": 300,
+      "min_order": 2500,
+      "active": true
+    }
   ]
 }

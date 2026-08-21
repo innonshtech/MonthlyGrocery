@@ -8,17 +8,83 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Image,
-  StatusBar
+  StatusBar,
+  Alert
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 
 export default function OrdersScreen({ navigation }: any) {
-  const { token } = useAuth();
+  const { token, city, area } = useAuth();
+  const { addToCart } = useCart();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+
+  const handleReorder = async (order: any) => {
+    setReorderingId(order.id);
+    try {
+      let url = `${API_BASE}/products/all?limit=300`;
+      if (city) url += `&city=${encodeURIComponent(city)}`;
+      if (area) url += `&area_name=${encodeURIComponent(area)}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        Alert.alert('Error', 'Failed to verify active catalog prices.');
+        return;
+      }
+
+      const activeProducts = data.products || [];
+      const prodMap = new Map<string, any>();
+      activeProducts.forEach((p: any) => prodMap.set(p.id, p));
+
+      let addedCount = 0;
+      let outOfStockCount = 0;
+      let repricedCount = 0;
+
+      for (const item of order.order_items) {
+        const activeProd = prodMap.get(item.product_id);
+        if (activeProd) {
+          if (activeProd.price !== item.unit_price) {
+            repricedCount++;
+          }
+          const qty = parseInt(item.quantity) || 1;
+          for (let i = 0; i < qty; i++) {
+            addToCart(activeProd);
+          }
+          addedCount++;
+        } else {
+          outOfStockCount++;
+        }
+      }
+
+      if (addedCount === 0) {
+        Alert.alert('Unavailable', 'The items in this past order are currently not available in your selected area.');
+        return;
+      }
+
+      let notice = `Added ${addedCount} item(s) to your cart!`;
+      if (outOfStockCount > 0) {
+        notice += `\n(${outOfStockCount} item(s) are out of stock and were skipped).`;
+      }
+      if (repricedCount > 0) {
+        notice += `\n(${repricedCount} item(s) had price updates according to today's active store rates).`;
+      }
+
+      Alert.alert('Reorder Successful', notice, [
+        { text: 'Continue Shopping' },
+        { text: 'View Cart', onPress: () => navigation.navigate('Cart') }
+      ]);
+    } catch (err) {
+      Alert.alert('Error', 'Connection failed while reordering.');
+    } finally {
+      setReorderingId(null);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -147,7 +213,7 @@ export default function OrdersScreen({ navigation }: any) {
             ) : (
               <View style={styles.timelineContainer}>
                 {renderTimelineStep('Order Placed', 'We have received your pantry list.', item.status, 0)}
-                {renderTimelineStep('Confirmed', 'Merchant verified stock availability.', item.status, 1)}
+                {renderTimelineStep('Confirmed', 'Store partner verified stock availability.', item.status, 1)}
                 {renderTimelineStep('Packing', 'Items are being packed sanitarily.', item.status, 2)}
                 {renderTimelineStep('Out for Delivery', 'Driver has left the local shop.', item.status, 3)}
                 {renderTimelineStep('Delivered', 'Enjoy your monthly groceries!', item.status, 4)}
@@ -170,8 +236,21 @@ export default function OrdersScreen({ navigation }: any) {
         )}
 
         <View style={styles.cardFooter}>
-          <Text style={styles.totalLabel}>Grand Total</Text>
-          <Text style={styles.totalValue}>₹{item.total_amount}</Text>
+          <View>
+            <Text style={styles.totalLabel}>Grand Total</Text>
+            <Text style={styles.totalValue}>₹{item.total_amount}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.reorderBtn}
+            onPress={() => handleReorder(item)}
+            disabled={reorderingId === item.id}
+          >
+            {reorderingId === item.id ? (
+              <ActivityIndicator size="small" color="#16A34A" />
+            ) : (
+              <Text style={styles.reorderBtnText}>🔄 Reorder Basket</Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -461,15 +540,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   totalLabel: {
-    fontSize: 14,
+    fontSize: 11,
     color: '#666',
+    fontWeight: '600',
   },
   totalValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#22C55E',
+    color: '#0F172A',
+  },
+  reorderBtn: {
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reorderBtnText: {
+    color: '#16A34A',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   errorText: {
     fontSize: 14,

@@ -131,8 +131,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('@auth_token');
+      await AsyncStorage.removeItem('@user_city');
+      await AsyncStorage.removeItem('@user_area');
       setToken(null);
       setUser(null);
+      setCityState(null);
+      setAreaState(null);
     } catch (err) {
       console.error('Error during logout:', err);
     }

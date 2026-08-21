@@ -19,7 +19,11 @@ import {
   ImageIcon,
   MessageSquare,
   Plus,
-  Trash2
+  Trash2,
+  Tag,
+  Package,
+  Ticket,
+  ShoppingBag
 } from 'lucide-react';
 
 interface Shop {
@@ -86,7 +90,7 @@ interface Area {
   name: string;
 }
 
-type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'franchise' | 'bulk-loader' | 'cities-areas';
+type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'franchise' | 'bulk-loader' | 'cities-areas' | 'sku-requests' | 'categories-admin' | 'master-catalog' | 'coupons-admin' | 'orders-admin';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -102,6 +106,29 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<PlatformOrder[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [skuRequests, setSkuRequests] = useState<any[]>([]);
+  const [categoriesList, setCategoriesList] = useState<any[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  
+  // Master Catalog States
+  const [masterProductsList, setMasterProductsList] = useState<any[]>([]);
+  const [newProdName, setNewProdName] = useState('');
+  const [newProdSku, setNewProdSku] = useState('');
+  const [newProdBrand, setNewProdBrand] = useState('');
+  const [newProdCompany, setNewProdCompany] = useState('');
+  const [newProdMrp, setNewProdMrp] = useState('');
+  const [newProdPrice, setNewProdPrice] = useState('');
+  const [newProdCategory, setNewProdCategory] = useState('');
+  const [newProdImageUrl, setNewProdImageUrl] = useState('');
+  const [newProdUnit, setNewProdUnit] = useState('');
+
+  // Shop Inventory Modal States
+  const [selectedShopForInventory, setSelectedShopForInventory] = useState<any | null>(null);
+  const [shopInventoryList, setShopInventoryList] = useState<any[]>([]);
+  const [assignProdId, setAssignProdId] = useState('');
+  const [assignProdPrice, setAssignProdPrice] = useState('');
+  const [assignProdDiscount, setAssignProdDiscount] = useState('');
+  const [assignProdStock, setAssignProdStock] = useState('');
 
   // Forms for City / Area registration
   const [newCityName, setNewCityName] = useState('');
@@ -112,6 +139,19 @@ export default function DashboardPage() {
   const [regShopName, setRegShopName] = useState('');
   const [regOwnerName, setRegOwnerName] = useState('');
   const [regOwnerMobile, setRegOwnerMobile] = useState('');
+
+  // Super Admin Coupons States
+  const [couponsList, setCouponsList] = useState<any[]>([]);
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponType, setNewCouponType] = useState<'percentage' | 'flat'>('percentage');
+  const [newCouponVal, setNewCouponVal] = useState('');
+  const [newCouponMinOrder, setNewCouponMinOrder] = useState('2500');
+  const [newCouponMaxDiscount, setNewCouponMaxDiscount] = useState('');
+  const [newCouponDesc, setNewCouponDesc] = useState('');
+
+  // Central Orders States
+  const [allOrdersList, setAllOrdersList] = useState<any[]>([]);
+  const [orderStatusFilter, setOrderStatusFilter] = useState('all');
 
   // Loading & error states
   const [loading, setLoading] = useState(false);
@@ -158,6 +198,15 @@ export default function DashboardPage() {
         const data = await res.json();
         if (res.ok && data.success) {
           setShops(data.shops);
+        }
+
+        // Fetch master catalogue to populate modal dropdown
+        const masterRes = await fetch('http://localhost:8001/api/products/master', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const masterData = await masterRes.json();
+        if (masterRes.ok && masterData.success) {
+          setMasterProductsList(masterData.products || []);
         }
       }
 
@@ -210,6 +259,64 @@ export default function DashboardPage() {
         const data = await res.json();
         if (res.ok && data.success) {
           setOrders(data.orders);
+        }
+      }
+
+      if (activeTab === 'sku-requests') {
+        const res = await fetch('http://localhost:8001/api/admin/sku-requests', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setSkuRequests(data.requests);
+        }
+      }
+
+      if (activeTab === 'categories-admin') {
+        const res = await fetch('http://localhost:8001/api/admin/categories', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setCategoriesList(data.categories || []);
+        }
+      }
+
+      if (activeTab === 'master-catalog') {
+        const res = await fetch('http://localhost:8001/api/products/master', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setMasterProductsList(data.products || []);
+        }
+
+        const resCat = await fetch('http://localhost:8001/api/admin/categories', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dataCat = await resCat.json();
+        if (resCat.ok && dataCat.success) {
+          setCategoriesList(dataCat.categories || []);
+        }
+      }
+
+      if (activeTab === 'coupons-admin') {
+        const res = await fetch('http://localhost:8001/api/admin/coupons', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setCouponsList(data.coupons || []);
+        }
+      }
+
+      if (activeTab === 'orders-admin') {
+        const res = await fetch('http://localhost:8001/api/admin/orders/all', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setAllOrdersList(data.orders || []);
         }
       }
 
@@ -397,6 +504,313 @@ export default function DashboardPage() {
       }
     } catch (err) {
       alert('Failed to delete area');
+    }
+  };
+
+  // SKU request approvals
+  const handleUpdateSkuRequestStatus = async (requestId: string, status: 'approved' | 'rejected') => {
+    if (!token) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/sku-requests/${requestId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`SKU request ${status} successfully!`);
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to update request status');
+      }
+    } catch (err) {
+      alert('Error updating SKU status');
+    }
+  };
+
+  // Create Category Handler
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newCategoryName })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setNewCategoryName('');
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to add category');
+      }
+    } catch (err) {
+      alert('Error adding category');
+    }
+  };
+
+  // Delete Category Handler
+  const handleDeleteCategory = async (catId: string) => {
+    if (!confirm('Are you sure you want to delete this category?')) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/categories/${catId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to delete category');
+      }
+    } catch (err) {
+      alert('Error deleting category');
+    }
+  };
+
+  // Create Product Handler (Super Admin)
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProdName.trim() || !newProdSku.trim() || !newProdCategory) return;
+    try {
+      const res = await fetch('http://localhost:8001/api/products/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newProdName,
+          sku: newProdSku,
+          brand: newProdBrand,
+          company: newProdCompany,
+          mrp: newProdMrp,
+          price: newProdPrice,
+          primary_category: newProdCategory,
+          image_url: newProdImageUrl,
+          unit: newProdUnit
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('Master SKU product added successfully!');
+        setNewProdName('');
+        setNewProdSku('');
+        setNewProdBrand('');
+        setNewProdCompany('');
+        setNewProdMrp('');
+        setNewProdPrice('');
+        setNewProdCategory('');
+        setNewProdImageUrl('');
+        setNewProdUnit('');
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to add product');
+      }
+    } catch (err) {
+      alert('Error creating product');
+    }
+  };
+
+  // Update Product Category Handler (Super Admin)
+  const handleUpdateProductCategory = async (productId: string, newCategory: string) => {
+    try {
+      const res = await fetch(`http://localhost:8001/api/products/master/${productId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ primary_category: newCategory })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to update category');
+      }
+    } catch (err) {
+      alert('Error updating category');
+    }
+  };
+
+  // Delete Product Handler (Super Admin)
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product from the master catalog?')) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/products/master/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to delete product');
+      }
+    } catch (err) {
+      alert('Error deleting product');
+    }
+  };
+
+  // Fetch Shop Inventory Handler
+  const fetchShopInventory = async (shopId: string) => {
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/shop-inventory/${shopId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShopInventoryList(data.shop_products || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch shop inventory:', err);
+    }
+  };
+
+  // Direct Assign Product to Shop Handler
+  const handleDirectAssignProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShopForInventory || !assignProdId || !assignProdPrice) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          product_id: assignProdId,
+          selling_price: assignProdPrice,
+          discount_percentage: assignProdDiscount || 0,
+          stock: assignProdStock || 100
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('Product assigned directly to shop!');
+        setAssignProdId('');
+        setAssignProdPrice('');
+        setAssignProdDiscount('');
+        setAssignProdStock('');
+        fetchShopInventory(selectedShopForInventory.id);
+      } else {
+        alert(data.error || 'Failed to assign product');
+      }
+    } catch (err) {
+      alert('Error assigning product');
+    }
+  };
+
+  // Unassign Product from Shop Handler
+  const handleUnassignShopProduct = async (mappingId: string) => {
+    if (!confirm('Are you sure you want to unassign this product from this shop?')) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/shop-inventory/${mappingId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (selectedShopForInventory) {
+          fetchShopInventory(selectedShopForInventory.id);
+        }
+      } else {
+        alert(data.error || 'Failed to unassign product');
+      }
+    } catch (err) {
+      alert('Error unassigning product');
+    }
+  };
+
+  // Create Promo Coupon Handler
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !newCouponCode.trim() || !newCouponVal) {
+      alert('Please fill out coupon code and discount value');
+      return;
+    }
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/coupons', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          code: newCouponCode.trim().toUpperCase(),
+          discount_type: newCouponType,
+          discount_value: parseFloat(newCouponVal) || 0,
+          min_order_value: parseFloat(newCouponMinOrder) || 0,
+          max_discount: newCouponMaxDiscount ? parseFloat(newCouponMaxDiscount) : undefined,
+          description: newCouponDesc.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert('Coupon campaign created successfully!');
+        setNewCouponCode('');
+        setNewCouponVal('');
+        setNewCouponDesc('');
+        setNewCouponMaxDiscount('');
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to create coupon');
+      }
+    } catch (err) {
+      alert('Error creating coupon');
+    }
+  };
+
+  // Delete Promo Coupon Handler
+  const handleDeleteCoupon = async (couponId: string) => {
+    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/coupons/${couponId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to delete coupon');
+      }
+    } catch (err) {
+      alert('Error deleting coupon');
+    }
+  };
+
+  // Update Order Status Handler
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
+    try {
+      const res = await fetch(`http://localhost:8001/api/admin/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to update order status');
+      }
+    } catch (err) {
+      alert('Error updating status');
     }
   };
 
@@ -634,6 +1048,61 @@ export default function DashboardPage() {
             </button>
 
             <button
+              onClick={() => setActiveTab('sku-requests')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'sku-requests' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> SKU Requests
+            </button>
+
+            <button
+              onClick={() => setActiveTab('categories-admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'categories-admin' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Tag className="w-4 h-4" /> Manage Categories
+            </button>
+
+            <button
+              onClick={() => setActiveTab('master-catalog')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'master-catalog' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Package className="w-4 h-4" /> Master Catalogue
+            </button>
+
+            <button
+              onClick={() => setActiveTab('coupons-admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'coupons-admin' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Ticket className="w-4 h-4" /> Manage Coupons
+            </button>
+
+            <button
+              onClick={() => setActiveTab('orders-admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'orders-admin' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" /> Live Orders Tracker
+            </button>
+
+            <button
               onClick={() => setActiveTab('locations')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
                 activeTab === 'locations' 
@@ -760,6 +1229,17 @@ export default function DashboardPage() {
                           )}
                         </td>
                         <td className="py-4 text-right space-x-2">
+                          {shop.status === 'approved' && (
+                            <button
+                              onClick={() => {
+                                setSelectedShopForInventory(shop);
+                                fetchShopInventory(shop.id);
+                              }}
+                              className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-lg transition-all cursor-pointer"
+                            >
+                              Manage Inventory
+                            </button>
+                          )}
                           {shop.status !== 'approved' && (
                             <button
                               onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
@@ -1329,6 +1809,692 @@ export default function DashboardPage() {
                 </div>
               </div>
             </section>
+          </div>
+        )}
+
+        {/* 8. SKU REQUESTS TAB */}
+        {activeTab === 'sku-requests' && (
+          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-400" /> Merchant SKU Requests
+              </h2>
+              <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="pb-3">Merchant / Shop</th>
+                    <th className="pb-3">Product Name</th>
+                    <th className="pb-3">Category</th>
+                    <th className="pb-3">Brand</th>
+                    <th className="pb-3">MRP (Master)</th>
+                    <th className="pb-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/30 text-sm">
+                  {skuRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-slate-800/20 transition-colors">
+                      <td className="py-4 pr-3 font-semibold text-slate-200">{req.shop_name}</td>
+                      <td className="py-4 pr-3 font-semibold text-white">{req.product_name}</td>
+                      <td className="py-4 pr-3 text-slate-400">{req.category}</td>
+                      <td className="py-4 pr-3 text-slate-400">{req.brand}</td>
+                      <td className="py-4 pr-3 text-slate-300">₹{req.mrp}</td>
+                      <td className="py-4 text-right space-x-2">
+                        <button
+                          onClick={() => handleUpdateSkuRequestStatus(req.id, 'approved')}
+                          className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleUpdateSkuRequestStatus(req.id, 'rejected')}
+                          className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
+                        >
+                          Reject
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {skuRequests.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-slate-500 italic">No pending SKU requests found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* 9. CATEGORIES MANAGEMENT TAB */}
+        {activeTab === 'categories-admin' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl">
+            {/* List Table */}
+            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Tag className="w-5 h-5 text-emerald-400" /> Platform Categories
+                </h2>
+                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3">ID</th>
+                      <th className="pb-3">Category Name</th>
+                      <th className="pb-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30 text-sm">
+                    {categoriesList.map((cat) => (
+                      <tr key={cat.id} className="hover:bg-slate-800/20 transition-colors">
+                        <td className="py-4 pr-3 font-semibold text-slate-500">{cat.id}</td>
+                        <td className="py-4 pr-3 font-bold text-white">{cat.name}</td>
+                        <td className="py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {categoriesList.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-6 text-center text-slate-500 italic">No categories found in database.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Create Category Panel */}
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
+              <h2 className="text-lg font-bold text-white mb-6">Create New Category</h2>
+              <form onSubmit={handleCreateCategory} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Dry Fruits, Gourmet Oils"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" /> Add Category
+                </button>
+              </form>
+            </section>
+          </div>
+        )}
+
+        {/* 10. MASTER CATALOGUE TAB */}
+        {activeTab === 'master-catalog' && (
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 max-w-7xl">
+            {/* Products Table (Span 3) */}
+            <section className="xl:col-span-3 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl font-sans">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-emerald-400" /> Master Catalogue Products
+                </h2>
+                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
+              </div>
+              <div className="overflow-x-auto max-h-[640px] overflow-y-auto pr-1">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Product Info</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">SKU</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Brand</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">MRP (Master)</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Category Assignment</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30 text-sm">
+                    {masterProductsList.map((prod) => (
+                      <tr key={prod.id} className="hover:bg-slate-800/20 transition-colors">
+                        <td className="py-4 pr-3">
+                          <div className="flex items-center gap-3">
+                            {prod.image_url && (
+                              <img src={prod.image_url} alt={prod.name} className="w-10 h-10 object-contain rounded-lg bg-white/5 border border-slate-800" />
+                            )}
+                            <div>
+                              <p className="font-bold text-white leading-tight">{prod.name}</p>
+                              <p className="text-[10px] text-slate-500">{prod.unit || 'units'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 pr-3 text-slate-300 font-semibold">{prod.sku}</td>
+                        <td className="py-4 pr-3 text-slate-400">{prod.brand || '-'}</td>
+                        <td className="py-4 pr-3 text-slate-200">₹{prod.mrp}</td>
+                        <td className="py-4 pr-3">
+                          <select
+                            value={prod.primary_category || ''}
+                            onChange={(e) => handleUpdateProductCategory(prod.id, e.target.value)}
+                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                          >
+                            <option value="">-- Unassigned --</option>
+                            {categoriesList.map((cat) => (
+                              <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteProduct(prod.id)}
+                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {masterProductsList.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-6 text-center text-slate-500 italic">No products found in catalogue. Use Bulk Excel Loader or create one on the right.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            {/* Create Product Panel */}
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
+              <h2 className="text-lg font-bold text-white mb-6 font-sans">Add New Product</h2>
+              <form onSubmit={handleCreateProduct} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Fortune Mustard Oil 1L"
+                    value={newProdName}
+                    onChange={(e) => setNewProdName(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product SKU *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. FRT-MST-1L"
+                    value={newProdSku}
+                    onChange={(e) => setNewProdSku(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Brand</label>
+                    <input
+                      type="text"
+                      placeholder="Fortune"
+                      value={newProdBrand}
+                      onChange={(e) => setNewProdBrand(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Company</label>
+                    <input
+                      type="text"
+                      placeholder="Adani Wilmar"
+                      value={newProdCompany}
+                      onChange={(e) => setNewProdCompany(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Master MRP (₹) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="180.00"
+                      value={newProdMrp}
+                      onChange={(e) => setNewProdMrp(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Default Price (₹) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="170.00"
+                      value={newProdPrice}
+                      onChange={(e) => setNewProdPrice(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category Assignment *</label>
+                  <select
+                    required
+                    value={newProdCategory}
+                    onChange={(e) => setNewProdCategory(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="">-- Choose Category --</option>
+                    {categoriesList.map((cat) => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Image URL</label>
+                  <input
+                    type="url"
+                    placeholder="https://example.com/image.jpg"
+                    value={newProdImageUrl}
+                    onChange={(e) => setNewProdImageUrl(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Unit</label>
+                    <input
+                      type="text"
+                      placeholder="1 L"
+                      value={newProdUnit}
+                      onChange={(e) => setNewProdUnit(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
+                >
+                  <Plus className="w-4 h-4" /> Create SKU Product
+                </button>
+              </form>
+            </section>
+          </div>
+        )}
+
+        {/* SHOP INVENTORY MANAGEMENT MODAL */}
+        {selectedShopForInventory && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
+            <div className="bg-[#0f172a] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-slate-800/80">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Inventory: {selectedShopForInventory.shop_name}</h3>
+                  <p className="text-xs text-slate-400">Directly assign products and customize prices.</p>
+                </div>
+                <button
+                  onClick={() => setSelectedShopForInventory(null)}
+                  className="text-slate-400 hover:text-white text-sm font-bold bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Direct Assignment Form (Col 1) */}
+                <div className="bg-slate-900/30 p-5 rounded-2xl border border-slate-800/50 h-fit space-y-4">
+                  <h4 className="font-bold text-white text-sm mb-2">➕ Assign Product to Store</h4>
+                  <form onSubmit={handleDirectAssignProduct} className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Product SKU *</label>
+                      <select
+                        required
+                        value={assignProdId}
+                        onChange={(e) => setAssignProdId(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      >
+                        <option value="">-- Choose Product --</option>
+                        {masterProductsList.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name} (MRP: ₹{p.mrp})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Selling Price (₹) *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        placeholder="165"
+                        value={assignProdPrice}
+                        onChange={(e) => setAssignProdPrice(e.target.value)}
+                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Discount %</label>
+                        <input
+                          type="number"
+                          placeholder="5"
+                          value={assignProdDiscount}
+                          onChange={(e) => setAssignProdDiscount(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</label>
+                        <input
+                          type="number"
+                          placeholder="100"
+                          value={assignProdStock}
+                          onChange={(e) => setAssignProdStock(e.target.value)}
+                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                    >
+                      Assign SKU to Shop
+                    </button>
+                  </form>
+                </div>
+
+                {/* Assigned Items List (Col 2-3) */}
+                <div className="lg:col-span-2 space-y-4">
+                  <h4 className="font-bold text-white text-sm">Assigned Products ({shopInventoryList.length})</h4>
+                  <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[480px] overflow-y-auto pr-1">
+                    <table className="w-full text-left border-collapse bg-[#0c1220]/40 text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
+                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Product</th>
+                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Master MRP</th>
+                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Shop Price</th>
+                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Stock</th>
+                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Status</th>
+                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/30">
+                        {shopInventoryList.map((item) => (
+                          <tr key={item.id} className="hover:bg-slate-800/10 text-slate-200">
+                            <td className="p-3">
+                              <p className="font-bold text-white">{item.product_name}</p>
+                              <p className="text-[9px] text-slate-500">SKU: {item.sku}</p>
+                            </td>
+                            <td className="p-3 text-slate-400">₹{item.mrp}</td>
+                            <td className="p-3 font-semibold text-emerald-400">₹{item.selling_price}</td>
+                            <td className="p-3">{item.stock}</td>
+                            <td className="p-3">
+                              {item.status === 'approved' ? (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/10 text-[9px]">Approved</span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/10 text-[9px]">Pending</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => handleUnassignShopProduct(item.id)}
+                                className="text-red-400 hover:text-red-500 hover:bg-red-500/15 p-1.5 rounded-lg transition-all cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {shopInventoryList.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="p-6 text-center text-slate-500 italic">No products assigned to this shop yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 11. MANAGE COUPONS TAB */}
+        {activeTab === 'coupons-admin' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
+            {/* Create Coupon Form (Col 1) */}
+            <div className="bg-slate-900/40 p-6 rounded-3xl border border-slate-800/80 h-fit space-y-4">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-emerald-400" /> Create Promo Coupon
+              </h3>
+              <form onSubmit={handleCreateCoupon} className="space-y-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Coupon Code *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. FESTIVE20"
+                    value={newCouponCode}
+                    onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 uppercase font-bold"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Type *</label>
+                    <select
+                      value={newCouponType}
+                      onChange={(e) => setNewCouponType(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="percentage">% Percentage</option>
+                      <option value="flat">₹ Flat Off</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Discount Value *</label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="10"
+                      value={newCouponVal}
+                      onChange={(e) => setNewCouponVal(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Order (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="2500"
+                      value={newCouponMinOrder}
+                      onChange={(e) => setNewCouponMinOrder(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Max Discount (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="300"
+                      value={newCouponMaxDiscount}
+                      onChange={(e) => setNewCouponMaxDiscount(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Save 10% on your monthly groceries"
+                    value={newCouponDesc}
+                    onChange={(e) => setNewCouponDesc(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer mt-2"
+                >
+                  Create Coupon Campaign
+                </button>
+              </form>
+            </div>
+
+            {/* Coupons List (Col 2-3) */}
+            <div className="lg:col-span-2 space-y-4">
+              <h3 className="text-base font-bold text-white">Active Promo Campaigns ({couponsList.length})</h3>
+              <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-[#0c1220]/40">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="p-3">Code</th>
+                      <th className="p-3">Discount</th>
+                      <th className="p-3">Min Order</th>
+                      <th className="p-3">Description</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30 text-slate-200">
+                    {couponsList.map((cpn) => (
+                      <tr key={cpn.id} className="hover:bg-slate-800/10">
+                        <td className="p-3">
+                          <span className="px-2 py-1 bg-emerald-500/15 border border-emerald-500/20 rounded-lg text-emerald-400 font-mono font-bold">
+                            {cpn.code}
+                          </span>
+                        </td>
+                        <td className="p-3 font-semibold text-white">
+                          {cpn.discount_type === 'percentage' ? `${cpn.discount_value}% OFF` : `₹${cpn.discount_value} FLAT`}
+                        </td>
+                        <td className="p-3 text-slate-400">₹{cpn.min_order_value}</td>
+                        <td className="p-3 text-slate-300 max-w-xs truncate">{cpn.description}</td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleDeleteCoupon(cpn.id)}
+                            className="text-red-400 hover:text-red-500 hover:bg-red-500/15 p-1.5 rounded-lg transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {couponsList.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500 italic">No coupons created yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 12. LIVE ORDERS TRACKER TAB */}
+        {activeTab === 'orders-admin' && (
+          <div className="space-y-6 max-w-6xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5 text-emerald-400" /> Platform Orders ({allOrdersList.length})
+                </h3>
+                <p className="text-xs text-slate-400">Monitor and update customer orders across all stores in real-time.</p>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="flex flex-wrap gap-1.5 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+                {['all', 'pending', 'confirmed', 'packing', 'out_for_delivery', 'delivered', 'cancelled'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setOrderStatusFilter(st)}
+                    className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer capitalize ${
+                      orderStatusFilter === st ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {st.replace(/_/g, ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-[#0c1220]/40">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="p-3">Order ID & Date</th>
+                    <th className="p-3">Customer & Location</th>
+                    <th className="p-3">Items Summary</th>
+                    <th className="p-3">Total Amount</th>
+                    <th className="p-3">Live Status</th>
+                    <th className="p-3 text-right">Update Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/30 text-slate-200">
+                  {allOrdersList
+                    .filter((ord) => orderStatusFilter === 'all' || ord.status === orderStatusFilter)
+                    .map((ord) => (
+                      <tr key={ord.id} className="hover:bg-slate-800/10">
+                        <td className="p-3">
+                          <p className="font-bold text-white font-mono">#{ord.id.slice(0, 8)}</p>
+                          <p className="text-[10px] text-slate-500">{new Date(ord.created_at).toLocaleDateString('en-IN')}</p>
+                        </td>
+                        <td className="p-3">
+                          <p className="font-bold text-slate-200">{ord.profiles?.name || 'Customer'}</p>
+                          <p className="text-[10px] text-slate-400">{ord.delivery_address || 'Address on file'}</p>
+                        </td>
+                        <td className="p-3 text-slate-300">
+                          {ord.order_items?.map((oi: any) => `${oi.products?.name || 'Item'} (x${oi.quantity})`).join(', ') || 'Grocery items'}
+                        </td>
+                        <td className="p-3 font-bold text-emerald-400">
+                          ₹{ord.total_amount}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            ord.status === 'delivered' ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400' :
+                            ord.status === 'cancelled' ? 'bg-red-500/15 border-red-500/20 text-red-400' :
+                            ord.status === 'out_for_delivery' ? 'bg-purple-500/15 border-purple-500/20 text-purple-400' :
+                            'bg-amber-500/15 border-amber-500/20 text-amber-400'
+                          }`}>
+                            {ord.status?.toUpperCase().replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <select
+                            value={ord.status}
+                            onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
+                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="packing">Packing</option>
+                            <option value="out_for_delivery">Out for Delivery</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  {allOrdersList.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-500 italic">No customer orders placed yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

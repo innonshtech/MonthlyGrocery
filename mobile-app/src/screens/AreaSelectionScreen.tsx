@@ -1,158 +1,226 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, FlatList, TextInput, StatusBar, Alert, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  TextInput,
+  StatusBar,
+  Alert
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
+import AppIcon from '../components/AppIcon';
+import { COLORS, RADIUS } from '../constants/theme';
+
+interface AreaItem {
+  id: string;
+  name: string;
+  pincode: string;
+  state: string;
+  serviceable: boolean;
+}
+
+const DEFAULT_PUNE_AREAS: AreaItem[] = [
+  { id: 'kothrud', name: 'Kothrud', pincode: '411038', state: 'Maharashtra', serviceable: true },
+  { id: 'baner', name: 'Baner', pincode: '411045', state: 'Maharashtra', serviceable: true },
+  { id: 'aundh', name: 'Aundh', pincode: '411007', state: 'Maharashtra', serviceable: true },
+  { id: 'hinjewadi', name: 'Hinjewadi', pincode: '411057', state: 'Maharashtra', serviceable: true },
+  { id: 'wakad', name: 'Wakad', pincode: '411057', state: 'Maharashtra', serviceable: true },
+  { id: 'viman-nagar', name: 'Viman Nagar', pincode: '411014', state: 'Maharashtra', serviceable: true },
+];
 
 export default function AreaSelectionScreen({ route, navigation }: any) {
   const { setCityAndArea } = useAuth();
-  const { cityName } = route.params || { cityName: 'Mumbai' };
+  const { cityName } = route.params || { cityName: 'Pune' };
   const [searchQuery, setSearchQuery] = useState('');
-  const [notServiceableMode, setNotServiceableMode] = useState(false);
-  const [selectedAreaName, setSelectedAreaName] = useState('');
-  const [areas, setAreas] = useState<{ id: string; name: string; serviceable: boolean }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedAreaId, setSelectedAreaId] = useState<string>('kothrud');
+  const [areas, setAreas] = useState<AreaItem[]>(DEFAULT_PUNE_AREAS);
 
   useEffect(() => {
     const fetchAreas = async () => {
       try {
         const res = await fetch(`${API_BASE}/admin/locations`);
         const data = await res.json();
-        if (res.ok && data.success) {
-          const matched = data.locations.filter((loc: any) => loc.city.toLowerCase() === cityName.toLowerCase());
-          const mapped = matched.map((loc: any) => ({
-            id: loc.id,
-            name: loc.area_name,
-            serviceable: loc.is_serviceable
-          }));
-          // Add default fallback other areas
-          mapped.push({
-            id: `other-${Date.now()}`,
-            name: `Other ${cityName} Areas (Not Serviceable)`,
-            serviceable: false
-          });
-          setAreas(mapped);
-        } else {
-          // Fallback
-          setAreas([
-            { id: 'fall-1', name: 'Main Sector', serviceable: true },
-            { id: 'fall-2', name: 'Other Sector (Not Serviceable)', serviceable: false }
-          ]);
+        if (res.ok && data.success && data.locations.length > 0) {
+          const matched = data.locations.filter(
+            (loc: any) => loc.city.toLowerCase() === cityName.toLowerCase()
+          );
+          if (matched.length > 0) {
+            const mapped: AreaItem[] = matched.map((loc: any) => ({
+              id: loc.id || loc.area_name.toLowerCase().replace(/\s+/g, '-'),
+              name: loc.area_name,
+              pincode: loc.pincode || '411001',
+              state: 'Maharashtra',
+              serviceable: loc.is_serviceable !== false,
+            }));
+            setAreas(mapped);
+          }
         }
       } catch (err) {
-        setAreas([
-          { id: 'fall-1', name: 'Main Sector', serviceable: true },
-          { id: 'fall-2', name: 'Other Sector (Not Serviceable)', serviceable: false }
-        ]);
-      } finally {
-        setLoading(false);
+        setAreas(DEFAULT_PUNE_AREAS);
       }
     };
     fetchAreas();
   }, [cityName]);
 
-  const handleAreaSelect = async (area: { name: string; serviceable: boolean }) => {
-    setSelectedAreaName(area.name);
-    if (area.serviceable) {
-      await setCityAndArea(cityName, area.name);
-      navigation.navigate('Shop');
-    } else {
-      setNotServiceableMode(true);
-    }
+  const handleAreaSelect = async (area: AreaItem) => {
+    setSelectedAreaId(area.id);
+    await setCityAndArea(cityName, area.name);
+    navigation.navigate('ProfileSetup');
   };
 
   const handleNotifyMe = () => {
-    Alert.alert('Subscribed', `We will notify you as soon as MonthlyGrocery goes live in ${selectedAreaName}!`);
-    setNotServiceableMode(false);
-    navigation.navigate('CitySelection');
+    Alert.alert('Subscribed', `We will notify you as soon as MonthlyGrocery begins delivery in ${searchQuery || 'your area'}!`);
+    setSearchQuery('');
   };
 
-  const filteredAreas = areas.filter(a => 
-    a.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAreas = areas.filter(
+    (a) =>
+      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.pincode.includes(searchQuery.trim())
   );
 
-  if (notServiceableMode) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.notServiceableContainer}>
-          <Text style={styles.sadEmoji}>📍❌</Text>
-          <Text style={styles.notServiceableTitle}>Area Not Serviceable</Text>
-          <Text style={styles.notServiceableDesc}>
-            MonthlyGrocery is not active in <Text style={{ fontWeight: 'bold', color: '#0B1220' }}>{selectedAreaName}, {cityName}</Text> yet.
-          </Text>
-          <Text style={styles.notServiceableSubdesc}>
-            We require high cluster density to optimize wholesale pricing and 4-hour delivery runs.
-          </Text>
-
-          <TouchableOpacity style={styles.notifyBtn} onPress={handleNotifyMe}>
-            <Text style={styles.notifyBtnText}>Notify Me When Launching</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.changeBtn} 
-            onPress={() => {
-              setNotServiceableMode(false);
-              navigation.navigate('CitySelection');
-            }}
-          >
-            <Text style={styles.changeBtnText}>Change City / Area</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const isUnserviceableSearch = searchQuery.trim().length > 0 && filteredAreas.length === 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>← Select City</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Select Area</Text>
-          <Text style={styles.subtitle}>Select your locality in {cityName} for precise delivery rates.</Text>
-        </View>
 
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search for locality/sector..."
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+      {/* Top Bar with Back Chevron */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isUnserviceableSearch) {
+              setSearchQuery('');
+            } else if (navigation.canGoBack()) {
+              navigation.goBack();
+            }
+          }}
+          style={styles.backArrowBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={styles.backArrowText}>‹</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Area list */}
-        {loading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="small" color="#22C55E" />
+      {!isUnserviceableSearch ? (
+        <View style={styles.mainContainer}>
+          {/* Main Title & Delivering Location Header */}
+          <View style={styles.headerBlock}>
+            <Text style={styles.mainTitle}>Select your area</Text>
+            <View style={styles.locationSubtitleRow}>
+              <Text style={styles.locationIcon}>📍</Text>
+              <Text style={styles.deliveringText}>
+                Delivering in {cityName} ·{' '}
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('CitySelection')}>
+                <Text style={styles.changeLink}>Change</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        ) : (
+
+          {/* Search Input */}
+          <View style={styles.searchCard}>
+            <AppIcon name="search" size={18} color={COLORS.ink300} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search area or society"
+              placeholderTextColor={COLORS.ink300}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Text style={styles.clearSearchText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Section Header: AREAS IN [CITY] */}
+          <View style={styles.sectionHeaderWrap}>
+            <Text style={styles.sectionHeaderText}>AREAS IN {cityName.toUpperCase()}</Text>
+          </View>
+
+          {/* Areas List */}
           <FlatList
             data={filteredAreas}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={styles.areaCard}
-                onPress={() => handleAreaSelect(item)}
-              >
-                <Text style={styles.areaName}>{item.name}</Text>
-                {!item.serviceable && (
-                  <Text style={styles.badgeUnserviceable}>Not Serviceable</Text>
-                )}
-                <Text style={styles.arrow}>➔</Text>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={styles.areasList}
             showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => {
+              const isSelected = selectedAreaId === item.id;
+              return (
+                <TouchableOpacity
+                  style={styles.areaRow}
+                  onPress={() => handleAreaSelect(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.areaInfoCol}>
+                    <Text style={[styles.areaName, isSelected && styles.areaNameSelected]}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.areaAddress}>
+                      {cityName}, {item.state} {item.pincode}
+                    </Text>
+                  </View>
+
+                  {isSelected ? (
+                    <Text style={styles.checkMark}>✓</Text>
+                  ) : (
+                    <Text style={styles.chevronArrow}>›</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
+            ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
           />
-        )}
-      </View>
+        </View>
+      ) : (
+        <View style={styles.unserviceableContainer}>
+          {/* Top Search bar with query */}
+          <View style={styles.searchCard}>
+            <AppIcon name="search" size={18} color={COLORS.ink300} />
+            <TextInput
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Text style={styles.clearSearchText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Center Illustration & Content */}
+          <View style={styles.unserviceableCenter}>
+            <View style={styles.peachCircle}>
+              <AppIcon name="map-pin" size={48} color={COLORS.marigold600} />
+            </View>
+
+            <Text style={styles.unserviceableTitle}>We're not in {searchQuery} yet</Text>
+            <Text style={styles.unserviceableSubtitle}>
+              MonthlyGrocery is growing fast. Get notified the moment we start delivering to your area.
+            </Text>
+          </View>
+
+          {/* Bottom Actions */}
+          <View style={styles.unserviceableBottom}>
+            <TouchableOpacity
+              style={styles.notifyBtn}
+              onPress={handleNotifyMe}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.notifyBtnText}>Notify me when you arrive</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.chooseDiffBtn}>
+              <Text style={styles.chooseDiffText}>Choose a different area</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -160,145 +228,193 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFF8ED',
+    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
-  container: {
+  topBar: {
+    minHeight: 36,
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  backArrowBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  backArrowText: {
+    fontSize: 32,
+    fontWeight: '300',
+    color: COLORS.ink900,
+    lineHeight: 34,
+  },
+  mainContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 15,
   },
-  header: {
+  headerBlock: {
     marginBottom: 20,
   },
-  backBtn: {
-    marginBottom: 15,
-  },
-  backText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  title: {
+  mainTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0B1220',
+    fontWeight: '800',
+    color: COLORS.ink900,
     letterSpacing: -0.5,
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  searchBar: {
-    marginBottom: 20,
-  },
-  searchInput: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#F1EAD8',
-    paddingHorizontal: 15,
-    fontSize: 15,
-    color: '#333',
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  areaCard: {
+  locationSubtitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
+  },
+  locationIcon: {
+    fontSize: 13,
+    marginRight: 4,
+  },
+  deliveringText: {
+    fontSize: 13.5,
+    color: COLORS.ink500,
+    fontWeight: '500',
+  },
+  changeLink: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: COLORS.green700,
+  },
+  searchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    height: 52,
+    paddingHorizontal: 16,
+    marginBottom: 28,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.ink900,
+    padding: 0,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    color: COLORS.ink300,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
+  },
+  sectionHeaderWrap: {
+    marginBottom: 16,
+  },
+  sectionHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.ink500,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  areasList: {
+    paddingBottom: 24,
+  },
+  areaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  rowSeparator: {
+    height: 1,
+    backgroundColor: COLORS.line,
+  },
+  areaInfoCol: {
+    flex: 1,
+    paddingRight: 16,
   },
   areaName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0B1220',
-    flex: 1,
+    color: COLORS.ink900,
+    marginBottom: 4,
   },
-  badgeUnserviceable: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#EF4444',
-    backgroundColor: '#EF444415',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginRight: 10,
+  areaNameSelected: {
+    color: COLORS.green700,
+    fontWeight: '700',
   },
-  arrow: {
+  areaAddress: {
     fontSize: 12,
-    color: '#CCC',
-    fontWeight: 'bold',
+    color: COLORS.ink500,
   },
-  notServiceableContainer: {
+  checkMark: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.green700,
+  },
+  chevronArrow: {
+    fontSize: 22,
+    fontWeight: '300',
+    color: COLORS.ink300,
+  },
+  /* Unserviceable State */
+  unserviceableContainer: {
     flex: 1,
+    justifyContent: 'space-between',
+    paddingBottom: 24,
+  },
+  unserviceableCenter: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  peachCircle: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: COLORS.marigold100, // #FDEFD3
+    borderWidth: 1.5,
+    borderColor: COLORS.marigold200, // #FBE0AE
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    marginBottom: 28,
   },
-  sadEmoji: {
-    fontSize: 50,
-    marginBottom: 20,
-  },
-  notServiceableTitle: {
+  unserviceableTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#0B1220',
-    letterSpacing: -0.5,
-  },
-  notServiceableDesc: {
-    fontSize: 15,
-    color: '#666',
+    fontWeight: '800',
+    color: COLORS.ink900,
     textAlign: 'center',
-    marginTop: 10,
+    marginBottom: 12,
+    letterSpacing: -0.3,
   },
-  notServiceableSubdesc: {
-    fontSize: 13,
-    color: '#999',
+  unserviceableSubtitle: {
+    fontSize: 14,
+    color: COLORS.ink500,
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 18,
-    paddingHorizontal: 15,
-    marginBottom: 40,
+    lineHeight: 20,
+    maxWidth: 290,
+  },
+  unserviceableBottom: {
+    gap: 16,
+    alignItems: 'center',
   },
   notifyBtn: {
-    backgroundColor: '#22C55E',
-    height: 52,
     width: '100%',
-    borderRadius: 50,
+    height: 52,
+    borderRadius: RADIUS.pill, // 999px
+    backgroundColor: COLORS.green700, // #1E7A46
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 3,
   },
   notifyBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  changeBtn: {
-    borderWidth: 2,
-    borderColor: '#0B1220',
-    height: 48,
-    width: '100%',
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
+  chooseDiffBtn: {
+    paddingVertical: 8,
   },
-  changeBtnText: {
-    color: '#0B1220',
+  chooseDiffText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: COLORS.green700,
   },
 });

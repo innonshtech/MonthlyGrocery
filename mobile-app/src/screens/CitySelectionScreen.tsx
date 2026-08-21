@@ -1,132 +1,181 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, FlatList, TextInput, StatusBar, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  FlatList,
+  TextInput,
+  StatusBar,
+  ActivityIndicator
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
+import AppIcon from '../components/AppIcon';
+import { COLORS, RADIUS } from '../constants/theme';
 
 interface CityItem {
   id: string;
   name: string;
-  desc: string;
-  icon: string;
 }
 
-const KNOWN_CITIES: { [key: string]: { desc: string; icon: string } } = {
-  'Mumbai': { desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
-  'Pune': { desc: 'Active local hub & 4-hour delivery', icon: '🌆' },
-  'Bengaluru': { desc: 'Coming soon - Order preview active', icon: '🌳' },
-  'Delhi NCR': { desc: 'Coming soon - Order preview active', icon: '🏛️' },
-  'Pan India': { desc: 'Deliver anywhere in India', icon: '🇮🇳' }
-};
+const DEFAULT_POPULAR_CITIES: CityItem[] = [
+  { id: 'pune', name: 'Pune' },
+  { id: 'mumbai', name: 'Mumbai' },
+  { id: 'delhi', name: 'Delhi' },
+  { id: 'bengaluru', name: 'Bengaluru' },
+  { id: 'hyderabad', name: 'Hyderabad' },
+];
 
 export default function CitySelectionScreen({ navigation }: any) {
   const { setCityAndArea } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [cities, setCities] = useState<CityItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cities, setCities] = useState<CityItem[]>(DEFAULT_POPULAR_CITIES);
+  const [selectedCity, setSelectedCity] = useState<string>('Pune');
+  const [detecting, setDetecting] = useState(false);
 
   useEffect(() => {
     const fetchCities = async () => {
       try {
         const res = await fetch(`${API_BASE}/admin/locations`);
         const data = await res.json();
-        if (res.ok && data.success) {
-          const uniqueCities = Array.from(new Set(data.locations.map((loc: any) => loc.city))) as string[];
-          const citiesList: CityItem[] = [
-            { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
-            ...uniqueCities.map(cName => ({
-              id: cName.toLowerCase().replace(/\s+/g, '-'),
-              name: cName,
-              desc: KNOWN_CITIES[cName]?.desc || 'Active local hub & delivery active',
-              icon: KNOWN_CITIES[cName]?.icon || '📍'
-            }))
-          ];
-          setCities(citiesList);
-        } else {
-          // Fallback
-          setCities([
-            { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
-            { id: 'mumbai', name: 'Mumbai', desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
-            { id: 'pune', name: 'Pune', desc: 'Active local hub & 4-hour delivery', icon: '🌆' }
-          ]);
+        if (res.ok && data.success && data.locations.length > 0) {
+          const uniqueCities = Array.from(
+            new Set(data.locations.map((loc: any) => loc.city))
+          ) as string[];
+
+          const list: CityItem[] = uniqueCities.map((cName) => ({
+            id: cName.toLowerCase().replace(/\s+/g, '-'),
+            name: cName,
+          }));
+
+          DEFAULT_POPULAR_CITIES.forEach((defCity) => {
+            if (!list.find((c) => c.name.toLowerCase() === defCity.name.toLowerCase())) {
+              list.push(defCity);
+            }
+          });
+
+          setCities(list);
         }
       } catch (err) {
-        setCities([
-          { id: 'pan-india', name: 'Pan India', desc: 'Deliver anywhere in India', icon: '🇮🇳' },
-          { id: 'mumbai', name: 'Mumbai', desc: 'Active local hub & 4-hour delivery', icon: '🏙️' },
-          { id: 'pune', name: 'Pune', desc: 'Active local hub & 4-hour delivery', icon: '🌆' }
-        ]);
-      } finally {
-        setLoading(false);
+        setCities(DEFAULT_POPULAR_CITIES);
       }
     };
     fetchCities();
   }, []);
 
-  const handleCitySelect = async (city: string) => {
-    if (city === 'Pan India') {
-      await setCityAndArea('Pan India', 'All Areas');
-      navigation.navigate('Shop');
-    } else {
-      await setCityAndArea(city, null);
-      navigation.navigate('AreaSelection', { cityName: city });
-    }
+  const handleCitySelect = async (cityName: string) => {
+    setSelectedCity(cityName);
+    await setCityAndArea(cityName, null);
+    navigation.navigate('AreaSelection', { cityName });
   };
 
-  const filteredCities = cities.filter(c => 
+  const handleDetectLocation = async () => {
+    setDetecting(true);
+    setTimeout(async () => {
+      setDetecting(false);
+      await handleCitySelect('Pune');
+    }, 600);
+  };
+
+  const filteredCities = cities.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Select City</Text>
-          <Text style={styles.subtitle}>Prices and item availability vary by city.</Text>
-        </View>
 
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search for your city..."
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+      {/* Top Bar with Back Chevron */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+          }}
+          style={styles.backArrowBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Text style={styles.backArrowText}>‹</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* City list */}
-        {loading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="small" color="#22C55E" />
-          </View>
+      {/* Main Title */}
+      <View style={styles.headerBlock}>
+        <Text style={styles.mainTitle}>Choose your city</Text>
+      </View>
+
+      {/* Detect My Location Banner */}
+      <TouchableOpacity
+        style={styles.detectLocationCard}
+        onPress={handleDetectLocation}
+        activeOpacity={0.8}
+        disabled={detecting}
+      >
+        <View style={styles.detectIconBox}>
+          <AppIcon name="map-pin" size={18} color={COLORS.green700} />
+        </View>
+        {detecting ? (
+          <ActivityIndicator size="small" color={COLORS.green700} />
         ) : (
-          <FlatList
-            data={filteredCities}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <TouchableOpacity 
-                style={styles.cityCard}
-                onPress={() => handleCitySelect(item.name)}
-              >
-                <View style={styles.cityIconBg}>
-                  <Text style={styles.cityIcon}>{item.icon}</Text>
-                </View>
-                <View style={styles.cityInfo}>
-                  <Text style={styles.cityName}>{item.name}</Text>
-                  <Text style={styles.cityDesc}>{item.desc}</Text>
-                </View>
-                <Text style={styles.arrow}>➔</Text>
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          />
+          <Text style={styles.detectLocationText}>Detect my location</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Search Input Card */}
+      <View style={styles.searchCard}>
+        <AppIcon name="search" size={18} color={COLORS.ink300} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search for your city"
+          placeholderTextColor={COLORS.ink300}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Text style={styles.clearSearchText}>✕</Text>
+          </TouchableOpacity>
         )}
       </View>
+
+      {/* Section Header: POPULAR CITIES */}
+      <View style={styles.sectionHeaderWrap}>
+        <Text style={styles.sectionHeaderText}>POPULAR CITIES</Text>
+      </View>
+
+      {/* Popular Cities List */}
+      <FlatList
+        data={filteredCities}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.citiesList}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => {
+          const isSelected = selectedCity.toLowerCase() === item.name.toLowerCase();
+          return (
+            <TouchableOpacity
+              style={styles.cityRow}
+              onPress={() => handleCitySelect(item.name)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.cityName, isSelected && styles.cityNameSelected]}>
+                {item.name}
+              </Text>
+              {isSelected ? (
+                <Text style={styles.checkMark}>✓</Text>
+              ) : (
+                <Text style={styles.chevronArrow}>›</Text>
+              )}
+            </TouchableOpacity>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No city found matching "{searchQuery}"</Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -134,87 +183,131 @@ export default function CitySelectionScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFF8ED',
+    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    paddingHorizontal: 24,
+    paddingTop: 8,
   },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  topBar: {
+    minHeight: 36,
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  header: {
-    marginBottom: 20,
+  backArrowBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
   },
-  title: {
+  backArrowText: {
+    fontSize: 32,
+    fontWeight: '300',
+    color: COLORS.ink900,
+    lineHeight: 34,
+  },
+  headerBlock: {
+    marginBottom: 24,
+  },
+  mainTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0B1220',
+    fontWeight: '800',
+    color: COLORS.ink900,
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  searchBar: {
-    marginBottom: 20,
-  },
-  searchInput: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#F1EAD8',
-    paddingHorizontal: 15,
-    fontSize: 15,
-    color: '#333',
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  cityCard: {
+  detectLocationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: COLORS.green50, // #F2F9F5
+    borderRadius: RADIUS.md, // 12px
     borderWidth: 1,
-    borderColor: '#F1EAD8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.01,
-    shadowRadius: 5,
-    elevation: 1,
+    borderColor: COLORS.green100, // #E4F3EA
+    height: 52,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 12,
   },
-  cityIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FFF8ED',
+  detectIconBox: {
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
-  cityIcon: {
-    fontSize: 22,
+  detectLocationText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.green700, // #1E7A46
   },
-  cityInfo: {
+  searchCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    height: 52,
+    paddingHorizontal: 16,
+    marginBottom: 28,
+    gap: 12,
+  },
+  searchInput: {
     flex: 1,
+    fontSize: 14,
+    color: COLORS.ink900,
+    padding: 0,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    color: COLORS.ink300,
+    fontWeight: 'bold',
+    paddingHorizontal: 4,
+  },
+  sectionHeaderWrap: {
+    marginBottom: 16,
+  },
+  sectionHeaderText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.ink500,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  citiesList: {
+    paddingBottom: 24,
+  },
+  cityRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+  },
+  rowSeparator: {
+    height: 1,
+    backgroundColor: COLORS.line,
   },
   cityName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0B1220',
+    fontSize: 15,
+    fontWeight: '500',
+    color: COLORS.ink900,
   },
-  cityDesc: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+  cityNameSelected: {
+    color: COLORS.green700,
+    fontWeight: '700',
   },
-  arrow: {
+  checkMark: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.green700,
+  },
+  chevronArrow: {
+    fontSize: 22,
+    fontWeight: '300',
+    color: COLORS.ink300,
+  },
+  emptyContainer: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
     fontSize: 14,
-    color: '#CCC',
-    fontWeight: 'bold',
-    marginLeft: 10,
+    color: COLORS.ink500,
   },
 });

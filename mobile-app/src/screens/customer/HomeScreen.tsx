@@ -6,170 +6,280 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  FlatList,
-  ActivityIndicator,
   Dimensions
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
+import AppIcon, { IconName } from '../../components/AppIcon';
+import { COLORS, RADIUS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 
-export default function HomeScreen({ navigation, setActiveTab }: any) {
-  const { user, city, area } = useAuth();
-  const { addToCart, items } = useCart();
+interface CategoryItem {
+  id: string;
+  name: string;
+  icon: IconName;
+}
+
+const CATEGORIES_LIST: CategoryItem[] = [
+  { id: 'atta-rice', name: 'Atta & Rice', icon: 'cat-atta-rice' },
+  { id: 'oils-ghee', name: 'Oils & Ghee', icon: 'cat-oils-ghee' },
+  { id: 'dals-pulses', name: 'Dals & Pulses', icon: 'cat-dals-pulses' },
+  { id: 'spices-masala', name: 'Masalas', icon: 'cat-spices-masala' },
+  { id: 'snacks', name: 'Snacks', icon: 'cat-snacks' },
+  { id: 'beverages', name: 'Beverages', icon: 'cat-beverages' },
+  { id: 'cleaning', name: 'Cleaning', icon: 'cat-cleaning' },
+  { id: 'personal-care', name: 'Personal Care', icon: 'cat-personal-care' },
+];
+
+export default function HomeScreen({ navigation }: any) {
+  const { city, area } = useAuth();
+  const { addToCart, items, updateQuantity } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock states for Monthly Grocery Plan
-  const lastMonthSpent = 4860;
-  const estimatedThisMonth = 4520;
-  const potentialSavings = 340;
+  const displayLocation = area ? `${area}, ${city || 'Pune'}` : (city || 'Kothrud, Pune');
 
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const res = await fetch(`${API_BASE}/products/all?limit=6`);
+        let url = `${API_BASE}/products/all?limit=6`;
+        if (city) url += `&city=${encodeURIComponent(city)}`;
+        if (area) url += `&area_name=${encodeURIComponent(area)}`;
+        const res = await fetch(url);
         const data = await res.json();
-        if (res.ok && data.success) {
+        if (res.ok && data.success && data.products) {
           setProducts(data.products);
         }
       } catch (err) {
-        console.error('Error fetching home featured products:', err);
+        console.error('Error fetching featured products:', err);
       } finally {
         setLoading(false);
       }
     };
     fetchFeatured();
-  }, []);
-
-  const renderProductCard = ({ item }: { item: Product }) => {
-    return (
-      <TouchableOpacity 
-        style={styles.productCard}
-        onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-      >
-        <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="contain" />
-        <View style={styles.productInfo}>
-          <Text style={styles.brandText} numberOfLines={1}>{item.brand}</Text>
-          <Text style={styles.nameText} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.unitText}>{item.unit}</Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceText}>₹{item.price}</Text>
-            <TouchableOpacity 
-              style={styles.addBtn}
-              onPress={() => addToCart(item)}
-            >
-              <Text style={styles.addBtnText}>ADD</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  }, [city, area]);
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
       
-      {/* Location Header */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.locationLabel}>DELIVERING TO</Text>
-          <Text style={styles.locationValue} numberOfLines={1}>
-            📍 {area ? `${area}, ${city}` : 'Select Delivery Location'}
-          </Text>
-        </View>
+      {/* =========================================================================
+         1. TOP LOCATION & PROFILE BAR
+         ========================================================================= */}
+      <View style={styles.topHeaderRow}>
         <TouchableOpacity 
-          style={styles.changeLocBtn}
+          style={styles.locationDropdown}
           onPress={() => navigation.navigate('CitySelection')}
+          activeOpacity={0.75}
         >
-          <Text style={styles.changeLocText}>Change</Text>
+          <Text style={styles.deliverToLabel}>DELIVER TO</Text>
+          <View style={styles.locationTitleRow}>
+            <Text style={styles.locationTitle} numberOfLines={1}>
+              {displayLocation}
+            </Text>
+            <Text style={styles.locationChevron}>⌄</Text>
+          </View>
         </TouchableOpacity>
-      </View>
-
-      {/* Monthly Planning Tracker Card */}
-      <View style={styles.planCard}>
-        <Text style={styles.planTitle}>Your Monthly Grocery Plan</Text>
-        
-        <View style={styles.planStats}>
-          <View style={styles.statBox}>
-            <Text style={styles.statVal}>₹{lastMonthSpent}</Text>
-            <Text style={styles.statLbl}>Last Month</Text>
-          </View>
-          <View style={[styles.statBox, styles.statDivider]}>
-            <Text style={[styles.statVal, { color: '#22C55E' }]}>₹{estimatedThisMonth}</Text>
-            <Text style={styles.statLbl}>This Month (Est.)</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statVal, { color: '#6C3BFF' }]}>₹{potentialSavings}</Text>
-            <Text style={styles.statLbl}>Savings Achieved</Text>
-          </View>
-        </View>
 
         <TouchableOpacity 
-          style={styles.planCta}
-          onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
+          style={styles.profileAvatarBtn}
+          onPress={() => navigation.navigate('Account')}
         >
-          <Text style={styles.planCtaText}>Recreate Last Month's Cart</Text>
+          <View style={styles.avatarCircle}>
+            <AppIcon name="user" size={18} color={COLORS.ink700} />
+          </View>
         </TouchableOpacity>
       </View>
 
-      {/* Category Horizontal Quick Links */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Shop by Category</Text>
-        <TouchableOpacity onPress={() => setActiveTab('Categories')}>
-          <Text style={styles.seeAll}>See All</Text>
+      {/* =========================================================================
+         2. SEARCH BAR (Taps to B2 Search Screen)
+         ========================================================================= */}
+      <TouchableOpacity 
+        style={styles.searchBarBtn}
+        onPress={() => navigation.navigate('Search')}
+        activeOpacity={0.85}
+      >
+        <AppIcon name="search" size={18} color={COLORS.ink300} />
+        <Text style={styles.searchPlaceholder}>Search for atta, rice, oil...</Text>
+      </TouchableOpacity>
+
+      {/* =========================================================================
+         3. ❖ MY MONTHLY GROCERY MAGIC CTA BANNER
+         ========================================================================= */}
+      <TouchableOpacity 
+        style={styles.magicCtaBanner}
+        onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.magicLeft}>
+          <Text style={styles.magicSparkle}>✦</Text>
+          <View>
+            <Text style={styles.magicTitle}>My Monthly Grocery</Text>
+            <Text style={styles.magicSubtitle}>Build this month's basket in one tap</Text>
+          </View>
+        </View>
+        <Text style={styles.magicArrow}>›</Text>
+      </TouchableOpacity>
+
+      {/* =========================================================================
+         4. MONTHLY SAVINGS HIGHLIGHT CARD (SIGNATURE SHOWPIECE)
+         ========================================================================= */}
+      <View style={styles.savingsCard}>
+        <View style={styles.savingsLeft}>
+          <Text style={styles.savingsLabel}>SAVED THIS MONTH</Text>
+          <Text style={styles.savingsAmount}>₹1,240</Text>
+          <Text style={styles.savingsSubtitle}>across 3 monthly orders</Text>
+        </View>
+
+        <View style={styles.coinCircle}>
+          <Text style={styles.coinSymbol}>₹</Text>
+        </View>
+      </View>
+
+      {/* =========================================================================
+         5. DUAL QUICK ACTION CARDS (Reorder & Saved Baskets)
+         ========================================================================= */}
+      <View style={styles.dualCardsRow}>
+        {/* Left: Reorder Last Basket */}
+        <TouchableOpacity 
+          style={styles.quickCard}
+          onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.quickIconCircle}>
+            <Text style={styles.quickIcon}>↻</Text>
+          </View>
+          <Text style={styles.quickTitle}>Reorder last basket</Text>
+          <Text style={styles.quickSubtitle}>28 items · ₹3,120</Text>
+        </TouchableOpacity>
+
+        {/* Right: Saved Baskets */}
+        <TouchableOpacity 
+          style={styles.quickCard}
+          onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.quickIconCircle}>
+            <Text style={styles.quickIcon}>🔖</Text>
+          </View>
+          <Text style={styles.quickTitle}>Saved baskets</Text>
+          <Text style={styles.quickSubtitle}>3 saved</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
-        {[
-          { name: 'Atta & Rice', emoji: '🌾' },
-          { name: 'Cooking Essentials', emoji: '🧂' },
-          { name: 'Dairy Staples', emoji: '🥛' },
-          { name: 'Beverages', emoji: '☕' },
-          { name: 'Snacks', emoji: '🍪' }
-        ].map((cat, i) => (
-          <TouchableOpacity 
-            key={i} 
-            style={styles.catPill}
-            onPress={() => navigation.navigate('CategoryProducts', { categoryName: cat.name })}
-          >
-            <Text style={styles.catEmoji}>{cat.emoji}</Text>
-            <Text style={styles.catName}>{cat.name}</Text>
+      {/* =========================================================================
+         6. SHOP BY CATEGORY GRID (Clean Line Vectors from Design System)
+         ========================================================================= */}
+      <View style={styles.categorySection}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Shop by category</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+            <Text style={styles.seeAllText}>See all ›</Text>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Recommended Catalog Products */}
-      <Text style={[styles.sectionTitle, { marginLeft: 20, marginTop: 25 }]}>Recommended for You</Text>
-      
-      {loading ? (
-        <ActivityIndicator size="large" color="#22C55E" style={{ marginVertical: 30 }} />
-      ) : (
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProductCard}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.productListContent}
-        />
-      )}
-
-      {/* Savings Info Banner */}
-      <View style={styles.savingsBanner}>
-        <View style={styles.bannerIconContainer}>
-          <Text style={{ fontSize: 24 }}>💡</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>Smart Savings Tip</Text>
-          <Text style={styles.bannerDesc}>Buy 5kg packs instead of individual 1kg packets to unlock wholesale rates.</Text>
+
+        <View style={styles.categoryGrid}>
+          {CATEGORIES_LIST.map((cat) => (
+            <TouchableOpacity 
+              key={cat.id}
+              style={styles.categoryItem}
+              onPress={() => navigation.navigate('CategoryProducts', { categoryId: cat.id, categoryName: cat.name })}
+              activeOpacity={0.75}
+            >
+              <View style={styles.categoryCircle}>
+                <AppIcon name={cat.icon} size={24} color={COLORS.green700} />
+              </View>
+              <Text style={styles.categoryName} numberOfLines={1}>{cat.name}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
-      <View style={{ height: 100 }} />
+      {/* =========================================================================
+         7. MONTHLY ESSENTIALS / PRODUCT CARDS
+         ========================================================================= */}
+      <View style={styles.dealsSection}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Monthly Essentials</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+            <Text style={styles.seeAllText}>See all ›</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.productsGrid}>
+          {products.map((item) => {
+            const mrpVal = parseFloat(item.mrp as any) || Math.round(Number(item.price) * 1.18);
+            const priceVal = parseFloat(item.price as any) || 0;
+            const diff = mrpVal - priceVal;
+            const cartItem = items.find((i) => i.product?.id === item.id);
+            const count = cartItem ? cartItem.quantity : 0;
+
+            return (
+              <TouchableOpacity 
+                key={item.id}
+                style={styles.productCard}
+                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                activeOpacity={0.8}
+              >
+                {/* Image Wrap with Signature Marigold Savings Pill */}
+                <View style={styles.imageWrap}>
+                  <View style={styles.savePill}>
+                    <Text style={styles.savePillText}>SAVE ₹{diff > 0 ? diff : 58}</Text>
+                  </View>
+
+                  {item.image_url ? (
+                    <Image source={{ uri: item.image_url }} style={styles.productImg} resizeMode="contain" />
+                  ) : (
+                    <View style={styles.bagPlaceholder}>
+                      <AppIcon name="shopping-bag" size={34} color={COLORS.green700} />
+                    </View>
+                  )}
+                </View>
+
+                {/* Product Info */}
+                <Text style={styles.productPackSize}>{item.unit || '5 kg'}</Text>
+                <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+
+                <View style={styles.priceRow}>
+                  <View style={styles.priceCol}>
+                    <Text style={styles.currentPrice}>₹{item.price}</Text>
+                    <Text style={styles.originalPrice}>₹{mrpVal}</Text>
+                  </View>
+
+                  {/* Add Button or Stepper */}
+                  {count > 0 ? (
+                    <View style={styles.stepperWrap}>
+                      <TouchableOpacity 
+                        style={styles.stepBtn}
+                        onPress={() => updateQuantity(item.id, count - 1)}
+                      >
+                        <Text style={styles.stepBtnText}>−</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.stepCountText}>{count}</Text>
+                      <TouchableOpacity 
+                        style={styles.stepBtn}
+                        onPress={() => addToCart(item)}
+                      >
+                        <Text style={styles.stepBtnText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.addBtn}
+                      onPress={() => addToCart(item)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.addBtnText}>ADD</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
     </ScrollView>
   );
 }
@@ -177,232 +287,372 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF8ED',
+    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
   },
-  header: {
+  scrollContent: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 28,
+  },
+  /* Top Location Bar */
+  topHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1EAD8',
+    marginBottom: 14,
   },
-  locationLabel: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#999',
-    letterSpacing: 0.5,
-  },
-  locationValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#0B1220',
-    marginTop: 3,
-    maxWidth: width * 0.65,
-  },
-  changeLocBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 50,
-    backgroundColor: '#F3F4F6',
-  },
-  changeLocText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6C3BFF',
-  },
-  planCard: {
-    backgroundColor: '#fff',
-    margin: 20,
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  planTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0B1220',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  planStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-  },
-  statBox: {
-    alignItems: 'center',
+  locationDropdown: {
     flex: 1,
   },
-  statDivider: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#F3F4F6',
+  deliverToLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: COLORS.ink500, // #6B7772
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
-  statVal: {
-    fontSize: 18,
+  locationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  locationTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.ink900, // #17251E
+  },
+  locationChevron: {
+    fontSize: 14,
+    color: COLORS.ink900,
     fontWeight: 'bold',
-    color: '#4B5563',
   },
-  statLbl: {
-    fontSize: 10,
-    color: '#999',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  planCta: {
-    backgroundColor: '#22C55E',
-    height: 46,
-    borderRadius: 50,
+  profileAvatarBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.muted,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  planCtaText: {
-    color: '#fff',
+  avatarCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  /* Search Bar */
+  searchBarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface, // #FFFFFF
+    borderWidth: 1.5,
+    borderColor: COLORS.line, // #EAE9E2
+    borderRadius: RADIUS.md, // 12px
+    height: 50,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    gap: 10,
+  },
+  searchPlaceholder: {
     fontSize: 14,
+    color: COLORS.ink300, // #A7B0AB
+  },
+  /* Magic CTA Banner */
+  magicCtaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.green700, // #1E7A46
+    borderRadius: RADIUS.lg, // 16px
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 14,
+  },
+  magicLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  magicSparkle: {
+    fontSize: 20,
+    color: COLORS.marigold500, // #F5A524
     fontWeight: 'bold',
   },
-  sectionHeader: {
+  magicTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  magicSubtitle: {
+    fontSize: 11.5,
+    color: COLORS.green100,
+    marginTop: 2,
+  },
+  magicArrow: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  /* Savings Highlight Card */
+  savingsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.green800, // #155A38
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    marginBottom: 14,
+  },
+  savingsLeft: {
+    gap: 2,
+  },
+  savingsLabel: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: COLORS.green100,
+    letterSpacing: 0.8,
+  },
+  savingsAmount: {
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  savingsSubtitle: {
+    fontSize: 11.5,
+    color: COLORS.green100,
+  },
+  coinCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.marigold500, // #F5A524
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.marigold200,
+  },
+  coinSymbol: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.marigold700,
+  },
+  /* Dual Action Cards */
+  dualCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  quickCard: {
+    flex: 1,
+    backgroundColor: COLORS.surface, // #FFFFFF
+    borderWidth: 1,
+    borderColor: COLORS.line, // #EAE9E2
+    borderRadius: RADIUS.md,
+    padding: 14,
+  },
+  quickIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.muted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  quickIcon: {
+    fontSize: 16,
+    color: COLORS.ink900,
+  },
+  quickTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.ink900,
+    marginBottom: 2,
+  },
+  quickSubtitle: {
+    fontSize: 11,
+    color: COLORS.ink500,
+  },
+  /* Shop By Category */
+  categorySection: {
+    marginBottom: 24,
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 10,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0B1220',
+    fontWeight: '800',
+    color: COLORS.ink900,
+    letterSpacing: -0.3,
   },
-  seeAll: {
+  seeAllText: {
     fontSize: 13,
-    color: '#6C3BFF',
-    fontWeight: '600',
+    fontWeight: '700',
+    color: COLORS.green700,
   },
-  catScroll: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-  },
-  catPill: {
+  categoryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  categoryItem: {
+    width: (width - 36 - 30) / 4,
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
-    borderRadius: 50,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginHorizontal: 5,
-  },
-  catEmoji: {
-    fontSize: 16,
-    marginRight: 6,
-  },
-  catName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4B5563',
-  },
-  productListContent: {
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-  },
-  productCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    width: 150,
-    marginHorizontal: 5,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
-  },
-  productImage: {
-    width: '100%',
-    height: 90,
     marginBottom: 8,
   },
-  productInfo: {
-    flex: 1,
+  categoryCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: RADIUS.md, // 12px tile
+    backgroundColor: COLORS.green50, // #F2F9F5
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: COLORS.green100, // #E4F3EA
   },
-  brandText: {
-    fontSize: 9,
-    color: '#999',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-  },
-  nameText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0B1220',
-    height: 34,
-    marginTop: 2,
-  },
-  unitText: {
+  categoryName: {
     fontSize: 11,
-    color: '#666',
-    marginVertical: 4,
+    fontWeight: '600',
+    color: COLORS.ink700,
+    textAlign: 'center',
+  },
+  /* Monthly Essentials / Product Grid */
+  dealsSection: {
+    marginBottom: 20,
+  },
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  productCard: {
+    width: (width - 36 - 12) / 2,
+    backgroundColor: COLORS.surface, // #FFFFFF
+    borderWidth: 1,
+    borderColor: COLORS.line, // #EAE9E2
+    borderRadius: RADIUS.md, // 12px
+    padding: 10,
+    marginBottom: 12,
+  },
+  imageWrap: {
+    width: '100%',
+    height: 120,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 8,
+  },
+  savePill: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: COLORS.marigold500, // Exact #F5A524
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: RADIUS.pill,
+    zIndex: 2,
+  },
+  savePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.ink900, // #17251E
+  },
+  productImg: {
+    width: 80,
+    height: 80,
+  },
+  bagPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productPackSize: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.ink500,
+    marginBottom: 2,
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.ink900,
+    marginBottom: 6,
+    minHeight: 34,
+    lineHeight: 17,
   },
   priceRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginTop: 4,
   },
-  priceText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#0B1220',
+  priceCol: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  currentPrice: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.ink900,
+  },
+  originalPrice: {
+    fontSize: 11.5,
+    color: COLORS.ink300,
+    textDecorationLine: 'line-through',
   },
   addBtn: {
-    borderWidth: 1,
-    borderColor: '#22C55E',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    backgroundColor: COLORS.green50, // #F2F9F5
+    borderWidth: 1.5,
+    borderColor: COLORS.green600, // #2A8B54
+    borderRadius: RADIUS.sm, // 8px
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   addBtnText: {
-    color: '#22C55E',
-    fontWeight: 'bold',
-    fontSize: 11,
+    color: COLORS.green700, // #1E7A46
+    fontSize: 12,
+    fontWeight: '800',
   },
-  savingsBanner: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#F1EAD8',
-    borderRadius: 20,
-    marginHorizontal: 20,
-    marginTop: 20,
-    padding: 16,
+  stepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.green700, // #1E7A46
+    borderRadius: RADIUS.sm, // 8px
+    height: 28,
+    paddingHorizontal: 4,
   },
-  bannerIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FFF8ED',
+  stepBtn: {
+    width: 20,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
-  bannerTitle: {
-    fontSize: 14,
+  stepBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#0B1220',
   },
-  bannerDesc: {
+  stepCountText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-    lineHeight: 16,
+    fontWeight: '700',
+    paddingHorizontal: 4,
   },
 });

@@ -41,12 +41,46 @@ export interface Area {
   name: string;
 }
 
+export interface ShopProduct {
+  id: string;
+  shop_id: string;
+  product_id: string;
+  selling_price: number;
+  discount_percentage: number;
+  stock: number;
+  available: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+export interface Category {
+  id: string;
+  name: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_type: 'flat' | 'percentage';
+  discount_value?: number;
+  value?: number;
+  min_order_value?: number;
+  min_order?: number;
+  max_discount?: number;
+  description?: string;
+  is_active?: boolean;
+  active?: boolean;
+  created_at?: string;
+}
+
 interface LocalDbSchema {
   serviceable_locations: ServiceableLocation[];
   promotional_banners: PromotionalBanner[];
   franchise_requests: FranchiseRequest[];
   cities: City[];
   areas: Area[];
+  shop_products: ShopProduct[];
+  categories: Category[];
+  coupons: Coupon[];
 }
 
 const defaultDb: LocalDbSchema = {
@@ -95,6 +129,23 @@ const defaultDb: LocalDbSchema = {
     { id: 'area-9', city_id: 'city-3', name: 'Indiranagar' },
     { id: 'area-10', city_id: 'city-4', name: 'Connaught Place' },
     { id: 'area-11', city_id: 'city-4', name: 'Noida Sec-62' }
+  ],
+  shop_products: [],
+  categories: [
+    { id: 'cat-1', name: 'Atta & Rice' },
+    { id: 'cat-2', name: 'Cooking Essentials' },
+    { id: 'cat-3', name: 'Dairy Staples' },
+    { id: 'cat-4', name: 'Pulses & Grains' },
+    { id: 'cat-5', name: 'Packaged Foods' },
+    { id: 'cat-6', name: 'Household Items' },
+    { id: 'cat-7', name: 'Beverages' },
+    { id: 'cat-8', name: 'Personal Care' },
+    { id: 'cat-9', name: 'Snacks' }
+  ],
+  coupons: [
+    { id: 'cp-1', code: 'GROCERY10', discount_type: 'percentage', value: 10, min_order: 500, active: true },
+    { id: 'cp-2', code: 'WELCOME50', discount_type: 'flat', value: 50, min_order: 300, active: true },
+    { id: 'cp-3', code: 'SUPER300', discount_type: 'flat', value: 300, min_order: 2500, active: true }
   ]
 };
 
@@ -118,6 +169,12 @@ export function readDb(): LocalDbSchema {
     // Backward compatibility auto backfill
     if (!db.cities) db.cities = defaultDb.cities;
     if (!db.areas) db.areas = defaultDb.areas;
+    if (!db.shop_products) db.shop_products = defaultDb.shop_products;
+    if (!db.categories) db.categories = defaultDb.categories;
+    if (!db.coupons) {
+      db.coupons = defaultDb.coupons;
+      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+    }
     return db;
   } catch (err) {
     console.error('Failed to read local JSON database, returning defaults:', err);

@@ -20,12 +20,18 @@ import { API_BASE } from '../../config/api';
 const { width } = Dimensions.get('window');
 
 export default function MyMonthlyGroceryHub({ navigation }: any) {
-  const { token } = useAuth();
+  const { token, city, area } = useAuth();
   const { items, addToCart, clearCart } = useCart();
 
   const [savedBaskets, setSavedBaskets] = useState<any[]>([]);
   const [basketName, setBasketName] = useState('');
   const [saveModalVisible, setSaveModalVisible] = useState(false);
+
+  // Preference and Breakdown States
+  const [familySize, setFamilySize] = useState<number>(4);
+  const [dietPreference, setDietPreference] = useState<string>('Veg');
+  const [lastBasketCategories, setLastBasketCategories] = useState<any[]>([]);
+  const [lastBasketTotal, setLastBasketTotal] = useState<number>(0);
 
   const loadSavedBaskets = async () => {
     try {
@@ -38,9 +44,52 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
     }
   };
 
+  const fetchLastOrderBreakdown = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/orders/mine`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.orders.length > 0) {
+        const latest = data.orders[0];
+        
+        // Fetch all products to know their categories
+        const catRes = await fetch(`${API_BASE}/products/all?limit=300`);
+        const catData = await catRes.json();
+        const activeProds: Product[] = catData.success ? catData.products : [];
+        const prodMap = new Map<string, Product>();
+        activeProds.forEach(p => prodMap.set(p.id, p));
+
+        const categorySum: { [key: string]: number } = {};
+        let calculatedTotal = 0;
+
+        latest.order_items.forEach((item: any) => {
+          const matchedProd = prodMap.get(item.product_id);
+          const category = matchedProd?.primary_category || 'Other Pantry';
+          const lineTotal = (parseFloat(item.unit_price) || 0) * (parseInt(item.quantity) || 1);
+          
+          categorySum[category] = (categorySum[category] || 0) + lineTotal;
+          calculatedTotal += lineTotal;
+        });
+
+        const breakdownList = Object.keys(categorySum).map(catName => ({
+          category: catName,
+          amount: categorySum[catName]
+        }));
+
+        setLastBasketCategories(breakdownList);
+        setLastBasketTotal(calculatedTotal);
+      }
+    } catch (err) {
+      console.error('Failed to load last order breakdown:', err);
+    }
+  };
+
   useEffect(() => {
     loadSavedBaskets();
-  }, []);
+    fetchLastOrderBreakdown();
+  }, [token]);
 
   // 1. Copy Last Month's Cart with catalog status check (Step 4.1)
   const handleCopyLastMonth = async () => {
@@ -65,7 +114,14 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
       const latestOrder = orderData.orders[0];
 
       // Fetch active catalog to check stock and prices
-      const catalogRes = await fetch(`${API_BASE}/products/all?limit=300`);
+      let url = `${API_BASE}/products/all?limit=300`;
+      if (city) {
+        url += `&city=${encodeURIComponent(city)}`;
+      }
+      if (area) {
+        url += `&area_name=${encodeURIComponent(area)}`;
+      }
+      const catalogRes = await fetch(url);
       const catalogData = await catalogRes.json();
       if (!catalogRes.ok || !catalogData.success) {
         Alert.alert('Error', 'Failed to verify active catalog pricing.');
@@ -123,7 +179,14 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
   // 2. One-Click Monthly Cart with dynamic staples fallbacks (Step 4.2)
   const handleOneClickGenerate = async () => {
     try {
-      const catalogRes = await fetch(`${API_BASE}/products/all?limit=300`);
+      let url = `${API_BASE}/products/all?limit=300`;
+      if (city) {
+        url += `&city=${encodeURIComponent(city)}`;
+      }
+      if (area) {
+        url += `&area_name=${encodeURIComponent(area)}`;
+      }
+      const catalogRes = await fetch(url);
       const catalogData = await catalogRes.json();
       if (!catalogRes.ok || !catalogData.success) {
         Alert.alert('Error', 'Failed to load active catalog.');
@@ -165,12 +228,17 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
 
       if (historyItems.length > 0) {
         historyItems.forEach(({ product, qty }) => {
-          const defaultQty = Math.min(qty, 3);
+          let scaleFactor = 1;
+          if (familySize <= 2) scaleFactor = 1;
+          else if (familySize <= 4) scaleFactor = 2;
+          else scaleFactor = 3;
+
+          const defaultQty = Math.min(qty, scaleFactor);
           for (let i = 0; i < defaultQty; i++) {
             addToCart(product);
           }
         });
-        Alert.alert('Success', 'Generated dynamic basket based on your order history!', [
+        Alert.alert('Success', 'Generated dynamic basket based on your order history and family size!', [
           { text: 'View Cart', onPress: () => navigation.navigate('Cart') }
         ]);
       } else {
@@ -185,8 +253,18 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
           }
         }
 
-        staples.slice(0, 6).forEach((p) => addToCart(p));
-        Alert.alert('Success', 'Curated Staples Basket generated! Add more items to meet minimum limit.', [
+        staples.slice(0, 6).forEach((p) => {
+          let qty = 1;
+          if (p.name.toLowerCase().includes('atta') || p.name.toLowerCase().includes('rice') || p.name.toLowerCase().includes('oil')) {
+            if (familySize <= 2) qty = 1;
+            else if (familySize <= 4) qty = 2;
+            else qty = 3;
+          }
+          for (let i = 0; i < qty; i++) {
+            addToCart(p);
+          }
+        });
+        Alert.alert('Success', `Curated staples basket generated for a family of ${familySize}!`, [
           { text: 'View Cart', onPress: () => navigation.navigate('Cart') }
         ]);
       }
@@ -306,8 +384,25 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
           <Text style={styles.cardDesc}>
             Recreate your exact purchase list from your latest order with a single click. Adjust items or checkout instantly.
           </Text>
+
+          {lastBasketCategories.length > 0 && (
+            <View style={styles.breakdownContainer}>
+              <Text style={styles.breakdownTitle}>Last Month Basket Breakdown</Text>
+              {lastBasketCategories.map((item, idx) => (
+                <View key={idx} style={styles.breakdownLine}>
+                  <Text style={styles.breakdownLabel}>{item.category}</Text>
+                  <Text style={styles.breakdownVal}>₹{item.amount}</Text>
+                </View>
+              ))}
+              <View style={[styles.breakdownLine, { borderTopWidth: 1, borderTopColor: '#E2E8F0', marginTop: 6, paddingTop: 6 }]}>
+                <Text style={[styles.breakdownLabel, { fontWeight: 'bold', color: '#1E293B' }]}>Total</Text>
+                <Text style={[styles.breakdownVal, { fontWeight: 'bold', color: '#22C55E' }]}>₹{lastBasketTotal}</Text>
+              </View>
+            </View>
+          )}
+
           <TouchableOpacity style={styles.btn} onPress={handleCopyLastMonth}>
-            <Text style={styles.btnText}>Recreate Last Cart ➔</Text>
+            <Text style={styles.btnText}>COPY LAST MONTH ➔</Text>
           </TouchableOpacity>
         </View>
 
@@ -316,10 +411,43 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
           <Text style={styles.cardEmoji}>⚡</Text>
           <Text style={styles.cardTitle}>One-Click Monthly Cart</Text>
           <Text style={styles.cardDesc}>
-            No order history? Generate a curated default basket of essential items customized for an Indian household (Atta, Dal, Oil, Salt, etc.).
+            Uses your order history, consumption pattern, and family settings to automatically recommend a curated staples basket.
           </Text>
+
+          <View style={styles.prefContainer}>
+            <Text style={styles.prefSectionTitle}>⚙️ Customize Cart Generator Settings</Text>
+            
+            <Text style={styles.prefLabel}>Family Size (Restock scale): <Text style={styles.prefHighlight}>{familySize} People</Text></Text>
+            <View style={styles.prefRow}>
+              {[2, 4, 6].map((num) => (
+                <TouchableOpacity
+                  key={num}
+                  style={[styles.prefPill, familySize === num && styles.prefPillActive]}
+                  onPress={() => setFamilySize(num)}
+                >
+                  <Text style={[styles.prefPillText, familySize === num && styles.prefPillTextActive]}>
+                    {num === 2 ? 'Small (2)' : num === 4 ? 'Medium (4)' : 'Large (6+)'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.prefLabel, { marginTop: 10 }]}>Diet Preference:</Text>
+            <View style={styles.prefRow}>
+              {['Veg', 'Non-Veg', 'All'].map((diet) => (
+                <TouchableOpacity
+                  key={diet}
+                  style={[styles.prefPill, dietPreference === diet && styles.prefPillActive]}
+                  onPress={() => setDietPreference(diet)}
+                >
+                  <Text style={[styles.prefPillText, dietPreference === diet && styles.prefPillTextActive]}>{diet}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
           <TouchableOpacity style={[styles.btn, styles.btnSecondary]} onPress={handleOneClickGenerate}>
-            <Text style={[styles.btnText, styles.btnTextSecondary]}>Generate Staples Basket</Text>
+            <Text style={[styles.btnText, styles.btnTextSecondary]}>CREATE MY MONTHLY CART</Text>
           </TouchableOpacity>
         </View>
 
@@ -621,5 +749,79 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  breakdownContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 20,
+  },
+  breakdownTitle: {
+    fontSize: 12.5,
+    fontWeight: 'bold',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  breakdownLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 3,
+  },
+  breakdownLabel: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  breakdownVal: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  prefContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 20,
+  },
+  prefSectionTitle: {
+    fontSize: 12.5,
+    fontWeight: 'bold',
+    color: '#334155',
+    marginBottom: 10,
+  },
+  prefLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  prefHighlight: {
+    color: '#22C55E',
+    fontWeight: 'bold',
+  },
+  prefRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  prefPill: {
+    flex: 1,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  prefPillActive: {
+    backgroundColor: '#22C55E',
+  },
+  prefPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  prefPillTextActive: {
+    color: '#fff',
   },
 });

@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Dimensions, StatusBar } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from './HomeScreen';
 import CategoriesScreen from './CategoriesScreen';
 import CartScreen from './CartScreen';
+import OrdersScreen from './OrdersScreen';
 import AccountScreen from './AccountScreen';
+import AppIcon from '../../components/AppIcon';
+import { useCart } from '../../context/CartContext';
 
-const { width } = Dimensions.get('window');
+const ACTIVE_COLOR = '#15803D'; // Rich Vibrant Forest Green
+const INACTIVE_COLOR = '#3D5A4B'; // Muted Pine/Sage Green from Figma
 
 export default function MainTabScreen({ route, navigation }: any) {
-  const initialTab = route.params?.initialTab || 'Home';
-  const [activeTab, setActiveTab] = useState<'Home' | 'Categories' | 'Cart' | 'Account'>(initialTab);
+  const insets = useSafeAreaInsets();
+  const initialTab = route?.params?.initialTab || 'Home';
+  const [activeTab, setActiveTab] = useState<'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account'>(initialTab);
+  const { items } = useCart();
+
+  const totalCartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -19,6 +28,8 @@ export default function MainTabScreen({ route, navigation }: any) {
         return <CategoriesScreen navigation={navigation} />;
       case 'Cart':
         return <CartScreen navigation={navigation} />;
+      case 'Orders':
+        return <OrdersScreen navigation={navigation} />;
       case 'Account':
         return <AccountScreen navigation={navigation} />;
       default:
@@ -26,144 +37,143 @@ export default function MainTabScreen({ route, navigation }: any) {
     }
   };
 
+  const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.mainContainer, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Screen Area */}
+      {/* Active Screen Area */}
       <View style={styles.screenContainer}>
         {renderActiveScreen()}
       </View>
 
-      {/* Custom Bottom Tab Bar */}
-      <View style={styles.tabBar}>
+      {/* =========================================================================
+         EXACT FIGMA 5-TAB BOTTOM NAVIGATION
+         ========================================================================= */}
+      <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
         
         {/* Tab 1: Home */}
         <TouchableOpacity 
           style={styles.tabItem}
           onPress={() => setActiveTab('Home')}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Home' && styles.tabIconActive]}>🏠</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Home' && styles.tabLabelActive]}>Home</Text>
+          <AppIcon 
+            name="home" 
+            size={22} 
+            color={activeTab === 'Home' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+          />
+          <Text style={[styles.tabLabel, { color: activeTab === 'Home' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Home' && styles.tabLabelActive]}>
+            Home
+          </Text>
         </TouchableOpacity>
 
         {/* Tab 2: Categories */}
         <TouchableOpacity 
           style={styles.tabItem}
           onPress={() => setActiveTab('Categories')}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Categories' && styles.tabIconActive]}>🗂️</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Categories' && styles.tabLabelActive]}>Categories</Text>
+          <AppIcon 
+            name="categories" 
+            size={20} 
+            color={activeTab === 'Categories' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+          />
+          <Text style={[styles.tabLabel, { color: activeTab === 'Categories' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Categories' && styles.tabLabelActive]}>
+            Categories
+          </Text>
         </TouchableOpacity>
 
-        {/* STANDOUT CTA: My Monthly Grocery */}
-        <TouchableOpacity 
-          style={styles.standoutCta}
-          onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
-        >
-          <View style={styles.standoutCircle}>
-            <Text style={styles.standoutIcon}>💡</Text>
-          </View>
-          <Text style={styles.standoutLabel}>MG Plan</Text>
-        </TouchableOpacity>
-
-        {/* Tab 3: Cart */}
+        {/* Tab 3: Cart with Dynamic Badge */}
         <TouchableOpacity 
           style={styles.tabItem}
           onPress={() => setActiveTab('Cart')}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Cart' && styles.tabIconActive]}>🛒</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Cart' && styles.tabLabelActive]}>Cart</Text>
+          <AppIcon 
+            name="cart" 
+            size={22} 
+            color={activeTab === 'Cart' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+            badge={totalCartCount > 0 ? totalCartCount : undefined}
+          />
+          <Text style={[styles.tabLabel, { color: activeTab === 'Cart' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Cart' && styles.tabLabelActive]}>
+            Cart
+          </Text>
         </TouchableOpacity>
 
-        {/* Tab 4: Account */}
+        {/* Tab 4: Orders */}
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => setActiveTab('Orders')}
+          activeOpacity={0.7}
+        >
+          <AppIcon 
+            name="orders" 
+            size={20} 
+            color={activeTab === 'Orders' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+          />
+          <Text style={[styles.tabLabel, { color: activeTab === 'Orders' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Orders' && styles.tabLabelActive]}>
+            Orders
+          </Text>
+        </TouchableOpacity>
+
+        {/* Tab 5: Account */}
         <TouchableOpacity 
           style={styles.tabItem}
           onPress={() => setActiveTab('Account')}
+          activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Account' && styles.tabIconActive]}>👤</Text>
-          <Text style={[styles.tabLabel, activeTab === 'Account' && styles.tabLabelActive]}>Profile</Text>
+          <AppIcon 
+            name="account" 
+            size={22} 
+            color={activeTab === 'Account' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+          />
+          <Text style={[styles.tabLabel, { color: activeTab === 'Account' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Account' && styles.tabLabelActive]}>
+            Account
+          </Text>
         </TouchableOpacity>
 
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  mainContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
   screenContainer: {
     flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
-    height: 70,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#F1EAD8',
+    borderTopColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingBottom: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.02,
-    shadowRadius: 5,
-    elevation: 10,
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 8,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: width * 0.18,
-    height: '100%',
-  },
-  tabIcon: {
-    fontSize: 20,
-    opacity: 0.5,
-  },
-  tabIconActive: {
-    opacity: 1,
+    flex: 1,
+    height: 48,
   },
   tabLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#666',
+    fontSize: 11.5,
+    fontWeight: '500',
     marginTop: 4,
   },
   tabLabelActive: {
-    color: '#22C55E',
-  },
-  standoutCta: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: width * 0.2,
-    height: '100%',
-    position: 'relative',
-    top: -15,
-  },
-  standoutCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#22C55E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  standoutIcon: {
-    fontSize: 24,
-  },
-  standoutLabel: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#22C55E',
-    marginTop: 6,
-    textTransform: 'uppercase',
+    fontWeight: '700',
   },
 });

@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, ScrollView, StatusBar, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AccountScreen({ navigation }: any) {
@@ -8,7 +9,16 @@ export default function AccountScreen({ navigation }: any) {
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to log out from MonthlyGrocery?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', onPress: () => logout() }
+      {
+        text: 'Logout',
+        onPress: async () => {
+          await logout();
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Splash' }],
+          });
+        }
+      }
     ]);
   };
 
@@ -23,7 +33,17 @@ export default function AccountScreen({ navigation }: any) {
 
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* User Card */}
-        <View style={styles.userCard}>
+        <TouchableOpacity 
+          style={styles.userCard}
+          onPress={() => {
+            if (user) {
+              navigation.navigate('EditProfile');
+            } else {
+              navigation.navigate('Login');
+            }
+          }}
+          activeOpacity={0.8}
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
               {user?.name ? user.name.charAt(0).toUpperCase() : 'G'}
@@ -35,7 +55,9 @@ export default function AccountScreen({ navigation }: any) {
               {user?.mobile ? `+91 ${user.mobile.slice(2)}` : 'Browsing as Guest'}
             </Text>
           </View>
-          {!user && (
+          {user ? (
+            <Text style={styles.editProfileHint}>Edit Profile ➔</Text>
+          ) : (
             <TouchableOpacity 
               style={styles.inlineLoginBtn} 
               onPress={() => navigation.navigate('Login')}
@@ -43,7 +65,7 @@ export default function AccountScreen({ navigation }: any) {
               <Text style={styles.inlineLoginText}>Login</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </TouchableOpacity>
 
         {/* Info Card */}
         <View style={styles.infoCard}>
@@ -74,19 +96,28 @@ export default function AccountScreen({ navigation }: any) {
             <Text style={styles.menuArrow}>➔</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('SavedAddresses')}
+          >
             <Text style={styles.menuEmoji}>📍</Text>
             <Text style={styles.menuText}>Manage Addresses</Text>
             <Text style={styles.menuArrow}>➔</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('MyCoupons')}
+          >
             <Text style={styles.menuEmoji}>🏷️</Text>
             <Text style={styles.menuText}>My Offers & Coupons</Text>
             <Text style={styles.menuArrow}>➔</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomWidth: 0 }]}>
+          <TouchableOpacity 
+            style={[styles.menuItem, { borderBottomWidth: 0 }]}
+            onPress={() => navigation.navigate('HelpSupport')}
+          >
             <Text style={styles.menuEmoji}>💬</Text>
             <Text style={styles.menuText}>Help & Support</Text>
             <Text style={styles.menuArrow}>➔</Text>
@@ -167,6 +198,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     marginTop: 2,
+  },
+  editProfileHint: {
+    fontSize: 11.5,
+    fontWeight: 'bold',
+    color: '#22C55E',
   },
   infoCard: {
     backgroundColor: '#fff',

@@ -1,86 +1,116 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Dimensions, StatusBar } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  StatusBar
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppIcon, { IconName } from '../components/AppIcon';
+import { COLORS, RADIUS } from '../constants/theme';
 
-const { width } = Dimensions.get('window');
+interface ValueSlide {
+  id: string;
+  badge: string;
+  icon: IconName;
+  title: string;
+  subtitle: string;
+}
 
-const SLIDES = [
+const SLIDES: ValueSlide[] = [
   {
-    title: 'Monthly planning, not instant deliveries.',
-    desc: 'Why order daily and pay multiple delivery fees? Plan your entire month\'s groceries once and get them delivered in bulk packages.',
-    emoji: '📅',
-    color: '#DCFCE7',
+    id: 'slide-1',
+    badge: 'Save ₹340 / month',
+    icon: 'shopping-bag',
+    title: 'Plan your whole month in one go',
+    subtitle: 'Build your household staples basket once. We batch deliver with zero rush and zero markup.'
   },
   {
-    title: 'Consolidated savings and bulk discounts.',
-    desc: 'Unlock wholesale-like prices and deep discounts when building a monthly basket of ₹2,500+. Save up to 20% compared to local supermarkets.',
-    emoji: '🏷️',
-    color: '#FEF3C7',
+    id: 'slide-2',
+    badge: 'Reorder in seconds',
+    icon: 'calendar',
+    title: 'Copy last month in one tap',
+    subtitle: 'Your family essentials are remembered. Tweak quantities, swap brands, and checkout in 30 seconds.'
   },
   {
-    title: 'Smart helpers for easy repeat orders.',
-    desc: 'Use One-Click Monthly Cart generation or Copy Last Month\'s Cart to build your monthly list in under 10 seconds. No item forgotten.',
-    emoji: '💡',
-    color: '#FCE7F3',
+    id: 'slide-3',
+    badge: 'Lowest monthly price',
+    icon: 'trending-down',
+    title: 'Save more on every order',
+    subtitle: 'Direct local hub fulfillment means wholesale prices on atta, rice, oil, dals and dry fruits.'
   }
 ];
 
 export default function ValueIntroScreen({ navigation }: any) {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleNext = () => {
-    if (currentSlide < SLIDES.length - 1) {
-      setCurrentSlide(currentSlide + 1);
+    if (currentIndex < SLIDES.length - 1) {
+      setCurrentIndex(currentIndex + 1);
     } else {
-      navigation.navigate('CitySelection');
+      navigation.navigate('Login');
     }
   };
 
   const handleSkip = () => {
-    navigation.navigate('CitySelection');
+    navigation.navigate('Login');
   };
 
-  const slide = SLIDES[currentSlide];
+  const slide = SLIDES[currentIndex];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
-      {/* Top Header */}
-      <View style={styles.header}>
-        <Text style={styles.logo}>MonthlyGrocery</Text>
-        <TouchableOpacity onPress={handleSkip}>
+
+      {/* Top Bar with Skip */}
+      <View style={styles.topBar}>
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Slide Content */}
-      <View style={styles.slideContainer}>
-        <View style={[styles.emojiBg, { backgroundColor: slide.color }]}>
-          <Text style={styles.emoji}>{slide.emoji}</Text>
+      {/* Visual Center */}
+      <View style={styles.visualContainer}>
+        {/* Signature Savings Marigold Pill */}
+        <View style={styles.pillBadge}>
+          <Text style={styles.pillBadgeText}>{slide.badge}</Text>
         </View>
-        <Text style={styles.slideTitle}>{slide.title}</Text>
-        <Text style={styles.slideDesc}>{slide.desc}</Text>
+
+        {/* Big Mint Circle with Outline Icon */}
+        <View style={styles.illustrationCircle}>
+          <AppIcon name={slide.icon} size={64} color={COLORS.green700} />
+        </View>
+
+        {/* Text Block */}
+        <Text style={styles.title}>{slide.title}</Text>
+        <Text style={styles.subtitle}>{slide.subtitle}</Text>
       </View>
 
-      {/* Footer / Controls */}
-      <View style={styles.footer}>
-        {/* Indicators */}
-        <View style={styles.indicatorContainer}>
+      {/* Bottom Area with Dots & Pill Button */}
+      <View style={styles.bottomContainer}>
+        {/* Pagination Dots */}
+        <View style={styles.dotsRow}>
           {SLIDES.map((_, index) => (
             <View
               key={index}
               style={[
-                styles.indicator,
-                currentSlide === index ? styles.indicatorActive : styles.indicatorInactive
+                styles.dot,
+                currentIndex === index ? styles.dotActive : styles.dotInactive
               ]}
             />
           ))}
         </View>
 
-        {/* CTA Button */}
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>
-            {currentSlide === SLIDES.length - 1 ? 'Get Started ➔' : 'Continue'}
+        {/* Pill Primary CTA Button */}
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={handleNext}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.primaryBtnText}>
+            {currentIndex === SLIDES.length - 1 ? 'Get started' : 'Next'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -89,102 +119,106 @@ export default function ValueIntroScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: '#FFF8ED',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: COLORS.paper, // Exact warm paper #FAF9F5
     paddingHorizontal: 24,
-    paddingTop: 15,
+    paddingTop: 8,
+    paddingBottom: 28,
+    justifyContent: 'space-between',
   },
-  logo: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0B1220',
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    minHeight: 36,
+  },
+  skipBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
   skipText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.green700, // #1E7A46
   },
-  slideContainer: {
-    flex: 1,
+  visualContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  pillBadge: {
+    backgroundColor: COLORS.marigold100, // #FDEFD3
+    borderWidth: 1,
+    borderColor: COLORS.marigold200, // #FBE0AE
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    marginBottom: 28,
+  },
+  pillBadgeText: {
+    color: COLORS.marigold700, // #8A5200
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  illustrationCircle: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: COLORS.green100, // #E4F3EA
+    borderWidth: 2,
+    borderColor: COLORS.green500, // #33A862
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 30,
+    marginBottom: 32,
   },
-  emojiBg: {
-    width: 120,
-    height: 120,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  emoji: {
-    fontSize: 60,
-  },
-  slideTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#0B1220',
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: COLORS.ink900, // #17251E
     textAlign: 'center',
-    lineHeight: 36,
-    letterSpacing: -0.5,
+    marginBottom: 12,
+    letterSpacing: -0.4,
+    lineHeight: 32,
   },
-  slideDesc: {
+  subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: COLORS.ink500, // #6B7772
     textAlign: 'center',
-    lineHeight: 22,
-    marginTop: 15,
+    lineHeight: 21,
+    maxWidth: 320,
   },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 30,
-    alignItems: 'center',
+  bottomContainer: {
+    gap: 24,
   },
-  indicatorContainer: {
+  dotsRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 30,
-  },
-  indicator: {
-    height: 6,
-    borderRadius: 3,
-  },
-  indicatorActive: {
-    width: 24,
-    backgroundColor: '#22C55E',
-  },
-  indicatorInactive: {
-    width: 6,
-    backgroundColor: '#E5E7EB',
-  },
-  nextBtn: {
-    backgroundColor: '#22C55E',
-    height: 52,
-    width: '100%',
-    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 3,
+    gap: 8,
   },
-  nextBtnText: {
-    color: '#fff',
+  dot: {
+    height: 8,
+    borderRadius: 4,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: COLORS.green700, // #1E7A46
+  },
+  dotInactive: {
+    width: 8,
+    backgroundColor: COLORS.line, // #EAE9E2
+  },
+  primaryBtn: {
+    width: '100%',
+    height: 54,
+    borderRadius: RADIUS.pill, // 999px
+    backgroundColor: COLORS.green700, // #1E7A46
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

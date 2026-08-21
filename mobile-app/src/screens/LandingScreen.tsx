@@ -47,16 +47,9 @@ export default function LandingScreen({ navigation }: any) {
           {/* CTA Buttons */}
           <TouchableOpacity
             style={styles.ctaButton}
-            onPress={() => navigation.navigate('Login', { role: 'consumer' })}
+            onPress={() => navigation.navigate('Login')}
           >
             <Text style={styles.ctaButtonText}>Start Shopping ➔</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.secondaryCta}
-            onPress={() => navigation.navigate('Login', { role: 'admin' })}
-          >
-            <Text style={styles.secondaryCtaText}>Merchant/Admin Login</Text>
           </TouchableOpacity>
         </View>
 

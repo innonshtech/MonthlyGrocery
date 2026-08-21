@@ -14,17 +14,38 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 
-const CATEGORIES = ['All', 'Atta & Rice', 'Cooking Essentials', 'Dairy Staples', 'Pulses & Grains', 'Packaged Foods', 'Household Items', 'Beverages', 'Personal Care', 'Snacks'];
+
 
 export default function ShopScreen({ navigation }: any) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [categories, setCategories] = useState<string[]>(['All']);
   const [error, setError] = useState('');
 
-  const { token, logout } = useAuth();
+  const { token, logout, city, area } = useAuth();
   const { items, addToCart, updateQuantity } = useCart();
+
+  const fetchCategories = async () => {
+    try {
+      let url = `${API_BASE}/products/categories`;
+      if (city && area) {
+        url += `?city=${encodeURIComponent(city)}&area_name=${encodeURIComponent(area)}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCategories(['All', ...(data.categories || [])]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, [city, area]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -36,6 +57,12 @@ export default function ShopScreen({ navigation }: any) {
       }
       if (search) {
         url += `&q=${encodeURIComponent(search)}`;
+      }
+      if (city) {
+        url += `&city=${encodeURIComponent(city)}`;
+      }
+      if (area) {
+        url += `&area_name=${encodeURIComponent(area)}`;
       }
       
       const res = await fetch(url);
@@ -54,7 +81,7 @@ export default function ShopScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchProducts();
-  }, [category, search]);
+  }, [category, search, city, area]);
 
   const getCartQuantity = (productId: string) => {
     const item = items.find((it) => it.product.id === productId);
@@ -139,7 +166,7 @@ export default function ShopScreen({ navigation }: any) {
         <FlatList
           horizontal
           showsHorizontalScrollIndicator={false}
-          data={CATEGORIES}
+          data={categories}
           keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <TouchableOpacity

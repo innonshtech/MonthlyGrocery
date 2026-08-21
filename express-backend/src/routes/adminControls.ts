@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
-import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest } from '../config/localDb';
+import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct } from '../config/localDb';
+import { supabase } from '../config/supabase';
 
 const router = Router();
 
@@ -293,6 +294,517 @@ router.delete('/areas/:id', authMiddleware, requireRole(['super_admin']), async 
     db.areas = db.areas.filter(a => a.id !== id);
     writeDb(db);
     return res.json({ success: true, areas: db.areas });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper to get merchant's shop_id from Supabase
+async function getMerchantShopId(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('shops')
+    .select('id')
+    .eq('owner_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.id;
+}
+
+// ==========================================
+// 5. Merchant SKU Selection & Request Endpoints
+// ==========================================
+
+// GET /shop-products: Get list of shop products and their request statuses (Merchant only)
+router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const shopId = await getMerchantShopId(req.user!.id);
+    if (!shopId) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+    const db = readDb();
+    const shopProds = db.shop_products.filter(sp => sp.shop_id === shopId);
+    
+    if (shopProds.length === 0) {
+      return res.json({ success: true, shop_products: [] });
+    }
+
+    // Fetch product details from Supabase
+    const productIds = shopProds.map(sp => sp.product_id);
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('id, name, sku, brand, primary_category, image_url, mrp')
+      .in('id', productIds);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    const joined = shopProds.map(sp => {
+      const p = products?.find((prod: any) => prod.id === sp.product_id);
+      return {
+        ...sp,
+        name: p?.name || 'Unknown Product',
+        sku: p?.sku || '',
+        brand: p?.brand || '',
+        primary_category: p?.primary_category || '',
+        image_url: p?.image_url || '',
+        mrp: p?.mrp || 0
+      };
+    });
+
+    return res.json({ success: true, shop_products: joined });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /shop-products/request: Merchant requests a Master SKU (Merchant only)
+router.post('/shop-products/request', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { product_id } = req.body;
+  if (!product_id) {
+    return res.status(400).json({ success: false, error: 'Product ID is required' });
+  }
+
+  try {
+    const shopId = await getMerchantShopId(req.user!.id);
+    if (!shopId) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+
+    // Verify product exists in Supabase Master catalogue
+    const { data: masterProduct, error: pError } = await supabase
+      .from('products')
+      .select('id, price, mrp')
+      .eq('id', product_id)
+      .maybeSingle();
+
+    if (pError || !masterProduct) {
+      return res.status(404).json({ success: false, error: 'Master product not found in central catalogue' });
+    }
+
+    const db = readDb();
+    
+    // Check if already requested or mapped
+    const existing = db.shop_products.find(sp => sp.shop_id === shopId && sp.product_id === product_id);
+    if (existing) {
+      return res.status(400).json({ success: false, error: `SKU already has status: ${existing.status}` });
+    }
+
+    const newShopProduct: ShopProduct = {
+      id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      shop_id: shopId,
+      product_id: product_id,
+      selling_price: parseFloat(masterProduct.price) || 0,
+      discount_percentage: Math.max(0, Math.round(((parseFloat(masterProduct.mrp) - parseFloat(masterProduct.price)) / parseFloat(masterProduct.mrp)) * 100)) || 0,
+      stock: 0,
+      available: false,
+      status: 'pending'
+    };
+
+    db.shop_products.push(newShopProduct);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'SKU request submitted successfully', shop_product: newShopProduct });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /shop-products/configure: Merchant updates price/stock for approved SKU (Merchant only)
+router.post('/shop-products/configure', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { product_id, selling_price, discount_percentage, stock, available } = req.body;
+  if (!product_id) {
+    return res.status(400).json({ success: false, error: 'Product ID is required' });
+  }
+
+  try {
+    const shopId = await getMerchantShopId(req.user!.id);
+    if (!shopId) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+
+    const db = readDb();
+    const spIndex = db.shop_products.findIndex(sp => sp.shop_id === shopId && sp.product_id === product_id);
+    
+    if (spIndex === -1) {
+      return res.status(404).json({ success: false, error: 'Product not mapped or requested yet for your shop' });
+    }
+
+    const sp = db.shop_products[spIndex];
+    if (sp.status !== 'approved') {
+      return res.status(403).json({ success: false, error: 'SKU is pending Super Admin approval. You cannot configure it yet.' });
+    }
+
+    // Update values
+    if (selling_price !== undefined) sp.selling_price = parseFloat(selling_price) || 0;
+    if (discount_percentage !== undefined) sp.discount_percentage = parseInt(discount_percentage) || 0;
+    if (stock !== undefined) sp.stock = parseInt(stock) || 0;
+    if (available !== undefined) sp.available = !!available;
+
+    db.shop_products[spIndex] = sp;
+    writeDb(db);
+
+    return res.json({ success: true, message: 'SKU configuration updated successfully', shop_product: sp });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /sku-requests: Super Admin lists all pending SKU requests (Super Admin only)
+router.get('/sku-requests', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const db = readDb();
+    const pendingRequests = db.shop_products.filter(sp => sp.status === 'pending');
+    if (pendingRequests.length === 0) {
+      return res.json({ success: true, requests: [] });
+    }
+
+    // Fetch product details for these IDs from Supabase
+    const productIds = pendingRequests.map(r => r.product_id);
+    const { data: products, error: pError } = await supabase
+      .from('products')
+      .select('id, name, primary_category, brand, mrp')
+      .in('id', productIds);
+
+    if (pError) {
+      return res.status(500).json({ success: false, error: pError.message });
+    }
+
+    // Fetch shop names
+    const shopIds = pendingRequests.map(r => r.shop_id);
+    const { data: shops, error: sError } = await supabase
+      .from('shops')
+      .select('id, shop_name')
+      .in('id', shopIds);
+
+    if (sError) {
+      return res.status(500).json({ success: false, error: sError.message });
+    }
+
+    const requestsJoined = pendingRequests.map(r => {
+      const p = products?.find((prod: any) => prod.id === r.product_id);
+      const s = shops?.find((sh: any) => sh.id === r.shop_id);
+      return {
+        ...r,
+        product_name: p?.name || 'Unknown Product',
+        category: p?.primary_category || 'Unknown Category',
+        brand: p?.brand || 'Unknown Brand',
+        mrp: p?.mrp || 0,
+        shop_name: s?.shop_name || 'Unknown Shop'
+      };
+    });
+
+    return res.json({ success: true, requests: requestsJoined });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /sku-requests/:id/status: Super Admin Approves / Rejects a pending SKU request (Super Admin only)
+router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  if (!status || !['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ success: false, error: 'Invalid status value' });
+  }
+
+  try {
+    const db = readDb();
+    const spIndex = db.shop_products.findIndex(sp => sp.id === id);
+    
+    if (spIndex === -1) {
+      return res.status(404).json({ success: false, error: 'SKU request not found' });
+    }
+
+    db.shop_products[spIndex].status = status;
+    writeDb(db);
+
+    return res.json({ success: true, message: `SKU request ${status} successfully` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// 6. Category Management CRUD Endpoints
+// ==========================================
+
+// GET /categories: Get list of all master categories (Public)
+router.get('/categories', async (req, res) => {
+  try {
+    const db = readDb();
+    return res.json({ success: true, categories: db.categories || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /categories: Create a new category (Super Admin only)
+router.post('/categories', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, error: 'Category name is required' });
+  }
+
+  try {
+    const db = readDb();
+    const normalized = name.trim();
+    
+    // Check for duplicate category name
+    const exists = db.categories.some(c => c.name.toLowerCase() === normalized.toLowerCase());
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'Category already exists' });
+    }
+
+    const newCat = {
+      id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      name: normalized
+    };
+
+    db.categories.push(newCat);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Category added successfully', categories: db.categories });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /categories/:id: Delete a category (Super Admin only)
+router.delete('/categories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = readDb();
+    const exists = db.categories.some(c => c.id === id);
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Category not found' });
+    }
+
+    db.categories = db.categories.filter(c => c.id !== id);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Category deleted successfully', categories: db.categories });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// 7. Shop Inventory Direct Assignment Endpoints (Super Admin)
+// ==========================================
+
+// GET /shop-inventory/:shop_id: Get inventory for a specific shop (Super Admin only)
+router.get('/shop-inventory/:shop_id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { shop_id } = req.params;
+  try {
+    const db = readDb();
+    const shopProducts = db.shop_products.filter((sp: any) => sp.shop_id === shop_id);
+    
+    if (shopProducts.length === 0) {
+      return res.json({ success: true, shop_products: [] });
+    }
+
+    const productIds = shopProducts.map((sp: any) => sp.product_id);
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', productIds);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    const joined = shopProducts.map((sp: any) => {
+      const p = products?.find((prod: any) => prod.id === sp.product_id);
+      return {
+        ...sp,
+        product_name: p?.name || 'Unknown Product',
+        sku: p?.sku || 'N/A',
+        brand: p?.brand || 'N/A',
+        mrp: p?.mrp || 0
+      };
+    });
+
+    return res.json({ success: true, shop_products: joined });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /shop-inventory/:shop_id/assign: Directly map a product to a shop (Super Admin only)
+router.post('/shop-inventory/:shop_id/assign', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { shop_id } = req.params;
+  const { product_id, selling_price, discount_percentage, stock } = req.body;
+
+  if (!product_id || selling_price === undefined) {
+    return res.status(400).json({ success: false, error: 'Product ID and Selling Price are required' });
+  }
+
+  try {
+    const db = readDb();
+    // Check if already mapped
+    const exists = db.shop_products.some((sp: any) => sp.shop_id === shop_id && sp.product_id === product_id);
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'Product is already assigned to this shop' });
+    }
+
+    const newShopProduct = {
+      id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+      shop_id,
+      product_id,
+      selling_price: parseFloat(selling_price) || 0,
+      discount_percentage: parseFloat(discount_percentage) || 0,
+      stock: parseInt(stock) || 100,
+      available: true,
+      status: 'approved' as const
+    };
+
+    db.shop_products.push(newShopProduct);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Product assigned to shop successfully', shop_product: newShopProduct });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /shop-inventory/:id: Delete a shop product mapping (Super Admin only)
+router.delete('/shop-inventory/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  try {
+    const db = readDb();
+    const exists = db.shop_products.some((sp: any) => sp.id === id);
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Mapping not found' });
+    }
+
+    db.shop_products = db.shop_products.filter((sp: any) => sp.id !== id);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Product unassigned from shop successfully' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// 8. Super Admin Coupons Management
+// ==========================================
+
+// GET /coupons: Get all coupons (Admin)
+router.get('/coupons', authMiddleware, requireRole(['super_admin', 'admin']), async (req, res) => {
+  try {
+    const db = readDb();
+    return res.json({ success: true, coupons: db.coupons || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /coupons: Create or Update coupon
+router.post('/coupons', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { code, discount_type, discount_value, min_order_value, max_discount, description, is_active } = req.body;
+  if (!code || !discount_type || discount_value === undefined) {
+    return res.status(400).json({ success: false, error: 'Code, discount type, and discount value are required' });
+  }
+
+  try {
+    const db = readDb();
+    if (!db.coupons) db.coupons = [];
+
+    const existingIndex = db.coupons.findIndex(c => c.code.toUpperCase() === code.trim().toUpperCase());
+    const couponObj: any = {
+      id: existingIndex >= 0 ? db.coupons[existingIndex].id : `cpn-${Date.now()}`,
+      code: code.trim().toUpperCase(),
+      discount_type: discount_type as 'percentage' | 'flat',
+      discount_value: parseFloat(discount_value) || 0,
+      value: parseFloat(discount_value) || 0,
+      min_order_value: parseFloat(min_order_value) || 0,
+      min_order: parseFloat(min_order_value) || 0,
+      max_discount: max_discount ? parseFloat(max_discount) : undefined,
+      description: description?.trim() || `Get ${discount_value}${discount_type === 'percentage' ? '%' : '₹'} off on your order`,
+      is_active: is_active !== false,
+      active: is_active !== false,
+      created_at: existingIndex >= 0 ? db.coupons[existingIndex].created_at : new Date().toISOString()
+    };
+
+    if (existingIndex >= 0) {
+      db.coupons[existingIndex] = couponObj;
+    } else {
+      db.coupons.push(couponObj);
+    }
+
+    writeDb(db);
+    return res.json({ success: true, message: 'Coupon saved successfully', coupon: couponObj, coupons: db.coupons });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /coupons/:id: Delete coupon
+router.delete('/coupons/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  try {
+    const db = readDb();
+    if (!db.coupons) db.coupons = [];
+    db.coupons = db.coupons.filter(c => c.id !== id && c.code !== id);
+    writeDb(db);
+    return res.json({ success: true, message: 'Coupon deleted successfully', coupons: db.coupons });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// 9. Central Orders Lifecycle Management
+// ==========================================
+
+// GET /orders/all: View all orders across all stores
+router.get('/orders/all', authMiddleware, requireRole(['super_admin', 'admin']), async (req: AuthRequest, res) => {
+  try {
+    const db = readDb();
+    let ordersQuery = supabase
+      .from('orders')
+      .select('*, order_items(*, products(*)), shops(name, city, area_name), profiles(name, mobile)')
+      .order('created_at', { ascending: false });
+
+    const { data: orders, error } = await ordersQuery;
+
+    if (error) {
+      const localOrders = (db as any).orders || [];
+      return res.json({ success: true, orders: localOrders });
+    }
+
+    return res.json({ success: true, orders: orders || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /orders/:id/status: Update order status
+router.patch('/orders/:id/status', authMiddleware, requireRole(['super_admin', 'admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const validStatuses = ['pending', 'confirmed', 'packing', 'out_for_delivery', 'delivered', 'cancelled'];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ success: false, error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, message: `Order status updated to ${status}`, order: data });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

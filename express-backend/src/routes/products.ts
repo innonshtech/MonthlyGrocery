@@ -25,24 +25,180 @@ function parseBool(val: any, defaultVal = false): boolean {
 }
 
 // 1. GET /all: Consumer Catalog (with city pricing overrides)
+// 1. GET /all: Consumer Catalog (location-aware, based on city and area)
 router.get('/all', async (req, res) => {
-  const { city, category, secondary, q, limit } = req.query;
+  const { city, area_name, category, secondary, q, limit } = req.query;
   const limitVal = parseInt(limit as string) || 100;
 
   try {
-    let query = supabase
-      .from('products')
-      .select(`
-        *,
-        product_city_prices (
-          city_name,
+    // If location credentials are not provided, fallback to the old PostgreSQL pricing override behaviour
+    if (!city || !area_name) {
+      let query = supabase
+        .from('products')
+        .select(`
+          *,
+          product_city_prices (
+            city_name,
+            mrp,
+            price,
+            wholesaler_price,
+            is_live
+          )
+        `)
+        .eq('available', true);
+
+      if (category) {
+        query = query.eq('primary_category', category);
+      }
+      if (secondary) {
+        query = query.eq('secondary_category', secondary);
+      }
+      if (q) {
+        query = query.ilike('name', `%${q}%`);
+      }
+
+      const { data: products, error } = await query.limit(limitVal);
+
+      if (error) {
+        return res.status(500).json({ success: false, error: error.message });
+      }
+
+      const out: any[] = [];
+      const targetCity = city ? String(city).trim() : '';
+
+      for (const p of products || []) {
+        const cityPrices = p.product_city_prices || [];
+        const cp = cityPrices.find((c: any) => c.city_name.toLowerCase() === targetCity.toLowerCase());
+
+        let mrp = parseFloat(p.mrp);
+        let price = parseFloat(p.price);
+        let isLive = true;
+
+        if (cp) {
+          if (!cp.is_live) {
+            isLive = false;
+          } else {
+            mrp = parseFloat(cp.mrp) || mrp;
+            price = parseFloat(cp.price) || price;
+          }
+        } else if (targetCity && cityPrices.length > 0) {
+          const fallback = cityPrices.find((c: any) => c.is_live && parseFloat(c.price) > 0);
+          if (fallback) {
+            mrp = parseFloat(fallback.mrp) || mrp;
+            price = parseFloat(fallback.price) || price;
+          }
+        }
+
+        if (isLive) {
+          out.push({
+            id: p.id,
+            shop_id: p.shop_id,
+            name: p.name,
+            sku: p.sku,
+            brand: p.brand,
+            company: p.company,
+            primary_category: p.primary_category,
+            secondary_category: p.secondary_category,
+            short_description: p.short_description,
+            place: p.place,
+            image_url: p.image_url,
+            unit: p.unit,
+            quantity_value: p.quantity_value,
+            quantity_unit: p.quantity_unit,
+            mrp,
+            price,
+            is_veg: p.is_veg,
+            featured: p.featured,
+            todays_deal: p.todays_deal,
+            best_seller: p.best_seller,
+            discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
+            you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
+          });
+        }
+      }
+      return res.json({ success: true, products: out });
+    }
+
+    // Dynamic Location-Aware Merchant Mapping Flow
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+
+    // 1. Resolve local shop serving this city & area
+    const loc = db.serviceable_locations?.find(
+      (l: any) => l.city.toLowerCase() === String(city).trim().toLowerCase() &&
+                  l.area_name.toLowerCase() === String(area_name).trim().toLowerCase()
+    );
+
+    const shopId = loc?.shop_id;
+
+    // 2. Fetch approved and available shop products from local db if shopId exists
+    const activeShopProds = shopId
+      ? db.shop_products?.filter(
+          (sp: any) => sp.shop_id === shopId && sp.status === 'approved' && sp.available === true
+        ) || []
+      : [];
+
+    if (!shopId || activeShopProds.length === 0) {
+      // Return master products from Supabase directly
+      let query = supabase
+        .from('products')
+        .select('*')
+        .eq('available', true);
+
+      if (category) {
+        query = query.eq('primary_category', category);
+      }
+      if (secondary) {
+        query = query.eq('secondary_category', secondary);
+      }
+      if (q) {
+        query = query.ilike('name', `%${q}%`);
+      }
+
+      const { data: masterProds, error: masterErr } = await query.limit(limitVal);
+      if (masterErr) {
+        return res.status(500).json({ success: false, error: masterErr.message });
+      }
+
+      const out = (masterProds || []).map((p: any) => {
+        const mrp = parseFloat(p.mrp) || 0;
+        const price = parseFloat(p.price) || 0;
+        return {
+          id: p.id,
+          shop_id: p.shop_id || 'hub-default',
+          name: p.name,
+          sku: p.sku,
+          brand: p.brand,
+          company: p.company,
+          primary_category: p.primary_category,
+          secondary_category: p.secondary_category,
+          description: p.description,
+          short_description: p.short_description,
+          place: p.place,
+          image_url: p.image_url,
           mrp,
           price,
-          wholesaler_price,
-          is_live
-        )
-      `)
-      .eq('available', true);
+          discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
+          stock: p.stock || 50,
+          unit: p.unit,
+          is_veg: p.is_veg,
+          featured: p.featured,
+          todays_deal: p.todays_deal,
+          best_seller: p.best_seller,
+          you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
+        };
+      });
+
+      return res.json({ success: true, products: out });
+    }
+
+    const productIds = activeShopProds.map((sp: any) => sp.product_id);
+
+    // 3. Query matching master products from Supabase
+    let query = supabase
+      .from('products')
+      .select('*')
+      .in('id', productIds);
 
     if (category) {
       query = query.eq('primary_category', category);
@@ -54,71 +210,137 @@ router.get('/all', async (req, res) => {
       query = query.ilike('name', `%${q}%`);
     }
 
-    const { data: products, error } = await query.limit(limitVal);
+    const { data: masterProducts, error } = await query.limit(limitVal);
 
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    // 4. Merge master product details with local merchant pricing and stock configurations
     const out: any[] = [];
-    const targetCity = city ? String(city).trim() : '';
+    for (const sp of activeShopProds) {
+      const p = masterProducts?.find((prod: any) => prod.id === sp.product_id);
+      if (!p) continue;
 
-    for (const p of products || []) {
-      const cityPrices = p.product_city_prices || [];
-      const cp = cityPrices.find((c: any) => c.city_name.toLowerCase() === targetCity.toLowerCase());
+      const mrp = parseFloat(p.mrp) || 0;
+      const price = parseFloat(sp.selling_price) || 0;
 
-      let mrp = parseFloat(p.mrp);
-      let price = parseFloat(p.price);
-      let isLive = true;
-
-      if (cp) {
-        if (!cp.is_live) {
-          isLive = false;
-        } else {
-          mrp = parseFloat(cp.mrp) || mrp;
-          price = parseFloat(cp.price) || price;
-        }
-      } else if (targetCity && cityPrices.length > 0) {
-        // If city is specified but not configured, and there are other cities,
-        // fallback to the first active city pricing to make it visible
-        const fallback = cityPrices.find((c: any) => c.is_live && parseFloat(c.price) > 0);
-        if (fallback) {
-          mrp = parseFloat(fallback.mrp) || mrp;
-          price = parseFloat(fallback.price) || price;
-        }
-      }
-
-      if (isLive) {
-        // Map to consumer response structure (excluding internal heavy fields)
-        out.push({
-          id: p.id,
-          shop_id: p.shop_id,
-          name: p.name,
-          sku: p.sku,
-          brand: p.brand,
-          company: p.company,
-          primary_category: p.primary_category,
-          secondary_category: p.secondary_category,
-          short_description: p.short_description,
-          place: p.place,
-          image_url: p.image_url,
-          unit: p.unit,
-          quantity_value: p.quantity_value,
-          quantity_unit: p.quantity_unit,
-          mrp,
-          price,
-          is_veg: p.is_veg,
-          featured: p.featured,
-          todays_deal: p.todays_deal,
-          best_seller: p.best_seller,
-          discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
-          you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-        });
-      }
+      out.push({
+        id: p.id,
+        shop_id: shopId,
+        name: p.name,
+        sku: p.sku,
+        brand: p.brand,
+        company: p.company,
+        primary_category: p.primary_category,
+        secondary_category: p.secondary_category,
+        description: p.description,
+        short_description: p.short_description,
+        place: p.place,
+        image_url: p.image_url,
+        mrp,
+        price,
+        discount_percent: sp.discount_percentage || 0,
+        stock: sp.stock || 0,
+        unit: p.unit,
+        is_veg: p.is_veg,
+        featured: p.featured,
+        todays_deal: p.todays_deal,
+        best_seller: p.best_seller,
+        you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
+      });
     }
 
     return res.json({ success: true, products: out });
 
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 1.2 GET /search: Search Consumer Catalog
+router.get('/search', async (req, res) => {
+  const { q, category, limit } = req.query;
+  const limitVal = parseInt(limit as string) || 50;
+
+  try {
+    let query = supabase
+      .from('products')
+      .select('*')
+      .eq('available', true);
+
+    if (q) {
+      query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
+    }
+    if (category) {
+      query = query.eq('primary_category', category);
+    }
+
+    const { data: products, error } = await query.limit(limitVal);
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    const out = (products || []).map((p: any) => {
+      const mrp = parseFloat(p.mrp) || 0;
+      const price = parseFloat(p.price) || 0;
+      return {
+        id: p.id,
+        shop_id: p.shop_id || 'hub-default',
+        name: p.name,
+        sku: p.sku,
+        brand: p.brand,
+        company: p.company,
+        primary_category: p.primary_category,
+        secondary_category: p.secondary_category,
+        description: p.description,
+        short_description: p.short_description,
+        place: p.place,
+        image_url: p.image_url,
+        mrp,
+        price,
+        discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
+        stock: p.stock || 50,
+        unit: p.unit,
+        is_veg: p.is_veg,
+        featured: p.featured,
+        todays_deal: p.todays_deal,
+        best_seller: p.best_seller,
+        you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
+      };
+    });
+
+    return res.json({ success: true, products: out });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 1.5 GET /master: Fetch all master catalogue products (Merchant & Admin use)
+router.get('/master', async (req, res) => {
+  try {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, products: products || [] });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 1.8 GET /categories: Retrieve unique active product categories configured by Super Admin
+router.get('/categories', async (req, res) => {
+  try {
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const categoryNames = (db.categories || []).map((c: any) => c.name);
+    return res.json({ success: true, categories: categoryNames });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -346,6 +568,76 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
   }
 });
 
+// 3.5 POST /create: Create a new Master catalog product (Super Admin only)
+router.post('/create', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  try {
+    // Get default shop
+    const { data: shop, error: shopError } = await supabase
+      .from('shops')
+      .select('*')
+      .maybeSingle();
+
+    const shopId = shop ? shop.id : null;
+
+    const { name, sku, brand, company, description, short_description, mrp, price, primary_category, image_url, unit, available, is_veg } = req.body;
+    
+    if (!name || !sku || !primary_category) {
+      return res.status(400).json({ success: false, error: 'Name, SKU, and Category are required.' });
+    }
+
+    const newProduct = {
+      shop_id: shopId,
+      name,
+      sku,
+      brand: brand || null,
+      company: company || null,
+      description: description || null,
+      short_description: short_description || null,
+      mrp: parseFloat(mrp) || 0,
+      price: parseFloat(price) || 0,
+      primary_category,
+      image_url: image_url || null,
+      unit: unit || 'units',
+      available: available ?? true,
+      is_veg: is_veg ?? true
+    };
+
+    const { data: product, error } = await supabase
+      .from('products')
+      .insert(newProduct)
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    // Auto-map this new product in local db so it is visible immediately in default store
+    if (shopId) {
+      const { readDb, writeDb } = require('../config/localDb');
+      const db = readDb();
+      const exists = db.shop_products.some((sp: any) => sp.shop_id === shopId && sp.product_id === product.id);
+      if (!exists) {
+        db.shop_products.push({
+          id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          shop_id: shopId,
+          product_id: product.id,
+          selling_price: parseFloat(price) || 0,
+          discount_percentage: Math.max(0, Math.round(((parseFloat(mrp) - parseFloat(price)) / parseFloat(mrp)) * 100)) || 0,
+          stock: 100,
+          available: true,
+          status: 'approved'
+        });
+        writeDb(db);
+      }
+    }
+
+    return res.json({ success: true, product });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 // 5. GET /mine: Retrieve all products belonging to the active merchant's shop
 router.get('/mine', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
@@ -442,6 +734,140 @@ router.put('/:product_id', authMiddleware, requireRole(['admin', 'super_admin'])
 
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 6.5 PUT /master/:product_id: Update master catalog product details (Super Admin only)
+router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { product_id } = req.params;
+  const data = req.body;
+
+  try {
+    const { data: product, error: findError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', product_id)
+      .maybeSingle();
+
+    if (findError || !product) {
+      return res.status(404).json({ success: false, error: 'Product not found.' });
+    }
+
+    const updatedData = {
+      name: data.name !== undefined ? data.name : product.name,
+      sku: data.sku !== undefined ? data.sku : product.sku,
+      brand: data.brand !== undefined ? data.brand : product.brand,
+      company: data.company !== undefined ? data.company : product.company,
+      description: data.description !== undefined ? data.description : product.description,
+      short_description: data.short_description !== undefined ? data.short_description : product.short_description,
+      mrp: data.mrp !== undefined ? parseFloat(data.mrp) : product.mrp,
+      price: data.price !== undefined ? parseFloat(data.price) : product.price,
+      primary_category: data.primary_category !== undefined ? data.primary_category : product.primary_category,
+      image_url: data.image_url !== undefined ? data.image_url : product.image_url,
+      unit: data.unit !== undefined ? data.unit : product.unit,
+      available: data.available !== undefined ? !!data.available : product.available,
+      is_veg: data.is_veg !== undefined ? !!data.is_veg : product.is_veg,
+    };
+
+    const { data: updatedProduct, error: updateError } = await supabase
+      .from('products')
+      .update(updatedData)
+      .eq('id', product_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return res.status(400).json({ success: false, error: updateError.message });
+    }
+
+    return res.json({ success: true, product: updatedProduct });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 7. DELETE /master/:product_id: Delete a product from master catalog (Super Admin only)
+router.delete('/master/:product_id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { product_id } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', product_id);
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    // Cascade delete mappings in local shop products db
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb();
+    db.shop_products = db.shop_products.filter((sp: any) => sp.product_id !== product_id);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Product deleted successfully from catalog' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 8. GET /coupons: Retrieve all active coupons
+router.get('/coupons/all', async (req, res) => {
+  try {
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const activeCoupons = (db.coupons || []).filter((c: any) => c.active === true);
+    return res.json({ success: true, coupons: activeCoupons });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
+// 9. POST /coupons/validate: Validate coupon code against min order requirements
+router.post('/coupons/validate', async (req, res) => {
+  const { code, cart_total } = req.body;
+  if (!code) {
+    return res.status(400).json({ success: false, error: 'Coupon code is required' });
+  }
+  const total = parseFloat(cart_total) || 0;
+
+  try {
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const coupon = (db.coupons || []).find(
+      (c: any) => c.code.toUpperCase() === String(code).trim().toUpperCase() && c.active === true
+    );
+
+    if (!coupon) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired coupon code' });
+    }
+
+    if (total < coupon.min_order) {
+      return res.status(400).json({
+        success: false,
+        error: `This coupon requires a minimum order total of ₹${coupon.min_order}. Current total: ₹${total.toFixed(2)}`
+      });
+    }
+
+    let discount = 0;
+    if (coupon.discount_type === 'flat') {
+      discount = coupon.value;
+    } else {
+      discount = Math.round((total * coupon.value) / 100);
+    }
+
+    return res.json({
+      success: true,
+      coupon: {
+        code: coupon.code,
+        discount_type: coupon.discount_type,
+        value: coupon.value,
+        discount_amount: discount
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
   }
 });
 

@@ -1,0 +1,49 @@
+/**
+ * MonthlyGrocery — Design System Foundations (Phase 1)
+ * Central Theme Tokens
+ */
+
+export const COLORS = {
+  // Brand Colors
+  green900: '#0F3D28', // Deep headings / on-light
+  green800: '#155A38', // Hover / gradients
+  green700: '#1E7A46', // PRIMARY
+  green600: '#2A8B54',
+  green500: '#33A862', // Bright / success accent
+  green100: '#E4F3EA', // Tints / fills
+  green50: '#F2F9F5',  // Subtle backgrounds
+
+  // Savings & Offers (SIGNATURE GLOW — never decorative)
+  marigold700: '#8A5200', // Savings text on light
+  marigold600: '#C77E12',
+  marigold500: '#F5A524', // SECONDARY — savings & offers only
+  marigold200: '#FBE0AE',
+  marigold100: '#FDEFD3', // Savings pill bg
+
+  // Ink / Text
+  ink900: '#17251E', // Primary text
+  ink700: '#3D4A44', // Secondary text
+  ink500: '#6B7772', // Muted / captions
+  ink300: '#A7B0AB', // Placeholder / disabled
+
+  // Surfaces
+  paper: '#FAF9F5',   // App background (warm)
+  surface: '#FFFFFF', // Cards
+  muted: '#F4F3EE',   // Subtle fills
+  line: '#EAE9E2',    // Warm borders
+
+  // Semantic
+  success: '#2A8B54',
+  warning: '#F5A524',
+  error: '#D8453B',
+  errorBg: '#FBE9E7',
+};
+
+export const RADIUS = {
+  xs: 6,
+  sm: 8,
+  md: 12, // cards
+  lg: 16,
+  xl: 20,
+  pill: 999, // buttons & badges
+};
