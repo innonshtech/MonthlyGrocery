@@ -105,3 +105,16 @@ credentials.json
 *.key
 .credentials
 frontend/node_modules/.cache/default-development/34.pack
+
+# React Native & Android Build Ingnore Patterns
+**/android/app/build/
+**/android/build/
+**/android/app/.cxx/
+**/android/.gradle/
+**/android/local.properties
+**/ios/build/
+**/ios/Pods/
+**/.expo/
+**/node_modules/
+.idea/
+.vscode/

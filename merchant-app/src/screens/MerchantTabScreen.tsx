@@ -4,19 +4,21 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   Dimensions,
   StatusBar
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OrdersDashboard from './OrdersDashboard';
 import MerchantInventoryScreen from './MerchantInventoryScreen';
 import MerchantCatalogScreen from './MerchantCatalogScreen';
 import MerchantAnalyticsScreen from './MerchantAnalyticsScreen';
 import StoreSettingsScreen from './StoreSettingsScreen';
+import AppIcon from '../components/AppIcon';
 
 const { width } = Dimensions.get('window');
 
 export default function MerchantTabScreen() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'Orders' | 'Inventory' | 'Catalog' | 'Analytics' | 'Settings'>('Orders');
 
   const renderActiveScreen = () => {
@@ -36,8 +38,10 @@ export default function MerchantTabScreen() {
     }
   };
 
+  const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.mainContainer, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
       
       {/* Screen Area */}
@@ -46,14 +50,14 @@ export default function MerchantTabScreen() {
       </View>
 
       {/* Merchant Bottom Tab Bar */}
-      <View style={styles.tabBar}>
+      <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
         {/* Tab 1: Orders */}
         <TouchableOpacity 
           style={styles.tabItem}
           onPress={() => setActiveTab('Orders')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Orders' && styles.tabIconActive]}>📥</Text>
+          <AppIcon name="inbox" size={22} color={activeTab === 'Orders' ? '#22C55E' : '#64748B'} />
           <Text style={[styles.tabLabel, activeTab === 'Orders' && styles.tabLabelActive]}>Orders</Text>
         </TouchableOpacity>
 
@@ -63,7 +67,7 @@ export default function MerchantTabScreen() {
           onPress={() => setActiveTab('Inventory')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Inventory' && styles.tabIconActive]}>📦</Text>
+          <AppIcon name="package" size={22} color={activeTab === 'Inventory' ? '#22C55E' : '#64748B'} />
           <Text style={[styles.tabLabel, activeTab === 'Inventory' && styles.tabLabelActive]}>Inventory</Text>
         </TouchableOpacity>
 
@@ -73,7 +77,7 @@ export default function MerchantTabScreen() {
           onPress={() => setActiveTab('Catalog')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Catalog' && styles.tabIconActive]}>🏪</Text>
+          <AppIcon name="store" size={22} color={activeTab === 'Catalog' ? '#22C55E' : '#64748B'} />
           <Text style={[styles.tabLabel, activeTab === 'Catalog' && styles.tabLabelActive]}>Catalog</Text>
         </TouchableOpacity>
 
@@ -83,7 +87,7 @@ export default function MerchantTabScreen() {
           onPress={() => setActiveTab('Analytics')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Analytics' && styles.tabIconActive]}>📊</Text>
+          <AppIcon name="bar_chart" size={22} color={activeTab === 'Analytics' ? '#22C55E' : '#64748B'} />
           <Text style={[styles.tabLabel, activeTab === 'Analytics' && styles.tabLabelActive]}>Analytics</Text>
         </TouchableOpacity>
 
@@ -93,16 +97,16 @@ export default function MerchantTabScreen() {
           onPress={() => setActiveTab('Settings')}
           activeOpacity={0.7}
         >
-          <Text style={[styles.tabIcon, activeTab === 'Settings' && styles.tabIconActive]}>⚙️</Text>
+          <AppIcon name="settings" size={22} color={activeTab === 'Settings' ? '#22C55E' : '#64748B'} />
           <Text style={[styles.tabLabel, activeTab === 'Settings' && styles.tabLabelActive]}>Store</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  mainContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },

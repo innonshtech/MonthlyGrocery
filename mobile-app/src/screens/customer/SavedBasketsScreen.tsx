@@ -10,6 +10,7 @@ import {
   StatusBar,
   Alert
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
@@ -60,7 +61,24 @@ const INITIAL_SAVED_BASKETS = [
 
 export default function SavedBasketsScreen({ navigation }: any) {
   const { items: cartItems, addToCart } = useCart();
-  const [baskets, setBaskets] = useState(INITIAL_SAVED_BASKETS);
+  const [baskets, setBaskets] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const loadBaskets = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@saved_baskets');
+        if (saved) {
+          setBaskets(JSON.parse(saved));
+        } else {
+          await AsyncStorage.setItem('@saved_baskets', JSON.stringify(INITIAL_SAVED_BASKETS));
+          setBaskets(INITIAL_SAVED_BASKETS);
+        }
+      } catch (err) {
+        console.error('Failed to load saved baskets:', err);
+      }
+    };
+    loadBaskets();
+  }, []);
 
   // Modal 1: Save Basket Sheet (D4 bottom middle)
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -89,7 +107,10 @@ export default function SavedBasketsScreen({ navigation }: any) {
       }))
     };
 
-    setBaskets([newBasket, ...baskets]);
+    const updatedBaskets = [newBasket, ...baskets];
+    setBaskets(updatedBaskets);
+    AsyncStorage.setItem('@saved_baskets', JSON.stringify(updatedBaskets)).catch(err => console.error(err));
+
     setSavedBasketName(newBasket.name);
     setShowSaveModal(false);
     setShowSuccessModal(true);

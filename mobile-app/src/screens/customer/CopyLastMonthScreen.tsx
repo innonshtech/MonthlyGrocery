@@ -76,24 +76,8 @@ export default function CopyLastMonthScreen({ navigation }: any) {
           setRepricedCount(repriced);
           setOutOfStockCount(outOfStock);
         } else {
-          // If no orders yet, populate with first 4 live database items
-          const initialItems = activeProducts.slice(0, 4).map(p => ({
-            id: p.id,
-            name: p.name,
-            unit: p.unit || '1 unit',
-            price: parseFloat(p.price as any) || 0,
-            mrp: parseFloat(p.mrp as any) || Math.round(Number(p.price) * 1.2),
-            qty: 1,
-            available: true,
-          }));
-
-          setLastOrder({
-            id: 'RECENT',
-            created_at: new Date().toISOString(),
-          });
-          setReconciledItems(initialItems);
-          setRepricedCount(0);
-          setOutOfStockCount(0);
+          setLastOrder(null);
+          setReconciledItems([]);
         }
       } catch (err) {
         console.error('Error in copy last month:', err);
@@ -165,6 +149,23 @@ export default function CopyLastMonthScreen({ navigation }: any) {
       {loading ? (
         <View style={styles.centerWrap}>
           <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      ) : !lastOrder ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIconCircle}>
+            <AppIcon name="orders" size={32} color={COLORS.green700} />
+          </View>
+          <Text style={styles.emptyTitle}>No previous month orders found</Text>
+          <Text style={styles.emptySub}>
+            Once you complete your first order, you can recreate your monthly grocery basket in 1 tap here!
+          </Text>
+          <TouchableOpacity
+            style={styles.browseBtn}
+            onPress={() => navigation.navigate('Shop')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.browseBtnText}>Explore staples</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
@@ -250,7 +251,7 @@ export default function CopyLastMonthScreen({ navigation }: any) {
       )}
 
       {/* Sticky Bottom Bar */}
-      {!loading && (
+      {!loading && lastOrder && (
         <View style={styles.bottomStickyBar}>
           <View>
             <Text style={styles.bottomItemsCountText}>{totalItemCount} items</Text>
@@ -459,6 +460,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addCartBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  /* Empty State Styles */
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: COLORS.ink900,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: 13,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 24,
+    paddingHorizontal: 12,
+  },
+  browseBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    height: 48,
+    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  browseBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
