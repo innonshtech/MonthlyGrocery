@@ -153,18 +153,7 @@
       "name": "Noida Sec-62"
     }
   ],
-  "shop_products": [
-    {
-      "id": "sp-1786699510538-g4wsui6w8",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "1afe95da-97a4-4e7a-9389-f4d37f8d2533",
-      "selling_price": 425,
-      "discount_percentage": 15,
-      "stock": 0,
-      "available": false,
-      "status": "pending"
-    }
-  ],
+  "shop_products": [],
   "categories": [
     {
       "id": "cat-1",
@@ -228,5 +217,6 @@
       "min_order": 2500,
       "active": true
     }
-  ]
+  ],
+  "orders": []
 }

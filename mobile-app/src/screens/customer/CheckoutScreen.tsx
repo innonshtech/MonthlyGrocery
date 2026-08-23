@@ -18,7 +18,7 @@ import { COLORS, RADIUS } from '../../constants/theme';
 
 export default function CheckoutScreen({ route, navigation }: any) {
   const { token, city: authCity, area: authArea } = useAuth();
-  const { items, minOrderLimit = 2000 } = useCart();
+  const { items, minOrderLimit = 2500 } = useCart();
   const [appliedCoupon, setAppliedCoupon] = useState<any>(route?.params?.appliedCoupon || null);
 
   // Selected Address State
@@ -66,7 +66,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     loadAddress();
   }, []);
 
-  const minLimit = minOrderLimit || 2000;
+  const minLimit = minOrderLimit || 2500;
 
   // Real Dynamic Calculations
   const itemTotalMrp = items.reduce((sum, item) => {

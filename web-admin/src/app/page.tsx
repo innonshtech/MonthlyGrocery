@@ -998,319 +998,202 @@ export default function DashboardPage() {
 
   if (!user || !token) {
     return (
-      <div className="min-h-screen bg-[#090D16] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-[#10B981] animate-spin" />
+      <div className="loading-center">
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ width: 48, height: 48, border: '3px solid #e2e8f0', borderTopColor: '#16a34a', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ color: '#64748b', fontSize: 14, fontWeight: 600 }}>Loading dashboard…</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
   const stats = calculateAnalytics();
 
+  const navBtn = (tab: TabType, label: string, Icon: any) => (
+    <button
+      key={tab}
+      onClick={() => setActiveTab(tab)}
+      className={`nav-btn${activeTab === tab ? ' active' : ''}`}
+    >
+      <Icon /> {label}
+    </button>
+  );
+
+  const tabMeta: Record<TabType, string> = {
+    shops: 'Store Approvals',
+    locations: 'Localities Mapping',
+    analytics: 'Platform Analytics',
+    banners: 'Festive Campaigns',
+    franchise: 'Franchise Inquiries',
+    'bulk-loader': 'Bulk SKU Loader',
+    'cities-areas': 'Cities & Localities',
+    'sku-requests': 'SKU Requests',
+    'categories-admin': 'Manage Categories',
+    'master-catalog': 'Master Catalogue',
+    'coupons-admin': 'Manage Coupons',
+    'orders-admin': 'Live Orders Tracker',
+  };
+
+  const tabDescriptions: Record<TabType, string> = {
+    shops: 'Review and approve merchant store registrations',
+    locations: 'Map serviceable delivery zones to approved stores',
+    analytics: 'Platform-wide GMV, order volume and merchant rankings',
+    banners: 'Publish and manage promotional campaign banners',
+    franchise: 'View incoming franchise partnership inquiries',
+    'bulk-loader': 'Bulk import products via Excel spreadsheet',
+    'cities-areas': 'Register cities and local delivery areas',
+    'sku-requests': 'Approve or reject merchant SKU catalog requests',
+    'categories-admin': 'Create and manage product category taxonomy',
+    'master-catalog': 'Manage the master product catalog and pricing',
+    'coupons-admin': 'Create and manage promotional coupon campaigns',
+    'orders-admin': 'View and update live order pipeline status',
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] text-slate-100 flex flex-col md:flex-row font-sans">
-      
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-[#090D16]/65 border-b md:border-b-0 md:border-r border-slate-800/80 backdrop-blur-xl flex flex-col justify-between p-6">
-        <div className="space-y-8">
-          {/* Logo Header */}
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
-              <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
-            </div>
+    <div className="admin-shell">
+      {/* ── Sidebar ── */}
+      <aside className="sidebar">
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">
+            <Shield size={18} />
           </div>
-
-          {/* Navigation Links */}
-          <nav className="flex flex-col gap-1.5">
-            <button
-              onClick={() => setActiveTab('shops')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'shops' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Store className="w-4 h-4" /> Store Approvals
-            </button>
-
-            <button
-              onClick={() => setActiveTab('cities-areas')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'cities-areas' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <MapPin className="w-4 h-4" /> Cities & Localities
-            </button>
-
-            <button
-              onClick={() => setActiveTab('sku-requests')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'sku-requests' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> SKU Requests
-            </button>
-
-            <button
-              onClick={() => setActiveTab('categories-admin')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'categories-admin' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Tag className="w-4 h-4" /> Manage Categories
-            </button>
-
-            <button
-              onClick={() => setActiveTab('master-catalog')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'master-catalog' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Package className="w-4 h-4" /> Master Catalogue
-            </button>
-
-            <button
-              onClick={() => setActiveTab('coupons-admin')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'coupons-admin' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Ticket className="w-4 h-4" /> Manage Coupons
-            </button>
-
-            <button
-              onClick={() => setActiveTab('orders-admin')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'orders-admin' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4" /> Live Orders Tracker
-            </button>
-
-            <button
-              onClick={() => setActiveTab('locations')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'locations' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <MapPin className="w-4 h-4" /> Localities Mapping
-            </button>
-
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'analytics' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" /> Platform Analytics
-            </button>
-
-            <button
-              onClick={() => setActiveTab('banners')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'banners' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" /> Festive Campaigns
-            </button>
-
-            <button
-              onClick={() => setActiveTab('franchise')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'franchise' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" /> Franchise Inquiries
-            </button>
-
-            <button
-              onClick={() => setActiveTab('bulk-loader')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'bulk-loader' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> Bulk SKU Loader
-            </button>
-          </nav>
+          <div>
+            <h1>MonthlyGrocery</h1>
+            <span>Super Admin Console</span>
+          </div>
         </div>
 
-        {/* User profile / Logout */}
-        <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-4">
-          <div>
-            <p className="text-sm font-bold text-slate-100">{user.name}</p>
-            <p className="text-[11px] text-slate-500">Super Admin Mobile: {user.mobile}</p>
+        {/* Nav */}
+        <nav className="sidebar-nav">
+          <span className="sidebar-section-label">Core Operations</span>
+          {navBtn('shops', 'Store Approvals', Store)}
+          {navBtn('cities-areas', 'Cities & Localities', MapPin)}
+          {navBtn('sku-requests', 'SKU Requests', FileSpreadsheet)}
+
+          <span className="sidebar-section-label">Catalogue</span>
+          {navBtn('categories-admin', 'Manage Categories', Tag)}
+          {navBtn('master-catalog', 'Master Catalogue', Package)}
+          {navBtn('bulk-loader', 'Bulk SKU Loader', FileSpreadsheet)}
+
+          <span className="sidebar-section-label">Commerce</span>
+          {navBtn('coupons-admin', 'Manage Coupons', Ticket)}
+          {navBtn('orders-admin', 'Live Orders Tracker', ShoppingBag)}
+
+          <span className="sidebar-section-label">Insights</span>
+          {navBtn('analytics', 'Platform Analytics', BarChart3)}
+          {navBtn('locations', 'Localities Mapping', MapPin)}
+          {navBtn('banners', 'Festive Campaigns', ImageIcon)}
+          {navBtn('franchise', 'Franchise Inquiries', MessageSquare)}
+        </nav>
+
+        {/* Footer */}
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="sidebar-user-avatar">{(user.name || 'A')[0].toUpperCase()}</div>
+            <div className="sidebar-user-info">
+              <p>{user.name || 'Super Admin'}</p>
+              <span>+91 {user.mobile}</span>
+            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/15 rounded-xl transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" /> Log Out
+          <button className="btn-logout" onClick={handleLogout}>
+            <LogOut size={14} /> Log Out
           </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-8 overflow-y-auto">
-        {loading && (
-          <div className="flex items-center gap-2 mb-4 text-xs font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-4 py-2.5 rounded-xl w-max shadow-sm backdrop-blur-md">
-            <Loader2 className="w-4 h-4 animate-spin" /> Querying API Database...
+      {/* ── Main Content ── */}
+      <main className="main-content">
+        {/* Page Header */}
+        <header className="page-header">
+          <div>
+            <h2>{tabMeta[activeTab]}</h2>
+            <p>{tabDescriptions[activeTab]}</p>
           </div>
-        )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {loading && (
+              <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Syncing…
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              </span>
+            )}
+            <button className="btn btn-secondary btn-sm" onClick={fetchData}>↻ Refresh</button>
+          </div>
+        </header>
 
+        <div className="page-body">
         {/* 1. STORE APPROVALS TAB */}
         {activeTab === 'shops' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, maxWidth: 1100 }}>
             {/* Left: Store Whitelisting table */}
-            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
-                </h2>
-                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
+            <div className="card">
+              <div className="card-header">
+                <h3><Store size={16} style={{ color: '#16a34a' }} /> Store Approvals</h3>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3">Store Name</th>
-                      <th className="pb-3">Owner Contact</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/30 text-sm">
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table">
+                  <thead><tr>
+                    <th>Store Name</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr></thead>
+                  <tbody>
                     {shops.map((shop) => (
-                      <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
-                        <td className="py-4 pr-3">
-                          <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
-                          <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
+                      <tr key={shop.id}>
+                        <td style={{ fontWeight: 600 }}>{shop.shop_name}</td>
+                        <td>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{shop.profiles?.name || 'Owner'}</div>
+                          <div style={{ fontSize: 12, color: '#94a3b8' }}>+91 {shop.profiles?.phone}</div>
                         </td>
-                        <td className="py-4 pr-3">
-                          {shop.status === 'approved' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              Approved
-                            </span>
-                          )}
-                          {shop.status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                              Rejected
-                            </span>
-                          )}
-                          {shop.status === 'pending' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
-                              Pending
-                            </span>
-                          )}
+                        <td>
+                          {shop.status === 'approved' && <span className="badge badge-green"><CheckCircle size={11} /> Approved</span>}
+                          {shop.status === 'rejected' && <span className="badge badge-red"><XCircle size={11} /> Rejected</span>}
+                          {shop.status === 'pending' && <span className="badge badge-amber"><Clock size={11} /> Pending</span>}
                         </td>
-                        <td className="py-4 text-right space-x-2">
-                          {shop.status === 'approved' && (
-                            <button
-                              onClick={() => {
-                                setSelectedShopForInventory(shop);
-                                fetchShopInventory(shop.id);
-                              }}
-                              className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-lg transition-all cursor-pointer"
-                            >
-                              Manage Inventory
-                            </button>
-                          )}
-                          {shop.status !== 'approved' && (
-                            <button
-                              onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
-                              className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {shop.status !== 'rejected' && (
-                            <button
-                              onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
-                              className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
-                            >
-                              Reject
-                            </button>
-                          )}
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            {shop.status === 'approved' && (
+                              <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedShopForInventory(shop); fetchShopInventory(shop.id); }}>Manage Inventory</button>
+                            )}
+                            {shop.status !== 'approved' && (
+                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateShopStatus(shop.id, 'approved')}>Approve</button>
+                            )}
+                            {shop.status !== 'rejected' && (
+                              <button className="btn btn-danger btn-sm" onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}>Reject</button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
+                    {shops.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No stores registered yet.</td></tr>}
                   </tbody>
                 </table>
               </div>
-            </section>
+            </div>
 
             {/* Right: Register New Store form */}
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Register New Store</h3>
-              
-              <form onSubmit={handleRegisterShop} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Store / Shop Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Thorat Wholesalers"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regShopName}
-                    onChange={(e) => setRegShopName(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ramesh Kumar"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regOwnerName}
-                    onChange={(e) => setRegOwnerName(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Mobile Number</label>
-                  <input
-                    type="text"
-                    maxLength={10}
-                    placeholder="e.g. 9876543210"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regOwnerMobile}
-                    onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
-                >
-                  Register Store
-                </button>
-              </form>
-            </section>
+            <div className="card" style={{ alignSelf: 'start' }}>
+              <div className="card-header"><h3><Plus size={15} /> Register New Store</h3></div>
+              <div className="card-body">
+                <form onSubmit={handleRegisterShop} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="form-group">
+                    <label className="form-label">Store / Shop Name</label>
+                    <input className="form-input" type="text" placeholder="e.g. Thorat Wholesalers" value={regShopName} onChange={(e) => setRegShopName(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Owner Full Name</label>
+                    <input className="form-input" type="text" placeholder="e.g. Ramesh Kumar" value={regOwnerName} onChange={(e) => setRegOwnerName(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Owner Mobile Number</label>
+                    <input className="form-input" type="text" maxLength={10} placeholder="e.g. 9876543210" value={regOwnerMobile} onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))} />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>Register Store</button>
+                </form>
+              </div>
+            </div>
           </div>
         )}
 
@@ -2495,9 +2378,10 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+           </div>
         )}
 
+        </div>{/* page-body */}
       </main>
     </div>
   );

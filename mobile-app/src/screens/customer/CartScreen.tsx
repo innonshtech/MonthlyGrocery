@@ -84,43 +84,6 @@ export default function CartScreen({ route, navigation }: any) {
     navigation.navigate('SavedBaskets');
   };
 
-  const handleReorderLastBasket = () => {
-    // Add default monthly staples
-    addToCart({
-      id: 'p-atta-1',
-      shop_id: 'shop-1',
-      name: 'Aashirvaad Select Atta',
-      brand: 'Aashirvaad',
-      primary_category: 'Atta & Rice',
-      image_url: '',
-      unit: '5 kg',
-      mrp: 310,
-      price: 255,
-    });
-    addToCart({
-      id: 'p-rice-1',
-      shop_id: 'shop-1',
-      name: 'India Gate Basmati Rice',
-      brand: 'India Gate',
-      primary_category: 'Atta & Rice',
-      image_url: '',
-      unit: '5 kg',
-      mrp: 640,
-      price: 525,
-    });
-    addToCart({
-      id: 'p-oil-1',
-      shop_id: 'shop-1',
-      name: 'Fortune Sunflower Oil',
-      brand: 'Fortune',
-      primary_category: 'Oils & Ghee',
-      image_url: '',
-      unit: '1 L',
-      mrp: 165,
-      price: 135,
-    });
-  };
-
   // =========================================================================
   // 1. C2 SUB-STATE: CART EMPTY
   // =========================================================================
@@ -152,7 +115,7 @@ export default function CartScreen({ route, navigation }: any) {
 
           <TouchableOpacity
             style={styles.reorderLink}
-            onPress={handleReorderLastBasket}
+            onPress={() => navigation.navigate('CopyLastMonth')}
             activeOpacity={0.7}
           >
             <Text style={styles.reorderLinkText}>↻ Reorder last basket</Text>
