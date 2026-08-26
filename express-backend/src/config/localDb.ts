@@ -72,6 +72,18 @@ export interface Coupon {
   created_at?: string;
 }
 
+export interface NewProductRequest {
+  id: string;
+  shop_id: string;
+  name: string;
+  category: string;
+  brand?: string;
+  unit: string;
+  mrp: number;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
 interface LocalDbSchema {
   serviceable_locations: ServiceableLocation[];
   promotional_banners: PromotionalBanner[];
@@ -81,6 +93,7 @@ interface LocalDbSchema {
   shop_products: ShopProduct[];
   categories: Category[];
   coupons: Coupon[];
+  new_product_requests: NewProductRequest[];
 }
 
 const defaultDb: LocalDbSchema = {
@@ -133,20 +146,24 @@ const defaultDb: LocalDbSchema = {
   shop_products: [],
   categories: [
     { id: 'cat-1', name: 'Atta & Rice' },
-    { id: 'cat-2', name: 'Cooking Essentials' },
-    { id: 'cat-3', name: 'Dairy Staples' },
-    { id: 'cat-4', name: 'Pulses & Grains' },
-    { id: 'cat-5', name: 'Packaged Foods' },
-    { id: 'cat-6', name: 'Household Items' },
+    { id: 'cat-2', name: 'Oils & Ghee' },
+    { id: 'cat-3', name: 'Dals & Pulses' },
+    { id: 'cat-4', name: 'Spices & Masala' },
+    { id: 'cat-5', name: 'Dry Fruits' },
+    { id: 'cat-6', name: 'Snacks' },
     { id: 'cat-7', name: 'Beverages' },
-    { id: 'cat-8', name: 'Personal Care' },
-    { id: 'cat-9', name: 'Snacks' }
+    { id: 'cat-8', name: 'Biscuits' },
+    { id: 'cat-9', name: 'Cleaning' },
+    { id: 'cat-10', name: 'Personal Care' },
+    { id: 'cat-11', name: 'Home & Kitchen' },
+    { id: 'cat-12', name: 'Baby Care' }
   ],
   coupons: [
     { id: 'cp-1', code: 'GROCERY10', discount_type: 'percentage', value: 10, min_order: 500, active: true },
     { id: 'cp-2', code: 'WELCOME50', discount_type: 'flat', value: 50, min_order: 300, active: true },
     { id: 'cp-3', code: 'SUPER300', discount_type: 'flat', value: 300, min_order: 2500, active: true }
-  ]
+  ],
+  new_product_requests: []
 };
 
 // Initialize db.json file if not exists
@@ -171,6 +188,7 @@ export function readDb(): LocalDbSchema {
     if (!db.areas) db.areas = defaultDb.areas;
     if (!db.shop_products) db.shop_products = defaultDb.shop_products;
     if (!db.categories) db.categories = defaultDb.categories;
+    if (!db.new_product_requests) db.new_product_requests = [];
     if (!db.coupons) {
       db.coupons = defaultDb.coupons;
       fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');

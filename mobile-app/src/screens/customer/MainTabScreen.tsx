@@ -9,8 +9,10 @@ import AccountScreen from './AccountScreen';
 import AppIcon from '../../components/AppIcon';
 import { useCart } from '../../context/CartContext';
 
-const ACTIVE_COLOR = '#15803D'; // Rich Vibrant Forest Green
-const INACTIVE_COLOR = '#3D5A4B'; // Muted Pine/Sage Green from Figma
+import { COLORS } from '../../constants/theme';
+
+const ACTIVE_COLOR = COLORS.green700;
+const INACTIVE_COLOR = COLORS.ink500;
 
 export default function MainTabScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -39,9 +41,11 @@ export default function MainTabScreen({ route, navigation }: any) {
 
   const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
 
+  const isHome = activeTab === 'Home';
+
   return (
-    <View style={[styles.mainContainer, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.mainContainer, isHome && styles.mainContainerHome, !isHome && { paddingTop: insets.top }]}>
+      <StatusBar barStyle={isHome ? 'light-content' : 'dark-content'} />
       
       {/* Active Screen Area */}
       <View style={styles.screenContainer}>
@@ -142,16 +146,19 @@ export default function MainTabScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
+  },
+  mainContainerHome: {
+    backgroundColor: COLORS.green800,
   },
   screenContainer: {
     flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: COLORS.line,
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingHorizontal: 8,

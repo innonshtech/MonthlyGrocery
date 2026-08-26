@@ -398,13 +398,13 @@ router.post('/shop-products/request', authMiddleware, requireRole(['admin', 'sup
       discount_percentage: Math.max(0, Math.round(((parseFloat(masterProduct.mrp) - parseFloat(masterProduct.price)) / parseFloat(masterProduct.mrp)) * 100)) || 0,
       stock: 0,
       available: false,
-      status: 'pending'
+      status: 'approved'
     };
 
     db.shop_products.push(newShopProduct);
     writeDb(db);
 
-    return res.json({ success: true, message: 'SKU request submitted successfully', shop_product: newShopProduct });
+    return res.json({ success: true, message: 'SKU added to your shop inventory successfully', shop_product: newShopProduct });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -450,24 +450,48 @@ router.post('/shop-products/configure', authMiddleware, requireRole(['admin', 's
   }
 });
 
-// GET /sku-requests: Super Admin lists all pending SKU requests (Super Admin only)
+// POST /new-product-requests: Merchant suggests a brand new product to be added to Master Catalogue (Merchant only)
+router.post('/new-product-requests', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { name, category, brand, unit, mrp } = req.body;
+  if (!name || !category || !unit || !mrp) {
+    return res.status(400).json({ success: false, error: 'Name, Category, Unit, and MRP are required' });
+  }
+
+  try {
+    const shopId = await getMerchantShopId(req.user!.id);
+    if (!shopId) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+
+    const db = readDb();
+    const newRequest = {
+      id: `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      shop_id: shopId,
+      name: name.trim(),
+      category: category.trim(),
+      brand: brand ? brand.trim() : 'Unbranded',
+      unit: unit.trim(),
+      mrp: parseFloat(mrp) || 0,
+      status: 'pending' as const,
+      created_at: new Date().toISOString()
+    };
+
+    db.new_product_requests.push(newRequest);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'New product request submitted to Super Admin successfully', request: newRequest });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /sku-requests: Super Admin lists all pending SKU creation requests (Super Admin only)
 router.get('/sku-requests', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {
     const db = readDb();
-    const pendingRequests = db.shop_products.filter(sp => sp.status === 'pending');
+    const pendingRequests = db.new_product_requests.filter(req => req.status === 'pending');
     if (pendingRequests.length === 0) {
       return res.json({ success: true, requests: [] });
-    }
-
-    // Fetch product details for these IDs from Supabase
-    const productIds = pendingRequests.map(r => r.product_id);
-    const { data: products, error: pError } = await supabase
-      .from('products')
-      .select('id, name, primary_category, brand, mrp')
-      .in('id', productIds);
-
-    if (pError) {
-      return res.status(500).json({ success: false, error: pError.message });
     }
 
     // Fetch shop names
@@ -482,15 +506,15 @@ router.get('/sku-requests', authMiddleware, requireRole(['super_admin']), async 
     }
 
     const requestsJoined = pendingRequests.map(r => {
-      const p = products?.find((prod: any) => prod.id === r.product_id);
       const s = shops?.find((sh: any) => sh.id === r.shop_id);
       return {
-        ...r,
-        product_name: p?.name || 'Unknown Product',
-        category: p?.primary_category || 'Unknown Category',
-        brand: p?.brand || 'Unknown Brand',
-        mrp: p?.mrp || 0,
-        shop_name: s?.shop_name || 'Unknown Shop'
+        id: r.id,
+        shop_name: s?.shop_name || 'Unknown Shop',
+        product_name: r.name,
+        category: r.category,
+        brand: r.brand || 'Unbranded',
+        mrp: r.mrp,
+        unit: r.unit
       };
     });
 
@@ -510,15 +534,53 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
 
   try {
     const db = readDb();
-    const spIndex = db.shop_products.findIndex(sp => sp.id === id);
+    const reqIndex = db.new_product_requests.findIndex(r => r.id === id);
     
-    if (spIndex === -1) {
+    if (reqIndex === -1) {
       return res.status(404).json({ success: false, error: 'SKU request not found' });
     }
 
-    db.shop_products[spIndex].status = status;
-    writeDb(db);
+    const request = db.new_product_requests[reqIndex];
+    request.status = status;
 
+    if (status === 'approved') {
+      // 1. Insert product into Supabase Master Catalogue products table
+      const skuCode = `SUGGEST-${Date.now().toString().slice(-6)}`;
+      const { data: product, error: insertError } = await supabase
+        .from('products')
+        .insert({
+          shop_id: request.shop_id,
+          name: request.name,
+          sku: skuCode,
+          primary_category: request.category,
+          brand: request.brand || 'Unbranded',
+          mrp: request.mrp,
+          price: request.mrp, // Initial master price matches MRP
+          unit: request.unit,
+          available: true,
+          is_veg: true
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        return res.status(500).json({ success: false, error: `Failed to insert product: ${insertError.message}` });
+      }
+
+      // 2. Map this approved product to the merchant shop directly with approved status so they can configure it
+      db.shop_products.push({
+        id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        shop_id: request.shop_id,
+        product_id: product.id,
+        selling_price: request.mrp,
+        discount_percentage: 0,
+        stock: 0,
+        available: false,
+        status: 'approved'
+      });
+    }
+
+    writeDb(db);
     return res.json({ success: true, message: `SKU request ${status} successfully` });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });

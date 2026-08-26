@@ -4,31 +4,41 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   StatusBar,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../context/AuthContext';
+import AppIcon from '../components/AppIcon';
+import {
+  OnboardingBackButton,
+  OnboardingPrimaryButton,
+} from '../components/onboarding/OnboardingUI';
 import { COLORS, RADIUS } from '../constants/theme';
 
 export default function ProfileSetupScreen({ route, navigation }: any) {
-  const { user } = useAuth();
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
   const redirectTarget = route.params?.redirect || 'Shop';
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Name required', 'Please enter your name to personalize your grocery plan.');
+      Alert.alert(
+        'Name required',
+        'Please enter your name to personalize your monthly grocery.'
+      );
       return;
     }
     setSaving(true);
     try {
       await AsyncStorage.setItem('@user_display_name', name.trim());
+      if (email.trim()) {
+        await AsyncStorage.setItem('@user_email', email.trim());
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -37,74 +47,76 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
     }
   };
 
-  const handleSkip = () => {
-    navigation.replace(redirectTarget);
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-
-      <View style={styles.container}>
-        {/* Top Bar with Back Arrow */}
-        <View style={styles.topBar}>
-          <TouchableOpacity
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.main}>
+          <OnboardingBackButton
             onPress={() => {
               if (navigation.canGoBack()) navigation.goBack();
             }}
-            style={styles.backArrowBtn}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Text style={styles.backArrowText}>‹</Text>
-          </TouchableOpacity>
-        </View>
+          />
 
-        {/* Header Block */}
-        <View style={styles.headerBlock}>
-          <Text style={styles.mainTitle}>What should we call you?</Text>
-          <Text style={styles.subtitle}>
-            This helps us personalise your monthly grocery.
-          </Text>
-        </View>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarCircle}>
+              <AppIcon name="user" size={44} color={COLORS.green700} />
+              <View style={styles.cameraBadge}>
+                <Text style={styles.cameraIcon}>📷</Text>
+              </View>
+            </View>
 
-        {/* Input Form Section */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Your name</Text>
-          <View style={styles.nameInputCard}>
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Aarav Sharma"
-              placeholderTextColor={COLORS.ink300}
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
+            <View style={styles.headerBlock}>
+              <Text style={styles.mainTitle}>What should we call you?</Text>
+              <Text style={styles.subtitle}>
+                We'll use this to personalise your monthly grocery.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>YOUR NAME</Text>
+            <View style={styles.inputCard}>
+              <TextInput
+                style={styles.input}
+                placeholder="Aarti Sharma"
+                placeholderTextColor={COLORS.ink300}
+                value={name}
+                onChangeText={setName}
+                autoFocus
+              />
+            </View>
+          </View>
+
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>EMAIL (OPTIONAL)</Text>
+            <View style={styles.inputCard}>
+              <TextInput
+                style={styles.input}
+                placeholder="aarti.sharma@email.com"
+                placeholderTextColor={COLORS.ink300}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
           </View>
         </View>
 
-        {/* Bottom Actions */}
-        <View style={styles.bottomArea}>
-          <TouchableOpacity
-            style={[
-              styles.startShoppingBtn,
-              name.trim().length > 0 ? styles.btnActive : styles.btnDisabled
-            ]}
+        <View style={styles.bottomBar}>
+          <OnboardingPrimaryButton
+            label="Start shopping"
             onPress={handleSave}
-            disabled={saving || !name.trim()}
-            activeOpacity={0.85}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.startShoppingBtnText}>Start shopping</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleSkip} style={styles.skipBtnWrap} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Text style={styles.skipText}>Skip for now</Text>
-          </TouchableOpacity>
+            disabled={!name.trim()}
+            loading={saving}
+            showArrow
+          />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -112,101 +124,94 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: COLORS.paper,
+  },
+  flex: { flex: 1 },
+  main: {
+    flex: 1,
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 28,
   },
-  container: {
-    flex: 1,
-    justifyContent: 'space-between',
+  avatarSection: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 24,
   },
-  topBar: {
-    minHeight: 36,
+  avatarCircle: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: COLORS.green50,
+    borderWidth: 2,
+    borderColor: COLORS.green100,
     justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+    position: 'relative',
   },
-  backArrowBtn: {
-    width: 36,
-    height: 36,
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  backArrowText: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 34,
-  },
+  cameraIcon: { fontSize: 13 },
   headerBlock: {
-    marginBottom: 32,
+    alignItems: 'center',
+    gap: 6,
   },
   mainTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.ink900, // #17251E
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.ink900,
+    letterSpacing: -0.26,
+    lineHeight: 32,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.ink500, // #6B7772
-    lineHeight: 20,
+    fontSize: 15,
+    color: COLORS.ink500,
+    lineHeight: 24,
+    textAlign: 'center',
+    maxWidth: 300,
   },
-  inputSection: {
-    flex: 1,
+  fieldBlock: {
+    marginBottom: 20,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.ink700, // #3D4A44
-    marginBottom: 8,
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.ink500,
+    letterSpacing: 0.6,
+    marginBottom: 7,
   },
-  nameInputCard: {
-    backgroundColor: COLORS.surface, // #FFFFFF
+  inputCard: {
+    backgroundColor: COLORS.surface,
     borderWidth: 1.5,
-    borderColor: COLORS.line, // #EAE9E2
-    borderRadius: RADIUS.md, // 12px
-    height: 52,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    height: 56,
     paddingHorizontal: 16,
     justifyContent: 'center',
   },
-  nameInput: {
+  input: {
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.ink900,
     padding: 0,
   },
-  bottomArea: {
-    gap: 16,
-    alignItems: 'center',
-  },
-  startShoppingBtn: {
-    width: '100%',
-    height: 52,
-    borderRadius: RADIUS.pill, // 999px
-    backgroundColor: COLORS.green700, // #1E7A46
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  btnActive: {
-    opacity: 1,
-  },
-  btnDisabled: {
-    opacity: 0.45,
-  },
-  startShoppingBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  skipBtnWrap: {
-    paddingVertical: 6,
-  },
-  skipText: {
-    fontSize: 13,
-    color: COLORS.ink500,
-    fontWeight: '500',
+  bottomBar: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 24,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.line,
+    backgroundColor: COLORS.paper,
   },
 });

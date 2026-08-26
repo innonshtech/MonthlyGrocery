@@ -113,14 +113,15 @@ export default function DashboardPage() {
   // Master Catalog States
   const [masterProductsList, setMasterProductsList] = useState<any[]>([]);
   const [newProdName, setNewProdName] = useState('');
-  const [newProdSku, setNewProdSku] = useState('');
   const [newProdBrand, setNewProdBrand] = useState('');
   const [newProdCompany, setNewProdCompany] = useState('');
-  const [newProdMrp, setNewProdMrp] = useState('');
-  const [newProdPrice, setNewProdPrice] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('');
-  const [newProdImageUrl, setNewProdImageUrl] = useState('');
-  const [newProdUnit, setNewProdUnit] = useState('');
+  const [newProdImageFile, setNewProdImageFile] = useState<File | null>(null);
+  const [newProdImagePreview, setNewProdImagePreview] = useState('');
+  const [newProdImageUploading, setNewProdImageUploading] = useState(false);
+  const [newProdVariants, setNewProdVariants] = useState<Array<{ sku: string; unit: string; mrp: string; price: string }>>([
+    { sku: '', unit: '1 L', mrp: '', price: '' }
+  ]);
 
   // Shop Inventory Modal States
   const [selectedShopForInventory, setSelectedShopForInventory] = useState<any | null>(null);
@@ -580,44 +581,80 @@ export default function DashboardPage() {
   // Create Product Handler (Super Admin)
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProdName.trim() || !newProdSku.trim() || !newProdCategory) return;
+    if (!newProdName.trim() || !newProdCategory) return;
+    
+    // Validate variants
+    const validVariants = newProdVariants.filter(v => v.unit.trim() && v.mrp.trim() && v.price.trim() && v.sku.trim());
+    if (validVariants.length === 0) {
+      alert('Please add at least one valid unit variant (with Unit, SKU, MRP, and Default Price).');
+      return;
+    }
+
     try {
-      const res = await fetch('http://localhost:8001/api/products/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: newProdName,
-          sku: newProdSku,
-          brand: newProdBrand,
-          company: newProdCompany,
-          mrp: newProdMrp,
-          price: newProdPrice,
-          primary_category: newProdCategory,
-          image_url: newProdImageUrl,
-          unit: newProdUnit
-        })
+      // Step 1: Upload image to Supabase bucket first (if a file was selected)
+      let uploadedImageUrl = '';
+      if (newProdImageFile) {
+        setNewProdImageUploading(true);
+        const formData = new FormData();
+        formData.append('image', newProdImageFile);
+        const freshToken = token || localStorage.getItem('@admin_token');
+        const uploadRes = await fetch('http://localhost:8001/api/products/upload-image', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${freshToken}` },
+          body: formData
+        });
+        const uploadData = await uploadRes.json();
+        setNewProdImageUploading(false);
+        if (!uploadRes.ok || !uploadData.image_url) {
+          alert('Image upload failed: ' + (uploadData.error || 'Unknown error'));
+          return;
+        }
+        uploadedImageUrl = uploadData.image_url;
+      }
+
+      // Step 2: Loop and create each variant SKU
+      const createPromises = validVariants.map(async (v) => {
+        // Amazon-style: Product Name = Base Name + " " + Unit
+        const variantName = `${newProdName.trim()} ${v.unit.trim()}`;
+        const res = await fetch('http://localhost:8001/api/products/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: variantName,
+            sku: v.sku.trim(),
+            brand: newProdBrand.trim(),
+            company: newProdCompany.trim(),
+            mrp: parseFloat(v.mrp),
+            price: parseFloat(v.price),
+            primary_category: newProdCategory,
+            image_url: uploadedImageUrl,
+            unit: v.unit.trim()
+          })
+        });
+        return res.json();
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert('Master SKU product added successfully!');
+
+      const results = await Promise.all(createPromises);
+      const failed = results.filter(r => !r.success);
+
+      if (failed.length > 0) {
+        alert(`Some variants failed to create: ${failed.map(f => f.error).join(', ')}`);
+      } else {
+        alert('Product and all configured unit variants created successfully!');
         setNewProdName('');
-        setNewProdSku('');
         setNewProdBrand('');
         setNewProdCompany('');
-        setNewProdMrp('');
-        setNewProdPrice('');
         setNewProdCategory('');
-        setNewProdImageUrl('');
-        setNewProdUnit('');
+        setNewProdImageFile(null);
+        setNewProdImagePreview('');
+        setNewProdVariants([{ sku: '', unit: '1 L', mrp: '', price: '' }]);
         fetchData();
-      } else {
-        alert(data.error || 'Failed to add product');
       }
     } catch (err) {
-      alert('Error creating product');
+      alert('Error creating product variants');
     }
   };
 
@@ -998,202 +1035,319 @@ export default function DashboardPage() {
 
   if (!user || !token) {
     return (
-      <div className="loading-center">
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 48, height: 48, border: '3px solid #e2e8f0', borderTopColor: '#16a34a', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ color: '#64748b', fontSize: 14, fontWeight: 600 }}>Loading dashboard…</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="min-h-screen bg-[#090D16] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#10B981] animate-spin" />
       </div>
     );
   }
 
   const stats = calculateAnalytics();
 
-  const navBtn = (tab: TabType, label: string, Icon: any) => (
-    <button
-      key={tab}
-      onClick={() => setActiveTab(tab)}
-      className={`nav-btn${activeTab === tab ? ' active' : ''}`}
-    >
-      <Icon /> {label}
-    </button>
-  );
-
-  const tabMeta: Record<TabType, string> = {
-    shops: 'Store Approvals',
-    locations: 'Localities Mapping',
-    analytics: 'Platform Analytics',
-    banners: 'Festive Campaigns',
-    franchise: 'Franchise Inquiries',
-    'bulk-loader': 'Bulk SKU Loader',
-    'cities-areas': 'Cities & Localities',
-    'sku-requests': 'SKU Requests',
-    'categories-admin': 'Manage Categories',
-    'master-catalog': 'Master Catalogue',
-    'coupons-admin': 'Manage Coupons',
-    'orders-admin': 'Live Orders Tracker',
-  };
-
-  const tabDescriptions: Record<TabType, string> = {
-    shops: 'Review and approve merchant store registrations',
-    locations: 'Map serviceable delivery zones to approved stores',
-    analytics: 'Platform-wide GMV, order volume and merchant rankings',
-    banners: 'Publish and manage promotional campaign banners',
-    franchise: 'View incoming franchise partnership inquiries',
-    'bulk-loader': 'Bulk import products via Excel spreadsheet',
-    'cities-areas': 'Register cities and local delivery areas',
-    'sku-requests': 'Approve or reject merchant SKU catalog requests',
-    'categories-admin': 'Create and manage product category taxonomy',
-    'master-catalog': 'Manage the master product catalog and pricing',
-    'coupons-admin': 'Create and manage promotional coupon campaigns',
-    'orders-admin': 'View and update live order pipeline status',
-  };
-
   return (
-    <div className="admin-shell">
-      {/* ── Sidebar ── */}
-      <aside className="sidebar">
-        {/* Logo */}
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <Shield size={18} />
-          </div>
-          <div>
-            <h1>MonthlyGrocery</h1>
-            <span>Super Admin Console</span>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="sidebar-nav">
-          <span className="sidebar-section-label">Core Operations</span>
-          {navBtn('shops', 'Store Approvals', Store)}
-          {navBtn('cities-areas', 'Cities & Localities', MapPin)}
-          {navBtn('sku-requests', 'SKU Requests', FileSpreadsheet)}
-
-          <span className="sidebar-section-label">Catalogue</span>
-          {navBtn('categories-admin', 'Manage Categories', Tag)}
-          {navBtn('master-catalog', 'Master Catalogue', Package)}
-          {navBtn('bulk-loader', 'Bulk SKU Loader', FileSpreadsheet)}
-
-          <span className="sidebar-section-label">Commerce</span>
-          {navBtn('coupons-admin', 'Manage Coupons', Ticket)}
-          {navBtn('orders-admin', 'Live Orders Tracker', ShoppingBag)}
-
-          <span className="sidebar-section-label">Insights</span>
-          {navBtn('analytics', 'Platform Analytics', BarChart3)}
-          {navBtn('locations', 'Localities Mapping', MapPin)}
-          {navBtn('banners', 'Festive Campaigns', ImageIcon)}
-          {navBtn('franchise', 'Franchise Inquiries', MessageSquare)}
-        </nav>
-
-        {/* Footer */}
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-user-avatar">{(user.name || 'A')[0].toUpperCase()}</div>
-            <div className="sidebar-user-info">
-              <p>{user.name || 'Super Admin'}</p>
-              <span>+91 {user.mobile}</span>
+    <div className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] text-slate-100 flex flex-col md:flex-row font-sans">
+      
+      {/* Sidebar Navigation */}
+      <aside className="w-full md:w-64 bg-[#090D16]/65 border-b md:border-b-0 md:border-r border-slate-800/80 backdrop-blur-xl flex flex-col justify-between p-6">
+        <div className="space-y-8">
+          {/* Logo Header */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
+              <Shield className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
+              <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
             </div>
           </div>
-          <button className="btn-logout" onClick={handleLogout}>
-            <LogOut size={14} /> Log Out
+
+          {/* Navigation Links */}
+          <nav className="flex flex-col gap-1.5">
+            <button
+              onClick={() => setActiveTab('shops')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'shops' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Store className="w-4 h-4" /> Store Approvals
+            </button>
+
+            <button
+              onClick={() => setActiveTab('cities-areas')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'cities-areas' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <MapPin className="w-4 h-4" /> Cities & Localities
+            </button>
+
+            <button
+              onClick={() => setActiveTab('sku-requests')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'sku-requests' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> SKU Requests
+            </button>
+
+            <button
+              onClick={() => setActiveTab('categories-admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'categories-admin' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Tag className="w-4 h-4" /> Manage Categories
+            </button>
+
+            <button
+              onClick={() => setActiveTab('master-catalog')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'master-catalog' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Package className="w-4 h-4" /> Master Catalogue
+            </button>
+
+            <button
+              onClick={() => setActiveTab('coupons-admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'coupons-admin' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Ticket className="w-4 h-4" /> Manage Coupons
+            </button>
+
+            <button
+              onClick={() => setActiveTab('orders-admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'orders-admin' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" /> Live Orders Tracker
+            </button>
+
+            <button
+              onClick={() => setActiveTab('locations')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'locations' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <MapPin className="w-4 h-4" /> Localities Mapping
+            </button>
+
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'analytics' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" /> Platform Analytics
+            </button>
+
+            <button
+              onClick={() => setActiveTab('banners')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'banners' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" /> Festive Campaigns
+            </button>
+
+            <button
+              onClick={() => setActiveTab('franchise')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'franchise' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" /> Franchise Inquiries
+            </button>
+
+            <button
+              onClick={() => setActiveTab('bulk-loader')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'bulk-loader' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" /> Bulk SKU Loader
+            </button>
+          </nav>
+        </div>
+
+        {/* User profile / Logout */}
+        <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-4">
+          <div>
+            <p className="text-sm font-bold text-slate-100">{user.name}</p>
+            <p className="text-[11px] text-slate-500">Super Admin Mobile: {user.mobile}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/15 rounded-xl transition-all cursor-pointer"
+          >
+            <LogOut className="w-4 h-4" /> Log Out
           </button>
         </div>
       </aside>
 
-      {/* ── Main Content ── */}
-      <main className="main-content">
-        {/* Page Header */}
-        <header className="page-header">
-          <div>
-            <h2>{tabMeta[activeTab]}</h2>
-            <p>{tabDescriptions[activeTab]}</p>
+      {/* Main Content Area */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        {loading && (
+          <div className="flex items-center gap-2 mb-4 text-xs font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-4 py-2.5 rounded-xl w-max shadow-sm backdrop-blur-md">
+            <Loader2 className="w-4 h-4 animate-spin" /> Querying API Database...
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {loading && (
-              <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Loader2 size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Syncing…
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-              </span>
-            )}
-            <button className="btn btn-secondary btn-sm" onClick={fetchData}>↻ Refresh</button>
-          </div>
-        </header>
+        )}
 
-        <div className="page-body">
         {/* 1. STORE APPROVALS TAB */}
         {activeTab === 'shops' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, maxWidth: 1100 }}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
             {/* Left: Store Whitelisting table */}
-            <div className="card">
-              <div className="card-header">
-                <h3><Store size={16} style={{ color: '#16a34a' }} /> Store Approvals</h3>
+            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
+                </h2>
+                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table className="data-table">
-                  <thead><tr>
-                    <th>Store Name</th>
-                    <th>Owner</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr></thead>
-                  <tbody>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-3">Store Name</th>
+                      <th className="pb-3">Owner Contact</th>
+                      <th className="pb-3">Status</th>
+                      <th className="pb-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/30 text-sm">
                     {shops.map((shop) => (
-                      <tr key={shop.id}>
-                        <td style={{ fontWeight: 600 }}>{shop.shop_name}</td>
-                        <td>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{shop.profiles?.name || 'Owner'}</div>
-                          <div style={{ fontSize: 12, color: '#94a3b8' }}>+91 {shop.profiles?.phone}</div>
+                      <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
+                        <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
+                        <td className="py-4 pr-3">
+                          <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
+                          <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
                         </td>
-                        <td>
-                          {shop.status === 'approved' && <span className="badge badge-green"><CheckCircle size={11} /> Approved</span>}
-                          {shop.status === 'rejected' && <span className="badge badge-red"><XCircle size={11} /> Rejected</span>}
-                          {shop.status === 'pending' && <span className="badge badge-amber"><Clock size={11} /> Pending</span>}
+                        <td className="py-4 pr-3">
+                          {shop.status === 'approved' && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              Approved
+                            </span>
+                          )}
+                          {shop.status === 'rejected' && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                              Rejected
+                            </span>
+                          )}
+                          {shop.status === 'pending' && (
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                              Pending
+                            </span>
+                          )}
                         </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                            {shop.status === 'approved' && (
-                              <button className="btn btn-secondary btn-sm" onClick={() => { setSelectedShopForInventory(shop); fetchShopInventory(shop.id); }}>Manage Inventory</button>
-                            )}
-                            {shop.status !== 'approved' && (
-                              <button className="btn btn-primary btn-sm" onClick={() => handleUpdateShopStatus(shop.id, 'approved')}>Approve</button>
-                            )}
-                            {shop.status !== 'rejected' && (
-                              <button className="btn btn-danger btn-sm" onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}>Reject</button>
-                            )}
-                          </div>
+                        <td className="py-4 text-right space-x-2">
+                          {shop.status === 'approved' && (
+                            <button
+                              onClick={() => {
+                                setSelectedShopForInventory(shop);
+                                fetchShopInventory(shop.id);
+                              }}
+                              className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-lg transition-all cursor-pointer"
+                            >
+                              Manage Inventory
+                            </button>
+                          )}
+                          {shop.status !== 'approved' && (
+                            <button
+                              onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
+                              className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {shop.status !== 'rejected' && (
+                            <button
+                              onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
+                              className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
-                    {shops.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>No stores registered yet.</td></tr>}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </section>
 
             {/* Right: Register New Store form */}
-            <div className="card" style={{ alignSelf: 'start' }}>
-              <div className="card-header"><h3><Plus size={15} /> Register New Store</h3></div>
-              <div className="card-body">
-                <form onSubmit={handleRegisterShop} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <div className="form-group">
-                    <label className="form-label">Store / Shop Name</label>
-                    <input className="form-input" type="text" placeholder="e.g. Thorat Wholesalers" value={regShopName} onChange={(e) => setRegShopName(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Owner Full Name</label>
-                    <input className="form-input" type="text" placeholder="e.g. Ramesh Kumar" value={regOwnerName} onChange={(e) => setRegOwnerName(e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Owner Mobile Number</label>
-                    <input className="form-input" type="text" maxLength={10} placeholder="e.g. 9876543210" value={regOwnerMobile} onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))} />
-                  </div>
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>Register Store</button>
-                </form>
-              </div>
-            </div>
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
+              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Register New Store</h3>
+              
+              <form onSubmit={handleRegisterShop} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Store / Shop Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Thorat Wholesalers"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regShopName}
+                    onChange={(e) => setRegShopName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regOwnerName}
+                    onChange={(e) => setRegOwnerName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Mobile Number</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    placeholder="e.g. 9876543210"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regOwnerMobile}
+                    onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
+                >
+                  Register Store
+                </button>
+              </form>
+            </section>
           </div>
         )}
 
@@ -1899,24 +2053,13 @@ export default function DashboardPage() {
               <h2 className="text-lg font-bold text-white mb-6 font-sans">Add New Product</h2>
               <form onSubmit={handleCreateProduct} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Name *</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Name (Base Name) *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Fortune Mustard Oil 1L"
+                    placeholder="e.g. Fortune Soya Health Oil"
                     value={newProdName}
                     onChange={(e) => setNewProdName(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product SKU *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. FRT-MST-1L"
-                    value={newProdSku}
-                    onChange={(e) => setNewProdSku(e.target.value)}
                     className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
@@ -1925,7 +2068,7 @@ export default function DashboardPage() {
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Brand</label>
                     <input
                       type="text"
-                      placeholder="Fortune"
+                      placeholder="e.g. Fortune"
                       value={newProdBrand}
                       onChange={(e) => setNewProdBrand(e.target.value)}
                       className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -1935,35 +2078,9 @@ export default function DashboardPage() {
                     <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Company</label>
                     <input
                       type="text"
-                      placeholder="Adani Wilmar"
+                      placeholder="e.g. Adani Wilmar"
                       value={newProdCompany}
                       onChange={(e) => setNewProdCompany(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Master MRP (₹) *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      placeholder="180.00"
-                      value={newProdMrp}
-                      onChange={(e) => setNewProdMrp(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Default Price (₹) *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      placeholder="170.00"
-                      value={newProdPrice}
-                      onChange={(e) => setNewProdPrice(e.target.value)}
                       className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                     />
                   </div>
@@ -1983,32 +2100,146 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Image URL</label>
-                  <input
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                    value={newProdImageUrl}
-                    onChange={(e) => setNewProdImageUrl(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Image</label>
+                  <div className="flex items-center gap-3">
+                    {/* Preview */}
+                    {newProdImagePreview ? (
+                      <img src={newProdImagePreview} alt="preview" className="w-14 h-14 rounded-xl object-cover border border-slate-700 flex-shrink-0" />
+                    ) : (
+                      <div className="w-14 h-14 rounded-xl border border-dashed border-slate-700 flex items-center justify-center flex-shrink-0 bg-slate-900">
+                        <ImageIcon className="w-5 h-5 text-slate-600" />
+                      </div>
+                    )}
+                    {/* File Input */}
+                    <label className="flex-1 cursor-pointer">
+                      <div className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-400 hover:border-emerald-500 transition-colors text-center">
+                        {newProdImageUploading ? '⏳ Uploading to bucket...' : newProdImageFile ? `✅ ${newProdImageFile.name}` : '📁 Click to choose image (PNG/JPG)'}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setNewProdImageFile(file);
+                            setNewProdImagePreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <p className="text-[10px] text-slate-600 mt-1">Image will be shared across all configured pack unit variants below.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Unit</label>
-                    <input
-                      type="text"
-                      placeholder="1 L"
-                      value={newProdUnit}
-                      onChange={(e) => setNewProdUnit(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
+
+                {/* Variants Editor Block */}
+                <div className="border-t border-slate-800/80 pt-4 mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Pack Unit Variants</h3>
+                    <button
+                      type="button"
+                      onClick={() => setNewProdVariants([...newProdVariants, { sku: '', unit: '', mrp: '', price: '' }])}
+                      className="text-xs font-bold px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 transition-all cursor-pointer"
+                    >
+                      + Add Pack Size
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+                    {newProdVariants.map((item, idx) => (
+                      <div key={idx} className="bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 space-y-2 relative">
+                        {newProdVariants.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setNewProdVariants(newProdVariants.filter((_, i) => i !== idx))}
+                            className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs font-bold"
+                          >
+                            ✕
+                          </button>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Unit Size (e.g. 1 L, 5 kg)</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. 5 L"
+                              value={item.unit}
+                              onChange={(e) => {
+                                const copy = [...newProdVariants];
+                                copy[idx].unit = e.target.value;
+                                // Auto-fill SKU suffix helper
+                                if (newProdName.trim() && !copy[idx].sku) {
+                                  const baseCode = newProdName.trim().slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                  const unitCode = e.target.value.toUpperCase().replace(/\s+/g, '');
+                                  copy[idx].sku = `${baseCode}-${unitCode}`;
+                                }
+                                setNewProdVariants(copy);
+                              }}
+                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Variant SKU *</label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. FORT-SOYA-5L"
+                              value={item.sku}
+                              onChange={(e) => {
+                                const copy = [...newProdVariants];
+                                copy[idx].sku = e.target.value;
+                                setNewProdVariants(copy);
+                              }}
+                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Master MRP (₹)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="e.g. 800.00"
+                              value={item.mrp}
+                              onChange={(e) => {
+                                const copy = [...newProdVariants];
+                                copy[idx].mrp = e.target.value;
+                                setNewProdVariants(copy);
+                              }}
+                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Default Price (₹)</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              required
+                              placeholder="e.g. 720.00"
+                              value={item.price}
+                              onChange={(e) => {
+                                const copy = [...newProdVariants];
+                                copy[idx].price = e.target.value;
+                                setNewProdVariants(copy);
+                              }}
+                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
+
                 <button
                   type="submit"
+                  disabled={newProdImageUploading}
                   className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
                 >
-                  <Plus className="w-4 h-4" /> Create SKU Product
+                  <Plus className="w-4 h-4" /> Create Product & Variants
                 </button>
               </form>
             </section>
@@ -2378,10 +2609,9 @@ export default function DashboardPage() {
                 </tbody>
               </table>
             </div>
-           </div>
+          </div>
         )}
 
-        </div>{/* page-body */}
       </main>
     </div>
   );

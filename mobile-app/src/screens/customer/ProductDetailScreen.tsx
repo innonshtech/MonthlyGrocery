@@ -19,20 +19,21 @@ import { COLORS, RADIUS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 
-const PACK_SIZES = [
-  { size: '1 kg', multiplier: 0.22 },
-  { size: '5 kg', multiplier: 1.0 },
-  { size: '10 kg', multiplier: 1.95 },
-];
-
 export default function ProductDetailScreen({ route, navigation }: any) {
   const { productId } = route.params || {};
   const { items, addToCart, updateQuantity } = useCart();
   const { city, area } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPackIndex, setSelectedPackIndex] = useState(1); // 5 kg default
   const [isFavorite, setIsFavorite] = useState(false);
+  const [variants, setVariants] = useState<Product[]>([]);
+
+  // Helper to extract base product name (e.g. "Fortune Sunflower Oil 1L" -> "Fortune Sunflower Oil")
+  const getBaseProductFamily = (nameStr: string) => {
+    return nameStr
+      .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units)\b.*/i, '')
+      .trim();
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -47,33 +48,45 @@ export default function ProductDetailScreen({ route, navigation }: any) {
           const found = data.products.find((p: any) => p.id === productId);
           if (found) {
             setProduct(found);
+            // Group other active variants of the same product family from this merchant
+            const familyName = getBaseProductFamily(found.name);
+            const related = data.products.filter((p: any) => {
+              return p.primary_category === found.primary_category &&
+                     (p.brand || '').toLowerCase() === (found.brand || '').toLowerCase() &&
+                     getBaseProductFamily(p.name).toLowerCase() === familyName.toLowerCase();
+            });
+            setVariants(related.length > 0 ? related : [found]);
           } else {
             // Default sample product if not found
-            setProduct({
+            const fallbackProduct = {
               id: productId || 'p-default',
               shop_id: 'shop-1',
               name: 'Aashirvaad Select Atta',
               brand: 'Aashirvaad',
               primary_category: 'Atta, Rice & Dals',
               image_url: '',
-              unit: '5 kg pack',
+              unit: '5 kg',
               mrp: 310,
               price: 255,
-            });
+            };
+            setProduct(fallbackProduct);
+            setVariants([fallbackProduct]);
           }
         }
       } catch (err) {
-        setProduct({
+        const fallbackProduct = {
           id: productId || 'p-default',
           shop_id: 'shop-1',
           name: 'Aashirvaad Select Atta',
           brand: 'Aashirvaad',
           primary_category: 'Atta, Rice & Dals',
           image_url: '',
-          unit: '5 kg pack',
+          unit: '5 kg',
           mrp: 310,
           price: 255,
-        });
+        };
+        setProduct(fallbackProduct);
+        setVariants([fallbackProduct]);
       } finally {
         setLoading(false);
       }
@@ -90,18 +103,14 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     );
   }
 
-  const basePrice = parseFloat(product.price as any) || 255;
-  const baseMrp = parseFloat(product.mrp as any) || Math.round(basePrice * 1.22);
-  const multiplier = PACK_SIZES[selectedPackIndex].multiplier;
-  const currentPrice = Math.round(basePrice * multiplier);
-  const currentMrp = Math.round(baseMrp * multiplier);
+  const currentPrice = parseFloat(product.price as any) || 0;
+  const currentMrp = parseFloat(product.mrp as any) || Math.round(currentPrice * 1.22);
   const diffSavings = currentMrp - currentPrice;
-  const discountPercent = Math.round((diffSavings / currentMrp) * 100);
+  const discountPercent = currentMrp > currentPrice ? Math.round((diffSavings / currentMrp) * 100) : 0;
+  const activePackUnit = product.unit || '1 unit';
 
-  const activePackUnit = PACK_SIZES[selectedPackIndex].size;
   const currentProductObj: Product = {
     ...product,
-    unit: activePackUnit,
     price: currentPrice,
     mrp: currentMrp,
   };
@@ -176,32 +185,31 @@ export default function ProductDetailScreen({ route, navigation }: any) {
             </View>
           </View>
         </View>
-
         {/* =========================================================================
-           4. PACK SIZE SELECTOR
+           4. DYNAMIC VARIANT PACK SIZE SELECTOR
            ========================================================================= */}
-        <View style={styles.packSection}>
-          <Text style={styles.sectionLabel}>Pack size</Text>
-          <View style={styles.packPillsRow}>
-            {PACK_SIZES.map((pack, idx) => {
-              const isSelected = selectedPackIndex === idx;
-              return (
-                <TouchableOpacity
-                  key={pack.size}
-                  style={[styles.packPill, isSelected && styles.packPillSelected]}
-                  onPress={() => setSelectedPackIndex(idx)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.packPillText, isSelected && styles.packPillTextSelected]}>
-                    {pack.size}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+        {variants.length > 1 && (
+          <View style={styles.packSection}>
+            <Text style={styles.sectionLabel}>Pack size</Text>
+            <View style={styles.packPillsRow}>
+              {variants.map((v) => {
+                const isSelected = v.id === product.id;
+                return (
+                  <TouchableOpacity
+                    key={v.id}
+                    style={[styles.packPill, isSelected && styles.packPillSelected]}
+                    onPress={() => setProduct(v)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.packPillText, isSelected && styles.packPillTextSelected]}>
+                      {v.unit}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
-
-        {/* =========================================================================
+        )}        {/* =========================================================================
            5. MONTHLY INSIGHT ADVICE BOX
            ========================================================================= */}
         <View style={styles.adviceBox}>

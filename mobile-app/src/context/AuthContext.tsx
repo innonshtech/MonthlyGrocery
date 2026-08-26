@@ -81,7 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Connection error' };
+      return {
+        success: false,
+        error:
+          'Cannot reach server. Start the backend and run: adb reverse tcp:8001 tcp:8001',
+      };
     }
   };
 
@@ -104,7 +108,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Connection error' };
+      return {
+        success: false,
+        error:
+          'Cannot reach server. Start the backend and run: adb reverse tcp:8001 tcp:8001',
+      };
     }
   };
 

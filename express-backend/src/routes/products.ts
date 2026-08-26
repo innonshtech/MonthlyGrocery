@@ -139,57 +139,7 @@ router.get('/all', async (req, res) => {
       : [];
 
     if (!shopId || activeShopProds.length === 0) {
-      // Return master products from Supabase directly
-      let query = supabase
-        .from('products')
-        .select('*')
-        .eq('available', true);
-
-      if (category) {
-        query = query.eq('primary_category', category);
-      }
-      if (secondary) {
-        query = query.eq('secondary_category', secondary);
-      }
-      if (q) {
-        query = query.ilike('name', `%${q}%`);
-      }
-
-      const { data: masterProds, error: masterErr } = await query.limit(limitVal);
-      if (masterErr) {
-        return res.status(500).json({ success: false, error: masterErr.message });
-      }
-
-      const out = (masterProds || []).map((p: any) => {
-        const mrp = parseFloat(p.mrp) || 0;
-        const price = parseFloat(p.price) || 0;
-        return {
-          id: p.id,
-          shop_id: p.shop_id || 'hub-default',
-          name: p.name,
-          sku: p.sku,
-          brand: p.brand,
-          company: p.company,
-          primary_category: p.primary_category,
-          secondary_category: p.secondary_category,
-          description: p.description,
-          short_description: p.short_description,
-          place: p.place,
-          image_url: p.image_url,
-          mrp,
-          price,
-          discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
-          stock: p.stock || 50,
-          unit: p.unit,
-          is_veg: p.is_veg,
-          featured: p.featured,
-          todays_deal: p.todays_deal,
-          best_seller: p.best_seller,
-          you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-        };
-      });
-
-      return res.json({ success: true, products: out });
+      return res.json({ success: true, products: [] });
     }
 
     const productIds = activeShopProds.map((sp: any) => sp.product_id);
@@ -571,13 +521,18 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
 // 3.5 POST /create: Create a new Master catalog product (Super Admin only)
 router.post('/create', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {
-    // Get default shop
-    const { data: shop, error: shopError } = await supabase
+    // Get the platform's master shop (first approved shop)
+    const { data: shops } = await supabase
       .from('shops')
-      .select('*')
-      .maybeSingle();
+      .select('id')
+      .eq('status', 'approved')
+      .limit(1);
 
-    const shopId = shop ? shop.id : null;
+    const shopId = shops && shops.length > 0 ? shops[0].id : null;
+    
+    if (!shopId) {
+      return res.status(400).json({ success: false, error: 'No approved shop found. Please create a merchant shop first.' });
+    }
 
     const { name, sku, brand, company, description, short_description, mrp, price, primary_category, image_url, unit, available, is_veg } = req.body;
     
@@ -610,26 +565,6 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
 
     if (error) {
       return res.status(400).json({ success: false, error: error.message });
-    }
-
-    // Auto-map this new product in local db so it is visible immediately in default store
-    if (shopId) {
-      const { readDb, writeDb } = require('../config/localDb');
-      const db = readDb();
-      const exists = db.shop_products.some((sp: any) => sp.shop_id === shopId && sp.product_id === product.id);
-      if (!exists) {
-        db.shop_products.push({
-          id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-          shop_id: shopId,
-          product_id: product.id,
-          selling_price: parseFloat(price) || 0,
-          discount_percentage: Math.max(0, Math.round(((parseFloat(mrp) - parseFloat(price)) / parseFloat(mrp)) * 100)) || 0,
-          stock: 100,
-          available: true,
-          status: 'approved'
-        });
-        writeDb(db);
-      }
     }
 
     return res.json({ success: true, product });

@@ -617,6 +617,77 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
+  // Calendar
+  if (name === 'calendar') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View
+          style={{
+            width: size * 0.72,
+            height: size * 0.72,
+            borderWidth: stroke,
+            borderColor: color,
+            borderRadius: 4,
+            paddingTop: size * 0.14,
+            paddingHorizontal: 3,
+          }}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: size * 0.14,
+              backgroundColor: color,
+              borderTopLeftRadius: 3,
+              borderTopRightRadius: 3,
+            }}
+          />
+          <View style={{ height: 1.8, backgroundColor: color, marginBottom: 3 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 2 }}>
+            <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: color }} />
+            <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: color }} />
+            <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: color }} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Trending down
+  if (name === 'trending-down') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View style={{ width: size * 0.72, height: size * 0.72, justifyContent: 'center' }}>
+          <View
+            style={{
+              width: size * 0.55,
+              height: stroke,
+              backgroundColor: color,
+              borderRadius: 1,
+              transform: [{ rotate: '35deg' }],
+              alignSelf: 'flex-start',
+            }}
+          />
+          <View
+            style={{
+              width: size * 0.22,
+              height: size * 0.22,
+              borderRightWidth: stroke,
+              borderBottomWidth: stroke,
+              borderColor: color,
+              transform: [{ rotate: '45deg' }],
+              position: 'absolute',
+              right: size * 0.08,
+              bottom: size * 0.18,
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
   // Shopping Bag
   if (name === 'shopping-bag') {
     return (

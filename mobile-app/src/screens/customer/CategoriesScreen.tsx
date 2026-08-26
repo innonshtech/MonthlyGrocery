@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AppIcon, { IconName } from '../../components/AppIcon';
 import { COLORS, RADIUS } from '../../constants/theme';
+import { API_BASE } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 
@@ -20,7 +21,25 @@ interface CategoryTile {
   icon: IconName;
 }
 
-const ALL_CATEGORIES: CategoryTile[] = [
+// Helper to assign correct icon to category dynamically
+function getCategoryIcon(name: string): IconName {
+  const norm = name.toLowerCase().trim();
+  if (norm.includes('atta') || norm.includes('rice')) return 'cat-atta-rice';
+  if (norm.includes('oil') || norm.includes('ghee')) return 'cat-oils-ghee';
+  if (norm.includes('dal') || norm.includes('pulse')) return 'cat-dals-pulses';
+  if (norm.includes('spice') || norm.includes('masala')) return 'cat-spices-masala';
+  if (norm.includes('dry') || norm.includes('fruit')) return 'cat-dry-fruits';
+  if (norm.includes('snack') || norm.includes('namkeen')) return 'cat-snacks';
+  if (norm.includes('beverage') || norm.includes('drink') || norm.includes('tea') || norm.includes('juice')) return 'cat-beverages';
+  if (norm.includes('biscuit') || norm.includes('cookies')) return 'cat-biscuits';
+  if (norm.includes('clean') || norm.includes('household') || norm.includes('detergent')) return 'cat-cleaning';
+  if (norm.includes('personal') || norm.includes('shampoo') || norm.includes('soap') || norm.includes('care')) return 'cat-personal-care';
+  if (norm.includes('home') || norm.includes('kitchen') || norm.includes('appliances')) return 'cat-home-kitchen';
+  if (norm.includes('baby') || norm.includes('diaper')) return 'cat-baby-care';
+  return 'shopping-bag';
+}
+
+const fallbackCategories: CategoryTile[] = [
   { id: 'atta-rice', name: 'Atta & Rice', icon: 'cat-atta-rice' },
   { id: 'oils-ghee', name: 'Oils & Ghee', icon: 'cat-oils-ghee' },
   { id: 'dals-pulses', name: 'Dals & Pulses', icon: 'cat-dals-pulses' },
@@ -37,8 +56,29 @@ const ALL_CATEGORIES: CategoryTile[] = [
 
 export default function CategoriesScreen({ navigation }: any) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [categories, setCategories] = useState<CategoryTile[]>(fallbackCategories);
 
-  const filteredCategories = ALL_CATEGORIES.filter((c) =>
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/products/categories`);
+        const data = await res.json();
+        if (res.ok && data.success && data.categories) {
+          const mapped: CategoryTile[] = data.categories.map((name: string, index: number) => ({
+            id: `cat-${index}-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+            name: name,
+            icon: getCategoryIcon(name)
+          }));
+          setCategories(mapped);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  const filteredCategories = categories.filter((c) =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 

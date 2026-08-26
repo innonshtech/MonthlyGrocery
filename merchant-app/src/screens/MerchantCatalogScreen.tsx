@@ -73,6 +73,15 @@ export default function MerchantCatalogScreen() {
   const [localAvailable, setLocalAvailable] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // States for Suggesting New Product to Super Admin
+  const [suggestModalVisible, setSuggestModalVisible] = useState(false);
+  const [newSkuName, setNewSkuName] = useState('');
+  const [newSkuCategory, setNewSkuCategory] = useState('');
+  const [newSkuBrand, setNewSkuBrand] = useState('');
+  const [newSkuUnit, setNewSkuUnit] = useState('');
+  const [newSkuMrp, setNewSkuMrp] = useState('');
+  const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
+
   const { token } = useMerchantAuth();
 
   const fetchData = async () => {
@@ -127,12 +136,12 @@ export default function MerchantCatalogScreen() {
     }
   };
 
-  const handleOpenConfigModal = (prod: MasterProduct, existingMapping: ShopProduct) => {
+  const handleOpenConfigModal = (prod: MasterProduct, existingMapping?: ShopProduct) => {
     setSelectedProduct(prod);
-    setLocalPrice(String(existingMapping.selling_price || prod.price));
-    setLocalDiscount(String(existingMapping.discount_percentage || 0));
-    setLocalStock(String(existingMapping.stock || 0));
-    setLocalAvailable(existingMapping.available);
+    setLocalPrice(String(existingMapping ? existingMapping.selling_price : prod.price));
+    setLocalDiscount(String(existingMapping ? existingMapping.discount_percentage : 0));
+    setLocalStock(String(existingMapping ? existingMapping.stock : 0));
+    setLocalAvailable(existingMapping ? existingMapping.available : false);
     setConfigModalVisible(true);
   };
 
@@ -140,6 +149,27 @@ export default function MerchantCatalogScreen() {
     if (!selectedProduct) return;
     setSaving(true);
     try {
+      const mapping = shopProducts.find((sp) => sp.product_id === selectedProduct.id);
+      
+      // If product not mapped yet, map it first (auto-approved in backend)
+      if (!mapping) {
+        const reqRes = await fetch(`${API_BASE}/admin/shop-products/request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ product_id: selectedProduct.id })
+        });
+        const reqData = await reqRes.json();
+        if (!reqRes.ok || !reqData.success) {
+          Alert.alert('Error', reqData.error || 'Failed to initialize SKU in inventory.');
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Configure it
       const res = await fetch(`${API_BASE}/admin/shop-products/configure`, {
         method: 'POST',
         headers: {
@@ -166,6 +196,46 @@ export default function MerchantCatalogScreen() {
       Alert.alert('Error', 'Connection error while saving configuration.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSuggestProduct = async () => {
+    if (!newSkuName.trim() || !newSkuCategory.trim() || !newSkuUnit.trim() || !newSkuMrp.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields (Name, Category, Unit, MRP).');
+      return;
+    }
+    setSubmittingSuggestion(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/new-product-requests`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: newSkuName,
+          category: newSkuCategory,
+          brand: newSkuBrand,
+          unit: newSkuUnit,
+          mrp: parseFloat(newSkuMrp) || 0
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        Alert.alert('Success', 'New product request submitted to Super Admin! Awaiting catalog addition.');
+        setSuggestModalVisible(false);
+        setNewSkuName('');
+        setNewSkuCategory('');
+        setNewSkuBrand('');
+        setNewSkuUnit('');
+        setNewSkuMrp('');
+      } else {
+        Alert.alert('Error', data.error || 'Failed to submit request.');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Connection error while submitting request.');
+    } finally {
+      setSubmittingSuggestion(false);
     }
   };
 
@@ -198,25 +268,12 @@ export default function MerchantCatalogScreen() {
         </View>
 
         <View style={styles.cardFooter}>
-          {status === 'not_requested' && (
-            <TouchableOpacity
-              style={styles.requestBtn}
-              onPress={() => handleRequestSKU(item.id)}
-            >
-              <Text style={styles.requestBtnText}>+ Request for My Shop</Text>
-            </TouchableOpacity>
-          )}
-
-          {status === 'pending' && (
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingText}>⏳ Pending Approval</Text>
-            </View>
-          )}
-
-          {status === 'approved' && mapping && (
+          {mapping ? (
             <View style={styles.approvedRow}>
-              <View style={styles.approvedBadge}>
-                <Text style={styles.approvedText}>✓ Active in Store (₹{mapping.selling_price})</Text>
+              <View style={mapping.available ? styles.approvedBadge : styles.rejectedBadge}>
+                <Text style={mapping.available ? styles.approvedText : styles.rejectedText}>
+                  {mapping.available ? `✓ Live (₹${mapping.selling_price})` : '✕ Inactive'}
+                </Text>
               </View>
               <TouchableOpacity
                 style={styles.configBtn}
@@ -225,11 +282,17 @@ export default function MerchantCatalogScreen() {
                 <Text style={styles.configBtnText}>⚙️ Configure</Text>
               </TouchableOpacity>
             </View>
-          )}
-
-          {status === 'rejected' && (
-            <View style={styles.rejectedBadge}>
-              <Text style={styles.rejectedText}>✕ Request Rejected</Text>
+          ) : (
+            <View style={styles.approvedRow}>
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingText}>⚠️ Not in Store</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.configBtn}
+                onPress={() => handleOpenConfigModal(item)}
+              >
+                <Text style={styles.configBtnText}>⚙️ Configure</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -242,13 +305,18 @@ export default function MerchantCatalogScreen() {
       <StatusBar barStyle="dark-content" />
       {/* Header */}
       <View style={styles.topBar}>
-        <View>
-          <Text style={styles.title}>Master SKU Catalog</Text>
-          <Text style={styles.subtitle}>Browse central products & request items for your store</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title}>Master Catalog</Text>
+          <Text style={styles.subtitle} numberOfLines={1}>Configure inventory or suggest new SKU</Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchData}>
-          <Text style={styles.refreshText}>🔄</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity style={styles.suggestBtn} onPress={() => setSuggestModalVisible(true)}>
+            <Text style={styles.suggestBtnText}>+ Suggest SKU</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshBtn} onPress={fetchData}>
+            <Text style={styles.refreshText}>🔄</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Input */}
@@ -369,6 +437,83 @@ export default function MerchantCatalogScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Suggest SKU Modal */}
+      <Modal visible={suggestModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Suggest New SKU</Text>
+            <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 16 }}>Request adding product to Master Catalogue</Text>
+
+            <Text style={styles.inputLabel}>Product Name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newSkuName}
+              onChangeText={setNewSkuName}
+              placeholder="e.g. Britannia Marie Gold Biscuits"
+            />
+
+            <Text style={styles.inputLabel}>Category</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newSkuCategory}
+              onChangeText={setNewSkuCategory}
+              placeholder="e.g. Packaged Foods"
+            />
+
+            <Text style={styles.inputLabel}>Brand</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newSkuBrand}
+              onChangeText={setNewSkuBrand}
+              placeholder="e.g. Britannia"
+            />
+
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>Unit</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newSkuUnit}
+                  onChangeText={setNewSkuUnit}
+                  placeholder="e.g. 250 g"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>MRP (₹)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="numeric"
+                  value={newSkuMrp}
+                  onChangeText={setNewSkuMrp}
+                  placeholder="e.g. 40"
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setSuggestModalVisible(false)}
+                disabled={submittingSuggestion}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={handleSuggestProduct}
+                disabled={submittingSuggestion}
+              >
+                {submittingSuggestion ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Submit Request</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -398,6 +543,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+  suggestBtn: {
+    backgroundColor: '#22C55E',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   refreshBtn: {
     backgroundColor: '#F1F5F9',

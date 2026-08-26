@@ -5,51 +5,55 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  StatusBar
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AppIcon from '../components/AppIcon';
+import {
+  OnboardingBackButton,
+  OnboardingPrimaryButton,
+} from '../components/onboarding/OnboardingUI';
 import { useAuth } from '../context/AuthContext';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS } from '../constants/theme';
 
 export default function LoginScreen({ route, navigation }: any) {
   const [mobile, setMobile] = useState('');
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [activeOtpIndex, setActiveOtpIndex] = useState<number>(0);
-  const [step, setStep] = useState<1 | 2>(1); // 1: Phone Entry, 2: OTP Verification
+  const [activeOtpIndex, setActiveOtpIndex] = useState(0);
+  const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(28);
   const [canResend, setCanResend] = useState(false);
   const { sendOtp, verifyOtp } = useAuth();
-
   const inputRefs = useRef<any[]>([]);
 
   useEffect(() => {
-    let interval: any;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (step === 2 && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer((prev) => {
           if (prev <= 1) {
             setCanResend(true);
-            clearInterval(interval);
+            if (interval) clearInterval(interval);
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [step, resendTimer]);
 
   const formattedTimer = `0:${resendTimer < 10 ? `0${resendTimer}` : resendTimer}`;
 
   const handleSendOtp = async () => {
     if (mobile.length < 10) {
-      setError('Please enter a valid 10-digit mobile number');
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     setError('');
@@ -91,9 +95,7 @@ export default function LoginScreen({ route, navigation }: any) {
 
     if (cleanText.length > 1) {
       const pasted = cleanText.slice(0, 6).split('');
-      for (let i = 0; i < 6; i++) {
-        newDigits[i] = pasted[i] || '';
-      }
+      for (let i = 0; i < 6; i++) newDigits[i] = pasted[i] || '';
       setOtpDigits(newDigits);
       const nextIndex = Math.min(pasted.length, 5);
       inputRefs.current[nextIndex]?.focus();
@@ -118,174 +120,162 @@ export default function LoginScreen({ route, navigation }: any) {
     }
   };
 
-  const handleSkip = () => {
-    navigation.navigate('CitySelection');
-  };
+  const handleGuest = () => navigation.navigate('CitySelection');
+
+  // Format the mobile number as "+91 98765 43210" or similar
+  const formattedMobile = mobile.length === 10 
+    ? `+91 ${mobile.slice(0, 5)} ${mobile.slice(5)}`
+    : `+91 ${mobile}`;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.container}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.main}>
           {step === 1 ? (
-            <View style={styles.screenWrap}>
-              {/* Top Bar with Skip Link */}
-              <View style={styles.topBar}>
-                <View style={{ flex: 1 }} />
-                <TouchableOpacity onPress={handleSkip} style={styles.skipBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <>
+              {/* Header Row matching Figma A3 */}
+              <View style={styles.headerRow}>
+                <OnboardingBackButton onPress={() => navigation.goBack()} />
+                <TouchableOpacity onPress={handleGuest} style={styles.skipBtn}>
                   <Text style={styles.skipText}>Skip</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Header Title & Subtitle */}
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>Enter your phone number</Text>
-                <Text style={styles.subtitle}>We'll send a one-time code to verify it.</Text>
-              </View>
-
-              {/* Phone Input Box with Label */}
-              <View style={styles.inputSection}>
-                <Text style={styles.inputLabel}>Mobile number</Text>
-                <View style={[styles.phoneInputCard, error ? styles.cardError : null]}>
-                  <Text style={styles.prefixText}>+91</Text>
-                  <View style={styles.verticalDivider} />
-                  <TextInput
-                    style={styles.phoneInput}
-                    placeholder="98765 43210"
-                    placeholderTextColor={COLORS.ink300}
-                    keyboardType="phone-pad"
-                    maxLength={10}
-                    value={mobile}
-                    onChangeText={(val) => {
-                      setMobile(val.replace(/[^\d]/g, ''));
-                      if (error) setError('');
-                    }}
-                    autoFocus
-                  />
-                </View>
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
-              </View>
-
-              {/* Bottom Sticky Action Area */}
-              <View style={styles.bottomArea}>
-                <Text style={styles.termsText}>
-                  By continuing you agree to our Terms & Privacy Policy.
+                <Text style={styles.subtitle}>
+                  We'll send a one-time code to verify it.
                 </Text>
-
-                <TouchableOpacity
-                  style={[
-                    styles.continueBtn,
-                    mobile.length === 10 ? styles.btnActive : styles.btnDisabled
-                  ]}
-                  onPress={handleSendOtp}
-                  disabled={loading || mobile.length < 10}
-                  activeOpacity={0.85}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.continueBtnText}>Continue</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={handleSkip} style={styles.guestLinkRow}>
-                  <Text style={styles.guestLinkText}>Browse as a guest</Text>
-                  <Text style={styles.guestArrow}>➔</Text>
-                </TouchableOpacity>
               </View>
-            </View>
-          ) : (
-            <View style={styles.screenWrap}>
-              {/* Top Bar with Back Arrow */}
-              <View style={styles.topBar}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setStep(1);
-                    setError('');
+
+              <Text style={styles.inputLabel}>Mobile number</Text>
+              <View style={[styles.phoneInputCard, error ? styles.inputError : null]}>
+                <View style={styles.prefixRow}>
+                  <Text style={styles.prefixText}>+91</Text>
+                </View>
+                <View style={styles.verticalDivider} />
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="98765 43210"
+                  placeholderTextColor={COLORS.ink300}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  value={mobile}
+                  onChangeText={(val) => {
+                    setMobile(val.replace(/[^\d]/g, ''));
+                    if (error) setError('');
                   }}
-                  style={styles.backArrowBtn}
-                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                >
-                  <Text style={styles.backArrowText}>‹</Text>
-                </TouchableOpacity>
+                  autoFocus
+                />
               </View>
 
-              {/* Header Title & Subtitle */}
+              {error ? (
+                <View style={styles.inlineErrorRow}>
+                  <Text style={styles.inlineErrorIcon}>!</Text>
+                  <Text style={styles.inlineErrorText}>{error}</Text>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <OnboardingBackButton
+                onPress={() => {
+                  setStep(1);
+                  setError('');
+                }}
+              />
+
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>Verify your number</Text>
-                <Text style={styles.subtitle}>
-                  Enter the 6-digit code sent to +91 {mobile}
-                </Text>
+                <View style={styles.otpSubtitleRow}>
+                  <Text style={styles.subtitle}>
+                    Enter the 6-digit code sent to {formattedMobile}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setStep(1);
+                      setError('');
+                    }}
+                  >
+                    <Text style={styles.editLink}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              {/* 6 Individual OTP Boxes */}
               <View style={styles.otpBoxesRow}>
-                {otpDigits.map((digit, idx) => {
-                  const isFocused = activeOtpIndex === idx;
-                  return (
-                    <TextInput
-                      key={idx}
-                      ref={(ref) => { inputRefs.current[idx] = ref; }}
-                      style={[
-                        styles.otpBox,
-                        isFocused && styles.otpBoxFocused,
-                        error ? styles.otpBoxError : null
-                      ]}
-                      value={digit}
-                      onChangeText={(text) => handleOtpChange(text, idx)}
-                      onKeyPress={(e) => handleOtpKeyPress(e, idx)}
-                      onFocus={() => setActiveOtpIndex(idx)}
-                      keyboardType="number-pad"
-                      maxLength={1}
-                      textAlign="center"
-                      autoFocus={idx === 0}
-                    />
-                  );
-                })}
+                {otpDigits.map((digit, idx) => (
+                  <TextInput
+                    key={idx}
+                    ref={(ref) => {
+                      inputRefs.current[idx] = ref;
+                    }}
+                    style={[
+                      styles.otpBox,
+                      activeOtpIndex === idx && styles.otpBoxFocused,
+                      error ? styles.otpBoxError : null,
+                    ]}
+                    value={digit}
+                    onChangeText={(text) => handleOtpChange(text, idx)}
+                    onKeyPress={(e) => handleOtpKeyPress(e, idx)}
+                    onFocus={() => setActiveOtpIndex(idx)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    textAlign="center"
+                    autoFocus={idx === 0}
+                  />
+                ))}
               </View>
 
               {error ? <Text style={styles.errorTextCenter}>{error}</Text> : null}
 
-              {/* Resend Timer Line */}
-              <View style={styles.resendLine}>
-                <Text style={styles.resendPromptText}>Didn't get the code? </Text>
+              <View style={styles.resendRow}>
                 {canResend ? (
-                  <TouchableOpacity onPress={handleSendOtp}>
-                    <Text style={styles.resendActiveLink}>Resend OTP</Text>
-                  </TouchableOpacity>
+                  <View style={styles.resendActionRow}>
+                    <Text style={styles.resendText}>Didn't get the code? </Text>
+                    <TouchableOpacity onPress={handleSendOtp}>
+                      <Text style={styles.resendActive}>Resend code</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
-                  <Text style={styles.resendTimerText}>Resend in {formattedTimer}</Text>
+                  <Text style={styles.resendTimer}>
+                    Didn't get the code?  Resend in {formattedTimer}
+                  </Text>
                 )}
               </View>
-
-              {/* Verify Primary Button */}
-              <View style={styles.verifyBtnWrap}>
-                <TouchableOpacity
-                  style={[
-                    styles.continueBtn,
-                    otpDigits.join('').length === 6 ? styles.btnActive : styles.btnDisabled
-                  ]}
-                  onPress={handleVerifyOtp}
-                  disabled={loading || otpDigits.join('').length < 6}
-                  activeOpacity={0.85}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.continueBtnText}>Verify</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+            </>
           )}
-        </ScrollView>
+        </View>
+
+        <View style={styles.bottomBar}>
+          {step === 1 ? (
+            <>
+              <Text style={styles.termsText}>
+                By continuing you agree to our Terms & Privacy Policy.
+              </Text>
+              <OnboardingPrimaryButton
+                label="Continue"
+                onPress={handleSendOtp}
+                disabled={mobile.length < 10}
+                loading={loading}
+              />
+              <TouchableOpacity onPress={handleGuest} style={styles.guestRow}>
+                <Text style={styles.guestText}>Browse as a guest</Text>
+                <AppIcon name="arrow-right" size={18} color={COLORS.green700} />
+              </TouchableOpacity>
+            </>
+          ) : (
+            <OnboardingPrimaryButton
+              label="Verify"
+              onPress={handleVerifyOtp}
+              disabled={otpDigits.join('').length < 6}
+              loading={loading}
+            />
+          )}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -294,214 +284,218 @@ export default function LoginScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper background #FAF9F5
-  },
-  container: {
-    flex: 1,
     backgroundColor: COLORS.paper,
   },
-  scrollContainer: {
-    flexGrow: 1,
+  flex: { flex: 1 },
+  main: {
+    flex: 1,
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 28,
   },
-  screenWrap: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  topBar: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 40,
-    marginBottom: 20,
+    width: '100%',
+    height: 40,
+    marginBottom: 22,
   },
   skipBtn: {
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    paddingHorizontal: 8,
+    justifyContent: 'center',
   },
   skipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.green700, // #1E7A46
-  },
-  backArrowBtn: {
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backArrowText: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 34,
-  },
-  headerBlock: {
-    marginBottom: 32,
-  },
-  mainTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: COLORS.ink900, // #17251E
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.ink500, // #6B7772
-    lineHeight: 20,
-  },
-  inputSection: {
-    flex: 1,
-  },
-  inputLabel: {
+    fontFamily: 'Mukta',
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.ink700, // #3D4A44
+    color: COLORS.green700,
+  },
+  backSpacer: {
+    width: 40,
+    height: 40,
+    marginBottom: 22,
+  },
+  headerBlock: {
+    marginBottom: 22,
+    gap: 8,
+  },
+  mainTitle: {
+    fontFamily: 'Baloo 2',
+    fontSize: 26,
+    fontWeight: '700',
+    color: COLORS.ink900,
+    letterSpacing: -0.26,
+    lineHeight: 32,
+  },
+  subtitle: {
+    fontFamily: 'Mukta',
+    fontSize: 16,
+    color: COLORS.ink500,
+    lineHeight: 24,
+  },
+  otpSubtitleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editLink: {
+    fontFamily: 'Mukta',
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.green700,
+  },
+  inputLabel: {
+    fontFamily: 'Mukta',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3D4A44',
     marginBottom: 8,
   },
   phoneInputCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface, // #FFFFFF
+    backgroundColor: COLORS.surface,
     borderWidth: 1.5,
-    borderColor: COLORS.line, // #EAE9E2
-    borderRadius: RADIUS.md, // 12px
-    height: 54,
+    borderColor: '#EAE9E2',
+    borderRadius: 12,
+    height: 52,
     paddingHorizontal: 16,
+    gap: 12,
   },
-  cardError: {
-    borderColor: COLORS.error, // #D8453B
-    backgroundColor: COLORS.errorBg, // #FBE9E7
+  inputError: {
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.errorBg,
+  },
+  prefixRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   prefixText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontFamily: 'Mukta',
+    fontSize: 16,
+    fontWeight: '500',
     color: COLORS.ink900,
-    marginRight: 14,
   },
   verticalDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: COLORS.line,
-    marginRight: 14,
+    width: 1.5,
+    height: 22,
+    backgroundColor: '#EAE9E2',
   },
   phoneInput: {
     flex: 1,
+    fontFamily: 'Mukta',
     fontSize: 16,
-    fontWeight: '600',
     color: COLORS.ink900,
-    letterSpacing: 0.5,
     padding: 0,
   },
-  errorText: {
-    color: COLORS.error,
-    fontSize: 12,
-    marginTop: 8,
-    fontWeight: '500',
-  },
-  errorTextCenter: {
-    color: COLORS.error,
-    fontSize: 12,
-    textAlign: 'center',
-    marginBottom: 12,
-    fontWeight: '500',
-  },
-  bottomArea: {
-    marginTop: 40,
-    gap: 16,
-    alignItems: 'center',
-  },
-  termsText: {
-    fontSize: 12,
-    color: COLORS.ink500,
-    textAlign: 'center',
-    lineHeight: 16,
-    maxWidth: 280,
-  },
-  continueBtn: {
-    width: '100%',
-    height: 52,
-    borderRadius: RADIUS.pill, // 999px
-    backgroundColor: COLORS.green700, // #1E7A46
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  btnActive: {
-    opacity: 1,
-  },
-  btnDisabled: {
-    opacity: 0.45,
-  },
-  continueBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  guestLinkRow: {
+  inlineErrorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 6,
+    marginTop: 12,
   },
-  guestLinkText: {
-    fontSize: 14,
+  inlineErrorIcon: {
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: COLORS.error,
+    color: '#FFF',
+    fontSize: 10,
     fontWeight: '700',
-    color: COLORS.green700,
+    textAlign: 'center',
+    lineHeight: 15,
+    overflow: 'hidden',
   },
-  guestArrow: {
-    fontSize: 14,
-    color: COLORS.green700,
-    fontWeight: 'bold',
+  inlineErrorText: {
+    fontFamily: 'Mukta',
+    fontSize: 12,
+    color: COLORS.error,
+    fontWeight: '500',
   },
   otpBoxesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
     gap: 8,
+    marginBottom: 16,
   },
   otpBox: {
     flex: 1,
-    height: 56,
-    borderRadius: RADIUS.md, // 12px
+    maxWidth: 50,
+    height: 58,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: COLORS.line, // #EAE9E2
-    backgroundColor: COLORS.surface, // #FFFFFF
+    borderColor: '#EAE9E2',
+    backgroundColor: COLORS.surface,
+    fontFamily: 'Baloo 2',
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '600',
     color: COLORS.ink900,
   },
-  otpBoxFocused: {
-    borderColor: COLORS.green700, // #1E7A46
-  },
+  otpBoxFocused: { borderColor: COLORS.green700 },
   otpBoxError: {
     borderColor: COLORS.error,
     backgroundColor: COLORS.errorBg,
+  },
+  errorTextCenter: {
+    fontFamily: 'Mukta',
     color: COLORS.error,
-  },
-  resendLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  resendPromptText: {
-    fontSize: 13,
-    color: COLORS.ink500,
-  },
-  resendTimerText: {
-    fontSize: 13,
-    color: COLORS.ink500,
+    fontSize: 12,
+    marginBottom: 12,
     fontWeight: '500',
   },
-  resendActiveLink: {
-    fontSize: 13,
-    fontWeight: '700',
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  resendActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  resendText: {
+    fontFamily: 'Mukta',
+    fontSize: 12,
+    color: COLORS.ink500,
+  },
+  resendTimer: {
+    fontFamily: 'Mukta',
+    fontSize: 12,
+    color: COLORS.ink500,
+  },
+  resendActive: {
+    fontFamily: 'Mukta',
+    fontSize: 12,
+    fontWeight: '600',
     color: COLORS.green700,
   },
-  verifyBtnWrap: {
-    marginTop: 'auto',
+  bottomBar: {
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 28,
+    gap: 14,
+    backgroundColor: COLORS.paper,
+  },
+  guestRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  guestText: {
+    fontFamily: 'Mukta',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.green700,
+  },
+  termsText: {
+    fontFamily: 'Mukta',
+    fontSize: 12,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 2,
   },
 });

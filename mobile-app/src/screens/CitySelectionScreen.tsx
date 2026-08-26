@@ -7,32 +7,46 @@ import {
   FlatList,
   TextInput,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE } from '../config/api';
 import AppIcon from '../components/AppIcon';
+import {
+  OnboardingBackButton,
+  OnboardingRadio,
+  OnboardingSectionLabel,
+} from '../components/onboarding/OnboardingUI';
 import { COLORS, RADIUS } from '../constants/theme';
 
 interface CityItem {
   id: string;
   name: string;
+  region: string;
 }
 
 const DEFAULT_POPULAR_CITIES: CityItem[] = [
-  { id: 'pune', name: 'Pune' },
-  { id: 'mumbai', name: 'Mumbai' },
-  { id: 'delhi', name: 'Delhi' },
-  { id: 'bengaluru', name: 'Bengaluru' },
-  { id: 'hyderabad', name: 'Hyderabad' },
+  { id: 'pune', name: 'Pune', region: 'Maharashtra' },
+  { id: 'mumbai', name: 'Mumbai', region: 'Maharashtra' },
+  { id: 'delhi', name: 'Delhi', region: 'NCR' },
+  { id: 'bengaluru', name: 'Bengaluru', region: 'Karnataka' },
+  { id: 'hyderabad', name: 'Hyderabad', region: 'Telangana' },
 ];
+
+const CITY_REGIONS: Record<string, string> = {
+  pune: 'Maharashtra',
+  mumbai: 'Maharashtra',
+  delhi: 'NCR',
+  bengaluru: 'Karnataka',
+  hyderabad: 'Telangana',
+};
 
 export default function CitySelectionScreen({ navigation }: any) {
   const { setCityAndArea } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [cities, setCities] = useState<CityItem[]>(DEFAULT_POPULAR_CITIES);
-  const [selectedCity, setSelectedCity] = useState<string>('Pune');
+  const [selectedCity, setSelectedCity] = useState('Pune');
   const [detecting, setDetecting] = useState(false);
 
   useEffect(() => {
@@ -48,6 +62,8 @@ export default function CitySelectionScreen({ navigation }: any) {
           const list: CityItem[] = uniqueCities.map((cName) => ({
             id: cName.toLowerCase().replace(/\s+/g, '-'),
             name: cName,
+            region:
+              CITY_REGIONS[cName.toLowerCase().replace(/\s+/g, '-')] || 'India',
           }));
 
           DEFAULT_POPULAR_CITIES.forEach((defCity) => {
@@ -58,7 +74,7 @@ export default function CitySelectionScreen({ navigation }: any) {
 
           setCities(list);
         }
-      } catch (err) {
+      } catch {
         setCities(DEFAULT_POPULAR_CITIES);
       }
     };
@@ -87,42 +103,36 @@ export default function CitySelectionScreen({ navigation }: any) {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Bar with Back Chevron */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          onPress={() => {
-            if (navigation.canGoBack()) navigation.goBack();
-          }}
-          style={styles.backArrowBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={styles.backArrowText}>‹</Text>
-        </TouchableOpacity>
-      </View>
+      <OnboardingBackButton
+        onPress={() => {
+          if (navigation.canGoBack()) navigation.goBack();
+        }}
+      />
 
-      {/* Main Title */}
       <View style={styles.headerBlock}>
         <Text style={styles.mainTitle}>Choose your city</Text>
+        <Text style={styles.subtitle}>
+          We deliver monthly groceries in these cities.
+        </Text>
       </View>
 
-      {/* Detect My Location Banner */}
       <TouchableOpacity
-        style={styles.detectLocationCard}
+        style={styles.locationCard}
         onPress={handleDetectLocation}
         activeOpacity={0.8}
         disabled={detecting}
       >
-        <View style={styles.detectIconBox}>
-          <AppIcon name="map-pin" size={18} color={COLORS.green700} />
+        <View style={styles.locationTextCol}>
+          <Text style={styles.locationTitle}>Use my current location</Text>
+          <Text style={styles.locationSubtitle}>Find your city automatically</Text>
         </View>
         {detecting ? (
           <ActivityIndicator size="small" color={COLORS.green700} />
         ) : (
-          <Text style={styles.detectLocationText}>Detect my location</Text>
+          <AppIcon name="map-pin" size={20} color={COLORS.green700} />
         )}
       </TouchableOpacity>
 
-      {/* Search Input Card */}
       <View style={styles.searchCard}>
         <AppIcon name="search" size={18} color={COLORS.ink300} />
         <TextInput
@@ -132,48 +142,44 @@ export default function CitySelectionScreen({ navigation }: any) {
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
-        {searchQuery.length > 0 && (
+        {searchQuery.length > 0 ? (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
             <Text style={styles.clearSearchText}>✕</Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
-      {/* Section Header: POPULAR CITIES */}
-      <View style={styles.sectionHeaderWrap}>
-        <Text style={styles.sectionHeaderText}>POPULAR CITIES</Text>
-      </View>
+      <OnboardingSectionLabel label="POPULAR CITIES" />
 
-      {/* Popular Cities List */}
       <FlatList
         data={filteredCities}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.citiesList}
+        contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          const isSelected = selectedCity.toLowerCase() === item.name.toLowerCase();
+          const isSelected =
+            selectedCity.toLowerCase() === item.name.toLowerCase();
           return (
             <TouchableOpacity
-              style={styles.cityRow}
+              style={styles.rowCard}
               onPress={() => handleCitySelect(item.name)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.cityName, isSelected && styles.cityNameSelected]}>
-                {item.name}
-              </Text>
-              {isSelected ? (
-                <Text style={styles.checkMark}>✓</Text>
-              ) : (
-                <Text style={styles.chevronArrow}>›</Text>
-              )}
+              <View style={styles.rowIcon}>
+                <Text style={styles.rowIconEmoji}>🏙️</Text>
+              </View>
+              <View style={styles.rowTextCol}>
+                <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
+                  {item.name}
+                </Text>
+                <Text style={styles.rowSubtitle}>{item.region}</Text>
+              </View>
+              <OnboardingRadio selected={isSelected} />
             </TouchableOpacity>
           );
         }}
-        ItemSeparatorComponent={() => <View style={styles.rowSeparator} />}
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No city found matching "{searchQuery}"</Text>
-          </View>
+          <Text style={styles.emptyText}>No city found matching "{searchQuery}"</Text>
         }
       />
     </SafeAreaView>
@@ -183,58 +189,51 @@ export default function CitySelectionScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: COLORS.paper,
     paddingHorizontal: 24,
     paddingTop: 8,
   },
-  topBar: {
-    minHeight: 36,
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  backArrowBtn: {
-    width: 36,
-    height: 36,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backArrowText: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 34,
-  },
   headerBlock: {
-    marginBottom: 24,
+    marginTop: 16,
+    marginBottom: 16,
+    gap: 6,
   },
   mainTitle: {
-    fontSize: 28,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     color: COLORS.ink900,
-    letterSpacing: -0.5,
+    letterSpacing: -0.26,
+    lineHeight: 32,
   },
-  detectLocationCard: {
+  subtitle: {
+    fontSize: 15,
+    color: COLORS.ink500,
+    lineHeight: 24,
+  },
+  locationCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green50, // #F2F9F5
-    borderRadius: RADIUS.md, // 12px
-    borderWidth: 1,
-    borderColor: COLORS.green100, // #E4F3EA
-    height: 52,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     marginBottom: 16,
-    gap: 12,
   },
-  detectIconBox: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detectLocationText: {
+  locationTextCol: { flex: 1, paddingRight: 12 },
+  locationTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.green700, // #1E7A46
+    color: COLORS.ink900,
+    lineHeight: 20,
+  },
+  locationSubtitle: {
+    fontSize: 12,
+    color: COLORS.ink500,
+    lineHeight: 16,
+    marginTop: 1,
   },
   searchCard: {
     flexDirection: 'row',
@@ -243,14 +242,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    height: 52,
-    paddingHorizontal: 16,
-    marginBottom: 28,
-    gap: 12,
+    height: 50,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    gap: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.ink900,
     padding: 0,
   },
@@ -258,56 +257,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.ink300,
     fontWeight: 'bold',
-    paddingHorizontal: 4,
   },
-  sectionHeaderWrap: {
-    marginBottom: 16,
-  },
-  sectionHeaderText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  citiesList: {
-    paddingBottom: 24,
-  },
-  cityRow: {
+  list: { paddingBottom: 24, gap: 0 },
+  rowCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 8,
+    minHeight: 65,
   },
-  rowSeparator: {
-    height: 1,
-    backgroundColor: COLORS.line,
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  cityName: {
-    fontSize: 15,
-    fontWeight: '500',
+  rowIconEmoji: { fontSize: 18 },
+  rowTextCol: { flex: 1 },
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     color: COLORS.ink900,
+    lineHeight: 20,
   },
-  cityNameSelected: {
-    color: COLORS.green700,
-    fontWeight: '700',
-  },
-  checkMark: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.green700,
-  },
-  chevronArrow: {
-    fontSize: 22,
-    fontWeight: '300',
-    color: COLORS.ink300,
-  },
-  emptyContainer: {
-    paddingVertical: 32,
-    alignItems: 'center',
+  rowTitleSelected: { color: COLORS.green700 },
+  rowSubtitle: {
+    fontSize: 12,
+    color: COLORS.ink500,
+    lineHeight: 16,
+    marginTop: 1,
   },
   emptyText: {
     fontSize: 14,
     color: COLORS.ink500,
+    textAlign: 'center',
+    paddingVertical: 24,
   },
 });

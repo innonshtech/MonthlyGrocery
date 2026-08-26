@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
+    "android": "react-native run-android --port 8082",
     "ios": "react-native run-ios",
     "lint": "eslint .",
-    "start": "react-native start",
-    "dev": "react-native start",
+    "start": "react-native start --port 8082",
+    "dev": "react-native start --port 8082",
     "test": "jest"
   },
   "dependencies": {

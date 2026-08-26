@@ -6,7 +6,7 @@
       "area_name": "Andheri West",
       "pincode": "400053",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-2",
@@ -14,7 +14,7 @@
       "area_name": "Bandra West",
       "pincode": "400050",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-3",
@@ -22,7 +22,7 @@
       "area_name": "Powai",
       "pincode": "400076",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-4",
@@ -30,7 +30,7 @@
       "area_name": "Juhu",
       "pincode": "400049",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-5",
@@ -38,7 +38,7 @@
       "area_name": "Baner",
       "pincode": "411045",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-6",
@@ -46,7 +46,7 @@
       "area_name": "Kothrud",
       "pincode": "411038",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-7",
@@ -54,7 +54,7 @@
       "area_name": "Hinjawadi Phase 1",
       "pincode": "411057",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     }
   ],
   "promotional_banners": [
@@ -94,6 +94,10 @@
     {
       "id": "city-1786686694575",
       "name": "Noida"
+    },
+    {
+      "id": "city-1787551037588",
+      "name": "jharkhand"
     }
   ],
   "areas": [
@@ -151,9 +155,25 @@
       "id": "area-11",
       "city_id": "city-4",
       "name": "Noida Sec-62"
+    },
+    {
+      "id": "area-1787551059992",
+      "city_id": "city-1787551037588",
+      "name": "ranchi"
     }
   ],
-  "shop_products": [],
+  "shop_products": [
+    {
+      "id": "sp-1787566002450-u4dn32lnz",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
+      "selling_price": 145,
+      "discount_percentage": 50,
+      "stock": 25,
+      "available": true,
+      "status": "approved"
+    }
+  ],
   "categories": [
     {
       "id": "cat-1",
@@ -161,23 +181,23 @@
     },
     {
       "id": "cat-2",
-      "name": "Cooking Essentials"
+      "name": "Oils & Ghee"
     },
     {
       "id": "cat-3",
-      "name": "Dairy Staples"
+      "name": "Dals & Pulses"
     },
     {
       "id": "cat-4",
-      "name": "Pulses & Grains"
+      "name": "Spices & Masala"
     },
     {
       "id": "cat-5",
-      "name": "Packaged Foods"
+      "name": "Dry Fruits"
     },
     {
       "id": "cat-6",
-      "name": "Household Items"
+      "name": "Snacks"
     },
     {
       "id": "cat-7",
@@ -185,11 +205,23 @@
     },
     {
       "id": "cat-8",
-      "name": "Personal Care"
+      "name": "Biscuits"
     },
     {
       "id": "cat-9",
-      "name": "Snacks"
+      "name": "Cleaning"
+    },
+    {
+      "id": "cat-10",
+      "name": "Personal Care"
+    },
+    {
+      "id": "cat-11",
+      "name": "Home & Kitchen"
+    },
+    {
+      "id": "cat-12",
+      "name": "Baby Care"
     }
   ],
   "coupons": [
@@ -208,15 +240,59 @@
       "value": 50,
       "min_order": 300,
       "active": true
-    },
-    {
-      "id": "cp-3",
-      "code": "SUPER300",
-      "discount_type": "flat",
-      "value": 300,
-      "min_order": 2500,
-      "active": true
     }
   ],
-  "orders": []
+  "orders": [
+    {
+      "id": "18ebd1c0-1e5f-45ce-acc9-29fa871ad5fa",
+      "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
+      "consumer_name": "917777777777",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "total_amount": 3045,
+      "discount_amount": 0,
+      "coupon_code": null,
+      "shipping_address": "Flat 402, Royal Palms, Main High Street Road, Pune 411038",
+      "delivery_slot": "Tomorrow, Morning 7:00 AM - 10:00 AM",
+      "delivery_otp": "5989",
+      "payment_method": "UPI",
+      "status": "confirmed",
+      "created_at": "2026-08-24T11:29:07.610Z",
+      "order_items": [
+        {
+          "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
+          "product_name": "Grocery Item",
+          "quantity": 21,
+          "unit_price": 145,
+          "unit": "1 unit",
+          "image_url": ""
+        }
+      ]
+    },
+    {
+      "id": "a2536e3f-5329-4415-9979-b43e8c128b1b",
+      "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
+      "consumer_name": "917777777777",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "total_amount": 3045,
+      "discount_amount": 0,
+      "coupon_code": null,
+      "shipping_address": "Flat 402, Royal Palms, Main High Street Road, Pune 411038",
+      "delivery_slot": "Tomorrow, Morning 7:00 AM - 10:00 AM",
+      "delivery_otp": "6845",
+      "payment_method": "COD",
+      "status": "confirmed",
+      "created_at": "2026-08-24T11:26:41.056Z",
+      "order_items": [
+        {
+          "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
+          "product_name": "Grocery Item",
+          "quantity": 21,
+          "unit_price": 145,
+          "unit": "1 unit",
+          "image_url": ""
+        }
+      ]
+    }
+  ],
+  "new_product_requests": []
 }

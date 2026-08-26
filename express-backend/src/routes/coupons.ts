@@ -76,7 +76,7 @@ router.get('/', async (req: Request, res: Response): Promise<any> => {
 });
 
 // 2. POST /api/coupons/apply - Validate and calculate exact discount
-router.post('/apply', (req: Request, res: Response): Promise<any> => {
+router.post('/apply', async (req: Request, res: Response): Promise<any> => {
   try {
     const { code, cart_amount } = req.body;
     const amount = parseFloat(cart_amount) || 0;
