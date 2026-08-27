@@ -14,10 +14,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 export default function PaymentMethodScreen({ route, navigation }: any) {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { items, clearCart } = useCart();
   const {
     selectedAddress,
@@ -28,7 +28,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
     totalSavings = 340
   } = route?.params || {};
 
-  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'CARD' | 'NETBANKING' | 'COD'>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI' | 'CARD' | 'NETBANKING'>('COD');
   const [selectedUpiApp, setSelectedUpiApp] = useState('Google Pay');
   const [processing, setProcessing] = useState(false);
 
@@ -42,7 +42,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           price: i.product.price,
         })),
         shipping_address: selectedAddress
-          ? `${selectedAddress.flat}, ${selectedAddress.street}, ${selectedAddress.city} ${selectedAddress.pin}`
+          ? `${selectedAddress.flat}, ${selectedAddress.street}, ${selectedAddress.city} ${selectedAddress.pincode}`
           : 'Pune, Maharashtra',
         delivery_slot: selectedSlot
           ? `${selectedSlot.dateLabel}, ${selectedSlot.timeWindow}`
@@ -74,9 +74,10 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           deliveryDay: selectedSlot?.dateLabel || 'Tomorrow',
           deliveryTime: selectedSlot?.timeWindow || '7:00 AM - 10:00 AM',
           address: selectedAddress?.flat || 'Your delivery address',
+          paymentMethod: paymentMethod === 'COD' ? 'Cash on Delivery' : selectedUpiApp,
         });
       } else {
-        // Fallback demo order creation if offline
+        // Fallback demo order creation if offline/error
         clearCart();
         navigation.replace('OrderSuccess', {
           orderId: `MG-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -85,6 +86,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           deliveryDay: selectedSlot?.dateLabel || 'Tomorrow',
           deliveryTime: selectedSlot?.timeWindow || '7:00 AM - 10:00 AM',
           address: selectedAddress?.flat || 'Your delivery address',
+          paymentMethod: paymentMethod === 'COD' ? 'Cash on Delivery' : selectedUpiApp,
         });
       }
     } catch (err) {
@@ -97,56 +99,81 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
         deliveryDay: selectedSlot?.dateLabel || 'Tomorrow',
         deliveryTime: selectedSlot?.timeWindow || '7:00 AM - 10:00 AM',
         address: selectedAddress?.flat || 'Your delivery address',
+        paymentMethod: paymentMethod === 'COD' ? 'Cash on Delivery' : selectedUpiApp,
       });
     }
+  };
+
+  const getActionBtnText = () => {
+    if (processing) return 'Processing...';
+    if (paymentMethod === 'COD') return 'Pay On Delivery';
+    if (paymentMethod === 'UPI') return `Pay with ${selectedUpiApp}`;
+    if (paymentMethod === 'CARD') return 'Pay with Debit / Credit Card';
+    return 'Proceed to Pay';
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Header */}
+      {/* =========================================================================
+         1. TOP HEADER ROW (E5)
+         ========================================================================= */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <AppIcon name="arrow-left" size={20} color={COLORS.ink900} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select payment method</Text>
+        <Text style={styles.headerTitle}>Payment</Text>
       </View>
 
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        {/* Payable Total Card */}
-        <View style={styles.totalCard}>
-          <View>
-            <Text style={styles.totalLabel}>TOTAL PAYABLE AMOUNT</Text>
-            <Text style={styles.totalAmountText}>₹{totalAmount}</Text>
-          </View>
-          <View style={styles.savingsTag}>
-            <Text style={styles.savingsTagText}>Saving ₹{totalSavings}</Text>
-          </View>
+        {/* =========================================================================
+           2. AMOUNT PAYABLE BANNER (Green fill, deep green text matching E5 spec)
+           ========================================================================= */}
+        <View style={styles.amountPayableBanner}>
+          <Text style={styles.payableLabelText}>Amount payable</Text>
+          <Text style={styles.payableAmountVal}>₹{totalAmount}</Text>
         </View>
 
-        {/* Payment Methods */}
-        <Text style={styles.sectionHeading}>PAYMENT OPTIONS</Text>
+        {/* =========================================================================
+           3. PAYMENT METHOD OPTIONS (Figma E5 specs)
+           ========================================================================= */}
+        <Text style={styles.sectionHeading}>payment METHODS</Text>
 
-        {/* 1. UPI */}
+        {/* Option 1: Cash On Delivery */}
+        <TouchableOpacity
+          style={[styles.paymentCard, paymentMethod === 'COD' && styles.paymentCardActive]}
+          onPress={() => setPaymentMethod('COD')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.circleIconPill}>
+            <AppIcon name="wallet" size={16} color={COLORS.green700} />
+          </View>
+          <View style={styles.cardDetails}>
+            <Text style={styles.methodTitle}>Pay on Delivery</Text>
+            <Text style={styles.methodSubtitle}>Pay when your order arrives (Cash/UPI)</Text>
+          </View>
+          <View style={[styles.radioCircle, paymentMethod === 'COD' && styles.radioCircleActive]}>
+            {paymentMethod === 'COD' && <View style={styles.radioDot} />}
+          </View>
+        </TouchableOpacity>
+
+        {/* Option 2: UPI Apps */}
         <TouchableOpacity
           style={[styles.paymentCard, paymentMethod === 'UPI' && styles.paymentCardActive]}
           onPress={() => setPaymentMethod('UPI')}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
         >
-          <View style={[styles.radioCircle, paymentMethod === 'UPI' && styles.radioCircleActive]}>
-            {paymentMethod === 'UPI' && <View style={styles.radioDot} />}
+          <View style={styles.circleIconPill}>
+            <AppIcon name="sparkles" size={16} color={COLORS.green700} />
           </View>
-
-          <View style={styles.paymentInfo}>
-            <View style={styles.methodHeader}>
-              <Text style={styles.methodIcon}>⚡</Text>
-              <Text style={styles.methodTitle}>UPI (Instant & Zero Fee)</Text>
-            </View>
+          <View style={styles.cardDetails}>
+            <Text style={styles.methodTitle}>UPI (PhonePe, Google Pay, Paytm)</Text>
+            <Text style={styles.methodSubtitle}>Pay instantly using any UPI app</Text>
 
             {paymentMethod === 'UPI' && (
               <View style={styles.upiAppsRow}>
@@ -164,74 +191,33 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
               </View>
             )}
           </View>
+          <View style={[styles.radioCircle, paymentMethod === 'UPI' && styles.radioCircleActive]}>
+            {paymentMethod === 'UPI' && <View style={styles.radioDot} />}
+          </View>
         </TouchableOpacity>
 
-        {/* 2. Cards */}
+        {/* Option 3: Credit/Debit Cards */}
         <TouchableOpacity
           style={[styles.paymentCard, paymentMethod === 'CARD' && styles.paymentCardActive]}
           onPress={() => setPaymentMethod('CARD')}
-          activeOpacity={0.85}
+          activeOpacity={0.8}
         >
+          <View style={styles.circleIconPill}>
+            <AppIcon name="wallet" size={16} color={COLORS.green700} />
+          </View>
+          <View style={styles.cardDetails}>
+            <Text style={styles.methodTitle}>Credit / Debit Card</Text>
+            <Text style={styles.methodSubtitle}>Visa, MasterCard, RuPay cards supported</Text>
+          </View>
           <View style={[styles.radioCircle, paymentMethod === 'CARD' && styles.radioCircleActive]}>
             {paymentMethod === 'CARD' && <View style={styles.radioDot} />}
           </View>
-
-          <View style={styles.paymentInfo}>
-            <View style={styles.methodHeader}>
-              <Text style={styles.methodIcon}>💳</Text>
-              <Text style={styles.methodTitle}>Credit / Debit Card</Text>
-            </View>
-            <Text style={styles.methodSub}>Visa, MasterCard, RuPay, Maestro</Text>
-          </View>
         </TouchableOpacity>
-
-        {/* 3. Netbanking */}
-        <TouchableOpacity
-          style={[styles.paymentCard, paymentMethod === 'NETBANKING' && styles.paymentCardActive]}
-          onPress={() => setPaymentMethod('NETBANKING')}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.radioCircle, paymentMethod === 'NETBANKING' && styles.radioCircleActive]}>
-            {paymentMethod === 'NETBANKING' && <View style={styles.radioDot} />}
-          </View>
-
-          <View style={styles.paymentInfo}>
-            <View style={styles.methodHeader}>
-              <Text style={styles.methodIcon}>🏦</Text>
-              <Text style={styles.methodTitle}>Net Banking</Text>
-            </View>
-            <Text style={styles.methodSub}>All major Indian banks supported</Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* 4. Cash on Delivery */}
-        <TouchableOpacity
-          style={[styles.paymentCard, paymentMethod === 'COD' && styles.paymentCardActive]}
-          onPress={() => setPaymentMethod('COD')}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.radioCircle, paymentMethod === 'COD' && styles.radioCircleActive]}>
-            {paymentMethod === 'COD' && <View style={styles.radioDot} />}
-          </View>
-
-          <View style={styles.paymentInfo}>
-            <View style={styles.methodHeader}>
-              <Text style={styles.methodIcon}>💵</Text>
-              <Text style={styles.methodTitle}>Cash on Delivery</Text>
-            </View>
-            <Text style={styles.methodSub}>Pay cash or UPI at delivery doorstep</Text>
-          </View>
-        </TouchableOpacity>
-
-        <View style={styles.securityNotice}>
-          <Text style={styles.shieldIcon}>🔒</Text>
-          <Text style={styles.securityText}>
-            100% Safe & Secure Payments. 256-Bit Encrypted.
-          </Text>
-        </View>
       </ScrollView>
 
-      {/* Bottom Place Order Bar */}
+      {/* =========================================================================
+         4. STICKY BOTTOM PAYMENT ROW (E5)
+         ========================================================================= */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.payBtn}
@@ -240,11 +226,9 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           activeOpacity={0.85}
         >
           {processing ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.payBtnText}>
-              Pay ₹{totalAmount} & Place order ›
-            </Text>
+            <Text style={styles.payBtnText}>{getActionBtnText()}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -255,98 +239,98 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper,
+    backgroundColor: COLORS.paper, // Warm Paper background
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: COLORS.paper,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    marginRight: 14,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooSemiBold,
+    fontSize: 18,
     color: COLORS.ink900,
-    marginLeft: 8,
+    lineHeight: 24,
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 110,
+    gap: 16,
   },
-  totalCard: {
+  amountPayableBanner: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 16,
-    marginBottom: 24,
+    backgroundColor: COLORS.green100, // #E4F3EA
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
   },
-  totalLabel: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
-    marginBottom: 2,
+  payableLabelText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: COLORS.green800, // Deep green
   },
-  totalAmountText: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: COLORS.ink900,
-  },
-  savingsTag: {
-    backgroundColor: COLORS.green50,
-    borderWidth: 1,
-    borderColor: COLORS.green100,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: RADIUS.pill,
-  },
-  savingsTagText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.green700,
+  payableAmountVal: {
+    ...FONTS.balooBold,
+    fontSize: 18,
+    color: COLORS.green800, // Deep green
   },
   sectionHeading: {
-    fontSize: 11,
-    fontWeight: '700',
+    ...FONTS.muktaBold,
+    fontSize: 10.5,
     color: COLORS.ink500,
-    letterSpacing: 0.8,
+    letterSpacing: 1.1,
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginTop: 4,
+    marginBottom: -4,
   },
   paymentCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    padding: 14,
   },
   paymentCardActive: {
     borderColor: COLORS.green700,
+  },
+  circleIconPill: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  cardDetails: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  methodTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: COLORS.ink900,
+  },
+  methodSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: COLORS.ink500,
+    marginTop: 2,
   },
   radioCircle: {
     width: 20,
@@ -356,8 +340,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.ink300,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    marginTop: 2,
   },
   radioCircleActive: {
     borderColor: COLORS.green700,
@@ -368,27 +350,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: COLORS.green700,
   },
-  paymentInfo: {
-    flex: 1,
-  },
-  methodHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  methodIcon: {
-    fontSize: 16,
-  },
-  methodTitle: {
-    fontSize: 14.5,
-    fontWeight: '700',
-    color: COLORS.ink900,
-  },
-  methodSub: {
-    fontSize: 12,
-    color: COLORS.ink500,
-  },
   upiAppsRow: {
     flexDirection: 'row',
     gap: 8,
@@ -398,8 +359,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.paper,
-    borderWidth: 1,
+    backgroundColor: COLORS.muted,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
   },
   upiPillActive: {
@@ -407,47 +368,36 @@ const styles = StyleSheet.create({
     borderColor: COLORS.green700,
   },
   upiPillText: {
+    ...FONTS.muktaBold,
     fontSize: 11.5,
-    fontWeight: '600',
     color: COLORS.ink700,
   },
   upiPillTextActive: {
     color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  securityNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 14,
-    marginBottom: 10,
-  },
-  shieldIcon: {
-    fontSize: 14,
-  },
-  securityText: {
-    fontSize: 12,
-    color: COLORS.ink500,
-    fontWeight: '500',
   },
   bottomBar: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+    borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    height: 84,
+    justifyContent: 'center',
   },
   payBtn: {
     backgroundColor: COLORS.green700,
-    height: 52,
-    borderRadius: RADIUS.pill,
+    height: 49,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   payBtnText: {
+    ...FONTS.balooSemiBold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
   },
 });

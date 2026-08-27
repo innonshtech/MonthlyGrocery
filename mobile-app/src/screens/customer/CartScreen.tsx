@@ -385,7 +385,7 @@ export default function CartScreen({ route, navigation }: any) {
               onPress={handleCheckout}
               activeOpacity={0.85}
             >
-              <Text style={styles.checkoutBtnTxt}>Proceed to checkout</Text>
+              <Text style={styles.checkoutBtnTxt}>Proceed to pay</Text>
             </TouchableOpacity>
           )}
         </View>

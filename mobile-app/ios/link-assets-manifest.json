@@ -1,0 +1,125 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/fonts/Baloo 2 Bold.ttf",
+      "sha1": "fd06984cc6932afd7e6452891c29f196c3288d19"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2 Medium.ttf",
+      "sha1": "9fa932b617e2efd4f49c599fae63ed9cdd6e840a"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2 Regular.ttf",
+      "sha1": "854cd499b28cae0f0a5406ddd74c4ae418128dc8"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2 SemiBold.ttf",
+      "sha1": "62842434eb328af8d76c452475713a8ae275f033"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2_Bold.ttf",
+      "sha1": "fd06984cc6932afd7e6452891c29f196c3288d19"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2_SemiBold.ttf",
+      "sha1": "62842434eb328af8d76c452475713a8ae275f033"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2-Bold.ttf",
+      "sha1": "fd06984cc6932afd7e6452891c29f196c3288d19"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2-Medium.ttf",
+      "sha1": "9fa932b617e2efd4f49c599fae63ed9cdd6e840a"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2-Regular.ttf",
+      "sha1": "854cd499b28cae0f0a5406ddd74c4ae418128dc8"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2-SemiBold.ttf",
+      "sha1": "62842434eb328af8d76c452475713a8ae275f033"
+    },
+    {
+      "path": "src/assets/fonts/Baloo 2.ttf",
+      "sha1": "854cd499b28cae0f0a5406ddd74c4ae418128dc8"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2_Bold.ttf",
+      "sha1": "fd06984cc6932afd7e6452891c29f196c3288d19"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2-Bold.ttf",
+      "sha1": "fd06984cc6932afd7e6452891c29f196c3288d19"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2-ExtraBold.ttf",
+      "sha1": "318f0a6982e018fed0fd024c9e85eb12fb8e7ee9"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2-Medium.ttf",
+      "sha1": "9fa932b617e2efd4f49c599fae63ed9cdd6e840a"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2-Regular.ttf",
+      "sha1": "854cd499b28cae0f0a5406ddd74c4ae418128dc8"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2-SemiBold.ttf",
+      "sha1": "62842434eb328af8d76c452475713a8ae275f033"
+    },
+    {
+      "path": "src/assets/fonts/Baloo2.ttf",
+      "sha1": "854cd499b28cae0f0a5406ddd74c4ae418128dc8"
+    },
+    {
+      "path": "src/assets/fonts/Mukta Bold.ttf",
+      "sha1": "5fa4ca367782e5c093d1b20fadb6acb521c6cef7"
+    },
+    {
+      "path": "src/assets/fonts/Mukta Medium.ttf",
+      "sha1": "27f5e66256637f84aeca324831a4de8aced56020"
+    },
+    {
+      "path": "src/assets/fonts/Mukta Regular.ttf",
+      "sha1": "7ef2258b9ce4fbe881242d43a113f00bdbcbce15"
+    },
+    {
+      "path": "src/assets/fonts/Mukta SemiBold.ttf",
+      "sha1": "4397434c900dca0fe1fe8643c72e42a48cb2f6b0"
+    },
+    {
+      "path": "src/assets/fonts/Mukta_Bold.ttf",
+      "sha1": "5fa4ca367782e5c093d1b20fadb6acb521c6cef7"
+    },
+    {
+      "path": "src/assets/fonts/Mukta_Medium.ttf",
+      "sha1": "27f5e66256637f84aeca324831a4de8aced56020"
+    },
+    {
+      "path": "src/assets/fonts/Mukta_SemiBold.ttf",
+      "sha1": "4397434c900dca0fe1fe8643c72e42a48cb2f6b0"
+    },
+    {
+      "path": "src/assets/fonts/Mukta-Bold.ttf",
+      "sha1": "5fa4ca367782e5c093d1b20fadb6acb521c6cef7"
+    },
+    {
+      "path": "src/assets/fonts/Mukta-Medium.ttf",
+      "sha1": "27f5e66256637f84aeca324831a4de8aced56020"
+    },
+    {
+      "path": "src/assets/fonts/Mukta-Regular.ttf",
+      "sha1": "7ef2258b9ce4fbe881242d43a113f00bdbcbce15"
+    },
+    {
+      "path": "src/assets/fonts/Mukta-SemiBold.ttf",
+      "sha1": "4397434c900dca0fe1fe8643c72e42a48cb2f6b0"
+    },
+    {
+      "path": "src/assets/fonts/Mukta.ttf",
+      "sha1": "7ef2258b9ce4fbe881242d43a113f00bdbcbce15"
+    }
+  ]
+}
