@@ -13,7 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon, { IconName } from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 const H_PAD = 14;
@@ -28,6 +28,15 @@ interface CategoryItem {
   name: string;
   icon: IconName;
   emoji: string;
+  image_url?: string;
+}
+
+interface PromotionalBanner {
+  id: string;
+  title: string;
+  image_url: string;
+  action_link?: string;
+  active: boolean;
 }
 
 function getCategoryIcon(name: string): IconName {
@@ -43,28 +52,45 @@ function getCategoryIcon(name: string): IconName {
   return 'shopping-bag';
 }
 
-function getCategoryEmoji(name: string): string {
+function getCategoryBgColor(name: string): string {
   const norm = name.toLowerCase().trim();
-  if (norm.includes('atta') || norm.includes('rice')) return '🌾';
-  if (norm.includes('oil') || norm.includes('ghee')) return '🫒';
-  if (norm.includes('dal') || norm.includes('pulse')) return '🫘';
-  if (norm.includes('masala') || norm.includes('spice')) return '🧂';
-  if (norm.includes('snack')) return '🍪';
-  if (norm.includes('beverage') || norm.includes('drink')) return '🥤';
-  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return '🥛';
-  if (norm.includes('clean') || norm.includes('home')) return '🧹';
-  return '🛒';
+  if (norm.includes('atta') || norm.includes('rice')) return '#FFF9E5'; // Soft yellow tint
+  if (norm.includes('oil') || norm.includes('ghee')) return '#EAF5EE'; // Soft green tint
+  if (norm.includes('dal') || norm.includes('pulse')) return '#FCECE9'; // Soft red/orange tint
+  if (norm.includes('spice') || norm.includes('masala')) return '#F0F3F7'; // Soft blue/grey tint
+  if (norm.includes('snack')) return '#F7EFE4'; // Soft beige tint
+  if (norm.includes('beverage') || norm.includes('drink')) return '#FDF1E5'; // Soft orange/peach tint
+  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return '#EDF5F6'; // Soft teal tint
+  if (norm.includes('clean') || norm.includes('home')) return '#F1EDF6'; // Soft purple/grey tint
+  return '#F4F3EE';
+}
+
+function getCategoryIconColor(name: string): string {
+  const norm = name.toLowerCase().trim();
+  if (norm.includes('atta') || norm.includes('rice')) return '#C77E12'; // Marigold 600
+  if (norm.includes('oil') || norm.includes('ghee')) return '#1E7A46'; // Green 700
+  if (norm.includes('dal') || norm.includes('pulse')) return '#D8453B'; // Red
+  if (norm.includes('spice') || norm.includes('masala')) return '#3D4A44'; // Ink 700
+  if (norm.includes('snack')) return '#8A5200';
+  if (norm.includes('beverage') || norm.includes('drink')) return '#C77E12';
+  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return '#1E7A46';
+  if (norm.includes('clean') || norm.includes('home')) return '#6B7772';
+  return '#1E7A46';
 }
 
 const fallbackCategories: CategoryItem[] = [
-  { id: 'atta-rice', name: 'Atta & Rice', icon: 'cat-atta-rice', emoji: '🌾' },
-  { id: 'oils-ghee', name: 'Oils & Ghee', icon: 'cat-oils-ghee', emoji: '🫒' },
-  { id: 'dals-pulses', name: 'Dals & Pulses', icon: 'cat-dals-pulses', emoji: '🫘' },
-  { id: 'masala', name: 'Masala', icon: 'cat-spices-masala', emoji: '🧂' },
-  { id: 'snacks', name: 'Snacks', icon: 'cat-snacks', emoji: '🍪' },
-  { id: 'beverages', name: 'Beverages', icon: 'cat-beverages', emoji: '🥤' },
-  { id: 'dairy-eggs', name: 'Dairy & Eggs', icon: 'cat-baby-care', emoji: '🥛' },
-  { id: 'cleaning-home', name: 'Cleaning & Home', icon: 'cat-cleaning', emoji: '🧹' },
+  { id: 'atta-rice', name: 'Atta & Rice', icon: 'cat-atta-rice', emoji: '' },
+  { id: 'oils-ghee', name: 'Oils & Ghee', icon: 'cat-oils-ghee', emoji: '' },
+  { id: 'dals-pulses', name: 'Dals & Pulses', icon: 'cat-dals-pulses', emoji: '' },
+  { id: 'spices-masala', name: 'Spices & Masala', icon: 'cat-spices-masala', emoji: '' },
+  { id: 'dry-fruits', name: 'Dry Fruits', icon: 'cat-dry-fruits', emoji: '' },
+  { id: 'snacks', name: 'Snacks', icon: 'cat-snacks', emoji: '' },
+  { id: 'beverages', name: 'Beverages', icon: 'cat-beverages', emoji: '' },
+  { id: 'biscuits', name: 'Biscuits', icon: 'cat-biscuits', emoji: '' },
+  { id: 'cleaning', name: 'Cleaning', icon: 'cat-cleaning', emoji: '' },
+  { id: 'personal-care', name: 'Personal Care', icon: 'cat-personal-care', emoji: '' },
+  { id: 'home-kitchen', name: 'Home & Kitchen', icon: 'cat-home-kitchen', emoji: '' },
+  { id: 'baby-care', name: 'Baby Care', icon: 'cat-baby-care', emoji: '' },
 ];
 
 export default function HomeScreen({ navigation, setActiveTab }: any) {
@@ -73,6 +99,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const { addToCart, items, updateQuantity } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>(fallbackCategories);
+  const [banners, setBanners] = useState<PromotionalBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [orderStats, setOrderStats] = useState<{
     orderCount: number;
@@ -85,23 +112,50 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const userInitial = (user?.name?.trim()?.[0] || 'A').toUpperCase();
 
   useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/admin/banners`);
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.banners)) {
+          setBanners(data.banners);
+        }
+      } catch (err) {
+        console.error('Error fetching promotional banners:', err);
+      }
+    };
+    fetchBanners();
+  }, []);
+
+  useEffect(() => {
     const loadCategories = async () => {
       try {
         const res = await fetch(`${API_BASE}/products/categories`);
         const data = await res.json();
-        if (res.ok && data.success && data.categories) {
-          const mapped: CategoryItem[] = data.categories
-            .slice(0, 8)
-            .map((name: string, index: number) => ({
-              id: `cat-${index}-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-              name,
-              icon: getCategoryIcon(name),
-              emoji: getCategoryEmoji(name),
-            }));
-          if (mapped.length > 0) setCategories(mapped);
+        if (res.ok && data.success) {
+          const list = data.categoriesFull || [];
+          const mapped: CategoryItem[] = list.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            icon: getCategoryIcon(item.name),
+            image_url: item.image_url,
+            emoji: '',
+          }));
+          if (mapped.length > 0) {
+            setCategories(mapped.slice(0, 8));
+          } else if (data.categories) {
+            const fallbackMapped: CategoryItem[] = data.categories
+              .slice(0, 8)
+              .map((name: string, index: number) => ({
+                id: `cat-${index}-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+                name,
+                icon: getCategoryIcon(name),
+                emoji: '',
+              }));
+            setCategories(fallbackMapped);
+          }
         }
       } catch (err) {
-        console.error('Error fetching categories:', err);
+        console.error('Error loading categories:', err);
       }
     };
     loadCategories();
@@ -155,10 +209,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     else navigation.navigate('Account');
   };
 
+  const openCategories = () => {
+    if (setActiveTab) setActiveTab('Categories');
+    else navigation.navigate('Categories');
+  };
+
   const renderDealCard = (item: Product) => {
-    const mrpVal = parseFloat(item.mrp as any) || Math.round(Number(item.price) * 1.18);
     const priceVal = parseFloat(item.price as any) || 0;
-    const pctOff = mrpVal > 0 ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) : 0;
+    const mrpVal = parseFloat(item.mrp as any) || priceVal;
+    const pctOff = mrpVal > priceVal ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) : 0;
     const cartItem = items.find((i) => i.product?.id === item.id);
     const count = cartItem ? cartItem.quantity : 0;
 
@@ -169,7 +228,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
         activeOpacity={0.85}
       >
-        <View style={styles.dealImageWrap}>
+        <View style={[styles.dealImageWrap, { backgroundColor: getCategoryBgColor(item.name) }]}>
           {pctOff > 0 && (
             <View style={styles.dealBadge}>
               <Text style={styles.dealBadgeText}>{pctOff}% OFF</Text>
@@ -178,7 +237,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           {item.image_url ? (
             <Image source={{ uri: item.image_url }} style={styles.dealImg} resizeMode="contain" />
           ) : (
-            <Text style={styles.dealEmoji}>🛒</Text>
+            <AppIcon name={getCategoryIcon(item.name)} size={38} color={getCategoryIconColor(item.name)} />
           )}
         </View>
         <Text style={styles.dealName} numberOfLines={2}>
@@ -243,7 +302,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         </View>
 
         <View style={styles.deliveryPill}>
-          <AppIcon name="truck" size={13} color="#FFFFFF" />
+          <AppIcon name="sparkles" size={12} color="#FFFFFF" />
           <Text style={styles.deliveryPillText}>Planned monthly delivery · 4-hour window</Text>
         </View>
 
@@ -254,28 +313,73 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         >
           <AppIcon name="search" size={18} color={COLORS.ink300} />
           <Text style={styles.searchPlaceholder}>Search atta, rice, oil…</Text>
-          <AppIcon name="sparkles" size={18} color={COLORS.green700} />
+          <AppIcon name="mic" size={18} color={COLORS.ink300} />
         </TouchableOpacity>
 
-        <View style={styles.promoCard}>
-          <View style={styles.promoLeft}>
-            <Text style={styles.promoLabel}>MONTHLY SAVINGS SALE</Text>
-            <Text style={styles.promoTitle}>Up to ₹500 off</Text>
-            <Text style={styles.promoSub}>on your full monthly basket</Text>
-            <TouchableOpacity
-              style={styles.promoBtn}
-              onPress={() => navigation.navigate('OffersCoupons')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.promoBtnText}>Grab deals</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.promoEmojis}>
-            <Text style={[styles.promoEmoji, { top: 22, left: 8, fontSize: 44 }]}>🫘</Text>
-            <Text style={[styles.promoEmoji, { top: 4, left: 38, fontSize: 42 }]}>🫒</Text>
-            <Text style={[styles.promoEmoji, { top: 38, left: 42, fontSize: 38 }]}>🍚</Text>
-          </View>
-        </View>
+        {banners.length > 0 ? (
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={styles.bannerScrollView}
+            contentContainerStyle={styles.bannerScrollContent}
+          >
+            {banners.map((banner) => (
+              <TouchableOpacity
+                key={banner.id}
+                style={styles.bannerItem}
+                onPress={() => navigation.navigate('OffersCoupons')}
+                activeOpacity={0.9}
+              >
+                {banner.image_url ? (
+                  <Image
+                    source={{ uri: banner.image_url }}
+                    style={styles.bannerImage}
+                    resizeMode="cover"
+                    onError={(e) => console.warn(`Error loading banner ${banner.id}:`, e.nativeEvent.error)}
+                  />
+                ) : (
+                  <View style={styles.promoCardFallback}>
+                    <View style={styles.promoLeft}>
+                      <Text style={styles.promoLabel}>PROMOTIONAL OFFER</Text>
+                      <Text style={styles.promoTitle} numberOfLines={2}>
+                        {banner.title}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.promoBtn}
+                        onPress={() => navigation.navigate('OffersCoupons')}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.promoBtnText}>View details</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : (
+          <TouchableOpacity
+            style={styles.bannerItem}
+            onPress={() => navigation.navigate('OffersCoupons')}
+            activeOpacity={0.9}
+          >
+            <View style={styles.promoCardFallback}>
+              <View style={styles.promoLeft}>
+                <Text style={styles.promoLabel}>MONTHLY SAVINGS SALE</Text>
+                <Text style={styles.promoTitle}>Up to ₹500 off</Text>
+                <Text style={styles.promoSub}>on your full monthly basket</Text>
+                <TouchableOpacity
+                  style={styles.promoBtn}
+                  onPress={() => navigation.navigate('OffersCoupons')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.promoBtnText}>Grab deals</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.mmgCard}
@@ -283,7 +387,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           activeOpacity={0.85}
         >
           <View style={styles.mmgIconWrap}>
-            <AppIcon name="sparkles" size={24} color={COLORS.green700} />
+            <AppIcon name="sparkles" size={24} color="#FFFFFF" />
           </View>
           <View style={styles.mmgTextCol}>
             <Text style={styles.mmgLabel}>MY MONTHLY GROCERY</Text>
@@ -291,7 +395,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             <Text style={styles.mmgSub}>A smart basket from what your home buys</Text>
           </View>
           <View style={styles.mmgArrow}>
-            <AppIcon name="arrow-right" size={18} color={COLORS.green700} />
+            <AppIcon name="arrow-right" size={18} color={COLORS.green900} />
           </View>
         </TouchableOpacity>
       </View>
@@ -300,12 +404,17 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       <View style={styles.contentSheet}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Shop by category</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+          <TouchableOpacity onPress={openCategories}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.catGrid}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.catScrollView}
+          contentContainerStyle={styles.catScrollContent}
+        >
           {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
@@ -318,19 +427,27 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               }
               activeOpacity={0.75}
             >
-              <View style={styles.catTile}>
-                <Text style={styles.catEmoji}>{cat.emoji}</Text>
+              <View style={[styles.catTile, { backgroundColor: getCategoryBgColor(cat.name) }]}>
+                {cat.image_url ? (
+                  <Image
+                    source={{ uri: cat.image_url }}
+                    style={styles.categoryPng}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <AppIcon name={cat.icon} size={28} color={getCategoryIconColor(cat.name)} />
+                )}
               </View>
               <Text style={styles.catName} numberOfLines={2}>
                 {cat.name}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         <View style={[styles.sectionHeader, { marginTop: 6 }]}>
           <Text style={styles.sectionTitle}>Deals of the month</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+          <TouchableOpacity onPress={openCategories}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
@@ -357,14 +474,14 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           activeOpacity={0.85}
         >
           <View style={styles.reorderAvatars}>
-            <View style={[styles.reorderAvatar, { zIndex: 3 }]}>
-              <Text style={styles.reorderAvatarEmoji}>🌾</Text>
+            <View style={[styles.reorderAvatar, { zIndex: 3, backgroundColor: '#FFF9E5' }]}>
+              <AppIcon name="cat-atta-rice" size={20} color="#C77E12" />
             </View>
-            <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 2 }]}>
-              <Text style={styles.reorderAvatarEmoji}>🫒</Text>
+            <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 2, backgroundColor: '#EAF5EE' }]}>
+              <AppIcon name="cat-oils-ghee" size={20} color="#1E7A46" />
             </View>
-            <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 1 }]}>
-              <Text style={styles.reorderAvatarEmoji}>🫘</Text>
+            <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 1, backgroundColor: '#FCECE9' }]}>
+              <AppIcon name="cat-dals-pulses" size={20} color="#D8453B" />
             </View>
           </View>
           <View style={styles.reorderTextCol}>
@@ -391,13 +508,13 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.green800,
+    backgroundColor: '#F5A524',
   },
   scrollContent: {
     paddingBottom: 16,
   },
   header: {
-    backgroundColor: COLORS.green800,
+    backgroundColor: '#F5A524',
     paddingHorizontal: H_PAD,
     paddingBottom: 16,
   },
@@ -412,9 +529,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   deliveringLabel: {
+    ...FONTS.muktaBold,
     fontSize: 10,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
+    color: COLORS.green900,
     letterSpacing: 0.5,
   },
   locationRow: {
@@ -424,14 +541,14 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   locationText: {
+    ...FONTS.muktaBold,
     fontSize: 15,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    color: COLORS.green900,
     maxWidth: width * 0.6,
   },
   locationChevron: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: COLORS.green900,
     fontWeight: '700',
     marginTop: -2,
   },
@@ -439,54 +556,76 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.green900,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
+    ...FONTS.balooBold,
     fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.green700,
+    color: '#FFFFFF',
   },
   deliveryPill: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    gap: 6,
+    backgroundColor: 'rgba(15, 61, 40, 0.12)',
     borderRadius: RADIUS.pill,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     marginBottom: 12,
   },
   deliveryPillText: {
+    ...FONTS.muktaSemiBold,
     fontSize: 11,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.95)',
+    color: COLORS.green900,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
+    borderRadius: 12,
     height: 50,
-    paddingHorizontal: 14,
-    gap: 10,
+    paddingHorizontal: 16,
+    gap: 12,
     marginBottom: 12,
   },
   searchPlaceholder: {
     flex: 1,
-    fontSize: 14,
-    color: COLORS.ink300,
+    ...FONTS.muktaRegular,
+    fontSize: 15,
+    color: COLORS.ink500,
   },
-  promoCard: {
+  bannerScrollView: {
+    marginBottom: 12,
+    width: CONTENT_W,
+    height: 130,
+  },
+  bannerScrollContent: {
+    gap: 0,
+  },
+  bannerItem: {
+    width: CONTENT_W,
+    height: 130,
+    borderRadius: 16,
+    backgroundColor: '#F4F3EE',
+    overflow: 'hidden',
+  },
+  bannerImage: {
+    width: CONTENT_W,
+    height: 130,
+    borderRadius: 16,
+    backgroundColor: '#F4F3EE',
+  },
+  promoCardFallback: {
     flexDirection: 'row',
-    backgroundColor: COLORS.marigold100,
-    borderRadius: RADIUS.lg,
+    backgroundColor: '#E08E1A',
+    borderRadius: 16,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    marginBottom: 12,
-    minHeight: 130,
+    width: CONTENT_W,
+    height: 130,
     overflow: 'hidden',
   },
   promoLeft: {
@@ -494,62 +633,53 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   promoLabel: {
+    ...FONTS.muktaBold,
     fontSize: 10,
-    fontWeight: '800',
-    color: COLORS.marigold700,
-    letterSpacing: 0.4,
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
   },
   promoTitle: {
+    ...FONTS.balooBold,
     fontSize: 28,
-    fontWeight: '900',
-    color: COLORS.ink900,
+    color: '#FFFFFF',
     letterSpacing: -0.5,
     lineHeight: 32,
     marginTop: 2,
   },
   promoSub: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.marigold700,
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    color: '#FFFFFF',
     marginTop: 4,
   },
   promoBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.ink900,
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    marginTop: 10,
+    marginTop: 12,
   },
   promoBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  promoEmojis: {
-    width: 90,
-    height: 80,
-    position: 'relative',
-    alignSelf: 'center',
-  },
-  promoEmoji: {
-    position: 'absolute',
+    ...FONTS.balooSemiBold,
+    fontSize: 12,
+    color: '#FFFFFF',
   },
   mmgCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: 14,
-    paddingVertical: 20,
+    backgroundColor: COLORS.green900,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     minHeight: 100,
     gap: 12,
   },
   mmgIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.green50,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5A524',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -557,29 +687,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mmgLabel: {
+    ...FONTS.muktaBold,
     fontSize: 10,
-    fontWeight: '800',
-    color: COLORS.green700,
+    color: '#FDEFD3',
     letterSpacing: 0.5,
   },
   mmgTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink900,
+    ...FONTS.balooBold,
+    fontSize: 18,
+    color: '#FFFFFF',
     marginTop: 2,
     lineHeight: 22,
   },
   mmgSub: {
-    fontSize: 11,
-    color: COLORS.ink500,
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#BFE4CD',
     marginTop: 2,
-    lineHeight: 15,
+    lineHeight: 16,
   },
   mmgArrow: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.green50,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -600,49 +731,52 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 18,
     color: COLORS.ink900,
-    letterSpacing: -0.3,
+    letterSpacing: -0.25,
   },
   seeAll: {
-    fontSize: 13,
-    fontWeight: '700',
+    ...FONTS.muktaBold,
+    fontSize: 14,
     color: COLORS.green700,
   },
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    columnGap: CAT_GAP,
-    rowGap: 14,
+  catScrollView: {
     marginBottom: 20,
     width: CONTENT_W,
   },
+  catScrollContent: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingRight: 16,
+  },
   catItem: {
-    width: CAT_SIZE,
+    width: 72,
     alignItems: 'center',
   },
   catTile: {
-    width: CAT_SIZE,
+    width: 72,
     height: 72,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.muted,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
+    overflow: 'hidden',
   },
-  catEmoji: {
-    fontSize: 34,
+  categoryPng: {
+    width: 48,
+    height: 48,
   },
   catName: {
-    fontSize: 11,
-    fontWeight: '600',
+    ...FONTS.muktaSemiBold,
+    fontSize: 12,
     color: COLORS.ink700,
     textAlign: 'center',
     lineHeight: 14,
-    width: CAT_SIZE,
+    width: 72,
   },
   loadingText: {
+    ...FONTS.muktaRegular,
     fontSize: 13,
     color: COLORS.ink500,
     marginBottom: 20,
@@ -656,16 +790,15 @@ const styles = StyleSheet.create({
     width: DEAL_W,
     height: DEAL_H,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     padding: 8,
   },
   dealImageWrap: {
     width: '100%',
-    height: 96,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.green50,
+    height: 100,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -682,27 +815,25 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   dealBadgeText: {
+    ...FONTS.muktaBold,
     fontSize: 10,
-    fontWeight: '800',
     color: COLORS.ink900,
   },
   dealImg: {
-    width: 60,
-    height: 60,
-  },
-  dealEmoji: {
-    fontSize: 40,
+    width: 70,
+    height: 70,
   },
   dealName: {
-    fontSize: 12,
-    fontWeight: '700',
+    ...FONTS.balooSemiBold,
+    fontSize: 13,
     color: COLORS.ink900,
     lineHeight: 16,
-    height: 40,
+    height: 38,
     marginBottom: 2,
   },
   dealUnit: {
-    fontSize: 11,
+    ...FONTS.muktaRegular,
+    fontSize: 12,
     color: COLORS.ink500,
     marginBottom: 6,
   },
@@ -716,39 +847,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dealPrice: {
-    fontSize: 14,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 15,
     color: COLORS.ink900,
     lineHeight: 18,
   },
   dealMrp: {
-    fontSize: 11,
+    ...FONTS.muktaRegular,
+    fontSize: 12,
     color: COLORS.ink300,
     textDecorationLine: 'line-through',
     lineHeight: 14,
   },
   dealAddBtn: {
-    backgroundColor: COLORS.green50,
+    backgroundColor: COLORS.surface,
     borderWidth: 1.5,
     borderColor: COLORS.green600,
-    borderRadius: RADIUS.sm,
+    borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    height: 32,
+    height: 30,
     justifyContent: 'center',
   },
   dealAddText: {
-    fontSize: 11,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 12,
     color: COLORS.green700,
+    textAlign: 'center',
   },
   dealStepper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.sm,
+    borderRadius: 8,
     paddingHorizontal: 4,
-    height: 32,
+    height: 30,
     gap: 2,
   },
   dealStepBtn: {
@@ -767,13 +899,13 @@ const styles = StyleSheet.create({
   reorderCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green50,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.green100,
-    paddingHorizontal: 12,
-    paddingVertical: 20,
-    minHeight: 100,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 88,
     marginBottom: 8,
   },
   reorderAvatars: {
@@ -786,7 +918,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: COLORS.surface,
     borderWidth: 2,
-    borderColor: COLORS.green100,
+    borderColor: COLORS.line,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -798,29 +930,30 @@ const styles = StyleSheet.create({
   },
   reorderTextCol: {
     flex: 1,
-    marginLeft: 8,
+    marginLeft: 12,
   },
   reorderTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    ...FONTS.balooBold,
+    fontSize: 15,
     color: COLORS.ink900,
   },
   reorderSub: {
-    fontSize: 11,
+    ...FONTS.muktaRegular,
+    fontSize: 12,
     color: COLORS.ink500,
-    marginTop: 2,
+    marginTop: 1,
   },
   reorderBtn: {
     backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
     height: 36,
     justifyContent: 'center',
   },
   reorderBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 13,
     color: '#FFFFFF',
   },
 });

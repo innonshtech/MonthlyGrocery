@@ -766,7 +766,7 @@ router.get('/coupons', authMiddleware, requireRole(['super_admin', 'admin']), as
 
 // POST /coupons: Create or Update coupon
 router.post('/coupons', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { code, discount_type, discount_value, min_order_value, max_discount, description, is_active } = req.body;
+  const { code, discount_type, discount_value, min_order_value, max_discount, description, target_audience, usage_limit_per_user, max_global_uses, is_active } = req.body;
   if (!code || !discount_type || discount_value === undefined) {
     return res.status(400).json({ success: false, error: 'Code, discount type, and discount value are required' });
   }
@@ -786,6 +786,9 @@ router.post('/coupons', authMiddleware, requireRole(['super_admin']), async (req
       min_order: parseFloat(min_order_value) || 0,
       max_discount: max_discount ? parseFloat(max_discount) : undefined,
       description: description?.trim() || `Get ${discount_value}${discount_type === 'percentage' ? '%' : '₹'} off on your order`,
+      target_audience: target_audience || 'all',
+      usage_limit_per_user: usage_limit_per_user ? parseInt(usage_limit_per_user) : 1,
+      max_global_uses: max_global_uses ? parseInt(max_global_uses) : undefined,
       is_active: is_active !== false,
       active: is_active !== false,
       created_at: existingIndex >= 0 ? db.coupons[existingIndex].created_at : new Date().toISOString()

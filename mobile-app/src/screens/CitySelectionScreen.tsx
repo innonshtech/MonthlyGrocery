@@ -18,7 +18,7 @@ import {
   OnboardingRadio,
   OnboardingSectionLabel,
 } from '../components/onboarding/OnboardingUI';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 
 interface CityItem {
   id: string;
@@ -129,7 +129,7 @@ export default function CitySelectionScreen({ navigation }: any) {
         {detecting ? (
           <ActivityIndicator size="small" color={COLORS.green700} />
         ) : (
-          <AppIcon name="map-pin" size={20} color={COLORS.green700} />
+          <AppIcon name="chevron-right" size={18} color={COLORS.green700} />
         )}
       </TouchableOpacity>
 
@@ -161,12 +161,16 @@ export default function CitySelectionScreen({ navigation }: any) {
             selectedCity.toLowerCase() === item.name.toLowerCase();
           return (
             <TouchableOpacity
-              style={styles.rowCard}
+              style={[styles.rowCard, isSelected && styles.rowCardSelected]}
               onPress={() => handleCitySelect(item.name)}
               activeOpacity={0.7}
             >
-              <View style={styles.rowIcon}>
-                <Text style={styles.rowIconEmoji}>🏙️</Text>
+              <View style={[styles.rowIcon, isSelected ? styles.rowIconSelected : styles.rowIconDefault]}>
+                <AppIcon
+                  name="building"
+                  size={18}
+                  color={isSelected ? COLORS.green700 : COLORS.ink700}
+                />
               </View>
               <View style={styles.rowTextCol}>
                 <Text style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}>
@@ -199,14 +203,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   mainTitle: {
+    ...FONTS.balooBold,
     fontSize: 26,
-    fontWeight: '700',
     color: COLORS.ink900,
     letterSpacing: -0.26,
     lineHeight: 32,
   },
   subtitle: {
-    fontSize: 15,
+    ...FONTS.muktaRegular,
+    fontSize: 16,
     color: COLORS.ink500,
     lineHeight: 24,
   },
@@ -214,24 +219,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    backgroundColor: '#E4F3EA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     marginBottom: 16,
   },
   locationTextCol: { flex: 1, paddingRight: 12 },
   locationTitle: {
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.ink900,
+    color: COLORS.green700,
     lineHeight: 20,
   },
   locationSubtitle: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
-    color: COLORS.ink500,
+    color: COLORS.ink700,
     lineHeight: 16,
     marginTop: 1,
   },
@@ -241,14 +245,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
+    borderRadius: 12,
     height: 50,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     marginBottom: 16,
-    gap: 10,
+    gap: 12,
   },
   searchInput: {
     flex: 1,
+    ...FONTS.muktaRegular,
     fontSize: 15,
     color: COLORS.ink900,
     padding: 0,
@@ -262,40 +267,49 @@ const styles = StyleSheet.create({
   rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    marginBottom: 8,
-    minHeight: 65,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 4,
+    minHeight: 60,
+  },
+  rowCardSelected: {
+    backgroundColor: '#F2F9F5',
   },
   rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.green50,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
-  rowIconEmoji: { fontSize: 18 },
+  rowIconSelected: {
+    backgroundColor: '#E4F3EA',
+  },
+  rowIconDefault: {
+    backgroundColor: '#F4F3EE',
+  },
   rowTextCol: { flex: 1 },
   rowTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...FONTS.muktaSemiBold,
+    fontSize: 15,
     color: COLORS.ink900,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  rowTitleSelected: { color: COLORS.green700 },
+  rowTitleSelected: {
+    color: COLORS.ink900,
+  },
   rowSubtitle: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
     lineHeight: 16,
     marginTop: 1,
   },
   emptyText: {
+    ...FONTS.muktaRegular,
     fontSize: 14,
     color: COLORS.ink500,
     textAlign: 'center',

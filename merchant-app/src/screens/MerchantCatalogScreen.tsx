@@ -138,11 +138,48 @@ export default function MerchantCatalogScreen() {
 
   const handleOpenConfigModal = (prod: MasterProduct, existingMapping?: ShopProduct) => {
     setSelectedProduct(prod);
-    setLocalPrice(String(existingMapping ? existingMapping.selling_price : prod.price));
-    setLocalDiscount(String(existingMapping ? existingMapping.discount_percentage : 0));
+    const initialPrice = existingMapping ? existingMapping.selling_price : parseFloat(prod.price) || 0;
+    setLocalPrice(String(initialPrice));
+    
+    if (existingMapping) {
+      setLocalDiscount(String(existingMapping.discount_percentage));
+    } else {
+      const mrp = parseFloat(prod.mrp) || 0;
+      if (mrp > initialPrice && mrp > 0) {
+        const pct = Math.round(((mrp - initialPrice) / mrp) * 100);
+        setLocalDiscount(String(pct));
+      } else {
+        setLocalDiscount('0');
+      }
+    }
+    
     setLocalStock(String(existingMapping ? existingMapping.stock : 0));
     setLocalAvailable(existingMapping ? existingMapping.available : false);
     setConfigModalVisible(true);
+  };
+
+  const handlePriceChange = (val: string) => {
+    setLocalPrice(val);
+    if (!selectedProduct) return;
+    const mrp = parseFloat(selectedProduct.mrp) || 0;
+    const price = parseFloat(val) || 0;
+    if (mrp > price && mrp > 0) {
+      const pct = Math.round(((mrp - price) / mrp) * 100);
+      setLocalDiscount(String(pct));
+    } else {
+      setLocalDiscount('0');
+    }
+  };
+
+  const handleDiscountChange = (val: string) => {
+    setLocalDiscount(val);
+    if (!selectedProduct) return;
+    const mrp = parseFloat(selectedProduct.mrp) || 0;
+    const pct = parseFloat(val) || 0;
+    if (mrp > 0) {
+      const price = mrp - (mrp * (pct / 100));
+      setLocalPrice(String(price.toFixed(2)));
+    }
   };
 
   const handleSaveConfig = async () => {
@@ -382,7 +419,7 @@ export default function MerchantCatalogScreen() {
               style={styles.modalInput}
               keyboardType="numeric"
               value={localPrice}
-              onChangeText={setLocalPrice}
+              onChangeText={handlePriceChange}
               placeholder="e.g. 199.00"
             />
 
@@ -391,7 +428,7 @@ export default function MerchantCatalogScreen() {
               style={styles.modalInput}
               keyboardType="numeric"
               value={localDiscount}
-              onChangeText={setLocalDiscount}
+              onChangeText={handleDiscountChange}
               placeholder="e.g. 10"
             />
 

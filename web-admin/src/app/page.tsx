@@ -116,6 +116,8 @@ export default function DashboardPage() {
   const [newProdBrand, setNewProdBrand] = useState('');
   const [newProdCompany, setNewProdCompany] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('');
+  const [newProdDescription, setNewProdDescription] = useState('');
+  const [newProdShortDescription, setNewProdShortDescription] = useState('');
   const [newProdImageFile, setNewProdImageFile] = useState<File | null>(null);
   const [newProdImagePreview, setNewProdImagePreview] = useState('');
   const [newProdImageUploading, setNewProdImageUploading] = useState(false);
@@ -149,6 +151,9 @@ export default function DashboardPage() {
   const [newCouponMinOrder, setNewCouponMinOrder] = useState('2500');
   const [newCouponMaxDiscount, setNewCouponMaxDiscount] = useState('');
   const [newCouponDesc, setNewCouponDesc] = useState('');
+  const [newCouponTarget, setNewCouponTarget] = useState<'all' | 'new' | 'loyal'>('all');
+  const [newCouponUserLimit, setNewCouponUserLimit] = useState('1');
+  const [newCouponGlobalLimit, setNewCouponGlobalLimit] = useState('');
 
   // Central Orders States
   const [allOrdersList, setAllOrdersList] = useState<any[]>([]);
@@ -627,6 +632,8 @@ export default function DashboardPage() {
             sku: v.sku.trim(),
             brand: newProdBrand.trim(),
             company: newProdCompany.trim(),
+            description: newProdDescription.trim(),
+            short_description: newProdShortDescription.trim(),
             mrp: parseFloat(v.mrp),
             price: parseFloat(v.price),
             primary_category: newProdCategory,
@@ -648,6 +655,8 @@ export default function DashboardPage() {
         setNewProdBrand('');
         setNewProdCompany('');
         setNewProdCategory('');
+        setNewProdDescription('');
+        setNewProdShortDescription('');
         setNewProdImageFile(null);
         setNewProdImagePreview('');
         setNewProdVariants([{ sku: '', unit: '1 L', mrp: '', price: '' }]);
@@ -791,7 +800,10 @@ export default function DashboardPage() {
           discount_value: parseFloat(newCouponVal) || 0,
           min_order_value: parseFloat(newCouponMinOrder) || 0,
           max_discount: newCouponMaxDiscount ? parseFloat(newCouponMaxDiscount) : undefined,
-          description: newCouponDesc.trim() || undefined
+          description: newCouponDesc.trim() || undefined,
+          target_audience: newCouponTarget,
+          usage_limit_per_user: parseInt(newCouponUserLimit) || 1,
+          max_global_uses: newCouponGlobalLimit ? parseInt(newCouponGlobalLimit) : undefined
         })
       });
       const data = await res.json();
@@ -801,6 +813,9 @@ export default function DashboardPage() {
         setNewCouponVal('');
         setNewCouponDesc('');
         setNewCouponMaxDiscount('');
+        setNewCouponTarget('all');
+        setNewCouponUserLimit('1');
+        setNewCouponGlobalLimit('');
         fetchData();
       } else {
         alert(data.error || 'Failed to create coupon');
@@ -2100,6 +2115,26 @@ export default function DashboardPage() {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Short Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Chakki-fresh whole wheat, no maida"
+                    value={newProdShortDescription}
+                    onChange={(e) => setNewProdShortDescription(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Highlights (Semicolon-separated ;)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Stone ground Chakki fresh; 100% whole wheat with zero maida; Milled in small batches for softness"
+                    value={newProdDescription}
+                    onChange={(e) => setNewProdDescription(e.target.value)}
+                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
+                  />
+                </div>
+                <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Image</label>
                   <div className="flex items-center gap-3">
                     {/* Preview */}
@@ -2459,6 +2494,43 @@ export default function DashboardPage() {
                     className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Target Audience</label>
+                  <select
+                    value={newCouponTarget}
+                    onChange={(e) => setNewCouponTarget(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    <option value="all">All Customers</option>
+                    <option value="new">New Customers Only (0 orders)</option>
+                    <option value="loyal">Loyal Customers Only (1+ orders)</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">User Limit</label>
+                    <select
+                      value={newCouponUserLimit}
+                      onChange={(e) => setNewCouponUserLimit(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="1">Once Per User</option>
+                      <option value="2">Twice Per User</option>
+                      <option value="3">3 Times Per User</option>
+                      <option value="999">Unlimited</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Global Cap</label>
+                    <input
+                      type="number"
+                      placeholder="Unlimited"
+                      value={newCouponGlobalLimit}
+                      onChange={(e) => setNewCouponGlobalLimit(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
                 <button
                   type="submit"
                   className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer mt-2"
@@ -2478,6 +2550,8 @@ export default function DashboardPage() {
                       <th className="p-3">Code</th>
                       <th className="p-3">Discount</th>
                       <th className="p-3">Min Order</th>
+                      <th className="p-3">Target</th>
+                      <th className="p-3">Limits</th>
                       <th className="p-3">Description</th>
                       <th className="p-3 text-right">Action</th>
                     </tr>
@@ -2494,6 +2568,19 @@ export default function DashboardPage() {
                           {cpn.discount_type === 'percentage' ? `${cpn.discount_value}% OFF` : `₹${cpn.discount_value} FLAT`}
                         </td>
                         <td className="p-3 text-slate-400">₹{cpn.min_order_value}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            cpn.target_audience === 'new' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' :
+                            cpn.target_audience === 'loyal' ? 'bg-purple-500/15 text-purple-400 border border-purple-500/20' :
+                            'bg-slate-500/15 text-slate-400 border border-slate-500/20'
+                          }`}>
+                            {cpn.target_audience === 'new' ? 'New Users' :
+                             cpn.target_audience === 'loyal' ? 'Loyal' : 'All'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-400 font-mono text-[11px]">
+                          U: {cpn.usage_limit_per_user || 1} | G: {cpn.max_global_uses || '∞'}
+                        </td>
                         <td className="p-3 text-slate-300 max-w-xs truncate">{cpn.description}</td>
                         <td className="p-3 text-right">
                           <button

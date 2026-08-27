@@ -16,7 +16,7 @@ import {
   OnboardingNextPill,
   OnboardingPrimaryButton,
 } from '../components/onboarding/OnboardingUI';
-import { COLORS } from '../constants/theme';
+import { COLORS, FONTS } from '../constants/theme';
 
 interface EmojiPlacement {
   emoji: string;
@@ -236,10 +236,9 @@ const styles = StyleSheet.create({
     height: 16,
   },
   skipText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.ink500,
+    color: COLORS.green500, // matches slide skip text color spec
   },
   centerChip: {
     position: 'absolute',
@@ -271,9 +270,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   floatingBadgeText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaBold,
     fontSize: 12,
-    fontWeight: '700',
     color: COLORS.ink900,
   },
   copyBlock: {
@@ -282,16 +280,15 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   title: {
-    fontFamily: 'Baloo 2',
+    ...FONTS.balooBold,
     fontSize: 26,
-    fontWeight: '700',
     color: COLORS.ink900,
     letterSpacing: -0.26,
     lineHeight: 32,
     marginBottom: 12,
   },
   subtitle: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaRegular,
     fontSize: 16,
     color: COLORS.ink500,
     lineHeight: 24,

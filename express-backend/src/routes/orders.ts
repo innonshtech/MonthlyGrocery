@@ -25,6 +25,71 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
   }
 
   try {
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+
+    // Strict Server-Side Coupon Verification
+    let validatedDiscount = 0;
+    let finalPayableAmount = parseFloat(total_amount);
+
+    if (coupon_code) {
+      const { getMergedCouponsList } = require('./coupons');
+      const coupons = getMergedCouponsList();
+      const matchedCoupon = coupons.find((c: any) => c.code.toUpperCase() === coupon_code.trim().toUpperCase());
+      
+      if (!matchedCoupon) {
+        return res.status(400).json({ success: false, error: 'Invalid coupon code' });
+      }
+
+      // Reconstruct original amount before any client-applied discount
+      const originalAmount = parseFloat(total_amount) + (parseFloat(discount_amount) || 0);
+
+      // 1. Min order amount check
+      if (originalAmount < matchedCoupon.min_order_amount) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Minimum order amount of ₹${matchedCoupon.min_order_amount} not met for coupon ${matchedCoupon.code}.` 
+        });
+      }
+
+      const orders = db.orders || [];
+      const userOrders = orders.filter((o: any) => o.consumer_id === req.user!.id && o.status !== 'cancelled');
+      const orderCount = userOrders.length;
+
+      // 2. Target audience check
+      const target = matchedCoupon.target_audience || 'all';
+      if (target === 'new' && orderCount > 0) {
+        return res.status(400).json({ success: false, error: 'This coupon is only valid for your first order.' });
+      }
+      if (target === 'loyal' && orderCount < 1) {
+        return res.status(400).json({ success: false, error: 'This coupon is only valid for returning customers.' });
+      }
+
+      // 3. User usage limits check
+      const userUsageCount = userOrders.filter((o: any) => o.coupon_code?.toUpperCase() === matchedCoupon.code.toUpperCase()).length;
+      const userLimit = matchedCoupon.usage_limit_per_user || 1;
+      if (userUsageCount >= userLimit) {
+        return res.status(400).json({ success: false, error: 'You have already reached the limit for this coupon.' });
+      }
+
+      // 4. Global limit check
+      if (matchedCoupon.max_global_uses) {
+        const globalUsage = orders.filter((o: any) => o.coupon_code?.toUpperCase() === matchedCoupon.code.toUpperCase() && o.status !== 'cancelled').length;
+        if (globalUsage >= matchedCoupon.max_global_uses) {
+          return res.status(400).json({ success: false, error: 'This coupon campaign has reached its redemption limit.' });
+        }
+      }
+
+      // Calculate server-side discount
+      if (matchedCoupon.discount_type === 'fixed') {
+        validatedDiscount = matchedCoupon.discount_value;
+      } else {
+        validatedDiscount = Math.min((originalAmount * matchedCoupon.discount_value) / 100, matchedCoupon.max_discount);
+      }
+      validatedDiscount = Math.round(validatedDiscount);
+      finalPayableAmount = Math.max(0, originalAmount - validatedDiscount);
+    }
+
     // 1. Resolve Shop ID (fallback to first active shop if not specified)
     let targetShopId = shop_id;
     if (!targetShopId) {
@@ -35,13 +100,13 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     // 2. Generate random 4-digit Delivery OTP (Swiggy/Zomato style)
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
-    // 3. Insert order into Supabase
+    // 3. Insert order into Supabase with validated final amount
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         consumer_id: req.user!.id,
         shop_id: targetShopId,
-        total_amount: parseFloat(total_amount),
+        total_amount: finalPayableAmount,
         delivery_address: finalAddress,
         status: 'confirmed',
       })
@@ -69,9 +134,6 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       console.warn('Order items insert notice:', itemsError.message);
     }
 
-    // 6. Save in localDb as well for instant merchant/delivery synchronization
-    const { readDb, writeDb } = require('../config/localDb');
-    const db = readDb();
     if (!db.orders) db.orders = [];
 
     const enrichedOrder = {
@@ -79,8 +141,8 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       consumer_id: req.user!.id,
       consumer_name: req.user!.mobile || 'Customer',
       shop_id: targetShopId,
-      total_amount: parseFloat(total_amount),
-      discount_amount: parseFloat(discount_amount) || 0,
+      total_amount: finalPayableAmount,
+      discount_amount: validatedDiscount,
       coupon_code: coupon_code || null,
       shipping_address: finalAddress,
       delivery_slot: delivery_slot || 'Tomorrow Morning',

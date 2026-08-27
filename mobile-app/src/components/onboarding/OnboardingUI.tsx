@@ -8,7 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import AppIcon from '../AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
   return (
@@ -163,9 +163,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   categoryBadgeText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '700',
     color: COLORS.green700,
     letterSpacing: 0.6,
   },
@@ -217,10 +216,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtnText: {
-    fontFamily: 'Baloo 2',
+    ...FONTS.balooSemiBold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
     lineHeight: 16,
   },
   nextPill: {
@@ -233,10 +231,9 @@ const styles = StyleSheet.create({
     height: 46,
   },
   nextPillText: {
-    fontFamily: 'Baloo 2',
+    ...FONTS.balooSemiBold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
   },
   dotsRow: {
     flexDirection: 'row',
@@ -256,8 +253,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.ink300,
   },
   sectionLabel: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '700',
     color: COLORS.ink500,
     letterSpacing: 0.8,
     marginBottom: 16,

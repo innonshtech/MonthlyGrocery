@@ -290,7 +290,11 @@ router.get('/categories', async (req, res) => {
     const { readDb } = require('../config/localDb');
     const db = readDb();
     const categoryNames = (db.categories || []).map((c: any) => c.name);
-    return res.json({ success: true, categories: categoryNames });
+    return res.json({
+      success: true,
+      categories: categoryNames,
+      categoriesFull: db.categories || []
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }

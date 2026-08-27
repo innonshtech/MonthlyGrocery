@@ -14,30 +14,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 export default function CheckoutScreen({ route, navigation }: any) {
   const { token, city: authCity, area: authArea } = useAuth();
   const { items, minOrderLimit = 2500 } = useCart();
   const [appliedCoupon, setAppliedCoupon] = useState<any>(route?.params?.appliedCoupon || null);
 
-  // Selected Address State
-  const [selectedAddress, setSelectedAddress] = useState<any>({
-    id: 'addr-default',
-    tag: 'Home',
-    flat: 'Flat 402, Green Acres',
-    street: 'Paud Road, Kothrud',
-    city: authCity || 'Pune',
-    pincode: '411038',
-  });
+  // Selected Address State (Starts as null to trigger First-time Checkout variant if no address is set)
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  // Selected Slot State
-  const [selectedSlot, setSelectedSlot] = useState<any>({
-    dateLabel: 'Tomorrow',
-    timeWindow: 'Morning 7:00 AM - 10:00 AM',
-  });
+  // Selected Slot State (Starts as null to trigger First-time Checkout variant)
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
-  // Load latest selected address/slot if passed back via params
+  // Load latest parameters passed back from select pages
   useEffect(() => {
     if (route?.params?.selectedAddress) {
       setSelectedAddress(route.params.selectedAddress);
@@ -50,20 +40,22 @@ export default function CheckoutScreen({ route, navigation }: any) {
     }
   }, [route?.params]);
 
-  // Load saved address from storage
+  // Load saved default address from storage if present (Convenience feature)
   useEffect(() => {
-    const loadAddress = async () => {
+    const loadSavedAddress = async () => {
       try {
-        const saved = await AsyncStorage.getItem('@saved_user_addresses');
-        if (saved) {
-          const list = JSON.parse(saved);
+        const stored = await AsyncStorage.getItem('@user_addresses');
+        if (stored) {
+          const list = JSON.parse(stored);
           if (list.length > 0) {
-            setSelectedAddress(list[0]);
+            // Find default address or pick first
+            const defAddr = list.find((a: any) => a.isDefault) || list[0];
+            setSelectedAddress(defAddr);
           }
         }
       } catch (err) {}
     };
-    loadAddress();
+    loadSavedAddress();
   }, []);
 
   const minLimit = minOrderLimit || 2500;
@@ -83,11 +75,11 @@ export default function CheckoutScreen({ route, navigation }: any) {
   if (appliedCoupon) {
     if (appliedCoupon.discount_type === 'percentage') {
       couponDiscount = Math.min(
-        Math.round((itemTotalPrice * appliedCoupon.value) / 100),
+        Math.round((itemTotalPrice * appliedCoupon.discount_value) / 100),
         appliedCoupon.max_discount || 200
       );
     } else {
-      couponDiscount = appliedCoupon.value || 50;
+      couponDiscount = appliedCoupon.discount_value || 50;
     }
   }
 
@@ -98,7 +90,23 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const amountNeeded = minLimit - toPay;
   const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
+  const handleSelectAddress = () => {
+    navigation.navigate('DeliveryAddress', {
+      selectedAddress,
+      onSelect: (addr: any) => setSelectedAddress(addr)
+    });
+  };
+
+  const handleSelectSlot = () => {
+    navigation.navigate('DeliverySlot', { selectedSlot });
+  };
+
   const handleProceedToPayment = () => {
+    if (!selectedAddress || !selectedSlot) {
+      Alert.alert('Delivery info required', 'Please add both delivery address and slot to proceed.');
+      return;
+    }
+
     if (isBelowMin) {
       Alert.alert(
         'Minimum order not met',
@@ -118,12 +126,18 @@ export default function CheckoutScreen({ route, navigation }: any) {
     });
   };
 
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+  };
+
+  const isCheckoutReady = selectedAddress && selectedSlot;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
 
       {/* =========================================================================
-         1. TOP HEADER ROW (E1)
+         1. TOP HEADER ROW (Figma spec: Baloo 2 Title)
          ========================================================================= */}
       <View style={styles.topHeader}>
         <TouchableOpacity
@@ -131,9 +145,9 @@ export default function CheckoutScreen({ route, navigation }: any) {
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <AppIcon name="arrow-left" size={20} color={COLORS.ink900} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order summary</Text>
+        <Text style={styles.headerTitle}>Checkout</Text>
       </View>
 
       <ScrollView
@@ -142,129 +156,148 @@ export default function CheckoutScreen({ route, navigation }: any) {
         showsVerticalScrollIndicator={false}
       >
         {/* =========================================================================
-           2. BELOW MINIMUM WARNING NOTICE (E1 SUB-STATE)
+           2. BELOW MINIMUM WARNING NOTICE
            ========================================================================= */}
         {isBelowMin && (
           <View style={styles.belowMinNotice}>
-            <Text style={styles.belowMinIcon}>⚠️</Text>
+            <AppIcon name="help" size={15} color="#8A5200" />
             <Text style={styles.belowMinText}>
-              Add ₹{amountNeeded} more to reach the ₹{minLimit} minimum
+              Add ₹{amountNeeded} more to reach the ₹{minLimit} minimum order value
             </Text>
           </View>
         )}
 
         {/* =========================================================================
-           3. DELIVERY ADDRESS CARD (E1 -> E2)
+           3. DELIVER TO CARD (Dynamic First-time vs Normal variant)
            ========================================================================= */}
         <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.sectionHeaderLeft}>
-              <Text style={styles.sectionIcon}>📍</Text>
-              <Text style={styles.sectionCardTitle}>Delivery address</Text>
+          <View style={styles.cardLayoutRow}>
+            {/* Left Column: 38x38px circle icon */}
+            <View style={styles.iconCircle}>
+              <AppIcon name="map-pin" size={16} color={COLORS.green700} />
             </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('DeliveryAddress', { selectedAddress })}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={styles.changeLinkText}>Change ›</Text>
-            </TouchableOpacity>
-          </View>
 
-          <View style={styles.addressPreviewWrap}>
-            <View style={styles.addressTagBadge}>
-              <Text style={styles.addressTagText}>{selectedAddress.tag || 'Home'}</Text>
-            </View>
-            <Text style={styles.addressFullText}>
-              {selectedAddress.flat}, {selectedAddress.street}, {selectedAddress.city} {selectedAddress.pincode}
-            </Text>
-          </View>
-        </View>
-
-        {/* =========================================================================
-           4. DELIVERY SLOT CARD (E1 -> E4)
-           ========================================================================= */}
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeaderRow}>
-            <View style={styles.sectionHeaderLeft}>
-              <Text style={styles.sectionIcon}>🕒</Text>
-              <Text style={styles.sectionCardTitle}>Delivery slot</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('DeliverySlot', { selectedSlot })}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={styles.changeLinkText}>Change ›</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.slotPreviewText}>
-            {selectedSlot.dateLabel} · {selectedSlot.timeWindow}
-          </Text>
-        </View>
-
-        {/* =========================================================================
-           5. ITEMS IN BASKET PREVIEW (E1)
-           ========================================================================= */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.basketTitle}>
-            Basket items ({totalItemCount})
-          </Text>
-
-          {items.map((cartItem) => {
-            const price = parseFloat(cartItem.product.price as any) || 0;
-            const lineTotal = price * cartItem.quantity;
-
-            return (
-              <View key={cartItem.product.id} style={styles.itemRow}>
-                <View style={styles.itemThumb}>
-                  {cartItem.product.image_url ? (
-                    <Image source={{ uri: cartItem.product.image_url }} style={styles.thumbImg} resizeMode="contain" />
-                  ) : (
-                    <AppIcon name="shopping-bag" size={20} color={COLORS.green700} />
-                  )}
-                </View>
-
-                <View style={styles.itemDetails}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {cartItem.product.name}
-                  </Text>
-                  <Text style={styles.itemSub}>
-                    {cartItem.product.unit || '1 unit'} × {cartItem.quantity}
+            {/* Middle Column: Details block */}
+            <View style={styles.detailsBlock}>
+              {!selectedAddress ? (
+                // First-time Placeholder State
+                <TouchableOpacity onPress={handleSelectAddress} activeOpacity={0.7}>
+                  <Text style={styles.placeholderTitle}>Add delivery address</Text>
+                  <Text style={styles.placeholderSub}>Where should we deliver your order?</Text>
+                </TouchableOpacity>
+              ) : (
+                // Normal Populated State
+                <View>
+                  <Text style={styles.eyebrow}>DELIVER TO</Text>
+                  <Text style={styles.cardTitle}>Home · {selectedAddress.tag || 'Address'}</Text>
+                  <Text style={styles.cardSub} numberOfLines={2}>
+                    {selectedAddress.flat}, {selectedAddress.street} · {selectedAddress.pincode}
                   </Text>
                 </View>
-
-                <Text style={styles.itemLineTotal}>₹{lineTotal}</Text>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* =========================================================================
-           6. COUPON WIDGET (E1 -> C3)
-           ========================================================================= */}
-        <TouchableOpacity
-          style={styles.couponCard}
-          onPress={() => navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })}
-          activeOpacity={0.8}
-        >
-          <View style={styles.couponLeft}>
-            <Text style={styles.couponIcon}>🏷️</Text>
-            <View>
-              <Text style={styles.couponTitle}>
-                {appliedCoupon ? `Coupon "${appliedCoupon.code}" applied` : 'Apply coupon'}
-              </Text>
-              {appliedCoupon && (
-                <Text style={styles.couponSub}>₹{couponDiscount} discount applied to this order</Text>
               )}
             </View>
+
+            {/* Right Column: Action text button */}
+            <TouchableOpacity onPress={handleSelectAddress} style={styles.actionBtn}>
+              <Text style={styles.actionBtnTxt}>{selectedAddress ? 'Change' : 'Add'}</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.changeLinkText}>
-            {appliedCoupon ? 'Change ›' : 'Select ›'}
-          </Text>
-        </TouchableOpacity>
+        </View>
 
         {/* =========================================================================
-           7. BILL DETAILS SUMMARY (E1)
+           4. DELIVERY SLOT CARD (Dynamic First-time vs Normal variant)
+           ========================================================================= */}
+        <View style={styles.sectionCard}>
+          <View style={styles.cardLayoutRow}>
+            {/* Left Column: 38x38px circle icon */}
+            <View style={styles.iconCircle}>
+              <AppIcon name="clock" size={16} color={COLORS.green700} />
+            </View>
+
+            {/* Middle Column: Details block */}
+            <View style={styles.detailsBlock}>
+              {!selectedSlot ? (
+                // First-time Placeholder State
+                <TouchableOpacity onPress={handleSelectSlot} activeOpacity={0.7}>
+                  <Text style={styles.placeholderTitle}>Choose delivery slot</Text>
+                  <Text style={styles.placeholderSub}>Pick a planned 4-hour window</Text>
+                </TouchableOpacity>
+              ) : (
+                // Normal Populated State
+                <View>
+                  <Text style={styles.eyebrow}>DELIVERY SLOT</Text>
+                  <Text style={styles.cardTitle}>{selectedSlot.dateLabel}, {selectedSlot.timeWindow}</Text>
+                  <Text style={styles.cardSub}>Planned 4-hour delivery window</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Right Column: Action text button */}
+            <TouchableOpacity onPress={handleSelectSlot} style={styles.actionBtn}>
+              <Text style={styles.actionBtnTxt}>{selectedSlot ? 'Change' : 'Select'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* =========================================================================
+           5. BASKET PREVIEW (Row of thumbnail images)
+           ========================================================================= */}
+        <View style={styles.sectionCard}>
+          <View style={styles.basketHeader}>
+            <Text style={styles.basketTitle}>Order summary</Text>
+            <Text style={styles.basketCount}>{totalItemCount} items</Text>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbsScroll}>
+            {items.map((cartItem) => (
+              <View key={cartItem.product.id} style={styles.itemThumbWrap}>
+                {cartItem.product.image_url ? (
+                  <Image source={{ uri: cartItem.product.image_url }} style={styles.thumbImage} resizeMode="contain" />
+                ) : (
+                  <AppIcon name="shopping-bag" size={18} color={COLORS.green700} />
+                )}
+                {cartItem.quantity > 1 && (
+                  <View style={styles.quantityBadge}>
+                    <Text style={styles.quantityBadgeText}>{cartItem.quantity}</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* =========================================================================
+           6. APPLIED COUPON CARD (Matches Figma C3/E1 specs)
+           ========================================================================= */}
+        {appliedCoupon ? (
+          <View style={styles.appliedCouponCard}>
+            <View style={styles.couponLeft}>
+              <AppIcon name="percent" size={16} color="#1E7A46" />
+              <View style={styles.couponDetails}>
+                <Text style={styles.appliedCouponCode}>{appliedCoupon.code} applied</Text>
+                <Text style={styles.appliedCouponSavings}>You saved ₹{couponDiscount} extra</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={handleRemoveCoupon} style={styles.removeCouponBtn}>
+              <Text style={styles.removeCouponBtnTxt}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.noCouponCard}
+            onPress={() => navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })}
+            activeOpacity={0.8}
+          >
+            <View style={styles.couponLeft}>
+              <AppIcon name="tag" size={16} color={COLORS.ink700} />
+              <Text style={styles.noCouponTitle}>Apply coupon</Text>
+            </View>
+            <Text style={styles.selectLinkText}>Select ›</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* =========================================================================
+           7. BILL DETAILS SUMMARY
            ========================================================================= */}
         <View style={styles.billCard}>
           <Text style={styles.billHeading}>Bill details</Text>
@@ -275,8 +308,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
           </View>
 
           <View style={styles.billRow}>
-            <Text style={[styles.billLabel, { color: COLORS.green700 }]}>Savings</Text>
-            <Text style={[styles.billVal, { color: COLORS.green700 }]}>− ₹{totalSavings}</Text>
+            <Text style={[styles.billLabel, { color: COLORS.marigold700 }]}>Savings</Text>
+            <Text style={[styles.billVal, { color: COLORS.marigold700 }]}>− ₹{totalSavings}</Text>
           </View>
 
           <View style={styles.billRow}>
@@ -294,25 +327,30 @@ export default function CheckoutScreen({ route, navigation }: any) {
       </ScrollView>
 
       {/* =========================================================================
-         8. STICKY BOTTOM PAYMENT CTA (E1 Active vs Below-Min Gate)
+         8. STICKY BOTTOM PAYMENT BAR (First-time Disabled vs Normal Active)
          ========================================================================= */}
       <View style={styles.bottomBar}>
-        {isBelowMin ? (
-          <TouchableOpacity
-            style={styles.gateBtn}
-            onPress={handleProceedToPayment}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.gateBtnText}>Add ₹{amountNeeded} to checkout</Text>
-          </TouchableOpacity>
+        {!isCheckoutReady ? (
+          // E1 First-time: Full-width disabled continuation indicator
+          <View style={styles.disabledBarBtn}>
+            <Text style={styles.disabledBarBtnText}>Add address & slot to continue</Text>
+          </View>
         ) : (
-          <TouchableOpacity
-            style={styles.proceedBtn}
-            onPress={handleProceedToPayment}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.proceedBtnText}>Select payment method ›</Text>
-          </TouchableOpacity>
+          // E1 Normal Redesign: Dual-column payment navigation row
+          <View style={styles.paymentRow}>
+            <View style={styles.payableSummary}>
+              <Text style={styles.payableLabel}>TO PAY</Text>
+              <Text style={styles.payableAmount}>₹{toPay}</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.proceedPayBtn}
+              onPress={handleProceedToPayment}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.proceedPayBtnText}>Proceed to pay</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </SafeAreaView>
@@ -322,208 +360,235 @@ export default function CheckoutScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: COLORS.paper, // Warm Paper background
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: COLORS.paper,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    marginRight: 14,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooSemiBold,
+    fontSize: 18,
     color: COLORS.ink900,
-    marginLeft: 8,
+    lineHeight: 24,
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 120, // Space to scroll past bottom sticky bar
   },
   belowMinNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    backgroundColor: COLORS.marigold100,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: COLORS.marigold200,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 14,
     gap: 8,
   },
-  belowMinIcon: {
-    fontSize: 16,
-  },
   belowMinText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#92400E',
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    color: COLORS.marigold700,
+    flex: 1,
   },
   sectionCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
   },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  sectionHeaderLeft: {
+  cardLayoutRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
-  sectionIcon: {
-    fontSize: 15,
-  },
-  sectionCardTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink900,
-  },
-  changeLinkText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  addressPreviewWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  addressTagBadge: {
-    backgroundColor: COLORS.green50,
-    borderWidth: 1,
-    borderColor: COLORS.green100,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-  },
-  addressTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  addressFullText: {
-    flex: 1,
-    fontSize: 12.5,
-    color: COLORS.ink700,
-    lineHeight: 17,
-  },
-  slotPreviewText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.ink900,
-  },
-  basketTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink900,
-    marginBottom: 10,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
-  },
-  itemThumb: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.xs,
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 14,
   },
-  thumbImg: {
-    width: 28,
-    height: 28,
-  },
-  itemDetails: {
+  detailsBlock: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: 10,
   },
-  itemName: {
+  placeholderTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: COLORS.green700,
+  },
+  placeholderSub: {
+    ...FONTS.muktaMedium,
+    fontSize: 12,
+    color: COLORS.ink500,
+    marginTop: 1,
+  },
+  eyebrow: {
+    ...FONTS.muktaBold,
+    fontSize: 10.5,
+    color: COLORS.ink500,
+    letterSpacing: 1.1,
+  },
+  cardTitle: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.ink900,
+    marginTop: 1,
+  },
+  cardSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: COLORS.ink500,
+    marginTop: 1.5,
+    lineHeight: 16,
+  },
+  actionBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  actionBtnTxt: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '700',
+    color: COLORS.green700,
+  },
+  basketHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  basketTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
     color: COLORS.ink900,
   },
-  itemSub: {
-    fontSize: 11,
+  basketCount: {
+    ...FONTS.muktaMedium,
+    fontSize: 12.5,
     color: COLORS.ink500,
   },
-  itemLineTotal: {
-    fontSize: 13.5,
-    fontWeight: '800',
-    color: COLORS.ink900,
+  thumbsScroll: {
+    flexDirection: 'row',
   },
-  couponCard: {
+  itemThumbWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: COLORS.muted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    position: 'relative',
+  },
+  thumbImage: {
+    width: 36,
+    height: 36,
+  },
+  quantityBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: COLORS.ink700,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quantityBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  noCouponCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  noCouponTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    color: COLORS.ink900,
+  },
+  selectLinkText: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: COLORS.green700,
+  },
+  appliedCouponCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.green100, // Light green applied block E1/C3
+    borderRadius: RADIUS.md,
+    padding: 12,
+    marginBottom: 14,
   },
   couponLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     flex: 1,
   },
-  couponIcon: {
-    fontSize: 18,
+  couponDetails: {
+    flex: 1,
   },
-  couponTitle: {
+  appliedCouponCode: {
+    ...FONTS.muktaBold,
     fontSize: 13.5,
-    fontWeight: '700',
-    color: COLORS.ink900,
+    color: COLORS.green900,
   },
-  couponSub: {
-    fontSize: 11,
-    color: COLORS.green700,
-    marginTop: 1,
+  appliedCouponSavings: {
+    ...FONTS.muktaMedium,
+    fontSize: 11.5,
+    color: COLORS.green800,
+    marginTop: 0.5,
+  },
+  removeCouponBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  removeCouponBtnTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    color: COLORS.ink700,
   },
   billCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   billHeading: {
-    fontSize: 15,
-    fontWeight: '800',
+    ...FONTS.muktaBold,
+    fontSize: 14,
     color: COLORS.ink900,
     marginBottom: 12,
   },
@@ -534,18 +599,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   billLabel: {
-    fontSize: 13,
-    color: COLORS.ink500,
+    ...FONTS.muktaRegular,
+    fontSize: 13.5,
+    color: COLORS.ink700,
   },
   billVal: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...FONTS.muktaMedium,
+    fontSize: 13.5,
     color: COLORS.ink900,
   },
   divider: {
-    height: 1,
+    height: 1.5,
     backgroundColor: COLORS.line,
-    marginVertical: 10,
+    marginVertical: 11,
   },
   billTotalRow: {
     flexDirection: 'row',
@@ -553,44 +619,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   billTotalLabel: {
-    fontSize: 15,
-    fontWeight: '800',
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
     color: COLORS.ink900,
   },
   billTotalVal: {
-    fontSize: 17,
-    fontWeight: '900',
+    ...FONTS.balooBold,
+    fontSize: 18,
     color: COLORS.ink900,
   },
   bottomBar: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+    borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    height: 98,
+    justifyContent: 'center',
   },
-  proceedBtn: {
-    backgroundColor: COLORS.green700, // #1E7A46
-    height: 52,
-    borderRadius: RADIUS.pill,
+  disabledBarBtn: {
+    backgroundColor: COLORS.muted,
+    height: 49,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  proceedBtnText: {
+  disabledBarBtnText: {
+    ...FONTS.balooSemiBold,
+    color: COLORS.ink300,
+    fontSize: 15,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  payableSummary: {
+    justifyContent: 'center',
+  },
+  payableLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: COLORS.ink500,
+    letterSpacing: 0.8,
+  },
+  payableAmount: {
+    ...FONTS.balooBold,
+    fontSize: 18,
+    color: COLORS.ink900,
+    marginTop: -2,
+  },
+  proceedPayBtn: {
+    backgroundColor: COLORS.green700, // #1E7A46
+    height: 49,
+    borderRadius: 14,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.green900,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  proceedPayBtnText: {
+    ...FONTS.balooSemiBold,
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
-  },
-  gateBtn: {
-    backgroundColor: COLORS.muted,
-    height: 52,
-    borderRadius: RADIUS.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gateBtnText: {
-    color: COLORS.ink500,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });

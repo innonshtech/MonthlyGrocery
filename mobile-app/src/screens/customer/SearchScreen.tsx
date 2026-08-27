@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,188 +7,279 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  Dimensions,
-  StatusBar
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
-const { width } = Dimensions.get('window');
-
-const POPULAR_SEARCH_CHIPS = [
-  'Aashirvaad',
-  'multigrain atta',
-  'Fortune',
-  'Organic atta',
-  'Basmati rice',
-  'Toor dal'
+// ─── Pastel tile backgrounds (same system as rest of app) ────────────────────
+const TILE_BG = [
+  '#FFF3D6', '#F6E9E1', '#E4F3EA', '#FDE4E7',
+  '#EDE9FB', '#FBEEDD', '#EAF6D6', '#E1F0FB',
 ];
+function tileBg(index: number) { return TILE_BG[index % TILE_BG.length]; }
+
+// ─── Debounce hook ────────────────────────────────────────────────────────────
+function useDebounce(value: string, delay: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ─── Build suggestion strings from raw product list ───────────────────────────
+function buildSuggestions(products: Product[], rawQuery: string): string[] {
+  if (!rawQuery.trim()) return [];
+  const q = rawQuery.toLowerCase().trim();
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  // Exact product names that match
+  for (const p of products) {
+    const name = p.name?.toLowerCase() ?? '';
+    const brand = p.brand?.toLowerCase() ?? '';
+    if (name.includes(q) || brand.includes(q)) {
+      // Add "<brand> <unit>" as suggestion if not already added
+      const suggestion = p.brand
+        ? `${p.brand.toLowerCase()} ${p.unit ?? ''}`.trim()
+        : p.name.toLowerCase();
+      const key = suggestion.slice(0, 30);
+      if (!seen.has(key)) { seen.add(key); out.push(suggestion); }
+      if (out.length >= 5) break;
+    }
+  }
+
+  // Always add the raw query itself as first suggestion if it has results
+  if (products.length > 0 && !seen.has(rawQuery.toLowerCase())) {
+    out.unshift(`${rawQuery.toLowerCase()} ${products[0]?.unit ?? ''}`.trim());
+  }
+
+  return out.slice(0, 5);
+}
 
 export default function SearchScreen({ navigation }: any) {
   const { city, area } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
-  const [query, setQuery] = useState('atta');
-  const [selectedChip, setSelectedChip] = useState('Aashirvaad');
+
+  const [query, setQuery] = useState('');
+  const [committedQuery, setCommittedQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const inputRef = useRef<any>(null);
+  const debouncedQuery = useDebounce(query, 350);
+
+  // ── Fetch from backend whenever the debounced query changes ─────────────────
   useEffect(() => {
-    const fetchResults = async () => {
+    if (!debouncedQuery.trim()) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+    const fetch_ = async () => {
       setLoading(true);
       try {
-        let url = `${API_BASE}/products/search?q=${encodeURIComponent(query || '')}`;
+        let url = `${API_BASE}/products/search?q=${encodeURIComponent(debouncedQuery)}`;
         if (city) url += `&city=${encodeURIComponent(city)}`;
         if (area) url += `&area_name=${encodeURIComponent(area)}`;
         const res = await fetch(url);
         const data = await res.json();
-        if (res.ok && data.success && data.products) {
-          setProducts(data.products);
-        } else {
-          setProducts([]);
-        }
-      } catch (err) {
-        console.error('Search error:', err);
+        setProducts(res.ok && data.success ? data.products : []);
+      } catch {
         setProducts([]);
       } finally {
         setLoading(false);
       }
     };
+    fetch_();
+  }, [debouncedQuery, city, area]);
 
-    fetchResults();
-  }, [query, city, area]);
+  // ── Suggestions: built from current live results ─────────────────────────────
+  const suggestions = showSuggestions
+    ? buildSuggestions(products, query)
+    : [];
 
-  const handleChipPress = (chip: string) => {
-    setSelectedChip(chip);
-    setQuery(chip);
-  };
+  // ── Commit a suggestion / submit ─────────────────────────────────────────────
+  const commitQuery = useCallback((text: string) => {
+    setQuery(text);
+    setCommittedQuery(text);
+    setShowSuggestions(false);
+    inputRef.current?.blur();
+  }, []);
+
+  // ── Cart helpers ─────────────────────────────────────────────────────────────
+  const getQty = (id: string) => items.find((i) => i.product?.id === id)?.quantity ?? 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
-      {/* =========================================================================
-         1. TOP SEARCH HEADER WITH BACK ARROW
-         ========================================================================= */}
-      <View style={styles.headerRow}>
+      {/* ── 1. Top header: back + active search bar ─────────────────────────── */}
+      <View style={styles.header}>
+        {/* Back button */}
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
           style={styles.backBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
         </TouchableOpacity>
 
-        <View style={styles.searchBox}>
-          <AppIcon name="search" size={18} color={COLORS.ink300} />
+        {/* Active search bar — green border when focused (Figma spec) */}
+        <View style={styles.searchBar}>
+          <AppIcon name="search" size={17} color={COLORS.ink300} />
+
           <TextInput
+            ref={inputRef}
             style={styles.searchInput}
-            placeholder="Search for atta, rice, oil..."
+            placeholder={`Search "atta", "rice", "oil"…`}
             placeholderTextColor={COLORS.ink300}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(t) => {
+              setQuery(t);
+              setShowSuggestions(true);
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            onSubmitEditing={() => commitQuery(query)}
+            returnKeyType="search"
             autoFocus
           />
+
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
-              <Text style={styles.clearText}>✕</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setQuery('');
+                setCommittedQuery('');
+                setProducts([]);
+                setShowSuggestions(false);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <AppIcon name="minus" size={16} color={COLORS.ink300} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* =========================================================================
-         2. POPULAR IN ATTA & RICE / TRENDING CHIPS
-         ========================================================================= */}
-      <View style={styles.chipsSection}>
-        <Text style={styles.chipsLabel}>POPULAR IN ATTA & RICE</Text>
-        <FlatList
-          horizontal
-          data={POPULAR_SEARCH_CHIPS}
-          keyExtractor={(item) => item}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScroll}
-          renderItem={({ item }) => {
-            const isSelected = selectedChip.toLowerCase() === item.toLowerCase();
-            return (
+      {/* ── 2. Unified Scrollable List ────────────────────────────────────────── */}
+      {query.trim().length === 0 ? (
+        // Popular Searches view when query is empty
+        <View style={styles.center}>
+          <Text style={styles.popularLabel}>POPULAR SEARCHES</Text>
+          <View style={styles.popularChips}>
+            {['Atta', 'Rice', 'Oils & Ghee', 'Dals', 'Spices', 'Snacks', 'Drinks', 'Biscuits'].map((chip) => (
               <TouchableOpacity
-                style={[
-                  styles.chip,
-                  isSelected && styles.chipSelected
-                ]}
-                onPress={() => handleChipPress(item)}
-                activeOpacity={0.75}
+                key={chip}
+                style={styles.chip}
+                onPress={() => commitQuery(chip)}
               >
-                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                  {item}
-                </Text>
+                <Text style={styles.chipTxt}>{chip}</Text>
               </TouchableOpacity>
-            );
-          }}
-        />
-      </View>
-
-      {/* =========================================================================
-         3. SEARCH RESULTS LIST
-         ========================================================================= */}
-      <View style={styles.resultsContainer}>
-        <Text style={styles.resultsTitle}>
-          Results for "{query || 'all'}"
-        </Text>
-
+            ))}
+          </View>
+        </View>
+      ) : loading && products.length === 0 ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      ) : (
         <FlatList
           data={products}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(p) => p.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.resultsList}
-          renderItem={({ item }) => {
-            const mrpVal = parseFloat(item.mrp as any) || Math.round(Number(item.price) * 1.18);
-            const cartItem = items.find((i) => i.product?.id === item.id);
-            const count = cartItem ? cartItem.quantity : 0;
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            <View>
+              {/* Suggestions List (max 3 items as per B2 Figma) */}
+              {suggestions.length > 0 && (
+                <View style={styles.suggestionsBox}>
+                  {suggestions.slice(0, 3).map((s, idx) => (
+                    <TouchableOpacity
+                      key={`${s}-${idx}`}
+                      style={styles.suggestionRow}
+                      onPress={() => commitQuery(s)}
+                      activeOpacity={0.75}
+                    >
+                      <AppIcon name="search" size={16} color={COLORS.ink500} />
+                      <Text style={styles.suggestionTxt} numberOfLines={1}>{s}</Text>
+                      <AppIcon name="arrow-right" size={14} color={COLORS.ink300} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Eyebrow Label "PRODUCTS" */}
+              {products.length > 0 && (
+                <View style={styles.eyebrowRow}>
+                  <Text style={styles.eyebrowTxt}>PRODUCTS</Text>
+                </View>
+              )}
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const qty = getQty(item.id);
+            const price = parseFloat(item.price as any) || 0;
+            const mrp = parseFloat(item.mrp as any) || price;
 
             return (
               <TouchableOpacity
                 style={styles.resultRow}
-                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                onPress={() =>
+                  navigation.navigate('ProductDetail', { productId: item.id })
+                }
                 activeOpacity={0.8}
               >
-                {/* Thumb */}
-                <View style={styles.rowThumb}>
+                {/* Colored 48x48 image tile */}
+                <View style={[styles.imgTile, { backgroundColor: tileBg(index) }]}>
                   {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.tileImg}
+                      resizeMode="contain"
+                    />
                   ) : (
-                    <AppIcon name="shopping-bag" size={26} color={COLORS.green700} />
+                    <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
                   )}
                 </View>
 
                 {/* Details */}
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.rowUnit}>{item.unit || '5 kg'}</Text>
-                  <View style={styles.priceLine}>
-                    <Text style={styles.rowPrice}>₹{item.price}</Text>
-                    <Text style={styles.rowMrp}>₹{mrpVal}</Text>
+                  <Text style={styles.rowName} numberOfLines={2}>{item.name}</Text>
+                  {item.unit ? (
+                    <Text style={styles.rowUnit}>{item.unit}</Text>
+                  ) : null}
+                  <View style={styles.priceRow}>
+                    <Text style={styles.rowPrice}>₹{price}</Text>
+                    {mrp > price && (
+                      <Text style={styles.rowMrp}>₹{mrp}</Text>
+                    )}
                   </View>
                 </View>
 
-                {/* ADD Button or Stepper */}
-                {count > 0 ? (
-                  <View style={styles.stepperWrap}>
+                {/* ADD / Stepper */}
+                {qty > 0 ? (
+                  <View style={styles.stepper}>
                     <TouchableOpacity
                       style={styles.stepBtn}
-                      onPress={() => updateQuantity(item.id, count - 1)}
+                      onPress={() => updateQuantity(item.id, qty - 1)}
                     >
-                      <Text style={styles.stepBtnText}>−</Text>
+                      <Text style={styles.stepTxt}>−</Text>
                     </TouchableOpacity>
-                    <Text style={styles.stepCountText}>{count}</Text>
+                    <Text style={styles.stepQty}>{qty}</Text>
                     <TouchableOpacity
                       style={styles.stepBtn}
                       onPress={() => addToCart(item)}
                     >
-                      <Text style={styles.stepBtnText}>+</Text>
+                      <Text style={styles.stepTxt}>+</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -197,210 +288,268 @@ export default function SearchScreen({ navigation }: any) {
                     onPress={() => addToCart(item)}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.addBtnText}>ADD</Text>
+                    <Text style={styles.addBtnTxt}>ADD</Text>
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>
             );
           }}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.center}>
+                <AppIcon name="search" size={40} color={COLORS.ink300} />
+                <Text style={styles.emptyTitle}>No results for "{query}"</Text>
+                <Text style={styles.emptySubtitle}>Try another search term</Text>
+              </View>
+            ) : undefined
+          }
         />
-      </View>
+      )}
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm paper #FAF9F5
+    backgroundColor: '#FBFAF6',
   },
-  headerRow: {
+
+  // ── Header ───────────────────────────────────────────────────────────────────
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
+    paddingLeft: 16,
+    paddingRight: 16,
+    paddingTop: 4,
+    paddingBottom: 10,
     gap: 10,
   },
   backBtn: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
-  backBtnText: {
-    fontSize: 32,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 34,
-  },
-  searchBox: {
+
+  // Active search bar — green stroke when focused (Figma: 1.6px #1E7A46 border)
+  searchBar: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface, // #FFFFFF
-    borderWidth: 1.5,
-    borderColor: COLORS.line, // #EAE9E2
-    borderRadius: RADIUS.md, // 12px
-    height: 48,
-    paddingHorizontal: 14,
-    gap: 10,
+    height: 46,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.6,
+    borderColor: COLORS.green700,
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    gap: 9,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    ...FONTS.muktaRegular,
+    fontSize: 16,
     color: COLORS.ink900,
     padding: 0,
   },
-  clearText: {
-    fontSize: 14,
-    color: COLORS.ink300,
-    fontWeight: 'bold',
-    paddingHorizontal: 4,
+
+  // ── Suggestions ───────────────────────────────────────────────────────────────
+  suggestionsBox: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 0,
   },
-  chipsSection: {
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    gap: 12,
+    borderBottomWidth: 1.5,
     borderBottomColor: COLORS.line,
   },
-  chipsLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  chipsScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  chip: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  chipSelected: {
-    backgroundColor: COLORS.green700,
-    borderColor: COLORS.green700,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
+  suggestionTxt: {
+    flex: 1,
+    ...FONTS.muktaRegular,
+    fontSize: 16,
     color: COLORS.ink700,
   },
-  chipTextSelected: {
-    color: '#FFFFFF',
+
+  // ── Eyebrow ───────────────────────────────────────────────────────────────────
+  eyebrowRow: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
-  resultsContainer: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+  eyebrowTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: COLORS.ink500,
+    letterSpacing: 1.44,
+    textTransform: 'uppercase',
   },
-  resultsTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink900,
-    marginBottom: 14,
-  },
+
+  // ── Results list ──────────────────────────────────────────────────────────────
   resultsList: {
-    paddingBottom: 28,
+    paddingBottom: 40,
   },
+
+  // Product row (Figma: 11px v-padding, 20px h-padding, 1.5px bottom border)
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    gap: 12,
+    borderBottomWidth: 1.5,
+    borderBottomColor: COLORS.line,
+    backgroundColor: '#FFFFFF',
   },
-  separator: {
-    height: 1,
-    backgroundColor: COLORS.line,
-  },
-  rowThumb: {
-    width: 60,
-    height: 60,
-    borderRadius: RADIUS.sm, // 8px
-    backgroundColor: COLORS.green50, // #F2F9F5
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  thumbImg: {
+
+  // Image tile (Figma: 48×48, 10px radius, coloured bg)
+  imgTile: {
     width: 48,
     height: 48,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
+  tileImg: {
+    width: 32,
+    height: 32,
+  },
+
+  // Info
   rowInfo: {
     flex: 1,
-    paddingRight: 12,
+    gap: 2,
   },
   rowName: {
+    ...FONTS.muktaMedium,
     fontSize: 14,
-    fontWeight: '700',
     color: COLORS.ink900,
-    marginBottom: 2,
+    lineHeight: 20,
   },
   rowUnit: {
+    ...FONTS.muktaMedium,
     fontSize: 12,
     color: COLORS.ink500,
-    marginBottom: 4,
+    lineHeight: 16,
   },
-  priceLine: {
+  priceRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
+    alignItems: 'center',
+    gap: 5,
   },
   rowPrice: {
-    fontSize: 15,
-    fontWeight: '800',
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
   },
   rowMrp: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink300,
     textDecorationLine: 'line-through',
   },
+
+  // ADD button (Figma: #E4F3EA bg, #2A8B54 border 1.5px, 10px radius, "ADD" Label 13px SemiBold)
   addBtn: {
-    backgroundColor: COLORS.green50,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    backgroundColor: '#E4F3EA',
     borderWidth: 1.5,
-    borderColor: COLORS.green600,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    minWidth: 70,
+    borderColor: '#2A8B54',
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
-  addBtnText: {
-    color: COLORS.green700,
+  addBtnTxt: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '800',
+    color: COLORS.green700,
   },
-  stepperWrap: {
+
+  // Stepper (same green pill as rest of app)
+  stepper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.sm,
-    height: 32,
-    paddingHorizontal: 4,
+    borderRadius: 9,
+    height: 36,
+    flexShrink: 0,
   },
   stepBtn: {
-    width: 24,
-    height: 28,
+    width: 30,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepBtnText: {
+  stepTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 16,
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    lineHeight: 20,
   },
-  stepCountText: {
-    color: '#FFFFFF',
+  stepQty: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '700',
-    paddingHorizontal: 6,
+    color: '#FFFFFF',
+    minWidth: 18,
+    textAlign: 'center',
+  },
+
+  // ── Empty / loading states ────────────────────────────────────────────────────
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    gap: 12,
+  },
+  emptyTitle: {
+    ...FONTS.balooBold,
+    fontSize: 18,
+    color: COLORS.ink900,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  popularLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: COLORS.ink500,
+    letterSpacing: 1.44,
+    textTransform: 'uppercase',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  popularChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+  },
+  chip: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  chipTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: COLORS.ink700,
   },
 });
+

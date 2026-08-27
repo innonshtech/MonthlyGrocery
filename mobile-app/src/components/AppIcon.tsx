@@ -42,6 +42,8 @@ export type IconName =
   | 'wallet'
   | 'help'
   | 'star'
+  | 'building'
+  | 'mic'
   | 'percent';
 
 interface AppIconProps {
@@ -86,6 +88,111 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
               bottom: 1.5,
             }}
           />
+        </View>
+      </View>
+    );
+  }
+
+  // 1b. Building / City Skyscraper Icon (Lucide-style dual towers)
+  if (name === 'building') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View style={{ width: 22, height: 22, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 16, height: 16, justifyContent: 'flex-end', alignItems: 'flex-end', position: 'relative' }}>
+            {/* Main taller tower */}
+            <View
+              style={{
+                position: 'absolute',
+                left: 0,
+                bottom: 0,
+                width: 9,
+                height: 16,
+                borderWidth: 1.8,
+                borderColor: color,
+                borderBottomWidth: 0,
+                borderTopLeftRadius: 1.5,
+                borderTopRightRadius: 1.5,
+                justifyContent: 'space-evenly',
+                alignItems: 'center',
+                paddingVertical: 1.5,
+              }}
+            >
+              {/* Windows */}
+              <View style={{ width: 3, height: 1.5, backgroundColor: color, borderRadius: 0.2 }} />
+              <View style={{ width: 3, height: 1.5, backgroundColor: color, borderRadius: 0.2 }} />
+              <View style={{ width: 3, height: 1.5, backgroundColor: color, borderRadius: 0.2 }} />
+            </View>
+            {/* Side shorter tower */}
+            <View
+              style={{
+                position: 'absolute',
+                right: 0,
+                bottom: 0,
+                width: 7,
+                height: 11,
+                borderWidth: 1.8,
+                borderColor: color,
+                borderLeftWidth: 0,
+                borderBottomWidth: 0,
+                borderTopRightRadius: 1.5,
+                justifyContent: 'space-evenly',
+                alignItems: 'center',
+                paddingVertical: 1,
+              }}
+            >
+              {/* Windows */}
+              <View style={{ width: 2, height: 1.2, backgroundColor: color, borderRadius: 0.2 }} />
+              <View style={{ width: 2, height: 1.2, backgroundColor: color, borderRadius: 0.2 }} />
+            </View>
+            {/* Bottom floor ground line */}
+            <View
+              style={{
+                position: 'absolute',
+                left: -1,
+                bottom: 0,
+                width: 18,
+                height: 1.8,
+                backgroundColor: color,
+                borderRadius: 0.5,
+              }}
+            />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // 1c. Mic / Microphone Icon (Lucide-style vector outline)
+  if (name === 'mic') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View style={{ width: 14, height: 18, alignItems: 'center', justifyContent: 'center' }}>
+          {/* Mic capsule */}
+          <View
+            style={{
+              width: 8,
+              height: 11,
+              borderRadius: 4,
+              borderWidth: stroke,
+              borderColor: color,
+              backgroundColor: 'transparent',
+            }}
+          />
+          {/* Stand bracket */}
+          <View
+            style={{
+              width: 12,
+              height: 6,
+              borderBottomLeftRadius: 6,
+              borderBottomRightRadius: 6,
+              borderWidth: stroke,
+              borderTopWidth: 0,
+              borderColor: color,
+              marginTop: -3,
+            }}
+          />
+          {/* Bottom base support */}
+          <View style={{ width: 5, height: stroke, backgroundColor: color, borderRadius: 0.5 }} />
         </View>
       </View>
     );
@@ -730,6 +837,110 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
         <Text style={{ fontSize: size * 0.9, color: color || '#F5A524', fontWeight: 'bold' }}>
           ✦
         </Text>
+      </View>
+    );
+  }
+
+  // 13. Search Icon (Lucide-style vector outline)
+  if (name === 'search') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View style={{ width: size * 0.75, height: size * 0.75, position: 'relative' }}>
+          <View
+            style={{
+              width: size * 0.52,
+              height: size * 0.52,
+              borderRadius: (size * 0.52) / 2,
+              borderWidth: stroke,
+              borderColor: color,
+              position: 'absolute',
+              top: 0,
+              left: 0,
+            }}
+          />
+          <View
+            style={{
+              width: stroke,
+              height: size * 0.32,
+              backgroundColor: color,
+              borderRadius: 0.5,
+              transform: [{ rotate: '-45deg' }],
+              position: 'absolute',
+              bottom: size * 0.08,
+              right: size * 0.12,
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // 14. Chevron Right Icon (Lucide-style vector arrow)
+  if (name === 'chevron-right') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View
+          style={{
+            width: size * 0.3,
+            height: size * 0.3,
+            borderRightWidth: stroke,
+            borderTopWidth: stroke,
+            borderColor: color,
+            transform: [{ rotate: '45deg' }],
+            marginLeft: -size * 0.08,
+          }}
+        />
+      </View>
+    );
+  }
+
+  // 15. Arrow Left Icon (Lucide-style vector back arrow)
+  if (name === 'arrow-left') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View style={{ width: size * 0.72, height: size * 0.72, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              position: 'absolute',
+              left: size * 0.08,
+              width: size * 0.34,
+              height: size * 0.34,
+              borderLeftWidth: stroke,
+              borderTopWidth: stroke,
+              borderColor: color,
+              transform: [{ rotate: '-45deg' }],
+            }}
+          />
+          <View
+            style={{
+              width: size * 0.6,
+              height: stroke,
+              backgroundColor: color,
+              borderRadius: 0.5,
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // 16. Check Icon (Lucide-style vector tick)
+  if (name === 'check') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <View style={{ width: size * 0.65, height: size * 0.5, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: size * 0.42,
+              height: size * 0.22,
+              borderLeftWidth: stroke,
+              borderBottomWidth: stroke,
+              borderColor: color,
+              transform: [{ rotate: '-45deg' }],
+              marginTop: -size * 0.06,
+            }}
+          />
+        </View>
       </View>
     );
   }

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Path, Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 import { OnboardingEmojiChip } from '../components/onboarding/OnboardingUI';
 import AppIcon from '../components/AppIcon';
 
@@ -275,27 +275,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoTitleMonthly: {
-    fontFamily: 'Baloo 2',
-    fontWeight: '800',
+    ...FONTS.balooExtraBold,
     color: COLORS.green900,
     letterSpacing: -0.4,
   },
   logoTitleGrocery: {
-    fontFamily: 'Baloo 2',
-    fontWeight: '800',
+    ...FONTS.balooExtraBold,
     color: '#8BE354',
     letterSpacing: -0.4,
   },
   tagline: {
-    fontFamily: 'Mukta',
-    fontWeight: '500',
+    ...FONTS.muktaMedium,
     color: COLORS.green100,
     textAlign: 'center',
   },
   footnote: {
     position: 'absolute',
-    fontFamily: 'Mukta',
-    fontWeight: '500',
+    ...FONTS.muktaMedium,
     color: 'rgba(228, 243, 234, 0.7)', // COLORS.green100 with 0.7 opacity
     textAlign: 'center',
   },

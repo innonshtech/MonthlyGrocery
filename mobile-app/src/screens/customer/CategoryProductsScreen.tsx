@@ -1,262 +1,347 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   Image,
   Dimensions,
   Modal,
   Switch,
   StatusBar,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 
+// ─── Layout constants from Figma B4 ──────────────────────────────────────────
+const SIDEBAR_W = 76;
+const GRID_W = width - SIDEBAR_W;
+const CARD_W = (GRID_W - 12 - 12 - 10) / 2; // 2 columns, 12px sides, 10px gap
+
+// ─── Sub-category sidebar pills ───────────────────────────────────────────────
+const PRODUCT_BG_COLORS = [
+  '#FFF3D6', '#E4F3EA', '#F6E9E1', '#FDE4E7',
+  '#EDE9FB', '#FBEEDD', '#EAF6D6', '#E1F0FB',
+];
+function productBg(index: number) {
+  return PRODUCT_BG_COLORS[index % PRODUCT_BG_COLORS.length];
+}
+
+// ─── Derive sub-categories from product list ──────────────────────────────────
+function getSubCategories(products: Product[]): string[] {
+  const seen = new Set<string>();
+  const subs: string[] = [];
+  for (const p of products) {
+    const sub = (p as any).primary_category || '';
+    if (sub && !seen.has(sub)) {
+      seen.add(sub);
+      subs.push(sub);
+    }
+  }
+  // Always add an "All" entry
+  return ['All', ...subs].slice(0, 8);
+}
+
+// ─── Product card (B4 Figma: 139×hug, image 92px tall) ───────────────────────
+function ProductCard({
+  item,
+  index,
+  onPress,
+  onAdd,
+  onIncrement,
+  onDecrement,
+  quantity,
+}: {
+  item: Product;
+  index: number;
+  onPress: () => void;
+  onAdd: () => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
+  quantity: number;
+}) {
+  const price = parseFloat(item.price as any) || 0;
+  const mrp = parseFloat(item.mrp as any) || price;
+  const pctOff = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+      {/* Image area */}
+      <View style={[styles.cardImgWrap, { backgroundColor: productBg(index) }]}>
+        {/* % OFF badge */}
+        {pctOff > 0 && (
+          <View style={styles.offBadge}>
+            <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
+          </View>
+        )}
+
+        {/* Product image */}
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.cardImg} resizeMode="contain" />
+        ) : (
+          <AppIcon name="shopping-bag" size={36} color={COLORS.green700} />
+        )}
+
+        {/* ADD / Stepper */}
+        {quantity > 0 ? (
+          <View style={styles.cardStepper}>
+            <TouchableOpacity style={styles.cardStepBtn} onPress={onDecrement}>
+              <Text style={styles.cardStepTxt}>−</Text>
+            </TouchableOpacity>
+            <Text style={styles.cardStepQty}>{quantity}</Text>
+            <TouchableOpacity style={styles.cardStepBtn} onPress={onIncrement}>
+              <Text style={styles.cardStepTxt}>+</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addPill} onPress={onAdd} activeOpacity={0.85}>
+            <Text style={styles.addPillTxt}>ADD</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Info */}
+      <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
+      {item.unit ? <Text style={styles.cardUnit}>{item.unit}</Text> : null}
+
+      {/* Price row */}
+      <View style={styles.cardPriceRow}>
+        <Text style={styles.cardPrice}>₹{price}</Text>
+        {mrp > price && (
+          <Text style={styles.cardMrp}>₹{mrp}</Text>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CategoryProductsScreen({ route, navigation }: any) {
   const { categoryName = 'Atta & Rice', categoryId } = route?.params || {};
   const { city, area } = useAuth();
   const { addToCart, items, updateQuantity, totalAmount } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeSubCat, setActiveSubCat] = useState('All');
   const [showFilterModal, setShowFilterModal] = useState(false);
 
-  // Filter & Sort State (B5)
+  // Filter & Sort (Figma B5: SORT BY + PACK SIZE)
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'discount'>('relevance');
-  const [selectedBrand, setSelectedBrand] = useState('');
-  const [selectedPriceRange, setSelectedPriceRange] = useState('');
-  const [discountOnly, setDiscountOnly] = useState(false);
+  const [selectedPackSize, setSelectedPackSize] = useState('');
 
-  const totalCartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartCount = items.reduce((s, i) => s + i.quantity, 0);
 
   useEffect(() => {
-    const fetchCategoryProducts = async () => {
+    const load = async () => {
       setLoading(true);
       try {
         let url = `${API_BASE}/products/all?limit=50`;
-        const catQuery = categoryName || categoryId;
-        if (catQuery && catQuery !== 'all') {
-          url += `&category=${encodeURIComponent(catQuery)}`;
-        }
+        const q = categoryName || categoryId;
+        if (q && q !== 'all') url += `&category=${encodeURIComponent(q)}`;
         if (city) url += `&city=${encodeURIComponent(city)}`;
         if (area) url += `&area_name=${encodeURIComponent(area)}`;
-
         const res = await fetch(url);
         const data = await res.json();
-        if (res.ok && data.success && data.products) {
-          setProducts(data.products);
-        } else {
-          setProducts([]);
-        }
-      } catch (err) {
-        console.error('Error fetching category products:', err);
+        setProducts(res.ok && data.success ? data.products : []);
+      } catch {
         setProducts([]);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchCategoryProducts();
+    load();
   }, [categoryId, categoryName, city, area]);
 
-  const handleClearFilters = () => {
+  const clearFilters = () => {
     setSortBy('relevance');
-    setSelectedBrand('');
-    setSelectedPriceRange('');
-    setDiscountOnly(false);
+    setSelectedPackSize('');
   };
 
-  // Dynamic Filtering & Sorting
-  const filteredProducts = products.filter((p) => {
-    if (selectedBrand && p.brand?.toLowerCase() !== selectedBrand.toLowerCase()) {
-      return false;
-    }
-    const price = parseFloat(p.price as any) || 0;
-    if (selectedPriceRange === 'Under ₹200' && price >= 200) return false;
-    if (selectedPriceRange === '₹200 - ₹500' && (price < 200 || price > 500)) return false;
-    if (selectedPriceRange === '₹500 - ₹1,000' && (price < 500 || price > 1000)) return false;
-    if (selectedPriceRange === '₹1,000+' && price < 1000) return false;
-    if (discountOnly) {
-      const mrp = parseFloat(p.mrp as any) || price;
-      if (mrp <= price) return false;
-    }
-    return true;
-  }).sort((a, b) => {
-    const priceA = parseFloat(a.price as any) || 0;
-    const priceB = parseFloat(b.price as any) || 0;
-    if (sortBy === 'price_low') return priceA - priceB;
-    if (sortBy === 'price_high') return priceB - priceA;
-    if (sortBy === 'discount') {
-      const discA = ((parseFloat(a.mrp as any) || priceA) - priceA);
-      const discB = ((parseFloat(b.mrp as any) || priceB) - priceB);
-      return discB - discA;
-    }
-    return 0;
-  });
+  // ── Filter & sort ────────────────────────────────────────────────────────────
+  const filtered = products
+    .filter((p) => {
+      if (activeSubCat !== 'All') {
+        const sub = (p as any).primary_category || '';
+        if (sub !== activeSubCat) return false;
+      }
+      // PACK SIZE filter (Figma B5)
+      if (selectedPackSize && p.unit && p.unit.toLowerCase() !== selectedPackSize.toLowerCase()) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const pa = parseFloat(a.price as any) || 0;
+      const pb = parseFloat(b.price as any) || 0;
+      if (sortBy === 'price_low') return pa - pb;
+      if (sortBy === 'price_high') return pb - pa;
+      if (sortBy === 'discount') {
+        return ((parseFloat(b.mrp as any) || pb) - pb) - ((parseFloat(a.mrp as any) || pa) - pa);
+      }
+      return 0;
+    });
 
+  const subCats = getSubCategories(products);
+
+  // ── Derive unique pack sizes from real product units (Figma B5: PACK SIZE chips) ─
+  const packSizes = Array.from(
+    new Set(products.map((p) => p.unit).filter((u): u is string => !!u && u.trim().length > 0))
+  ).slice(0, 6);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
-      {/* =========================================================================
-         1. TOP CATEGORY HEADER (B4)
-         ========================================================================= */}
+      {/* ── Top header ──────────────────────────────────────────────────────── */}
       <View style={styles.topHeader}>
+        {/* Back */}
         <TouchableOpacity
+          style={styles.iconBtn}
           onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
         </TouchableOpacity>
 
-        <Text style={styles.categoryHeaderTitle} numberOfLines={1}>
-          {categoryName}
-        </Text>
+        {/* Search bar (inline, Figma: height 44, radius 12) */}
+        <TouchableOpacity
+          style={styles.inlineSearch}
+          onPress={() => navigation.navigate('Search')}
+          activeOpacity={0.8}
+        >
+          <AppIcon name="search" size={16} color={COLORS.ink300} />
+          <Text style={styles.inlineSearchTxt} numberOfLines={1}>
+            Search in {categoryName}
+          </Text>
+        </TouchableOpacity>
 
-        <View style={styles.headerRightActions}>
-          <TouchableOpacity
-            style={styles.headerActionBtn}
-            onPress={() => navigation.navigate('Search')}
-          >
-            <AppIcon name="search" size={18} color={COLORS.ink700} />
-          </TouchableOpacity>
+        {/* Cart icon with badge */}
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={() => navigation.navigate('Cart')}
+        >
+          <AppIcon name="cart" size={22} color={COLORS.ink900} badge={totalCartCount > 0 ? totalCartCount : undefined} />
+        </TouchableOpacity>
+      </View>
 
-          <TouchableOpacity
-            style={styles.filterBtn}
-            onPress={() => setShowFilterModal(true)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.filterBtnText}>⚙ Filter ▾</Text>
-          </TouchableOpacity>
+      {/* ── Body: left sidebar + right grid ────────────────────────────────── */}
+      <View style={styles.body}>
+
+        {/* ── Left sidebar ── */}
+        <View style={styles.sidebar}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sidebarContent}>
+            {subCats.map((sub, idx) => {
+              const active = activeSubCat === sub;
+              return (
+                <TouchableOpacity
+                  key={sub}
+                  style={[styles.subCatItem, active && styles.subCatItemActive]}
+                  onPress={() => setActiveSubCat(sub)}
+                  activeOpacity={0.75}
+                >
+                  {/* Active indicator bar */}
+                  {active && <View style={styles.activeBar} />}
+
+                  {/* Icon tile */}
+                  <View style={[styles.subCatTile, active ? styles.subCatTileActive : styles.subCatTileInactive]}>
+                    <AppIcon name="shopping-bag" size={22} color={active ? COLORS.green700 : COLORS.ink500} />
+                  </View>
+
+                  <Text style={[styles.subCatLabel, active && styles.subCatLabelActive]} numberOfLines={1}>
+                    {sub}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ── Right product grid ── */}
+        <View style={styles.gridArea}>
+          {/* Sort row */}
+          <View style={styles.sortRow}>
+            <Text style={styles.sortRowTitle} numberOfLines={1}>
+              {categoryName} · {filtered.length} items
+            </Text>
+            <TouchableOpacity
+              style={styles.sortPill}
+              onPress={() => setShowFilterModal(true)}
+              activeOpacity={0.8}
+            >
+              <AppIcon name="trending-down" size={13} color={COLORS.ink700} />
+              <Text style={styles.sortPillTxt}>Sort</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={styles.centerLoading}>
+              <ActivityIndicator size="large" color={COLORS.green700} />
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(p) => p.id}
+              numColumns={2}
+              contentContainerStyle={styles.gridContent}
+              showsVerticalScrollIndicator={false}
+              columnWrapperStyle={styles.gridRow}
+              renderItem={({ item, index }) => {
+                const cartItem = items.find((i) => i.product?.id === item.id);
+                const qty = cartItem?.quantity ?? 0;
+                return (
+                  <ProductCard
+                    item={item}
+                    index={index}
+                    quantity={qty}
+                    onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                    onAdd={() => addToCart(item)}
+                    onIncrement={() => addToCart(item)}
+                    onDecrement={() => updateQuantity(item.id, qty - 1)}
+                  />
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.emptyWrap}>
+                  <AppIcon name="shopping-bag" size={40} color={COLORS.ink300} />
+                  <Text style={styles.emptyTxt}>No products found</Text>
+                </View>
+              }
+            />
+          )}
         </View>
       </View>
 
-      {/* =========================================================================
-         2. 2-COLUMN PRODUCT GRID (B4)
-         ========================================================================= */}
-      {loading ? (
-        <View style={styles.centerLoading}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
-        </View>
-      ) : (
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.productsGrid}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const mrpVal = parseFloat(item.mrp as any) || Math.round(Number(item.price) * 1.18);
-            const priceVal = parseFloat(item.price as any) || 0;
-            const diff = mrpVal - priceVal;
-            const cartItem = items.find((i) => i.product?.id === item.id);
-            const count = cartItem ? cartItem.quantity : 0;
-
-            return (
-              <TouchableOpacity
-                style={styles.productCard}
-                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-                activeOpacity={0.8}
-              >
-                {/* Image Wrap */}
-                <View style={styles.imageWrap}>
-                  {diff > 0 && (
-                    <View style={styles.savePill}>
-                      <Text style={styles.savePillText}>SAVE ₹{diff}</Text>
-                    </View>
-                  )}
-
-                  {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={styles.productImg} resizeMode="contain" />
-                  ) : (
-                    <View style={styles.bagPlaceholder}>
-                      <AppIcon name="shopping-bag" size={36} color={COLORS.green700} />
-                    </View>
-                  )}
-
-                  {/* ADD / Stepper */}
-                  {count > 0 ? (
-                    <View style={styles.cardStepperWrap}>
-                      <TouchableOpacity
-                        style={styles.cardStepBtn}
-                        onPress={() => updateQuantity(item.id, count - 1)}
-                      >
-                        <Text style={styles.cardStepBtnText}>−</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.cardStepCountText}>{count}</Text>
-                      <TouchableOpacity
-                        style={styles.cardStepBtn}
-                        onPress={() => addToCart(item)}
-                      >
-                        <Text style={styles.cardStepBtnText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.addPillBtn}
-                      onPress={() => addToCart(item)}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.addPillText}>ADD</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Product Info */}
-                <Text style={styles.productPackSize}>{item.unit || '1 unit'}</Text>
-                <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-
-                <View style={styles.priceRow}>
-                  <Text style={styles.currentPrice}>₹{item.price}</Text>
-                  {mrpVal > priceVal && (
-                    <Text style={styles.originalPrice}>₹{mrpVal}</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          }}
-          ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Text style={styles.emptyMsg}>No products found in this category.</Text>
-            </View>
-          }
-        />
-      )}
-
-      {/* =========================================================================
-         3. STICKY FLOATING BOTTOM CART BAR (B4)
-         ========================================================================= */}
+      {/* ── Floating cart bar (Figma: rgba green pill, centered) ───────────── */}
       {totalCartCount > 0 && (
-        <View style={styles.floatingCartWrap}>
-          <TouchableOpacity
-            style={styles.floatingCartBar}
-            onPress={() => navigation.navigate('Cart')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.cartBarLeft}>
-              <Text style={styles.cartBarItemsText}>
-                {totalCartCount} {totalCartCount === 1 ? 'item' : 'items'} · ₹{totalAmount}
+        <TouchableOpacity
+          style={styles.floatingCart}
+          onPress={() => navigation.navigate('Cart')}
+          activeOpacity={0.9}
+        >
+          <View style={styles.floatingCartLeft}>
+            <View style={styles.floatingCartIcon}>
+              <AppIcon name="cart" size={16} color="#FFFFFF" />
+            </View>
+            <View>
+              <Text style={styles.floatingCartLabel}>View cart</Text>
+              <Text style={styles.floatingCartCount}>
+                {totalCartCount} {totalCartCount === 1 ? 'item' : 'items'}
               </Text>
             </View>
-            <View style={styles.cartBarRight}>
-              <Text style={styles.viewCartText}>View cart ›</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+          </View>
+          <AppIcon name="arrow-right" size={16} color="#FFFFFF" />
+        </TouchableOpacity>
       )}
 
-      {/* =========================================================================
-         4. B5 · FILTER & SORT MODAL BOTTOM SHEET
-         ========================================================================= */}
+      {/* ── B5 · Filter & Sort sheet (Figma #474:680) ──────────────────────── */}
       <Modal
         visible={showFilterModal}
         transparent
@@ -264,101 +349,90 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
         onRequestClose={() => setShowFilterModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            onPress={() => setShowFilterModal(false)}
-            activeOpacity={1}
-          />
+          {/* Dark backdrop */}
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowFilterModal(false)} activeOpacity={1} />
 
-          <View style={styles.sheetContainer}>
-            {/* Sheet Handle */}
-            <View style={styles.sheetHandle} />
+          <View style={styles.sheet}>
+            {/* Drag handle */}
+            <View style={styles.sheetHandleRow}>
+              <View style={styles.sheetHandle} />
+            </View>
 
-            {/* Header */}
+            {/* Header: title + X icon (Figma: #474:685) */}
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Sort & filter</Text>
-              <TouchableOpacity onPress={handleClearFilters}>
-                <Text style={styles.clearAllText}>Clear all</Text>
+              <TouchableOpacity
+                style={styles.sheetCloseBtn}
+                onPress={() => setShowFilterModal(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <AppIcon name="minus" size={18} color={COLORS.ink700} />
               </TouchableOpacity>
             </View>
 
-            {/* SORT BY */}
-            <Text style={styles.sheetSectionLabel}>SORT BY</Text>
-            <View style={styles.radioGroup}>
-              {[
-                { key: 'relevance', label: 'Relevance' },
-                { key: 'price_low', label: 'Price — low to high' },
-                { key: 'price_high', label: 'Price — high to low' },
-                { key: 'discount', label: 'Discount — high to low' },
-              ].map((r) => (
-                <TouchableOpacity
-                  key={r.key}
-                  style={styles.radioRow}
-                  onPress={() => setSortBy(r.key as any)}
-                >
-                  <View style={[styles.radioCircle, sortBy === r.key && styles.radioCircleActive]}>
-                    {sortBy === r.key && <View style={styles.radioInnerDot} />}
-                  </View>
-                  <Text style={[styles.radioLabel, sortBy === r.key && styles.radioLabelActive]}>
-                    {r.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            {/* SORT BY (Figma: #474:690) */}
+            <View style={styles.sheetSectionWrap}>
+              <Text style={styles.sheetSection}>SORT BY</Text>
+              <View style={styles.radioGroup}>
+                {[
+                  { key: 'relevance', label: 'Relevance' },
+                  { key: 'price_low', label: 'Price — Low to High' },
+                  { key: 'price_high', label: 'Price — High to Low' },
+                  { key: 'discount', label: 'Discount — High to Low' },
+                ].map((r) => (
+                  <TouchableOpacity
+                    key={r.key}
+                    style={styles.radioRow}
+                    onPress={() => setSortBy(r.key as any)}
+                  >
+                    <Text style={[styles.radioTxt, sortBy === r.key && styles.radioTxtOn]}>{r.label}</Text>
+                    {sortBy === r.key ? (
+                      <View style={styles.radioCircleOn}>
+                        <View style={styles.radioDot} />
+                      </View>
+                    ) : (
+                      <View style={styles.radioCircle} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
-            {/* BRAND */}
-            <Text style={styles.sheetSectionLabel}>BRAND</Text>
-            <View style={styles.chipsWrap}>
-              {['Aashirvaad', 'Fortune', 'India Gate', 'Tata Sampann', 'Daawat', 'Amul'].map((brand) => (
-                <TouchableOpacity
-                  key={brand}
-                  style={[styles.filterChip, selectedBrand.toLowerCase() === brand.toLowerCase() && styles.filterChipActive]}
-                  onPress={() => setSelectedBrand(selectedBrand.toLowerCase() === brand.toLowerCase() ? '' : brand)}
-                >
-                  <Text style={[styles.filterChipText, selectedBrand.toLowerCase() === brand.toLowerCase() && styles.filterChipTextActive]}>
-                    {brand}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* PACK SIZE chips — from real product units (Figma: #474:706) */}
+            {packSizes.length > 0 && (
+              <View style={styles.sheetSectionWrap}>
+                <Text style={styles.sheetSection}>PACK SIZE</Text>
+                <View style={styles.chips}>
+                  {packSizes.map((size) => (
+                    <TouchableOpacity
+                      key={size}
+                      style={[styles.chip, selectedPackSize === size && styles.chipOn]}
+                      onPress={() => setSelectedPackSize(selectedPackSize === size ? '' : size)}
+                    >
+                      <Text style={[styles.chipTxt, selectedPackSize === size && styles.chipTxtOn]}>{size}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
 
-            {/* PRICE */}
-            <Text style={styles.sheetSectionLabel}>PRICE</Text>
-            <View style={styles.chipsWrap}>
-              {['Under ₹200', '₹200 - ₹500', '₹500 - ₹1,000', '₹1,000+'].map((price) => (
-                <TouchableOpacity
-                  key={price}
-                  style={[styles.filterChip, selectedPriceRange === price && styles.filterChipActive]}
-                  onPress={() => setSelectedPriceRange(selectedPriceRange === price ? '' : price)}
-                >
-                  <Text style={[styles.filterChipText, selectedPriceRange === price && styles.filterChipTextActive]}>
-                    {price}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            {/* Bottom: Clear all + Apply side-by-side (Figma: #474:717) */}
+            <View style={styles.sheetBtnsRow}>
+              <TouchableOpacity
+                style={styles.clearAllBtn}
+                onPress={clearFilters}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.clearAllBtnTxt}>Clear all</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.applyBtn}
+                onPress={() => setShowFilterModal(false)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.applyBtnTxt}>Apply</Text>
+              </TouchableOpacity>
             </View>
-
-            {/* ONLY SHOW DISCOUNTED ITEMS TOGGLE */}
-            <View style={styles.toggleRow}>
-              <Text style={styles.toggleLabel}>Only show discounted items</Text>
-              <Switch
-                value={discountOnly}
-                onValueChange={setDiscountOnly}
-                trackColor={{ false: COLORS.line, true: COLORS.green600 }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-
-            {/* APPLY BUTTON */}
-            <TouchableOpacity
-              style={styles.applyBtn}
-              onPress={() => setShowFilterModal(false)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.applyBtnText}>
-                Apply · {filteredProducts.length} items
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -366,292 +440,396 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: '#FBFAF6',
   },
+
+  // ── Top header ───────────────────────────────────────────────────────────────
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+    backgroundColor: '#FBFAF6',
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inlineSearch: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+  },
+  inlineSearchTxt: {
+    flex: 1,
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink300,
+  },
+
+  // ── Body split pane ───────────────────────────────────────────────────────────
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+
+  // ── Left sidebar (Figma: 76px wide, #F4F3EE bg, shadow) ─────────────────────
+  sidebar: {
+    width: SIDEBAR_W,
+    backgroundColor: '#F4F3EE',
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  sidebarContent: {
+    paddingVertical: 8,
+    gap: 2,
+  },
+  subCatItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    gap: 4,
+    position: 'relative',
+  },
+  subCatItemActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  activeBar: {
+    position: 'absolute',
+    left: 0,
+    top: -1,
+    bottom: -1,
+    width: 3,
+    backgroundColor: COLORS.green700,
+    borderRadius: 999,
+  },
+  subCatTile: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  subCatTileActive: {
+    backgroundColor: COLORS.green50,
+  },
+  subCatTileInactive: {
+    backgroundColor: '#FFFFFF',
+  },
+  subCatLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  subCatLabelActive: {
+    color: COLORS.green700,
+  },
+
+  // ── Right grid area ───────────────────────────────────────────────────────────
+  gridArea: {
+    flex: 1,
+  },
+
+  // Sort row
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  sortRowTitle: {
+    flex: 1,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.ink900,
+  },
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: 999,
+  },
+  sortPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: COLORS.ink700,
+  },
+
   centerLoading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  topHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
-  },
-  backBtn: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
-  },
-  categoryHeaderTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink900,
-    paddingHorizontal: 6,
-  },
-  headerRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerActionBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterBtn: {
-    backgroundColor: COLORS.green50,
-    borderWidth: 1.5,
-    borderColor: COLORS.green600,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  filterBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  productsGrid: {
+
+  // Grid
+  gridContent: {
     paddingHorizontal: 12,
-    paddingTop: 12,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
-  productCard: {
-    width: (width - 24 - 10) / 2,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md, // 12px
-    padding: 10,
-    margin: 5,
+  gridRow: {
+    gap: 10,
+    marginBottom: 12,
   },
-  imageWrap: {
+
+  // ── Product card (Figma: 139px wide, 8px/10px padding, 14px radius) ──────────
+  card: {
+    width: CARD_W,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 8,
+    paddingBottom: 10,
+    gap: 5,
+  },
+  cardImgWrap: {
     width: '100%',
-    height: 125,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.green50,
+    height: 92,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: 8,
+    overflow: 'hidden',
   },
-  savePill: {
+  offBadge: {
     position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: COLORS.marigold500, // #F5A524
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: RADIUS.pill,
+    top: 5,
+    left: 5,
+    backgroundColor: '#F5A524',
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 5,
     zIndex: 2,
   },
-  savePillText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: COLORS.ink900,
+  offBadgeTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 9,
+    color: '#FFFFFF',
   },
-  productImg: {
-    width: 80,
-    height: 80,
+  cardImg: {
+    width: 54,
+    height: 54,
   },
-  bagPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addPillBtn: {
+  addPill: {
     position: 'absolute',
     bottom: 6,
     right: 6,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: COLORS.green700,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     zIndex: 3,
   },
-  addPillText: {
+  addPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
     color: COLORS.green700,
-    fontSize: 11,
-    fontWeight: '800',
   },
-  cardStepperWrap: {
+  cardStepper: {
     position: 'absolute',
     bottom: 6,
     right: 6,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.pill,
-    height: 26,
-    paddingHorizontal: 4,
+    borderRadius: 8,
+    height: 32,
     zIndex: 3,
   },
   cardStepBtn: {
-    width: 18,
-    height: 24,
+    width: 28,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cardStepBtnText: {
+  cardStepTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 16,
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
+    lineHeight: 20,
   },
-  cardStepCountText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 4,
-  },
-  productPackSize: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.ink500,
-    marginBottom: 2,
-  },
-  productName: {
+  cardStepQty: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.ink900,
-    marginBottom: 4,
-    minHeight: 34,
-    lineHeight: 17,
+    color: '#FFFFFF',
+    minWidth: 16,
+    textAlign: 'center',
   },
-  priceRow: {
+  cardName: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.ink900,
+    lineHeight: 20,
+    minHeight: 40,
+  },
+  cardUnit: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: COLORS.ink500,
+    lineHeight: 14,
+  },
+  cardPriceRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
+    alignItems: 'center',
+    gap: 5,
   },
-  currentPrice: {
-    fontSize: 15,
-    fontWeight: '800',
+  cardPrice: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
   },
-  originalPrice: {
-    fontSize: 11.5,
+  cardMrp: {
+    ...FONTS.muktaRegular,
+    fontSize: 11,
     color: COLORS.ink300,
     textDecorationLine: 'line-through',
   },
+
+  // Empty
   emptyWrap: {
     paddingVertical: 40,
     alignItems: 'center',
+    gap: 12,
   },
-  emptyMsg: {
+  emptyTxt: {
+    ...FONTS.muktaRegular,
     fontSize: 14,
     color: COLORS.ink500,
   },
-  /* Floating Bottom Cart Bar */
-  floatingCartWrap: {
+
+  // ── Floating cart bar (Figma: green 0.9 alpha, 100px radius, centered) ────────
+  floatingCart: {
     position: 'absolute',
     bottom: 16,
-    left: 16,
-    right: 16,
-  },
-  floatingCartBar: {
+    left: SIDEBAR_W + 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.green700, // #1E7A46
-    height: 52,
-    borderRadius: RADIUS.pill, // 999px
-    paddingHorizontal: 20,
-    shadowColor: '#000000',
+    backgroundColor: 'rgba(30, 122, 70, 0.9)',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderTopWidth: 0,
+    borderRadius: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    elevation: 8,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 6,
   },
-  cartBarLeft: {},
-  cartBarItemsText: {
-    fontSize: 14,
-    fontWeight: '700',
+  floatingCartLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  floatingCartIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  floatingCartLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
     color: '#FFFFFF',
   },
-  cartBarRight: {},
-  viewCartText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  floatingCartCount: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: '#E4F3EA',
   },
-  /* B5 Filter & Sort Sheet */
+
+  // ── Filter & Sort sheet ───────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(23,37,30,0.5)',
   },
-  modalBackdrop: {
-    flex: 1,
-  },
-  sheetContainer: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 28,
+    gap: 18,
+  },
+  sheetHandleRow: {
+    alignItems: 'center',
+    paddingBottom: 4,
   },
   sheetHandle: {
     width: 40,
-    height: 4,
-    borderRadius: 2,
+    height: 5,
+    borderRadius: 999,
     backgroundColor: COLORS.line,
-    alignSelf: 'center',
-    marginBottom: 14,
   },
   sheetHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
   },
   sheetTitle: {
+    ...FONTS.balooBold,
     fontSize: 18,
-    fontWeight: '800',
     color: COLORS.ink900,
   },
-  clearAllText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.green700,
+  sheetCloseBtn: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  sheetSectionLabel: {
+  sheetSectionWrap: {
+    gap: 10,
+  },
+  sheetSection: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '700',
     color: COLORS.ink500,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginTop: 10,
-    marginBottom: 8,
   },
-  radioGroup: {
-    gap: 10,
-    marginBottom: 10,
-  },
+  radioGroup: { gap: 2 },
   radioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
   },
   radioCircle: {
     width: 18,
@@ -662,30 +840,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  radioCircleActive: {
+  radioCircleOn: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.8,
     borderColor: COLORS.green700,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  radioInnerDot: {
+  radioDot: {
     width: 9,
     height: 9,
     borderRadius: 4.5,
     backgroundColor: COLORS.green700,
   },
-  radioLabel: {
-    fontSize: 13.5,
+  radioTxt: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
     color: COLORS.ink700,
   },
-  radioLabelActive: {
-    fontWeight: '600',
+  radioTxtOn: {
+    ...FONTS.muktaBold,
     color: COLORS.ink900,
   },
-  chipsWrap: {
+  chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 8,
   },
-  filterChip: {
+  chip: {
     backgroundColor: COLORS.paper,
     borderWidth: 1,
     borderColor: COLORS.line,
@@ -693,43 +877,48 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  filterChipActive: {
+  chipOn: {
     backgroundColor: COLORS.green700,
     borderColor: COLORS.green700,
   },
-  filterChipText: {
-    fontSize: 12.5,
-    fontWeight: '600',
+  chipTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
     color: COLORS.ink700,
   },
-  filterChipTextActive: {
-    color: '#FFFFFF',
-  },
-  toggleRow: {
+  chipTxtOn: { color: '#FFFFFF' },
+  togglePlaceholder: { height: 0 }, // kept for type safety
+  sheetBtnsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    marginTop: 8,
+    gap: 12,
+    paddingTop: 4,
   },
-  toggleLabel: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: COLORS.ink900,
-  },
-  applyBtn: {
-    backgroundColor: COLORS.green700,
+  clearAllBtn: {
+    flex: 1,
     height: 50,
-    borderRadius: RADIUS.pill,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 14,
   },
-  applyBtnText: {
-    color: '#FFFFFF',
+  clearAllBtnTxt: {
+    ...FONTS.balooBold,
     fontSize: 15,
-    fontWeight: '700',
+    color: COLORS.ink700,
+  },
+  applyBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: COLORS.green700,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  applyBtnTxt: {
+    ...FONTS.balooBold,
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });

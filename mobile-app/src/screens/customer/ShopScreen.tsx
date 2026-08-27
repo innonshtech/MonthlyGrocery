@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
+import { COLORS, FONTS } from '../../constants/theme';
 
 
 
@@ -93,7 +94,13 @@ export default function ShopScreen({ navigation }: any) {
 
     return (
       <View style={styles.productCard}>
-        <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="contain" />
+        <View style={styles.imageWrap}>
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="contain" />
+          ) : (
+            <Text style={{ fontSize: 30 }}>🛍️</Text>
+          )}
+        </View>
         <View style={styles.productInfo}>
           <Text style={styles.brandText}>{item.brand}</Text>
           <Text style={styles.nameText} numberOfLines={2}>{item.name}</Text>
@@ -241,13 +248,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerTitle: {
+    ...FONTS.balooBold,
     fontSize: 22,
-    fontWeight: 'bold',
-    color: '#0B1220',
+    color: COLORS.green900,
   },
   headerSubtitle: {
+    ...FONTS.muktaMedium,
     fontSize: 12,
-    color: '#666',
+    color: COLORS.ink500,
     marginTop: 2,
   },
   logoutBtn: {
@@ -319,17 +327,25 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '48%',
     marginBottom: 15,
-    padding: 12,
+    padding: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
     shadowRadius: 5,
     elevation: 1,
   },
+  imageWrap: {
+    height: 125,
+    borderRadius: 12,
+    backgroundColor: '#F2F9F5', // soft mint matching category products
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
   productImage: {
-    width: '100%',
-    height: 110,
-    marginBottom: 10,
+    width: 80,
+    height: 80,
   },
   productInfo: {
     flex: 1,

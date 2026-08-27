@@ -60,16 +60,32 @@
   "promotional_banners": [
     {
       "id": "banner-1",
-      "title": "Monthly Super Saver: Flat 10% Off on Staples!",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/banners/banner_staples_discount.png",
-      "action_link": "CategoryProducts?category=Atta%20%26%20Rice",
+      "title": "Monthly Staples Sale: 10% Off on Atta & Rice!",
+      "image_url": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600",
       "active": true
     },
     {
       "id": "banner-2",
-      "title": "Free Delivery on Orders Over ₹3,000",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/banners/banner_free_delivery.png",
-      "action_link": "Cart",
+      "title": "Free Delivery on orders above ₹3,000",
+      "image_url": "https://images.unsplash.com/photo-1572195577046-2f25894c06fc?w=600",
+      "active": true
+    },
+    {
+      "id": "banner-3",
+      "title": "Fresh Farm Harvest: 15% Off Organic Produce",
+      "image_url": "https://images.unsplash.com/photo-1579113800032-c38bd7635818?w=600",
+      "active": true
+    },
+    {
+      "id": "banner-4",
+      "title": "Breakfast Essentials: Milk, Butter & Eggs",
+      "image_url": "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=600",
+      "active": true
+    },
+    {
+      "id": "banner-5",
+      "title": "Daily Kitchen Staples: Oils & Spices",
+      "image_url": "https://images.unsplash.com/photo-1608686207856-001b95cf60ca?w=600",
       "active": true
     }
   ],
@@ -164,12 +180,182 @@
   ],
   "shop_products": [
     {
-      "id": "sp-1787566002450-u4dn32lnz",
+      "id": "sp-seed-0-aeygs",
       "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
       "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
-      "selling_price": 145,
-      "discount_percentage": 50,
-      "stock": 25,
+      "selling_price": 150,
+      "discount_percentage": 6,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-1-fw9bs",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "6214394d-03aa-4f2f-a5ed-69fe78fdd565",
+      "selling_price": 255,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-2-4j1skh",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "943618f5-4522-4a10-bfbc-913627988776",
+      "selling_price": 430,
+      "discount_percentage": 17,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-3-pjyzdg",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "3061311c-7c64-459a-ba3f-3ca0ee1659cf",
+      "selling_price": 310,
+      "discount_percentage": 15,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-4-rzanaj",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "cc74fc2e-0eec-4cf3-bbdc-edfbd2cccfea",
+      "selling_price": 265,
+      "discount_percentage": 13,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-5-ochyyp",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "991bd21d-9243-495e-aa11-97ce428680a8",
+      "selling_price": 525,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-6-gn58j8",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "fb290170-c4b1-4e23-976f-59f118fec2e6",
+      "selling_price": 142,
+      "discount_percentage": 21,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-7-lu9w79",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "bda00c37-0a31-49d3-99c8-9a2e1e2e02a9",
+      "selling_price": 135,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-8-v1fdha",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "1f8e9c93-f209-4d74-8991-2323ce029dcc",
+      "selling_price": 649,
+      "discount_percentage": 7,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-9-dzhbcp",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "be825984-4f54-4ba7-9f49-d658cff36fc5",
+      "selling_price": 78,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-10-0u8z33",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "a5e65441-af6e-40eb-a9ef-90bfcd1cfca2",
+      "selling_price": 105,
+      "discount_percentage": 19,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-11-y75w99",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "0f6937c9-4c78-4c9f-bb6c-0c331401931a",
+      "selling_price": 285,
+      "discount_percentage": 16,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-12-c6rk3g",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "64e9e3ec-a77b-46f3-a2e7-17543be1d8c9",
+      "selling_price": 120,
+      "discount_percentage": 20,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-13-usu6a",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "63f4ca5e-3bde-434d-8c1f-4c24a2f2adaa",
+      "selling_price": 380,
+      "discount_percentage": 17,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-14-hg18f",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "ab3121ee-3be3-4c04-aa68-5f6d6f36089d",
+      "selling_price": 245,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-15-dsj70bh",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "e0bc8ff3-7135-427f-bcec-b2fea6c6ec5e",
+      "selling_price": 385,
+      "discount_percentage": 14,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-16-2o25l4",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "4b91550f-bc4a-4706-9f9b-b9ad31d71a35",
+      "selling_price": 180,
+      "discount_percentage": 16,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-17-mvxs6i",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "7e3041cf-e364-44cb-a98c-5b093bc37b9e",
+      "selling_price": 899,
+      "discount_percentage": 18,
+      "stock": 100,
       "available": true,
       "status": "approved"
     }
@@ -177,19 +363,23 @@
   "categories": [
     {
       "id": "cat-1",
-      "name": "Atta & Rice"
+      "name": "Atta & Rice",
+      "image_url": "https://images.unsplash.com/photo-1574316071802-0d684efa7bf5?w=200&h=200&fit=crop"
     },
     {
       "id": "cat-2",
-      "name": "Oils & Ghee"
+      "name": "Oils & Ghee",
+      "image_url": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&h=200&fit=crop"
     },
     {
       "id": "cat-3",
-      "name": "Dals & Pulses"
+      "name": "Dals & Pulses",
+      "image_url": "https://images.unsplash.com/photo-1515942400756-12822287e6a6?w=200&h=200&fit=crop"
     },
     {
       "id": "cat-4",
-      "name": "Spices & Masala"
+      "name": "Spices & Masala",
+      "image_url": "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=200&h=200&fit=crop"
     },
     {
       "id": "cat-5",

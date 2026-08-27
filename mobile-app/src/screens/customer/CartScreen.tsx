@@ -3,50 +3,85 @@ import {
   StyleSheet,
   View,
   Text,
-  FlatList,
   Image,
   TouchableOpacity,
   ScrollView,
   Alert,
-  StatusBar
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { useCart, CartItem } from '../../context/CartContext';
+import { useCart } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
 
+// ─── Category pastel colour for product image tile bg ────────────────────────
+const PRODUCT_BG_COLORS = [
+  '#FFF3D6', '#E4F3EA', '#F6E9E1', '#FDE7E7',
+  '#EDE9FB', '#FBEEDD', '#EAF6D6', '#E1F0FB',
+  '#FDEFD3', '#FDE4E7',
+];
+function getProductBg(index: number): string {
+  return PRODUCT_BG_COLORS[index % PRODUCT_BG_COLORS.length];
+}
+
+// ─── Inline Stepper (Figma: green pill, 30×32 buttons) ───────────────────────
+function Stepper({
+  quantity,
+  onDecrement,
+  onIncrement,
+}: {
+  quantity: number;
+  onDecrement: () => void;
+  onIncrement: () => void;
+}) {
+  return (
+    <View style={styles.stepper}>
+      <TouchableOpacity style={styles.stepBtn} onPress={onDecrement} activeOpacity={0.7}>
+        <Text style={styles.stepBtnTxt}>−</Text>
+      </TouchableOpacity>
+      <Text style={styles.stepQty}>{quantity}</Text>
+      <TouchableOpacity style={styles.stepBtn} onPress={onIncrement} activeOpacity={0.7}>
+        <Text style={styles.stepBtnTxt}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CartScreen({ route, navigation }: any) {
   const { token } = useAuth();
   const { items, minOrderLimit = 2000, updateQuantity, addToCart } = useCart();
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(route?.params?.appliedCoupon || null);
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(
+    route?.params?.appliedCoupon || null
+  );
   const [authGateVisible, setAuthGateVisible] = useState(false);
   const [authGateType, setAuthGateType] = useState<AuthGateType>('checkout');
 
   const minLimit = minOrderLimit || 2000;
 
-  // Real Dynamic Calculations
+  // ── Calculations ────────────────────────────────────────────────────────────
   const itemTotalMrp = items.reduce((sum, item) => {
-    const mrp = parseFloat(item.product.mrp as any) || Math.round(Number(item.product.price) * 1.22);
+    const mrp =
+      parseFloat(item.product.mrp as any) ||
+      Math.round(Number(item.product.price) * 1.22);
     return sum + mrp * item.quantity;
   }, 0);
 
   const itemTotalPrice = items.reduce((sum, item) => {
-    const price = parseFloat(item.product.price as any) || 0;
-    return sum + price * item.quantity;
+    return sum + (parseFloat(item.product.price as any) || 0) * item.quantity;
   }, 0);
 
   let couponDiscount = 0;
   if (appliedCoupon) {
-    if (appliedCoupon.discount_type === 'percentage') {
-      couponDiscount = Math.min(
-        Math.round((itemTotalPrice * appliedCoupon.value) / 100),
-        appliedCoupon.max_discount || 200
-      );
-    } else {
-      couponDiscount = appliedCoupon.value || 50;
-    }
+    couponDiscount =
+      appliedCoupon.discount_type === 'percentage'
+        ? Math.min(
+            Math.round((itemTotalPrice * appliedCoupon.value) / 100),
+            appliedCoupon.max_discount || 200
+          )
+        : appliedCoupon.value || 50;
   }
 
   const rawSavings = itemTotalMrp - itemTotalPrice;
@@ -54,8 +89,9 @@ export default function CartScreen({ route, navigation }: any) {
   const toPay = Math.max(0, itemTotalPrice - couponDiscount);
   const isBelowMin = toPay < minLimit;
   const amountNeeded = minLimit - toPay;
-  const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItemCount = items.reduce((s, i) => s + i.quantity, 0);
 
+  // ── Handlers ────────────────────────────────────────────────────────────────
   const handleCheckout = () => {
     if (isBelowMin) {
       Alert.alert(
@@ -64,53 +100,72 @@ export default function CartScreen({ route, navigation }: any) {
       );
       return;
     }
-
     if (!token) {
       setAuthGateType('checkout');
       setAuthGateVisible(true);
       return;
     }
-
     navigation.navigate('Checkout', { appliedCoupon, discountAmount: couponDiscount });
   };
 
-  const handleSaveAsBasket = () => {
+  const handleSaveBasket = () => {
     if (!token) {
       setAuthGateType('save_basket');
       setAuthGateVisible(true);
       return;
     }
-
     navigation.navigate('SavedBaskets');
   };
 
-  // =========================================================================
-  // 1. C2 SUB-STATE: CART EMPTY
-  // =========================================================================
+  // ── Empty State (C2 · Cart — Empty Slide #528:679) ──────────────────────────
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="dark-content" />
+
+        {/* Header */}
         <View style={styles.topHeader}>
           <Text style={styles.topTitle}>Your cart</Text>
         </View>
 
-        <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <AppIcon name="cart" size={48} color={COLORS.green700} />
+        {/* Empty body */}
+        <View style={styles.emptyWrap}>
+          {/* Main Empty Circle with Floating Emojis */}
+          <View style={styles.emptyIconContainer}>
+            <View style={styles.emptyIconCircle}>
+              <AppIcon name="cart" size={48} color={COLORS.green700} />
+            </View>
+            
+            {/* Top-Left Atta badge */}
+            <View style={[styles.floatingBadge, styles.floatingBadgeTopLeft]}>
+              <Image
+                source={{ uri: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png' }}
+                style={styles.badgeImg}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* Bottom-Right Oil badge */}
+            <View style={[styles.floatingBadge, styles.floatingBadgeBottomRight]}>
+              <Image
+                source={{ uri: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/amul_pure_ghee_1l.png' }}
+                style={styles.badgeImg}
+                resizeMode="contain"
+              />
+            </View>
           </View>
 
           <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySubtitle}>
-            Add items to build this month's grocery — or bring back your last basket in one tap.
+          <Text style={styles.emptySub}>
+            Add your monthly essentials and they’ll show up here.
           </Text>
 
           <TouchableOpacity
-            style={styles.startShoppingBtn}
+            style={styles.startBtn}
             onPress={() => navigation.navigate('Home')}
             activeOpacity={0.85}
           >
-            <Text style={styles.startShoppingBtnText}>Start shopping</Text>
+            <Text style={styles.startBtnTxt}>Start shopping</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -118,260 +173,343 @@ export default function CartScreen({ route, navigation }: any) {
             onPress={() => navigation.navigate('CopyLastMonth')}
             activeOpacity={0.7}
           >
-            <Text style={styles.reorderLinkText}>↻ Reorder last basket</Text>
+            <View style={styles.reorderLinkInner}>
+              <AppIcon name="trending-down" size={16} color={COLORS.green700} />
+              <Text style={styles.reorderLinkTxt}>Reorder last month’s basket</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
 
+  // ── Filled Cart ─────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Header */}
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <View style={styles.topHeader}>
-        <Text style={styles.topTitle}>
-          Your cart <Text style={styles.itemCountHeader}>({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'})</Text>
+        <Text style={styles.topTitle}>Your cart</Text>
+        <Text style={styles.topCount}>
+          {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
         </Text>
       </View>
 
       <ScrollView
-        style={styles.scrollArea}
+        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* =========================================================================
-           2. NOTICES: SAVINGS ALERT OR BELOW MINIMUM ALERT (C2)
-           ========================================================================= */}
+        {/* ── 1. Notice banner ──────────────────────────────────────────────── */}
         {isBelowMin ? (
-          <View style={styles.belowMinNotice}>
-            <Text style={styles.belowMinIcon}>⚠️</Text>
-            <Text style={styles.belowMinText}>
-              Add ₹{amountNeeded} more to reach the ₹{minLimit} minimum
+          <View style={styles.belowMinBanner}>
+            <View style={styles.belowMinHeaderRow}>
+              <AppIcon name="help" size={18} color="#155A38" />
+              <Text style={styles.belowMinTitle}>
+                Add ₹{amountNeeded.toLocaleString('en-IN')} more to check out
+              </Text>
+            </View>
+            
+            {/* Horizontal progress bar */}
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((toPay / minLimit) * 100))}%` }]} />
+            </View>
+
+            <Text style={styles.belowMinFootnote}>
+              You’re at ₹{toPay.toLocaleString('en-IN')} of the ₹{minLimit.toLocaleString('en-IN')} monthly minimum order
             </Text>
           </View>
         ) : (
-          <View style={styles.savingsNotice}>
-            <Text style={styles.savingsNoticeIcon}>🎉</Text>
-            <Text style={styles.savingsNoticeText}>
-              You're saving ₹{totalSavings} on this order
+          <View style={styles.savingsBanner}>
+            <AppIcon name="tag" size={18} color="#8A5200" />
+            <Text style={styles.savingsTxt}>
+              You're saving ₹{totalSavings.toLocaleString('en-IN')} on this order 🎉
             </Text>
           </View>
         )}
 
-        {/* =========================================================================
-           3. BASKET ITEMS LIST WITH STEPPERS (C2)
-           ========================================================================= */}
-        <View style={styles.itemsListContainer}>
-          {items.map((cartItem) => {
-            const itemPrice = parseFloat(cartItem.product.price as any) || 0;
-            const itemMrp = parseFloat(cartItem.product.mrp as any) || Math.round(itemPrice * 1.22);
-            const lineTotal = itemPrice * cartItem.quantity;
-            const lineMrp = itemMrp * cartItem.quantity;
+        {/* ── 2. Cart items card ────────────────────────────────────────────── */}
+        <View style={styles.itemsCard}>
+          {items.map((cartItem, idx) => {
+            const price = parseFloat(cartItem.product.price as any) || 0;
+            const lineTotal = price * cartItem.quantity;
 
             return (
-              <View key={cartItem.product.id} style={styles.itemRow}>
-                {/* Thumb */}
-                <View style={styles.itemThumb}>
+              <View
+                key={cartItem.product.id}
+                style={[
+                  styles.itemRow,
+                  idx < items.length - 1 && styles.itemRowBorder,
+                ]}
+              >
+                {/* Product image tile */}
+                <View style={[styles.imgTile, { backgroundColor: getProductBg(idx) }]}>
                   {cartItem.product.image_url ? (
-                    <Image source={{ uri: cartItem.product.image_url }} style={styles.thumbImg} resizeMode="contain" />
+                    <Image
+                      source={{ uri: cartItem.product.image_url }}
+                      style={styles.imgTileImg}
+                      resizeMode="contain"
+                    />
                   ) : (
-                    <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
+                    <AppIcon name="shopping-bag" size={22} color={COLORS.green700} />
                   )}
                 </View>
 
-                {/* Details */}
+                {/* Info */}
                 <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={1}>
+                  <Text style={styles.itemName} numberOfLines={2}>
                     {cartItem.product.name}
                   </Text>
-                  <Text style={styles.itemUnit}>
-                    {cartItem.product.unit || '1 unit'}
+                  {cartItem.product.unit ? (
+                    <Text style={styles.itemUnit}>{cartItem.product.unit}</Text>
+                  ) : null}
+                  <Text style={styles.itemPrice}>
+                    ₹{lineTotal.toLocaleString('en-IN')}
                   </Text>
-                  <View style={styles.itemPriceRow}>
-                    <Text style={styles.itemPriceText}>₹{lineTotal}</Text>
-                    <Text style={styles.itemMrpText}>₹{lineMrp}</Text>
-                  </View>
                 </View>
 
-                {/* Stepper (− count +) */}
-                <View style={styles.stepperWrap}>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1)}
-                  >
-                    <Text style={styles.stepBtnText}>−</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.stepCountText}>{cartItem.quantity}</Text>
-                  <TouchableOpacity
-                    style={styles.stepBtn}
-                    onPress={() => addToCart(cartItem.product)}
-                  >
-                    <Text style={styles.stepBtnText}>+</Text>
-                  </TouchableOpacity>
-                </View>
+                {/* Stepper */}
+                <Stepper
+                  quantity={cartItem.quantity}
+                  onDecrement={() =>
+                    updateQuantity(cartItem.product.id, cartItem.quantity - 1)
+                  }
+                  onIncrement={() => addToCart(cartItem.product)}
+                />
               </View>
             );
           })}
         </View>
 
-        {/* =========================================================================
-           4. SMART ACTIONS (Save Basket & Apply Coupon)
-           ========================================================================= */}
+        {/* ── 3. Save cart as basket ────────────────────────────────────────── */}
         <TouchableOpacity
-          style={styles.actionCard}
-          onPress={handleSaveAsBasket}
+          style={styles.saveBasketRow}
+          onPress={handleSaveBasket}
           activeOpacity={0.8}
         >
-          <View style={styles.actionLeft}>
-            <Text style={styles.actionIcon}>🔖</Text>
-            <Text style={styles.actionTitle}>Save this cart as a basket</Text>
+          <View style={styles.saveBasketIcon}>
+            <AppIcon name="tag" size={16} color="#FFFFFF" />
           </View>
-          <Text style={styles.actionChevron}>›</Text>
+          <Text style={styles.saveBasketTxt}>Save this cart as a basket</Text>
+          <AppIcon name="arrow-right" size={16} color={COLORS.green700} />
         </TouchableOpacity>
 
+        {/* ── 4. Apply coupon ───────────────────────────────────────────────── */}
         <TouchableOpacity
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })}
+          style={styles.couponRow}
+          onPress={() =>
+            navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })
+          }
           activeOpacity={0.8}
         >
-          <View style={styles.actionLeft}>
-            <Text style={styles.actionIcon}>🏷️</Text>
-            <Text style={styles.actionTitle}>
-              {appliedCoupon ? `Coupon: ${appliedCoupon.code} applied (₹${couponDiscount} saved)` : 'Apply coupon'}
-            </Text>
-          </View>
-          <Text style={styles.actionChevron}>›</Text>
+          <AppIcon name="tag" size={18} color={COLORS.green700} />
+          <Text style={styles.couponTxt}>
+            {appliedCoupon
+              ? `${appliedCoupon.code} applied · ₹${couponDiscount} saved`
+              : 'Apply coupon'}
+          </Text>
+          <AppIcon name="arrow-right" size={16} color={COLORS.ink300} />
         </TouchableOpacity>
 
-        {/* =========================================================================
-           5. BILL DETAILS SUMMARY (C2)
-           ========================================================================= */}
-        <View style={styles.billSection}>
+        {/* ── 5. Bill details ───────────────────────────────────────────────── */}
+        <View style={styles.billCard}>
           <Text style={styles.billTitle}>Bill details</Text>
 
           <View style={styles.billRow}>
             <Text style={styles.billLabel}>Item total (MRP)</Text>
-            <Text style={styles.billVal}>₹{itemTotalMrp}</Text>
+            <Text style={styles.billVal}>₹{itemTotalMrp.toLocaleString('en-IN')}</Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={[styles.billLabel, { color: COLORS.green700 }]}>Savings</Text>
-            <Text style={[styles.billVal, { color: COLORS.green700 }]}>− ₹{totalSavings}</Text>
+            <Text style={styles.billLabel}>Savings</Text>
+            <Text style={[styles.billVal, { color: '#8A5200' }]}>
+              − ₹{totalSavings.toLocaleString('en-IN')}
+            </Text>
           </View>
 
           <View style={styles.billRow}>
             <Text style={styles.billLabel}>Delivery fee</Text>
-            <Text style={[styles.billVal, { color: COLORS.green700, fontWeight: '700' }]}>FREE</Text>
+            <Text style={[styles.billVal, { color: COLORS.green700 }]}>FREE</Text>
           </View>
 
+          {couponDiscount > 0 && (
+            <View style={styles.billRow}>
+              <Text style={styles.billLabel}>Coupon discount</Text>
+              <Text style={[styles.billVal, { color: '#8A5200' }]}>
+                − ₹{couponDiscount}
+              </Text>
+            </View>
+          )}
+
+          {/* Divider */}
           <View style={styles.billDivider} />
 
           <View style={styles.billTotalRow}>
             <Text style={styles.billTotalLabel}>To pay</Text>
-            <Text style={styles.billTotalVal}>₹{toPay}</Text>
+            <Text style={styles.billTotalVal}>
+              ₹{toPay.toLocaleString('en-IN')}
+            </Text>
           </View>
         </View>
+
+        {/* spacing for sticky bar */}
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* =========================================================================
-         6. STICKY BOTTOM CHECKOUT BUTTON (C2 Active vs Below-Min Gate)
-         ========================================================================= */}
+      {/* ── 6. Sticky bottom checkout bar ───────────────────────────────────── */}
       <View style={styles.checkoutBar}>
-        {isBelowMin ? (
-          <TouchableOpacity
-            style={styles.gateBtn}
-            onPress={handleCheckout}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.gateBtnText}>Add ₹{amountNeeded} to checkout</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.checkoutBtn}
-            onPress={handleCheckout}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.checkoutBtnText}>Proceed to checkout ›</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.checkoutBarInner}>
+          {/* To pay label + amount */}
+          <View style={styles.toPayCol}>
+            <Text style={styles.toPayLabel}>TO PAY</Text>
+            <Text style={styles.toPayAmount}>
+              ₹{toPay.toLocaleString('en-IN')}
+            </Text>
+          </View>
+
+          {/* CTA button */}
+          {isBelowMin ? (
+            <TouchableOpacity
+              style={styles.checkoutBtnDisabled}
+              onPress={handleCheckout}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.checkoutBtnTxt}>
+                Add ₹{amountNeeded.toLocaleString('en-IN')} more
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.checkoutBtn}
+              onPress={handleCheckout}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.checkoutBtnTxt}>Proceed to checkout</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* Auth Gate Modal Sheet (Flow 8) */}
+      {/* Auth gate modal */}
       <AuthGateModal
         visible={authGateVisible}
         type={authGateType}
         onClose={() => setAuthGateVisible(false)}
         onContinue={() => {
           setAuthGateVisible(false);
-          navigation.navigate('Login', { redirect: authGateType === 'checkout' ? 'Checkout' : 'SavedBaskets' });
+          navigation.navigate('Login', {
+            redirect: authGateType === 'checkout' ? 'Checkout' : 'SavedBaskets',
+          });
         }}
       />
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: '#FBFAF6',
   },
+
+  // Header
   topHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingTop: 6,
+    paddingBottom: 8,
+    borderBottomWidth: 1.5,
+    borderBottomColor: COLORS.line,
   },
   topTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 18,
     color: COLORS.ink900,
   },
-  itemCountHeader: {
-    fontSize: 15,
-    fontWeight: '500',
+  topCount: {
+    ...FONTS.muktaMedium,
+    fontSize: 12,
     color: COLORS.ink500,
   },
-  scrollArea: {
-    flex: 1,
-  },
+
+  // Scroll
+  scroll: { flex: 1 },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 14,
   },
-  /* Empty State */
-  emptyContainer: {
+
+  // ── Empty state ──────────────────────────────────────────────────────────────
+  emptyWrap: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingBottom: 30,
+  },
+  emptyIconContainer: {
+    width: 128,
+    height: 128,
+    position: 'relative',
+    marginBottom: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
   },
   emptyIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.green50,
-    borderWidth: 1.5,
-    borderColor: COLORS.green100,
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    backgroundColor: '#E4F3EA',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+  },
+  floatingBadge: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#FBFAF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  badgeImg: {
+    width: 25,
+    height: 25,
+  },
+  floatingBadgeTopLeft: {
+    top: -6,
+    left: -6,
+  },
+  floatingBadgeBottomRight: {
+    bottom: 8,
+    right: 8,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 20,
     color: COLORS.ink900,
     marginBottom: 8,
   },
-  emptySubtitle: {
+  emptySub: {
+    ...FONTS.muktaRegular,
     fontSize: 14,
     color: COLORS.ink500,
     textAlign: 'center',
     lineHeight: 20,
-    maxWidth: 290,
     marginBottom: 28,
   },
-  startShoppingBtn: {
+  startBtn: {
     width: '100%',
     height: 52,
     borderRadius: RADIUS.pill,
@@ -380,210 +518,250 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  startShoppingBtnText: {
+  startBtnTxt: {
+    ...FONTS.balooBold,
+    fontSize: 15,
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
   },
-  reorderLink: {
-    paddingVertical: 8,
+  reorderLink: { paddingVertical: 8 },
+  reorderLinkInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  reorderLinkText: {
+  reorderLinkTxt: {
+    ...FONTS.muktaBold,
     fontSize: 14,
-    fontWeight: '700',
     color: COLORS.green700,
   },
-  /* Notices */
-  savingsNotice: {
+
+  // ── Notice banners ───────────────────────────────────────────────────────────
+  savingsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green50, // #F2F9F5
-    borderWidth: 1,
-    borderColor: COLORS.green100, // #E4F3EA
+    gap: 9,
+    backgroundColor: '#FDEFD3',
+    borderWidth: 1.5,
+    borderColor: '#FBE0AE',
     borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 8,
-  },
-  savingsNoticeIcon: {
-    fontSize: 16,
-  },
-  savingsNoticeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  belowMinNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7', // Warm Amber
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 8,
-  },
-  belowMinIcon: {
-    fontSize: 16,
-  },
-  belowMinText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  /* Items List */
-  itemsListContainer: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     marginBottom: 14,
+  },
+  savingsTxt: {
+    flex: 1,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: '#8A5200',
+  },
+  belowMinBanner: {
+    padding: 13,
+    backgroundColor: '#E4F3EA',
+    borderWidth: 1.5,
+    borderColor: '#CDE9D6',
+    borderRadius: 14,
+    marginBottom: 14,
+    gap: 10,
+  },
+  belowMinHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  belowMinTitle: {
+    flex: 1,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: '#155A38',
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.green700,
+    borderRadius: 999,
+  },
+  belowMinFootnote: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: COLORS.ink700,
+  },
+
+  // ── Cart items card ──────────────────────────────────────────────────────────
+  itemsCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: 14,
+    marginBottom: 14,
+    overflow: 'hidden',
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  itemRowBorder: {
+    borderBottomWidth: 1.5,
     borderBottomColor: COLORS.line,
   },
-  itemThumb: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.green50,
+
+  // Image tile: 52×52, coloured bg, 10px radius (Figma spec)
+  imgTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    flexShrink: 0,
   },
-  thumbImg: {
-    width: 38,
-    height: 38,
+  imgTileImg: {
+    width: 36,
+    height: 36,
   },
+
+  // Item info
   itemInfo: {
     flex: 1,
-    paddingRight: 8,
+    gap: 2,
   },
   itemName: {
-    fontSize: 13.5,
-    fontWeight: '700',
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
-    marginBottom: 2,
+    lineHeight: 20,
   },
   itemUnit: {
-    fontSize: 11.5,
+    ...FONTS.muktaRegular,
+    fontSize: 12,
     color: COLORS.ink500,
-    marginBottom: 2,
+    lineHeight: 16,
   },
-  itemPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  itemPriceText: {
+  itemPrice: {
+    ...FONTS.muktaMedium,
     fontSize: 14,
-    fontWeight: '800',
     color: COLORS.ink900,
   },
-  itemMrpText: {
-    fontSize: 11,
-    color: COLORS.ink300,
-    textDecorationLine: 'line-through',
-  },
-  stepperWrap: {
+
+  // Stepper: green pill, 30×32 hit areas (Figma spec)
+  stepper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.sm,
-    height: 30,
-    paddingHorizontal: 4,
+    borderRadius: 9,
+    height: 32,
+    flexShrink: 0,
   },
   stepBtn: {
-    width: 22,
-    height: 26,
+    width: 30,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepBtnText: {
-    color: '#FFFFFF',
+  stepBtnTxt: {
+    ...FONTS.muktaBold,
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  stepCountText: {
     color: '#FFFFFF',
-    fontSize: 12.5,
-    fontWeight: '700',
-    paddingHorizontal: 6,
+    lineHeight: 20,
   },
-  /* Action Cards */
-  actionCard: {
+  stepQty: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: '#FFFFFF',
+    minWidth: 18,
+    textAlign: 'center',
+  },
+
+  // ── Save basket row ──────────────────────────────────────────────────────────
+  saveBasketRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
+    gap: 11,
+    backgroundColor: '#E4F3EA',
+    borderWidth: 1.5,
+    borderColor: '#CDE9D6',
     borderRadius: RADIUS.md,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginBottom: 10,
   },
-  actionLeft: {
+  saveBasketIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    backgroundColor: COLORS.green700,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  saveBasketTxt: {
+    flex: 1,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.green700,
+  },
+
+  // ── Coupon row ───────────────────────────────────────────────────────────────
+  couponRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  actionIcon: {
-    fontSize: 16,
-  },
-  actionTitle: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: COLORS.ink700,
-  },
-  actionChevron: {
-    fontSize: 18,
-    color: COLORS.ink300,
-    fontWeight: 'bold',
-  },
-  /* Bill Summary */
-  billSection: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    gap: 11,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 14,
+  },
+  couponTxt: {
+    flex: 1,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.green700,
+  },
+
+  // ── Bill details card ────────────────────────────────────────────────────────
+  billCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: 14,
     padding: 16,
-    marginTop: 6,
-    marginBottom: 20,
+    gap: 11,
+    marginBottom: 16,
   },
   billTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.ink900,
-    marginBottom: 12,
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: COLORS.ink700,
   },
   billRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
   billLabel: {
-    fontSize: 13,
+    ...FONTS.muktaRegular,
+    fontSize: 16,
     color: COLORS.ink500,
   },
   billVal: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...FONTS.muktaRegular,
+    fontSize: 16,
     color: COLORS.ink900,
   },
   billDivider: {
-    height: 1,
+    height: 1.5,
     backgroundColor: COLORS.line,
-    marginVertical: 10,
+    marginVertical: 2,
   },
   billTotalRow: {
     flexDirection: 'row',
@@ -591,45 +769,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   billTotalLabel: {
-    fontSize: 15,
-    fontWeight: '800',
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
   },
   billTotalVal: {
-    fontSize: 17,
-    fontWeight: '900',
+    ...FONTS.balooBold,
+    fontSize: 18,
     color: COLORS.ink900,
   },
-  /* Bottom Checkout Bar */
+
+  // ── Sticky checkout bar (Figma: frosted, TO PAY + button) ───────────────────
   checkoutBar: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    paddingBottom: 16,
+  },
+  checkoutBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  toPayCol: {
+    flex: 1,
+  },
+  toPayLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: COLORS.ink500,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  toPayAmount: {
+    ...FONTS.balooBold,
+    fontSize: 22,
+    color: COLORS.ink900,
+    lineHeight: 28,
   },
   checkoutBtn: {
-    backgroundColor: COLORS.green700, // #1E7A46
-    height: 52,
-    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 28,
+    paddingVertical: 15,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkoutBtnText: {
-    color: '#FFFFFF',
+  checkoutBtnDisabled: {
+    backgroundColor: COLORS.muted,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkoutBtnTxt: {
+    ...FONTS.balooBold,
     fontSize: 15,
-    fontWeight: '800',
-  },
-  gateBtn: {
-    backgroundColor: COLORS.muted, // #F4F3EE
-    height: 52,
-    borderRadius: RADIUS.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gateBtnText: {
-    color: COLORS.ink500, // #6B7772
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

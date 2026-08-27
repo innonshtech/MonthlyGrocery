@@ -55,6 +55,7 @@ export interface ShopProduct {
 export interface Category {
   id: string;
   name: string;
+  image_url?: string;
 }
 
 export interface Coupon {
@@ -145,10 +146,10 @@ const defaultDb: LocalDbSchema = {
   ],
   shop_products: [],
   categories: [
-    { id: 'cat-1', name: 'Atta & Rice' },
-    { id: 'cat-2', name: 'Oils & Ghee' },
+    { id: 'cat-1', name: 'Atta & Rice', image_url: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png' },
+    { id: 'cat-2', name: 'Oils & Ghee', image_url: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/amul_pure_ghee_1l.png' },
     { id: 'cat-3', name: 'Dals & Pulses' },
-    { id: 'cat-4', name: 'Spices & Masala' },
+    { id: 'cat-4', name: 'Spices & Masala', image_url: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_salt_lite_1kg.png' },
     { id: 'cat-5', name: 'Dry Fruits' },
     { id: 'cat-6', name: 'Snacks' },
     { id: 'cat-7', name: 'Beverages' },

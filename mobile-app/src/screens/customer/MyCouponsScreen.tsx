@@ -3,338 +3,343 @@ import {
   StyleSheet,
   View,
   Text,
-  FlatList,
   TouchableOpacity,
-  ActivityIndicator,
-  SafeAreaView,
+  ScrollView,
   StatusBar,
-  Alert
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_BASE } from '../../config/api';
+import AppIcon from '../../components/AppIcon';
+import { COLORS, RADIUS, FONTS } from '../../constants/theme';
+
+export interface CouponItem {
+  id: string;
+  code: string;
+  title: string;
+  discount_type: 'fixed' | 'percentage';
+  discount_value: number;
+  min_order_amount: number;
+  max_discount: number;
+  expires_at: string;
+  badge?: string;
+  description?: string;
+}
 
 export default function MyCouponsScreen({ navigation }: any) {
-  const [coupons, setCoupons] = useState<any[]>([]);
+  const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  const fetchCoupons = async () => {
+  const fetchLiveCoupons = async () => {
     setLoading(true);
-    setError('');
     try {
-      const res = await fetch(`${API_BASE}/products/coupons/all`);
+      const res = await fetch(`${API_BASE}/coupons`);
       const data = await res.json();
-      if (res.ok && data.success) {
-        setCoupons(data.coupons || []);
-      } else {
-        setError('Failed to load active coupons.');
+      if (res.ok && data.success && data.coupons) {
+        setCoupons(data.coupons);
       }
     } catch (err) {
-      setError('Connection error. Is the backend server online?');
+      console.error('Coupons fetch notice:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCoupons();
+    fetchLiveCoupons();
   }, []);
 
-  const handleCopyCode = (code: string) => {
-    setCopiedCode(code);
-    Alert.alert('Code Copied!', `Promo code "${code}" is ready. You can paste it during checkout.`, [
-      { text: 'Go to Cart', onPress: () => navigation.navigate('Cart') },
-      { text: 'OK' }
-    ]);
-    setTimeout(() => {
-      setCopiedCode(null);
-    }, 3000);
-  };
-
-  const renderCouponCard = ({ item }: { item: any }) => {
-    const isCopied = copiedCode === item.code;
-
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardLeft}>
-          <View style={styles.badgeRow}>
-            <View style={styles.codeBadge}>
-              <Text style={styles.codeText}>{item.code}</Text>
-            </View>
-            <View style={styles.typeBadge}>
-              <Text style={styles.typeBadgeText}>
-                {item.discount_type === 'percentage' ? `${item.discount_value}% OFF` : `FLAT ₹${item.discount_value} OFF`}
-              </Text>
-            </View>
-          </View>
-
-          <Text style={styles.couponDesc}>{item.description}</Text>
-          <Text style={styles.minOrderText}>
-            Min order value: <Text style={styles.highlightText}>₹{item.min_order_value}</Text>
-            {item.max_discount ? ` · Max saving ₹${item.max_discount}` : ''}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.copyBtn, isCopied && styles.copyBtnCopied]}
-          onPress={() => handleCopyCode(item.code)}
-        >
-          <Text style={[styles.copyBtnText, isCopied && styles.copyBtnTextCopied]}>
-            {isCopied ? '✓ COPIED' : 'COPY CODE'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+  const handleCopyCoupon = (code: string) => {
+    Alert.alert(
+      'Coupon Copied!',
+      `Promo code "${code}" is ready. You can paste it during checkout.`,
+      [
+        { text: 'Go to Cart', onPress: () => navigation.navigate('Cart') },
+        { text: 'OK' }
+      ]
     );
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Offers & Coupons</Text>
-        <TouchableOpacity onPress={fetchCoupons} style={styles.refreshBtn}>
-          <Text style={styles.refreshText}>Refresh</Text>
-        </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#22C55E" />
-          <Text style={styles.loadingText}>Fetching available discounts...</Text>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Banner */}
+        <View style={styles.bannerCard}>
+          <Text style={styles.bannerEmoji}>🎉</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bannerTitle}>Monthly Savings Club</Text>
+            <Text style={styles.bannerSubtitle}>Use these coupons at checkout to unlock guaranteed monthly discounts on pantry staples.</Text>
+          </View>
         </View>
-      ) : error ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchCoupons}>
-            <Text style={styles.retryText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : coupons.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyEmoji}>🏷️</Text>
-          <Text style={styles.emptyTitle}>No active coupons</Text>
-          <Text style={styles.emptySubtitle}>Check back soon for festive discounts and monthly savings offers.</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={coupons}
-          keyExtractor={(item) => item.id || item.code}
-          renderItem={renderCouponCard}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
-            <View style={styles.bannerCard}>
-              <Text style={styles.bannerEmoji}>🎉</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.bannerTitle}>Monthly Savings Club</Text>
-                <Text style={styles.bannerSubtitle}>Apply these codes at checkout to unlock guaranteed monthly discounts on pantry staples.</Text>
+
+        {/* Section Label */}
+        <Text style={styles.sectionLabel}>AVAILABLE OFFERS</Text>
+
+        {loading ? (
+          <View style={styles.centerLoading}>
+            <ActivityIndicator size="large" color={COLORS.green700} />
+          </View>
+        ) : (
+          <View style={styles.listContainer}>
+            {coupons.map((coupon) => (
+              <View key={coupon.id} style={styles.couponCard}>
+                <View style={styles.cardTopRow}>
+                  {/* Circle icon */}
+                  <View style={styles.percentCircle}>
+                    <AppIcon name="percent" size={16} color={COLORS.green700} />
+                  </View>
+
+                  {/* Info */}
+                  <View style={styles.couponInfo}>
+                    <View style={styles.codeHeaderRow}>
+                      <Text style={styles.couponCode}>{coupon.code}</Text>
+                      {coupon.badge && (
+                        <View style={styles.badgePill}>
+                          <Text style={styles.badgeTxt}>{coupon.badge}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.couponTitle}>{coupon.title}</Text>
+                  </View>
+
+                  {/* Copy action button */}
+                  <TouchableOpacity
+                    style={styles.cardActionBtn}
+                    onPress={() => handleCopyCoupon(coupon.code)}
+                  >
+                    <Text style={styles.cardActionTxt}>COPY</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Description */}
+                {coupon.description ? (
+                  <Text style={styles.couponDesc}>{coupon.description}</Text>
+                ) : null}
+
+                <View style={styles.expiryRow}>
+                  <View style={styles.cardDivider} />
+                  <Text style={styles.expiryTxt}>Expires on {coupon.expires_at}</Text>
+                </View>
               </View>
-            </View>
-          }
-        />
-      )}
+            ))}
+
+            {coupons.length === 0 && (
+              <View style={styles.emptyWrap}>
+                <AppIcon name="tag" size={40} color={COLORS.ink300} />
+                <Text style={styles.emptyTxt}>No offers available right now.</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FBFAF6',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
+    paddingTop: 6,
+    paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.line,
+    backgroundColor: '#FBFAF6',
+    gap: 10,
   },
   backBtn: {
-    paddingVertical: 4,
-    paddingRight: 8,
-  },
-  backText: {
-    fontSize: 14,
-    color: '#0F172A',
-    fontWeight: 'bold',
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0F172A',
+    ...FONTS.balooBold,
+    fontSize: 18,
+    color: COLORS.ink900,
   },
-  refreshBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+
+  // Scroll content
+  scroll: {
+    flex: 1,
   },
-  refreshText: {
-    color: '#22C55E',
-    fontWeight: 'bold',
-    fontSize: 13,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
-  listContainer: {
-    padding: 16,
-  },
+
+  // Banner card
   bannerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 16,
+    backgroundColor: '#E4F3EA',
+    borderWidth: 1.5,
+    borderColor: COLORS.green100,
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 20,
   },
   bannerEmoji: {
-    fontSize: 32,
-    marginRight: 12,
+    fontSize: 28,
   },
   bannerTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#166534',
+    ...FONTS.balooBold,
+    fontSize: 15,
+    color: COLORS.green700,
   },
   bannerSubtitle: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
-    color: '#15803D',
-    marginTop: 2,
+    color: COLORS.ink700,
     lineHeight: 16,
   },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+
+  // Section Label
+  sectionLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: COLORS.ink500,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+
+  // Loading wrapper
+  centerLoading: {
+    paddingVertical: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Coupons cards list
+  listContainer: {
+    gap: 14,
+  },
+  couponCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    elevation: 1,
+    gap: 12,
   },
-  cardLeft: {
+  percentCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E4F3EA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  couponInfo: {
     flex: 1,
-    paddingRight: 12,
+    gap: 2,
   },
-  badgeRow: {
+  codeHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 6,
   },
-  codeBadge: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: '#22C55E',
-    backgroundColor: '#F0FDF4',
+  couponCode: {
+    ...FONTS.balooBold,
+    fontSize: 16,
+    color: COLORS.ink900,
+    lineHeight: 20,
+  },
+  badgePill: {
+    backgroundColor: '#E4F3EA',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 2,
     borderRadius: 6,
   },
-  codeText: {
+  badgeTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 9,
+    color: COLORS.green700,
+  },
+  couponTitle: {
+    ...FONTS.muktaBold,
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#16A34A',
-    letterSpacing: 0.5,
+    color: COLORS.ink500,
+    lineHeight: 16,
   },
-  typeBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  cardActionBtn: {
+    backgroundColor: '#E4F3EA',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  typeBadgeText: {
-    fontSize: 10.5,
-    fontWeight: 'bold',
-    color: '#D97706',
+  cardActionTxt: {
+    ...FONTS.balooBold,
+    fontSize: 12,
+    color: COLORS.green700,
   },
   couponDesc: {
+    ...FONTS.muktaRegular,
     fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
+    color: COLORS.ink700,
     lineHeight: 18,
-    marginBottom: 4,
+    paddingLeft: 48,
   },
-  minOrderText: {
-    fontSize: 11.5,
-    color: '#64748B',
+
+  // Expiry
+  cardDivider: {
+    height: 1.5,
+    backgroundColor: COLORS.line,
+    marginVertical: 4,
   },
-  highlightText: {
-    fontWeight: 'bold',
-    color: '#0F172A',
+  expiryRow: {
+    gap: 6,
   },
-  copyBtn: {
-    backgroundColor: '#22C55E',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  copyBtnCopied: {
-    backgroundColor: '#0F172A',
-  },
-  copyBtnText: {
-    color: '#fff',
+  expiryTxt: {
+    ...FONTS.muktaMedium,
     fontSize: 11,
-    fontWeight: 'bold',
+    color: COLORS.ink300,
+    paddingLeft: 48,
   },
-  copyBtnTextCopied: {
-    color: '#86EFAC',
-  },
-  centerContainer: {
-    flex: 1,
+
+  // Empty view
+  emptyWrap: {
+    paddingVertical: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    gap: 10,
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 13,
-    color: '#64748B',
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 10,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  errorText: {
+  emptyTxt: {
+    ...FONTS.muktaMedium,
     fontSize: 14,
-    color: '#DC2626',
-    textAlign: 'center',
-  },
-  retryBtn: {
-    marginTop: 15,
-    backgroundColor: '#22C55E',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 50,
-  },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: COLORS.ink500,
   },
 });

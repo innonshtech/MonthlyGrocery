@@ -16,7 +16,7 @@ import {
   OnboardingPrimaryButton,
 } from '../components/onboarding/OnboardingUI';
 import { useAuth } from '../context/AuthContext';
-import { COLORS } from '../constants/theme';
+import { COLORS, FONTS } from '../constants/theme';
 
 export default function LoginScreen({ route, navigation }: any) {
   const [mobile, setMobile] = useState('');
@@ -146,16 +146,16 @@ export default function LoginScreen({ route, navigation }: any) {
               </View>
 
               <View style={styles.headerBlock}>
-                <Text style={styles.mainTitle}>Enter your phone number</Text>
+                <Text style={styles.mainTitle}>Enter your mobile number</Text>
                 <Text style={styles.subtitle}>
-                  We'll send a one-time code to verify it.
+                  We'll send a one-time code to verify it's you.
                 </Text>
               </View>
 
               <Text style={styles.inputLabel}>Mobile number</Text>
               <View style={[styles.phoneInputCard, error ? styles.inputError : null]}>
                 <View style={styles.prefixRow}>
-                  <Text style={styles.prefixText}>+91</Text>
+                  <Text style={styles.prefixText}>🇮🇳 +91</Text>
                 </View>
                 <View style={styles.verticalDivider} />
                 <TextInput
@@ -193,7 +193,7 @@ export default function LoginScreen({ route, navigation }: any) {
                 <Text style={styles.mainTitle}>Verify your number</Text>
                 <View style={styles.otpSubtitleRow}>
                   <Text style={styles.subtitle}>
-                    Enter the 6-digit code sent to {formattedMobile}
+                    Enter the code we sent to {formattedMobile}
                   </Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -286,11 +286,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.paper,
   },
-  flex: { flex: 1 },
+  flex: { 
+    flex: 1,
+    backgroundColor: COLORS.paper,
+  },
   main: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 8,
+    backgroundColor: COLORS.paper,
   },
   headerRow: {
     flexDirection: 'row',
@@ -306,9 +310,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   skipText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
-    fontWeight: '600',
     color: COLORS.green700,
   },
   backSpacer: {
@@ -321,15 +324,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mainTitle: {
-    fontFamily: 'Baloo 2',
+    ...FONTS.balooBold,
     fontSize: 26,
-    fontWeight: '700',
     color: COLORS.ink900,
     letterSpacing: -0.26,
     lineHeight: 32,
   },
   subtitle: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaRegular,
     fontSize: 16,
     color: COLORS.ink500,
     lineHeight: 24,
@@ -341,15 +343,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   editLink: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
     color: COLORS.green700,
   },
   inputLabel: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
-    fontWeight: '600',
     color: '#3D4A44',
     marginBottom: 8,
   },
@@ -374,9 +374,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   prefixText: {
-    fontFamily: 'Mukta',
-    fontSize: 16,
-    fontWeight: '500',
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
   },
   verticalDivider: {
@@ -386,7 +385,7 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
-    fontFamily: 'Mukta',
+    ...FONTS.muktaRegular,
     fontSize: 16,
     color: COLORS.ink900,
     padding: 0,
@@ -410,10 +409,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   inlineErrorText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaMedium,
     fontSize: 12,
     color: COLORS.error,
-    fontWeight: '500',
   },
   otpBoxesRow: {
     flexDirection: 'row',
@@ -429,22 +427,20 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#EAE9E2',
     backgroundColor: COLORS.surface,
-    fontFamily: 'Baloo 2',
+    ...FONTS.balooSemiBold,
     fontSize: 22,
-    fontWeight: '600',
     color: COLORS.ink900,
   },
-  otpBoxFocused: { borderColor: COLORS.green700 },
+  otpBoxFocused: { borderColor: '#2A8B54' },
   otpBoxError: {
     borderColor: COLORS.error,
     backgroundColor: COLORS.errorBg,
   },
   errorTextCenter: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaMedium,
     color: COLORS.error,
     fontSize: 12,
     marginBottom: 12,
-    fontWeight: '500',
   },
   resendRow: {
     flexDirection: 'row',
@@ -455,19 +451,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resendText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
   },
   resendTimer: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
   },
   resendActive: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaSemiBold,
     fontSize: 12,
-    fontWeight: '600',
     color: COLORS.green700,
   },
   bottomBar: {
@@ -485,13 +480,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   guestText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
-    fontWeight: '600',
     color: COLORS.green700,
   },
   termsText: {
-    fontFamily: 'Mukta',
+    ...FONTS.muktaMedium,
     fontSize: 12,
     color: COLORS.ink500,
     textAlign: 'center',
