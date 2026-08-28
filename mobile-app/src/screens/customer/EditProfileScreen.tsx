@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,129 +8,217 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
+import { AccountDeleteTrashIcon } from '../../components/account/AccountHubIcons';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import {
+  EditProfileScreenConfig,
+  fetchEditProfileScreenConfig,
+  fetchProfile,
+  formatDisplayPhone,
+  updateProfile,
+} from '../../services/profileApi';
+
+const SCREEN_BG = '#FBFAF6';
 
 export default function EditProfileScreen({ navigation }: any) {
-  const { user, updateUser } = useAuth();
+  const { user, token, updateUser } = useAuth();
 
-  const [name, setName] = useState(user?.name || 'Aarav Sharma');
-  const [phone, setPhone] = useState(user?.mobile || '9876543210');
-  const [email, setEmail] = useState('aarav.sharma@email.com');
+  const [screenConfig, setScreenConfig] = useState<EditProfileScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const initialLetter = name.trim().charAt(0).toUpperCase() || 'A';
-  const formattedPhone = phone.startsWith('+91') ? phone : `+91 ${phone}`;
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchEditProfileScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    if (!token) return;
+    setProfileLoading(true);
+    const profile = await fetchProfile(token);
+    if (profile) {
+      setName(profile.name?.trim() || '');
+      setPhone(profile.mobile || '');
+      setEmail(profile.email?.trim() || '');
+      updateUser({
+        name: profile.name,
+        mobile: profile.mobile,
+        email: profile.email,
+      });
+    }
+    setProfileLoading(false);
+  }, [token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConfig().then(() => loadProfile());
+    }, [loadConfig, loadProfile]),
+  );
 
   const handleSave = async () => {
+    if (!screenConfig || !token) return;
+
     if (!name.trim()) {
-      Alert.alert('Required', 'Please enter your full name.');
+      Alert.alert(screenConfig.name_required_title, screenConfig.name_required_message);
       return;
     }
 
     setSaving(true);
-    await updateUser({ name: name.trim() });
-    setTimeout(() => {
-      setSaving(false);
-      Alert.alert('Profile Updated', 'Your profile details have been saved successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-    }, 400);
+    const result = await updateProfile(token, name, email);
+    setSaving(false);
+
+    if (!result.success || !result.user) {
+      Alert.alert('Error', result.error || screenConfig.save_error_message);
+      return;
+    }
+
+    updateUser({
+      name: result.user.name,
+      mobile: result.user.mobile,
+      email: result.user.email,
+    });
+
+    Alert.alert(screenConfig.save_success_title, screenConfig.save_success_message, [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
   };
 
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.saveBtn} onPress={() => loadConfig()}>
+            <Text style={styles.saveBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const initialLetter = name.trim() ? name.trim().charAt(0).toUpperCase() : '';
+  const formattedPhone = phone ? formatDisplayPhone(phone) : '';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Header */}
-      <View style={styles.topHeader}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit profile</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
       <ScrollView
-        style={styles.scrollArea}
+        style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Center Avatar */}
         <View style={styles.avatarWrap}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarLetter}>{initialLetter}</Text>
+            {profileLoading ? (
+              <ActivityIndicator color={COLORS.green700} />
+            ) : initialLetter ? (
+              <Text style={styles.avatarLetter}>{initialLetter}</Text>
+            ) : null}
           </View>
-          <TouchableOpacity onPress={() => Alert.alert('Photo', 'Camera / Gallery picker')}>
-            <Text style={styles.changePhotoText}>Change photo</Text>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert(
+                screenConfig.change_photo_alert_title,
+                screenConfig.change_photo_alert_message,
+              )
+            }
+            activeOpacity={0.7}
+          >
+            <Text style={styles.changePhotoText}>{screenConfig.change_photo_label}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 1. Full Name */}
-        <Text style={styles.fieldLabel}>Full name</Text>
+        <Text style={styles.fieldLabel}>{screenConfig.full_name_label}</Text>
         <TextInput
           style={styles.inputField}
           value={name}
           onChangeText={setName}
-          placeholder="Enter full name"
+          placeholder={screenConfig.full_name_placeholder}
           placeholderTextColor={COLORS.ink300}
+          autoCapitalize="words"
         />
 
-        {/* 2. Phone Number with Verified Badge */}
-        <Text style={styles.fieldLabel}>Phone number</Text>
+        <Text style={styles.fieldLabel}>{screenConfig.phone_label}</Text>
         <View style={styles.phoneInputWrap}>
-          <TextInput
-            style={styles.phoneInput}
-            value={formattedPhone}
-            editable={false}
-          />
-          <View style={styles.verifiedBadge}>
-            <Text style={styles.verifiedBadgeText}>✓ Verified</Text>
-          </View>
+          <Text style={styles.phoneInputText}>{formattedPhone}</Text>
+          {phone ? (
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedBadgeText}>
+                ✓ {screenConfig.verified_label}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* 3. Email (optional) */}
-        <Text style={styles.fieldLabel}>Email (optional)</Text>
+        <Text style={styles.fieldLabel}>{screenConfig.email_label}</Text>
         <TextInput
           style={styles.inputField}
           value={email}
           onChangeText={setEmail}
-          placeholder="Enter email address"
+          placeholder={screenConfig.email_placeholder}
           placeholderTextColor={COLORS.ink300}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
-        {/* Delete Account Link */}
         <TouchableOpacity
           style={styles.deleteLinkRow}
           onPress={() => navigation.navigate('DeleteAccount')}
           activeOpacity={0.8}
         >
-          <AppIcon name="trash" size={16} color="#DC2626" />
-          <Text style={styles.deleteLinkText}>Delete account</Text>
+          <AccountDeleteTrashIcon size={16} />
+          <Text style={styles.deleteLinkText}>{screenConfig.delete_account_label}</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Sticky Bottom Save Button */}
       <View style={styles.bottomBar}>
         <TouchableOpacity
           style={styles.saveBtn}
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || !token}
           activeOpacity={0.85}
         >
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.saveBtnText}>Save changes</Text>
+            <Text style={styles.saveBtnText}>{screenConfig.save_button_label}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -139,43 +227,40 @@ export default function EditProfileScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: SCREEN_BG,
   },
-  topHeader: {
+  flex: { flex: 1 },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    height: 48,
+    gap: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
-    marginLeft: 8,
-  },
-  scrollArea: {
-    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 24,
-    paddingBottom: 36,
+    paddingBottom: 24,
   },
   avatarWrap: {
     alignItems: 'center',
@@ -191,18 +276,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   avatarLetter: {
+    ...FONTS.balooBold,
     fontSize: 32,
-    fontWeight: '900',
+    lineHeight: 40,
     color: COLORS.green700,
   },
   changePhotoText: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 18,
     color: COLORS.green700,
   },
   fieldLabel: {
+    ...FONTS.muktaBold,
     fontSize: 12,
-    fontWeight: '700',
+    lineHeight: 16,
     color: COLORS.ink700,
     marginBottom: 8,
   },
@@ -213,8 +301,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     height: 48,
     paddingHorizontal: 14,
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
+    lineHeight: 20,
     color: COLORS.ink900,
     marginBottom: 18,
   },
@@ -229,10 +318,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 18,
   },
-  phoneInput: {
+  phoneInputText: {
     flex: 1,
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
+    lineHeight: 20,
     color: COLORS.ink700,
   },
   verifiedBadge: {
@@ -242,8 +332,9 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.xs,
   },
   verifiedBadgeText: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '800',
+    lineHeight: 14,
     color: COLORS.green700,
   },
   deleteLinkRow: {
@@ -254,8 +345,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   deleteLinkText: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 18,
     color: '#DC2626',
   },
   bottomBar: {
@@ -273,8 +365,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnText: {
-    color: '#FFFFFF',
+    ...FONTS.muktaBold,
     fontSize: 15,
-    fontWeight: '800',
+    lineHeight: 20,
+    color: '#FFFFFF',
   },
 });

@@ -1,179 +1,288 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config/api';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import { CheckoutBackIcon, SavingsCoinIcon } from '../../components/CheckoutFigmaIcons';
+import {
+  HubHeroBadgeIcon,
+  HubOneClickIcon,
+  HubCopyIcon,
+  HubSavedIcon,
+  HubBuildIcon,
+  HubChevronIcon,
+} from '../../components/monthlyGrocery/MonthlyGroceryHubIcons';
+import {
+  fetchMonthlyGroceryHubScreenConfig,
+  fetchMonthlyHubSummary,
+  formatHubTemplate,
+  MonthlyGroceryHubScreenConfig,
+  MonthlyHubSummary,
+} from '../../services/monthlyGroceryHubApi';
+
+const SCREEN_BG = '#FBFAF6';
 
 export default function MyMonthlyGroceryHub({ navigation }: any) {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
+
+  const [screenConfig, setScreenConfig] = useState<MonthlyGroceryHubScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState(false);
+  const [summary, setSummary] = useState<MonthlyHubSummary | null>(null);
   const [savedBasketsCount, setSavedBasketsCount] = useState(0);
-  const [totalSavedThisMonth, setTotalSavedThisMonth] = useState(0);
-  const [lastOrderItemsCount, setLastOrderItemsCount] = useState(0);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState(false);
 
-  useEffect(() => {
-    const fetchLiveHubMetrics = async () => {
-      try {
-        // 1. Fetch saved baskets count from storage
-        const saved = await AsyncStorage.getItem('@saved_baskets');
-        if (saved) {
-          const list = JSON.parse(saved);
-          setSavedBasketsCount(list.length);
-        }
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    setConfigError(false);
+    const config = await fetchMonthlyGroceryHubScreenConfig();
+    setScreenConfig(config);
+    setConfigError(!config);
+    setConfigLoading(false);
+    return config;
+  }, []);
 
-        // 2. Fetch live savings & last order from database
-        if (token) {
-          const ordersRes = await fetch(`${API_BASE}/orders/mine`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const ordersData = await ordersRes.json();
-          if (ordersData.success && ordersData.orders?.length > 0) {
-            const orders = ordersData.orders;
-            const savingsSum = orders.reduce((sum: number, o: any) => sum + (parseFloat(o.discount_amount as any) || 0), 0);
-            if (savingsSum > 0) setTotalSavedThisMonth(savingsSum);
-            if (orders[0].order_items?.length > 0) {
-              const qtySum = orders[0].order_items.reduce(
-                (sum: number, it: any) => sum + (parseInt(it.quantity, 10) || 1),
-                0,
-              );
-              setLastOrderItemsCount(qtySum);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Hub metrics fetch notice:', err);
+  const loadMetrics = useCallback(async (config: MonthlyGroceryHubScreenConfig) => {
+    setMetricsLoading(true);
+    setMetricsError(false);
+    try {
+      const saved = await AsyncStorage.getItem('@saved_baskets');
+      if (saved) {
+        const list = JSON.parse(saved);
+        setSavedBasketsCount(Array.isArray(list) ? list.length : 0);
+      } else {
+        setSavedBasketsCount(0);
       }
-    };
 
-    fetchLiveHubMetrics();
+      if (token) {
+        const hubSummary = await fetchMonthlyHubSummary(token);
+        if (!hubSummary) {
+          setMetricsError(true);
+          setSummary(null);
+        } else {
+          setSummary(hubSummary);
+        }
+      } else {
+        setSummary(null);
+      }
+    } catch {
+      setMetricsError(true);
+      setSummary(null);
+    } finally {
+      setMetricsLoading(false);
+    }
   }, [token]);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadConfig().then((config) => {
+        if (config) loadMetrics(config);
+      });
+    }, [loadConfig, loadMetrics]),
+  );
+
+  const handleRetryConfig = () => {
+    loadConfig().then((config) => {
+      if (config) loadMetrics(config);
+    });
+  };
+
+  const handleRetryMetrics = () => {
+    if (screenConfig) loadMetrics(screenConfig);
+  };
+
+  const handleCopyLastMonth = () => {
+    if (!summary?.has_last_order) {
+      Alert.alert(
+        screenConfig?.no_last_order_title || 'No past order yet',
+        screenConfig?.no_last_order_message ||
+          'Place your first monthly grocery order to copy it next time.',
+      );
+      return;
+    }
+    navigation.navigate('CopyLastMonth');
+  };
+
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (configError || !screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <CheckoutBackIcon size={24} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>
+            {screenConfig?.load_error_message ||
+              'Could not load monthly grocery hub. Check that the backend is running.'}
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleRetryConfig}>
+            <Text style={styles.retryBtnText}>
+              {screenConfig?.retry_label || 'Retry'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const savedThisMonth = summary?.saved_this_month ?? 0;
+  const copySubtitle = summary?.has_last_order
+    ? formatHubTemplate(screenConfig.card_copy_subtitle_template, {
+        month: summary.last_order_month,
+        count: summary.last_order_item_count,
+      })
+    : screenConfig.card_copy_empty_subtitle;
+
+  const savedSubtitle =
+    savedBasketsCount > 0
+      ? formatHubTemplate(screenConfig.card_saved_subtitle_template, {
+          count: savedBasketsCount,
+        })
+      : screenConfig.card_saved_empty_subtitle;
+
+  const savingsLabel =
+    !metricsLoading && !metricsError && savedThisMonth > 0
+      ? formatHubTemplate(screenConfig.hero_savings_template, {
+          amount: savedThisMonth.toLocaleString('en-IN'),
+        })
+      : null;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Header */}
-      <View style={styles.topHeader}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Monthly Grocery</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
       <ScrollView
-        style={styles.scrollArea}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* =========================================================================
-           1. TOP GREEN HERO BANNER CARD (D1)
-           ========================================================================= */}
         <View style={styles.heroCard}>
           <View style={styles.heroBadgeRow}>
-            <Text style={styles.heroBadgeText}>✦ PLAN ONCE · SUPER SAVER</Text>
+            <HubHeroBadgeIcon size={15} />
+            <Text style={styles.heroBadge}>{screenConfig.hero_badge}</Text>
           </View>
-
-          <Text style={styles.heroTitle}>
-            Your whole month, sorted in one tap
-          </Text>
-
-          <Text style={styles.heroSubtitle}>
-            Smart baskets built from what your home actually buys — then reorder in seconds.
-          </Text>
-
-          <View style={styles.heroSavingsPill}>
-            <Text style={styles.heroSavingsText}>AVG ₹{totalSavedThisMonth} SAVED / MONTH</Text>
-          </View>
+          <Text style={styles.heroTitle}>{screenConfig.hero_title}</Text>
+          <Text style={styles.heroSubtitle}>{screenConfig.hero_subtitle}</Text>
+          {metricsLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={COLORS.marigold500}
+              style={styles.heroLoader}
+            />
+          ) : metricsError ? (
+            <TouchableOpacity style={styles.metricsErrorRow} onPress={handleRetryMetrics}>
+              <Text style={styles.metricsErrorText}>{screenConfig.metrics_error_message}</Text>
+              <Text style={styles.metricsRetryText}>{screenConfig.retry_label}</Text>
+            </TouchableOpacity>
+          ) : savingsLabel ? (
+            <View style={styles.heroSavingsPill}>
+              <SavingsCoinIcon size={14} />
+              <Text style={styles.heroSavingsText}>{savingsLabel}</Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* =========================================================================
-           2. 4 ACTION OPTION CARDS (D1)
-           ========================================================================= */}
         <View style={styles.actionCardsWrap}>
-          {/* Card 1: One-click monthly cart */}
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, styles.actionCardTall]}
             onPress={() => navigation.navigate('OneClickCart')}
             activeOpacity={0.85}
           >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.green700 }]}>
-              <Text style={styles.iconWhiteEmoji}>✦</Text>
+            <View style={[styles.iconCircle, styles.iconCirclePrimary]}>
+              <HubOneClickIcon size={22} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>One-click monthly cart</Text>
-              <Text style={styles.cardSub}>
-                Auto-build this month's basket from what you usually buy
-              </Text>
+              <Text style={styles.cardTitle}>{screenConfig.card_one_click_title}</Text>
+              <Text style={styles.cardSub}>{screenConfig.card_one_click_subtitle}</Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <HubChevronIcon size={20} />
           </TouchableOpacity>
 
-          {/* Card 2: Copy last month's cart */}
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate('CopyLastMonth')}
+            onPress={handleCopyLastMonth}
             activeOpacity={0.85}
           >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.green50 }]}>
-              <Text style={styles.iconGreenEmoji}>↻</Text>
+            <View style={[styles.iconCircle, styles.iconCircleSoft]}>
+              <HubCopyIcon size={21} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Copy last month's cart</Text>
+              <Text style={styles.cardTitle}>{screenConfig.card_copy_title}</Text>
               <Text style={styles.cardSub}>
-                Reorder your last basket · {lastOrderItemsCount} items
+                {metricsLoading ? '…' : copySubtitle}
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <HubChevronIcon size={20} />
           </TouchableOpacity>
 
-          {/* Card 3: Saved baskets */}
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('SavedBaskets')}
             activeOpacity={0.85}
           >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.green50 }]}>
-              <Text style={styles.iconGreenEmoji}>📑</Text>
+            <View style={[styles.iconCircle, styles.iconCircleSoft]}>
+              <HubSavedIcon size={20} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Saved baskets</Text>
+              <Text style={styles.cardTitle}>{screenConfig.card_saved_title}</Text>
               <Text style={styles.cardSub}>
-                {savedBasketsCount} baskets ready to reorder
+                {metricsLoading ? '…' : savedSubtitle}
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <HubChevronIcon size={20} />
           </TouchableOpacity>
 
-          {/* Card 4: Build from your list */}
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate('Search')}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.green50 }]}>
-              <Text style={styles.iconGreenEmoji}>📋</Text>
+          <View style={[styles.actionCard, styles.actionCardDisabled]}>
+            <View style={[styles.iconCircle, styles.iconCircleSoft]}>
+              <HubBuildIcon size={21} />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.cardTitle}>Build from your list (paste)</Text>
-              <Text style={styles.cardSub}>
-                Enter a list of items to auto-match
-              </Text>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  {screenConfig.card_build_title}
+                </Text>
+                <View style={styles.soonBadge}>
+                  <Text style={styles.soonBadgeText}>
+                    {screenConfig.card_build_soon_badge}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>{screenConfig.card_build_subtitle}</Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
-          </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -181,135 +290,185 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  centered: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
-  topHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    paddingVertical: 4,
+    height: 48,
+    gap: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
-    marginLeft: 8,
-  },
-  scrollArea: {
-    flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 4,
     paddingBottom: 36,
   },
-  /* Hero Card */
   heroCard: {
-    backgroundColor: COLORS.green800, // #155A38
-    borderRadius: RADIUS.lg, // 16px
-    padding: 20,
+    backgroundColor: COLORS.green800,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 18,
+    minHeight: 206,
     marginBottom: 20,
   },
   heroBadgeRow: {
-    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
   },
-  heroBadgeText: {
+  heroBadge: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.marigold500, // #F5A524
-    letterSpacing: 0.8,
+    color: COLORS.marigold500,
+    letterSpacing: 0.6,
+    lineHeight: 16,
   },
   heroTitle: {
+    ...FONTS.balooBold,
     fontSize: 22,
-    fontWeight: '900',
     color: '#FFFFFF',
     lineHeight: 28,
     marginBottom: 8,
   },
   heroSubtitle: {
+    ...FONTS.muktaRegular,
     fontSize: 13,
     color: '#D1FAE5',
-    lineHeight: 18,
-    marginBottom: 16,
+    lineHeight: 20,
+    marginBottom: 14,
   },
+  heroLoader: { alignSelf: 'flex-start' },
   heroSavingsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: COLORS.marigold500, // #F5A524
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    gap: 6,
+    backgroundColor: COLORS.marigold500,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderRadius: RADIUS.pill,
   },
   heroSavingsText: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '900',
     color: COLORS.ink900,
-    letterSpacing: 0.5,
+    letterSpacing: 0.2,
+    lineHeight: 14,
   },
-  /* Action Cards */
-  actionCardsWrap: {
-    gap: 12,
+  metricsErrorRow: {
+    alignSelf: 'flex-start',
+    gap: 4,
   },
+  metricsErrorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#D1FAE5',
+    lineHeight: 16,
+  },
+  metricsRetryText: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: COLORS.marigold500,
+  },
+  actionCardsWrap: { gap: 12 },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
-    borderRadius: RADIUS.md, // 12px
-    padding: 16,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+    minHeight: 74,
   },
+  actionCardTall: {
+    minHeight: 85,
+    paddingVertical: 20,
+  },
+  actionCardDisabled: { opacity: 0.92 },
   iconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
+    overflow: 'hidden',
   },
-  iconWhiteEmoji: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  iconGreenEmoji: {
-    fontSize: 20,
-    color: COLORS.green700,
-    fontWeight: 'bold',
-  },
-  cardInfo: {
-    flex: 1,
-    paddingRight: 6,
+  iconCirclePrimary: { backgroundColor: COLORS.green700 },
+  iconCircleSoft: { backgroundColor: COLORS.green50 },
+  cardInfo: { flex: 1, paddingRight: 8 },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 3,
   },
   cardTitle: {
-    fontSize: 14.5,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORS.ink900,
     marginBottom: 3,
   },
+  cardTitleInline: { marginBottom: 0 },
   cardSub: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
     lineHeight: 16,
   },
-  arrowIcon: {
-    fontSize: 24,
-    color: COLORS.ink300,
-    fontWeight: '300',
+  soonBadge: {
+    backgroundColor: COLORS.marigold100,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  soonBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: COLORS.marigold700,
+    letterSpacing: 0.4,
+    lineHeight: 14,
+  },
+  errorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+  },
+  retryBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });

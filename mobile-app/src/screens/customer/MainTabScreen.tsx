@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   mainContainerHome: {
-    backgroundColor: '#F5A524',
+    backgroundColor: COLORS.surface,
   },
   screenContainer: {
     flex: 1,

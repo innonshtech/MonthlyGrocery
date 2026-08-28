@@ -3,6 +3,12 @@ import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
+import {
+  PACK_UNIT_OPTIONS,
+  enrichProductPackFields,
+  packUnitPayloadFromInput,
+  resolvePackUnitLabel,
+} from '../utils/packUnit';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -72,7 +78,7 @@ router.get('/all', async (req, res) => {
         query = query.eq('secondary_category', secondary);
       }
       if (q) {
-        query = query.ilike('name', `%${q}%`);
+        query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
       }
 
       const { data: products, error } = await query.limit(limitVal);
@@ -108,7 +114,7 @@ router.get('/all', async (req, res) => {
         }
 
         if (isLive) {
-          out.push({
+          out.push(enrichProductPackFields({
             id: p.id,
             shop_id: p.shop_id,
             name: p.name,
@@ -118,11 +124,12 @@ router.get('/all', async (req, res) => {
             primary_category: p.primary_category,
             secondary_category: p.secondary_category,
             short_description: p.short_description,
+            description: p.description,
             place: p.place,
             image_url: p.image_url,
-            unit: p.unit,
             quantity_value: p.quantity_value,
             quantity_unit: p.quantity_unit,
+            unit: p.unit,
             mrp,
             price,
             is_veg: p.is_veg,
@@ -131,7 +138,7 @@ router.get('/all', async (req, res) => {
             best_seller: p.best_seller,
             discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
             you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-          });
+          }));
         }
       }
       return res.json({ success: true, products: applyDealsFilter(out) });
@@ -175,7 +182,7 @@ router.get('/all', async (req, res) => {
       query = query.eq('secondary_category', secondary);
     }
     if (q) {
-      query = query.ilike('name', `%${q}%`);
+      query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
     }
 
     const { data: masterProducts, error } = await query.limit(limitVal);
@@ -193,7 +200,7 @@ router.get('/all', async (req, res) => {
       const mrp = parseFloat(p.mrp) || 0;
       const price = parseFloat(sp.selling_price) || 0;
 
-      out.push({
+      out.push(enrichProductPackFields({
         id: p.id,
         shop_id: shopId,
         name: p.name,
@@ -206,17 +213,19 @@ router.get('/all', async (req, res) => {
         short_description: p.short_description,
         place: p.place,
         image_url: p.image_url,
+        quantity_value: p.quantity_value,
+        quantity_unit: p.quantity_unit,
+        unit: p.unit,
         mrp,
         price,
         discount_percent: sp.discount_percentage ?? 0,
         stock: sp.stock || 0,
-        unit: p.unit,
         is_veg: p.is_veg,
         featured: p.featured,
         todays_deal: p.todays_deal,
         best_seller: p.best_seller,
         you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-      });
+      }));
     }
 
     return res.json({ success: true, products: applyDealsFilter(out) });
@@ -284,6 +293,11 @@ router.get('/search', async (req, res) => {
   }
 });
 
+// 1.4 GET /pack-units: Standard pack unit options (Super Admin + Merchant + Customer)
+router.get('/pack-units', (_req, res) => {
+  return res.json({ success: true, pack_units: PACK_UNIT_OPTIONS });
+});
+
 // 1.5 GET /master: Fetch all master catalogue products (Merchant & Admin use)
 router.get('/master', async (req, res) => {
   try {
@@ -296,7 +310,10 @@ router.get('/master', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    return res.json({ success: true, products: products || [] });
+    return res.json({
+      success: true,
+      products: (products || []).map((p: any) => enrichProductPackFields(p)),
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -397,6 +414,12 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           .eq('sku', sku)
           .maybeSingle();
 
+        const packFromExcel = packUnitPayloadFromInput(
+          row.quantity_value,
+          row.quantity_unit,
+          String(row.unit || '').trim(),
+        );
+
         const productData = {
           shop_id: shop.id,
           name,
@@ -413,7 +436,9 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           mrp: parseFloat(row.mrp) || 0.00,
           price: parseFloat(row.price) || 0.00,
           stock: parseInt(row.stock) || 0,
-          unit: String(row.unit || 'units').trim(),
+          quantity_value: packFromExcel.quantity_value,
+          quantity_unit: packFromExcel.quantity_unit,
+          unit: packFromExcel.unit || String(row.unit || '').trim() || 'units',
           available: parseBool(row.available, true),
           is_veg: parseBool(row.is_veg, true),
           featured: parseBool(row.featured, false),
@@ -556,11 +581,13 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       return res.status(400).json({ success: false, error: 'No approved shop found. Please create a merchant shop first.' });
     }
 
-    const { name, sku, brand, company, description, short_description, mrp, price, primary_category, image_url, unit, available, is_veg } = req.body;
+    const { name, sku, brand, company, description, short_description, mrp, price, primary_category, image_url, unit, quantity_value, quantity_unit, available, is_veg } = req.body;
     
     if (!name || !sku || !primary_category) {
       return res.status(400).json({ success: false, error: 'Name, SKU, and Category are required.' });
     }
+
+    const packFields = packUnitPayloadFromInput(quantity_value ?? unit, quantity_unit, unit);
 
     const newProduct = {
       shop_id: shopId,
@@ -574,7 +601,9 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       price: parseFloat(price) || 0,
       primary_category,
       image_url: image_url || null,
-      unit: unit || 'units',
+      quantity_value: packFields.quantity_value,
+      quantity_unit: packFields.quantity_unit,
+      unit: packFields.unit || unit || 'units',
       available: available ?? true,
       is_veg: is_veg ?? true
     };
@@ -710,6 +739,21 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       return res.status(404).json({ success: false, error: 'Product not found.' });
     }
 
+    let quantity_value = product.quantity_value;
+    let quantity_unit = product.quantity_unit;
+    let unitLabel = product.unit;
+
+    if (data.quantity_value !== undefined || data.quantity_unit !== undefined || data.unit !== undefined) {
+      const packFields = packUnitPayloadFromInput(
+        data.quantity_value !== undefined ? data.quantity_value : quantity_value,
+        data.quantity_unit !== undefined ? data.quantity_unit : quantity_unit,
+        data.unit !== undefined ? data.unit : unitLabel,
+      );
+      quantity_value = packFields.quantity_value;
+      quantity_unit = packFields.quantity_unit;
+      unitLabel = packFields.unit || unitLabel;
+    }
+
     const updatedData = {
       name: data.name !== undefined ? data.name : product.name,
       sku: data.sku !== undefined ? data.sku : product.sku,
@@ -721,7 +765,9 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       price: data.price !== undefined ? parseFloat(data.price) : product.price,
       primary_category: data.primary_category !== undefined ? data.primary_category : product.primary_category,
       image_url: data.image_url !== undefined ? data.image_url : product.image_url,
-      unit: data.unit !== undefined ? data.unit : product.unit,
+      quantity_value,
+      quantity_unit,
+      unit: unitLabel,
       available: data.available !== undefined ? !!data.available : product.available,
       is_veg: data.is_veg !== undefined ? !!data.is_veg : product.is_veg,
     };

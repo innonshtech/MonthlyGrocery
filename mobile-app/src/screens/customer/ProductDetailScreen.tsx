@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,150 +8,278 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
-  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS, FONTS } from '../../constants/theme';
-
-const { width } = Dimensions.get('window');
-
-// ─── Pastel backgrounds for product image ────────────────────────────────────
-const HERO_BG_COLORS = [
-  '#FFF3D6', '#E4F3EA', '#F6E9E1', '#FDE4E7',
-  '#EDE9FB', '#FBEEDD', '#EAF6D6', '#E1F0FB',
-];
-function heroBg(index: number) {
-  return HERO_BG_COLORS[index % HERO_BG_COLORS.length];
-}
-
-// ─── Dynamic parsing of Highlights (Shopkeeper custom text or dynamic fallbacks) 
-const getHighlights = (product: Product): string[] => {
-  const desc = (product as any).description || '';
-  if (desc.trim()) {
-    // Split description by semicolons, newlines, or bullets
-    const list = desc
-      .split(/[;\n•]+/)
-      .map((item: string) => item.trim())
-      .filter((item: string) => item.length > 0);
-    if (list.length > 0) {
-      return list;
-    }
-  }
-
-  // Fallbacks: dynamically construct highlights using actual product attributes to avoid hardcoding
-  return [
-    `100% authentic ${product.brand || 'quality brand'} product`,
-    `Curated monthly essential pack size of ${product.unit || 'standard unit'}`,
-    `Quality checked and sourced for ${product.primary_category || 'home catalog'}`
-  ];
-};
+import { COLORS, FONTS } from '../../constants/theme';
+import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
+import { getProductPackLabel } from '../../utils/packUnit';
+import {
+  fetchProductDetailConfigWithStatus,
+  fetchProductDetail,
+  parseProductHighlights,
+  formatProductDetailTemplate,
+  ProductDetailScreenConfig,
+} from '../../services/productDetailApi';
 
 export default function ProductDetailScreen({ route, navigation }: any) {
   const { productId } = route.params || {};
   const { items, addToCart, updateQuantity } = useCart();
   const { city, area } = useAuth();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [variants, setVariants] = useState<Product[]>([]);
+  const insets = useSafeAreaInsets();
 
-  // Helper to extract base product name family
-  const getBaseProductFamily = (nameStr: string) => {
-    return nameStr
-      .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units)\b.*/i, '')
-      .trim();
-  };
+  const [screenConfig, setScreenConfig] = useState<ProductDetailScreenConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [variants, setVariants] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
+  const totalCartCount = items.reduce((s, i) => s + i.quantity, 0);
+
+  const loadConfig = useCallback(async () => {
+    const result = await fetchProductDetailConfigWithStatus();
+    setScreenConfig(result.config);
+    setConfigError(result.error);
+    return result;
+  }, []);
+
+  const loadProduct = useCallback(async () => {
+    if (!productId || !hasDeliveryArea) {
+      setProduct(null);
+      setVariants([]);
+      setFetchError(false);
+      setNotFound(false);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setFetchError(false);
+    setNotFound(false);
+
+    const result = await fetchProductDetail({
+      productId,
+      city: city ?? undefined,
+      area: area ?? undefined,
+    });
+
+    if (result.error) {
+      setFetchError(true);
+      setProduct(null);
+      setVariants([]);
+    } else if (result.notFound) {
+      setNotFound(true);
+      setProduct(null);
+      setVariants([]);
+    } else {
+      setProduct(result.product);
+      setVariants(result.variants);
+    }
+    setLoading(false);
+  }, [productId, hasDeliveryArea, city, area]);
+
+  const loadAll = useCallback(async () => {
+    await loadConfig();
+    await loadProduct();
+  }, [loadConfig, loadProduct]);
 
   useEffect(() => {
-    const fetchProduct = async () => {
-      setLoading(true);
-      try {
-        let url = `${API_BASE}/products/all?limit=100`;
-        if (city) url += `&city=${encodeURIComponent(city)}`;
-        if (area) url += `&area_name=${encodeURIComponent(area)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (res.ok && data.success && data.products) {
-          const found = data.products.find((p: any) => p.id === productId);
-          if (found) {
-            setProduct(found);
-            // Group other active variants of the same product family
-            const familyName = getBaseProductFamily(found.name);
-            const related = data.products.filter((p: any) => {
-              return p.primary_category === found.primary_category &&
-                     (p.brand || '').toLowerCase() === (found.brand || '').toLowerCase() &&
-                     getBaseProductFamily(p.name).toLowerCase() === familyName.toLowerCase();
-            });
-            setVariants(related.length > 0 ? related : [found]);
-          } else {
-            // Default fallback
-            const fallback = {
-              id: productId || 'p-default',
-              shop_id: 'shop-1',
-              name: 'Aashirvaad Select Atta',
-              brand: 'Aashirvaad',
-              primary_category: 'Atta, Rice & Dals',
-              image_url: '',
-              unit: '5 kg',
-              mrp: 340,
-              price: 255,
-              description: 'Stone-ground whole wheat; High in dietary fibre & protein; Milled in small batches; Packed for month-long freshness',
-            };
-            setProduct(fallback);
-            setVariants([fallback]);
-          }
-        }
-      } catch {
-        const fallback = {
-          id: productId || 'p-default',
-          shop_id: 'shop-1',
-          name: 'Aashirvaad Select Atta',
-          brand: 'Aashirvaad',
-          primary_category: 'Atta, Rice & Dals',
-          image_url: '',
-          unit: '5 kg',
-          mrp: 340,
-          price: 255,
-          description: 'Stone-ground whole wheat; High in dietary fibre & protein; Milled in small batches; Packed for month-long freshness',
-        };
-        setProduct(fallback);
-        setVariants([fallback]);
-      } finally {
-        setLoading(false);
-      }
-    };
+    loadAll();
+  }, [loadAll]);
 
-    fetchProduct();
-  }, [productId, city, area]);
-
-  if (loading || !product) {
+  if (configError && !screenConfig) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.green700} />
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
-  const price = parseFloat(product.price as any) || 0;
-  const mrp = parseFloat(product.mrp as any) || price;
-  const diffSavings = mrp - price;
-  const pctOff = mrp > price ? Math.round((diffSavings / mrp) * 100) : 0;
-  const activePackUnit = product.unit || '1 unit';
+  const renderBody = () => {
+    if (!hasDeliveryArea) {
+      return (
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>{screenConfig?.location_required_message}</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => navigation.navigate('CitySelection')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.retryBtnText}>{screenConfig?.choose_location_label}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
 
-  const cartItem = items.find((i) => i.product?.id === product.id);
-  const qty = cartItem ? cartItem.quantity : 0;
+    if (loading) {
+      return (
+        <View style={styles.centerLoading}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      );
+    }
 
-  const highlightsList = getHighlights(product);
+    if (fetchError) {
+      return (
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>{screenConfig?.load_error_message}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadProduct} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>{screenConfig?.retry_label}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (notFound || !product) {
+      return (
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>{screenConfig?.not_found_message}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadProduct} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>{screenConfig?.retry_label}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const price = parseFloat(String(product.price)) || 0;
+    const mrp = parseFloat(String(product.mrp)) || price;
+    const pctOff = getProductDiscountPercent(product);
+    const activePackUnit = getProductPackLabel(product);
+    const highlightsList = parseProductHighlights(product);
+    const unitSuffix = screenConfig
+      ? formatProductDetailTemplate(screenConfig.unit_price_suffix_template, { unit: activePackUnit })
+      : activePackUnit;
+
+    const cartItem = items.find((i) => i.product?.id === product.id);
+    const qty = cartItem ? cartItem.quantity : 0;
+
+    return (
+      <>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.heroBox, { backgroundColor: homeDealBg(0) }]}>
+            {pctOff > 0 && (
+              <View style={styles.offBadge}>
+                <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
+              </View>
+            )}
+
+            {product.image_url ? (
+              <Image source={{ uri: product.image_url }} style={styles.heroImg} resizeMode="contain" />
+            ) : (
+              <AppIcon name="shopping-bag" size={72} color={COLORS.green700} />
+            )}
+          </View>
+
+          <View style={styles.infoArea}>
+            <Text style={styles.prodName}>{product.name}</Text>
+
+            {variants.length > 1 && (
+              <View style={styles.variantsRow}>
+                {variants.map((v) => {
+                  const isSelected = v.id === product.id;
+                  return (
+                    <TouchableOpacity
+                      key={v.id}
+                      style={[styles.variantPill, isSelected && styles.variantPillOn]}
+                      onPress={() => setProduct(v)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.variantPillTxt, isSelected && styles.variantPillTxtOn]}>
+                        {getProductPackLabel(v)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            <View style={styles.priceRow}>
+              <Text style={styles.priceVal}>₹{price}</Text>
+              {mrp > price && (
+                <>
+                  <Text style={styles.mrpVal}>₹{mrp}</Text>
+                  {pctOff > 0 && (
+                    <View style={styles.saveBadge}>
+                      <Text style={styles.saveBadgeTxt}>{pctOff}% OFF</Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
+
+            <View style={styles.deliveredBanner}>
+              <AppIcon name="help" size={16} color={COLORS.green700} />
+              <Text style={styles.deliveredTxt}>{screenConfig?.delivery_window_label}</Text>
+            </View>
+          </View>
+
+          {highlightsList.length > 0 && (
+            <View style={styles.highlightsCard}>
+              <Text style={styles.highlightsTitle}>{screenConfig?.highlights_section_label}</Text>
+              {highlightsList.map((hl, index) => (
+                <View key={index} style={styles.hlRow}>
+                  <View style={styles.hlIconCircle}>
+                    <AppIcon name="search" size={12} color={COLORS.green700} />
+                  </View>
+                  <Text style={styles.hlTxt}>{hl}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <View style={styles.bottomLeft}>
+            <Text style={styles.bottomPrice}>₹{price}</Text>
+            <Text style={styles.bottomUnit}>{unitSuffix}</Text>
+          </View>
+
+          {qty > 0 ? (
+            <View style={styles.bottomStepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => updateQuantity(product.id, qty - 1)}
+              >
+                <Text style={styles.stepTxt}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.stepQty}>{qty}</Text>
+              <TouchableOpacity style={styles.stepBtn} onPress={() => addToCart(product)}>
+                <Text style={styles.stepTxt}>+</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.addCartBtn}
+              onPress={() => addToCart(product)}
+              activeOpacity={0.85}
+            >
+              <AppIcon name="cart" size={16} color="#FFFFFF" />
+              <Text style={styles.addCartTxt}>{screenConfig?.add_to_cart_label}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ── 1. Header: Back + Favorite ────────────────────────────────────────── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -162,158 +290,63 @@ export default function ProductDetailScreen({ route, navigation }: any) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => setIsFavorite(!isFavorite)}
           style={styles.headerBtn}
+          onPress={() => navigation.navigate('Cart')}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <AppIcon
-            name={isFavorite ? 'tag' : 'tag'} // using tag icon for favorite toggling fallback
+            name="cart"
             size={22}
-            color={isFavorite ? COLORS.marigold500 : COLORS.ink500}
+            color={COLORS.ink900}
+            badge={totalCartCount > 0 ? totalCartCount : undefined}
           />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── 2. Hero image preview (Figma: height 320, centered, size 150) ─────── */}
-        <View style={[styles.heroBox, { backgroundColor: heroBg(0) }]}>
-          {pctOff > 0 && (
-            <View style={styles.offBadge}>
-              <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
-            </View>
-          )}
-
-          {product.image_url ? (
-            <Image source={{ uri: product.image_url }} style={styles.heroImg} resizeMode="contain" />
-          ) : (
-            <AppIcon name="shopping-bag" size={72} color={COLORS.green700} />
-          )}
-
-          {/* Dots Indicator Spacer */}
-          <View style={styles.dotsRow}>
-            <View style={styles.activeDot} />
-            <View style={styles.inactiveDot} />
-            <View style={styles.inactiveDot} />
-          </View>
-        </View>
-
-        {/* ── 3. Product info & Price ─────────────────────────────────────────── */}
-        <View style={styles.infoArea}>
-          <Text style={styles.prodName}>{product.name}</Text>
-          
-          <View style={styles.priceRow}>
-            <Text style={styles.priceVal}>₹{price}</Text>
-            {mrp > price && (
-              <>
-                <Text style={styles.mrpVal}>₹{mrp}</Text>
-                <View style={styles.saveBadge}>
-                  <Text style={styles.saveBadgeTxt}>{pctOff}% OFF</Text>
-                </View>
-              </>
-            )}
-          </View>
-
-          {/* Delivered window banner */}
-          <View style={styles.deliveredBanner}>
-            <AppIcon name="help" size={16} color={COLORS.green700} />
-            <Text style={styles.deliveredTxt}>Delivered in your planned 4-hour window</Text>
-          </View>
-        </View>
-
-        {/* ── 4. Variant Selector (Figma variant pills) ────────────────────────── */}
-        {variants.length > 1 && (
-          <View style={styles.sectionWrap}>
-            <Text style={styles.sectionTitle}>Pack size</Text>
-            <View style={styles.variantsRow}>
-              {variants.map((v) => {
-                const isSelected = v.id === product.id;
-                return (
-                  <TouchableOpacity
-                    key={v.id}
-                    style={[styles.variantPill, isSelected && styles.variantPillOn]}
-                    onPress={() => setProduct(v)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.variantPillTxt, isSelected && styles.variantPillTxtOn]}>
-                      {v.unit}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* ── 5. Highlights Card (Figma: dynamically parses shopkeeper description) ─ */}
-        <View style={styles.highlightsCard}>
-          <Text style={styles.highlightsTitle}>HIGHLIGHTS</Text>
-          {highlightsList.map((hl, index) => (
-            <View key={index} style={styles.hlRow}>
-              <View style={styles.hlIconCircle}>
-                <AppIcon name="search" size={12} color={COLORS.green700} />
-              </View>
-              <Text style={styles.hlTxt}>{hl}</Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* ── 6. Sticky bottom checkout bar (Figma matching layout) ─────────────── */}
-      <View style={styles.bottomBar}>
-        <View style={styles.bottomLeft}>
-          <Text style={styles.bottomPrice}>₹{price}</Text>
-          <Text style={styles.bottomUnit}>{activePackUnit} · incl. taxes</Text>
-        </View>
-
-        {qty > 0 ? (
-          <View style={styles.bottomStepper}>
-            <TouchableOpacity
-              style={styles.stepBtn}
-              onPress={() => updateQuantity(product.id, qty - 1)}
-            >
-              <Text style={styles.stepTxt}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.stepQty}>{qty}</Text>
-            <TouchableOpacity
-              style={styles.stepBtn}
-              onPress={() => addToCart(product)}
-            >
-              <Text style={styles.stepTxt}>+</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={styles.addCartBtn}
-            onPress={() => addToCart(product)}
-            activeOpacity={0.85}
-          >
-            <AppIcon name="cart" size={16} color="#FFFFFF" />
-            <Text style={styles.addCartTxt}>Add to cart</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <View style={styles.bodyFlex}>{renderBody()}</View>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FBFAF6',
   },
-  loadingContainer: {
+  bodyFlex: {
+    flex: 1,
+  },
+  centeredState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FBFAF6',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  centerLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -329,7 +362,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Scroll
   scroll: {
     flex: 1,
   },
@@ -338,7 +370,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
 
-  // Hero Preview
   heroBox: {
     width: '100%',
     height: 320,
@@ -367,30 +398,10 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
   },
-  dotsRow: {
-    position: 'absolute',
-    bottom: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  activeDot: {
-    width: 18,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: COLORS.green700,
-  },
-  inactiveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: COLORS.line,
-  },
 
-  // Product info
   infoArea: {
     marginBottom: 20,
-    gap: 8,
+    gap: 12,
   },
   prodName: {
     ...FONTS.balooBold,
@@ -434,26 +445,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 8,
-    marginTop: 6,
   },
   deliveredTxt: {
     ...FONTS.muktaMedium,
     fontSize: 12,
     color: COLORS.ink900,
+    flex: 1,
   },
 
-  // Pack size variants selector
-  sectionWrap: {
-    marginBottom: 20,
-    gap: 10,
-  },
-  sectionTitle: {
-    ...FONTS.muktaBold,
-    fontSize: 11,
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
   variantsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -483,7 +482,6 @@ const styles = StyleSheet.create({
     color: COLORS.green700,
   },
 
-  // Highlights
   highlightsCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -518,21 +516,16 @@ const styles = StyleSheet.create({
     color: COLORS.ink900,
   },
 
-  // Bottom action bar
   bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingTop: 12,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
-    height: 80,
+    minHeight: 80,
   },
   bottomLeft: {
     gap: 2,

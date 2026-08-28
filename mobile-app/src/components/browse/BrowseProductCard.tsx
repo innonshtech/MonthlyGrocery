@@ -9,6 +9,7 @@ import {
 import { Product } from '../../context/CartContext';
 import AppIcon from '../AppIcon';
 import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
+import { getProductPackLabel } from '../../utils/packUnit';
 import { COLORS, FONTS } from '../../constants/theme';
 
 /** Figma B4 product tile — shared by Home deals rail + category grid */
@@ -24,6 +25,7 @@ type BrowseProductCardProps = {
   onAdd: () => void;
   onIncrement: () => void;
   onDecrement: () => void;
+  addButtonLabel?: string;
 };
 
 export default function BrowseProductCard({
@@ -35,10 +37,12 @@ export default function BrowseProductCard({
   onAdd,
   onIncrement,
   onDecrement,
+  addButtonLabel = 'ADD',
 }: BrowseProductCardProps) {
   const price = parseFloat(String(item.price)) || 0;
   const mrp = parseFloat(String(item.mrp)) || price;
   const pctOff = getProductDiscountPercent(item);
+  const packLabel = getProductPackLabel(item);
 
   return (
     <TouchableOpacity
@@ -71,13 +75,13 @@ export default function BrowseProductCard({
           </View>
         ) : (
           <TouchableOpacity style={styles.addPill} onPress={onAdd} activeOpacity={0.85}>
-            <Text style={styles.addPillTxt}>ADD</Text>
+            <Text style={styles.addPillTxt}>{addButtonLabel}</Text>
           </TouchableOpacity>
         )}
       </View>
 
       <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-      {item.unit ? <Text style={styles.unit}>{item.unit}</Text> : null}
+      {packLabel ? <Text style={styles.unit}>{packLabel}</Text> : null}
 
       <View style={styles.priceRow}>
         <Text style={styles.price}>₹{price}</Text>

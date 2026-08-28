@@ -10,10 +10,15 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../config/api';
 import { COLORS, FONTS } from '../../constants/theme';
+import { getOrderDisplayId } from '../../services/ordersApi';
+import {
+  basketFromOrderItems,
+  loadSavedBaskets,
+  persistSavedBaskets,
+} from '../../utils/savedBasketsStorage';
 import {
   SuccessCheckIcon,
   SavingsCoinIcon,
@@ -25,15 +30,6 @@ const SCREEN_BG = '#FBFAF6';
 
 const formatInr = (n: number) =>
   `₹${Math.round(n).toLocaleString('en-IN')}`;
-
-function formatOrderId(raw?: string): string {
-  if (!raw) return '#MG00000';
-  if (raw.startsWith('#')) return raw;
-  if (raw.startsWith('MG')) return `#${raw}`;
-  const compact = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  if (compact.length <= 8) return `#MG${compact}`;
-  return `#MG${compact.slice(-5)}`;
-}
 
 type OrderSummary = {
   orderId: string;
@@ -47,20 +43,23 @@ type OrderSummary = {
 
 function mapApiOrder(order: any): OrderSummary {
   return {
-    orderId: order.display_id || order.id,
+    orderId: getOrderDisplayId({ display_id: order.display_id, id: order.id }),
     total: Number(order.total_amount) || 0,
     savings: Number(order.total_savings) ||
       Number(order.product_savings || 0) + Number(order.discount_amount || 0),
-    arriving: order.delivery_slot || 'Scheduled delivery',
-    deliverTo: order.deliver_to_label || order.shipping_address || 'Your delivery address',
+    arriving: order.delivery_slot || '',
+    deliverTo: order.deliver_to_label || order.shipping_address || '',
     paymentMethod: order.payment_method_label || order.payment_method || 'Cash on Delivery',
-    orderItems: (order.order_items || []).map((oi: any) => ({
-      id: oi.product_id || oi.id,
-      name: oi.product_name || oi.name || 'Grocery Item',
-      price: oi.unit_price || oi.price || 0,
-      qty: oi.quantity || oi.qty || 1,
-      unit: oi.unit || '1 unit',
-    })),
+    orderItems: (order.order_items || []).map((oi: any) => {
+      const name = (oi.product_name || oi.name || '').trim();
+      return {
+        id: oi.product_id || oi.id,
+        name,
+        price: oi.unit_price || oi.price || 0,
+        qty: oi.quantity || oi.qty || 1,
+        unit: oi.unit || '1 unit',
+      };
+    }),
   };
 }
 
@@ -70,9 +69,12 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
 
   const [loading, setLoading] = useState(Boolean(params.backendOrderId || params.orderId));
   const [summary, setSummary] = useState<OrderSummary | null>(
-    params.orderId
+    params.orderId || params.backendOrderId
       ? {
-          orderId: params.orderId,
+          orderId: getOrderDisplayId({
+            display_id: params.orderId,
+            id: params.backendOrderId || params.orderId,
+          }),
           total: params.total ?? 0,
           savings: params.savings ?? 0,
           arriving:
@@ -125,19 +127,17 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
 
     setSaving(true);
     try {
-      const saved = await AsyncStorage.getItem('@saved_baskets');
-      const list = saved ? JSON.parse(saved) : [];
-      const month = new Date().toLocaleDateString('en-US', { month: 'long' });
-      const newBasket = {
-        id: `sb-${Date.now()}`,
-        name: `Monthly basket · ${month}`,
-        price: summary.total,
-        itemCount: summary.orderItems.length,
-        sub: `${summary.orderItems.length} items · Staples, Groceries...`,
-        iconCount: Math.min(4, summary.orderItems.length),
-        items: summary.orderItems,
-      };
-      await AsyncStorage.setItem('@saved_baskets', JSON.stringify([newBasket, ...list]));
+      const month = new Date().toLocaleDateString('en-IN', { month: 'long' });
+      const newBasket = basketFromOrderItems(
+        `Monthly basket · ${month}`,
+        summary.orderItems,
+      );
+      if (!newBasket) {
+        Alert.alert('Cannot save', 'Order items are not available to save.');
+        return;
+      }
+      const list = await loadSavedBaskets();
+      await persistSavedBaskets([newBasket, ...list]);
       setBasketSaved(true);
       Alert.alert('Saved', 'This order is saved as your monthly basket.');
     } catch {
@@ -203,16 +203,20 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
         <View style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Order ID</Text>
-            <Text style={styles.detailVal}>{formatOrderId(summary.orderId)}</Text>
+            <Text style={styles.detailVal}>{summary.orderId}</Text>
           </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Arriving</Text>
-            <Text style={styles.detailVal}>{summary.arriving}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Deliver to</Text>
-            <Text style={styles.detailVal} numberOfLines={2}>{summary.deliverTo}</Text>
-          </View>
+          {summary.arriving ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Arriving</Text>
+              <Text style={styles.detailVal}>{summary.arriving}</Text>
+            </View>
+          ) : null}
+          {summary.deliverTo ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Deliver to</Text>
+              <Text style={styles.detailVal} numberOfLines={2}>{summary.deliverTo}</Text>
+            </View>
+          ) : null}
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Paid via</Text>
             <Text style={styles.detailVal}>{paidViaLabel}</Text>

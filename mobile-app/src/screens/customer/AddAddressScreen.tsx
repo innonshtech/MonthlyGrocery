@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,8 +8,10 @@ import {
   TextInput,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
@@ -21,6 +23,8 @@ import {
 } from '../../components/CheckoutFigmaIcons';
 import {
   type AddressItem,
+  type AddAddressScreenConfig,
+  fetchAddAddressScreenConfig,
   saveUserAddress,
   cacheAddressesLocally,
 } from '../../services/addressApi';
@@ -28,11 +32,11 @@ import {
 const SCREEN_BG = '#FBFAF6';
 const MAP_BG = '#E8F0EA';
 
-const TAG_OPTIONS = [
-  { key: 'Home', Icon: TagHomeIcon },
-  { key: 'Work', Icon: TagWorkIcon },
-  { key: 'Other', Icon: TagOtherIcon },
-] as const;
+const TAG_ICONS: Record<string, typeof TagHomeIcon> = {
+  Home: TagHomeIcon,
+  Work: TagWorkIcon,
+  Other: TagOtherIcon,
+};
 
 function defaultPhoneFromUser(mobile?: string): string {
   if (!mobile) return '';
@@ -46,7 +50,10 @@ export default function AddAddressScreen({ navigation, route }: any) {
   const editingAddress = route?.params?.editingAddress as AddressItem | undefined;
   const fromCheckout = route?.params?.fromCheckout;
 
-  const [tag, setTag] = useState(editingAddress?.tag || 'Home');
+  const [screenConfig, setScreenConfig] = useState<AddAddressScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+
+  const [tag, setTag] = useState('');
   const [flat, setFlat] = useState(editingAddress?.flat || '');
   const [street, setStreet] = useState(editingAddress?.street || '');
   const [landmark, setLandmark] = useState(editingAddress?.landmark || '');
@@ -56,14 +63,63 @@ export default function AddAddressScreen({ navigation, route }: any) {
   );
   const [saving, setSaving] = useState(false);
 
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchAddAddressScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConfig();
+    }, [loadConfig]),
+  );
+
+  useEffect(() => {
+    if (!screenConfig) return;
+    const initialTag =
+      editingAddress?.tag ||
+      screenConfig.default_tag_key ||
+      screenConfig.tag_home_key;
+    setTag(initialTag);
+  }, [screenConfig, editingAddress?.tag]);
+
+  const tagOptions = useMemo(() => {
+    if (!screenConfig) return [];
+    return [
+      {
+        key: screenConfig.tag_home_key,
+        label: screenConfig.tag_home_label,
+        Icon: TAG_ICONS[screenConfig.tag_home_key] || TagHomeIcon,
+      },
+      {
+        key: screenConfig.tag_work_key,
+        label: screenConfig.tag_work_label,
+        Icon: TAG_ICONS[screenConfig.tag_work_key] || TagWorkIcon,
+      },
+      {
+        key: screenConfig.tag_other_key,
+        label: screenConfig.tag_other_label,
+        Icon: TAG_ICONS[screenConfig.tag_other_key] || TagOtherIcon,
+      },
+    ];
+  }, [screenConfig]);
+
   const handleSave = async () => {
-    if (!token) {
-      Alert.alert('Login required', 'Please log in to save your delivery address.');
+    if (!screenConfig || !token) {
+      if (screenConfig) {
+        Alert.alert(
+          screenConfig.login_required_title,
+          screenConfig.login_required_message,
+        );
+      }
       return;
     }
 
     if (!flat.trim() || !street.trim() || !pincode.trim()) {
-      Alert.alert('Incomplete details', 'Please fill flat/house, area/locality, and pincode.');
+      Alert.alert(screenConfig.incomplete_title, screenConfig.incomplete_message);
       return;
     }
 
@@ -93,11 +149,38 @@ export default function AddAddressScreen({ navigation, route }: any) {
 
       navigation.goBack();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Could not save address. Please try again.');
+      Alert.alert(
+        screenConfig.save_error_title,
+        err.message || screenConfig.load_error_message,
+      );
     } finally {
       setSaving(false);
     }
   };
+
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.saveBtn} onPress={() => loadConfig()}>
+            <ActivityIndicator color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const headerTitle = editingAddress ? screenConfig.edit_title : screenConfig.add_title;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -107,9 +190,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {editingAddress ? 'Edit address' : 'Add address'}
-        </Text>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
       </View>
 
       <ScrollView
@@ -123,58 +204,58 @@ export default function AddAddressScreen({ navigation, route }: any) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>FLAT / HOUSE NO.</Text>
+          <Text style={styles.fieldLabel}>{screenConfig.flat_label}</Text>
           <TextInput
             style={styles.input}
             value={flat}
             onChangeText={setFlat}
-            placeholder="e.g. Flat 402, Green Meadows"
+            placeholder={screenConfig.flat_placeholder}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>AREA / LOCALITY</Text>
+          <Text style={styles.fieldLabel}>{screenConfig.street_label}</Text>
           <TextInput
             style={styles.input}
             value={street}
             onChangeText={setStreet}
-            placeholder="e.g. Paud Road, Kothrud, Pune"
+            placeholder={screenConfig.street_placeholder}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>LANDMARK (OPTIONAL)</Text>
+          <Text style={styles.fieldLabel}>{screenConfig.landmark_label}</Text>
           <TextInput
             style={styles.input}
             value={landmark}
             onChangeText={setLandmark}
-            placeholder="Near hospital, school, etc."
+            placeholder={screenConfig.landmark_placeholder}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
 
         <View style={styles.rowFields}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>PINCODE</Text>
+            <Text style={styles.fieldLabel}>{screenConfig.pincode_label}</Text>
             <TextInput
               style={styles.input}
               value={pincode}
               onChangeText={setPincode}
-              placeholder="411038"
+              placeholder={screenConfig.pincode_placeholder}
               keyboardType="number-pad"
               maxLength={6}
               placeholderTextColor={COLORS.ink300}
             />
           </View>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>PHONE</Text>
+            <Text style={styles.fieldLabel}>{screenConfig.phone_label}</Text>
             <TextInput
               style={styles.input}
               value={phone}
               onChangeText={setPhone}
-              placeholder="10-digit mobile"
+              placeholder={screenConfig.phone_placeholder}
               keyboardType="phone-pad"
               maxLength={10}
               placeholderTextColor={COLORS.ink300}
@@ -183,9 +264,9 @@ export default function AddAddressScreen({ navigation, route }: any) {
         </View>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>SAVE AS</Text>
+          <Text style={styles.fieldLabel}>{screenConfig.save_as_label}</Text>
           <View style={styles.tagRow}>
-            {TAG_OPTIONS.map(({ key, Icon }) => {
+            {tagOptions.map(({ key, label, Icon }) => {
               const selected = tag === key;
               return (
                 <TouchableOpacity
@@ -196,7 +277,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
                 >
                   <Icon size={16} />
                   <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>
-                    {key}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -214,7 +295,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
             activeOpacity={0.85}
           >
             <Text style={styles.saveBtnText}>
-              {saving ? 'Saving…' : 'Save address'}
+              {saving ? screenConfig.saving_button_label : screenConfig.save_button_label}
             </Text>
           </TouchableOpacity>
         </View>
@@ -227,6 +308,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: SCREEN_BG,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topHeader: {
     flexDirection: 'row',

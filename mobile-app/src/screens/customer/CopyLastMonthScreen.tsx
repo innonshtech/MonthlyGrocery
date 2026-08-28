@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,405 +10,534 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { useCart, Product } from '../../context/CartContext';
-import { API_BASE } from '../../config/api';
-import AppIcon from '../../components/AppIcon';
-import { CheckoutBackIcon, CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { useCart } from '../../context/CartContext';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import {
+  CheckoutBackIcon,
+  SlotInfoIcon,
+  BasketSaveIcon,
+} from '../../components/CheckoutFigmaIcons';
+import { HubCopyIcon } from '../../components/monthlyGrocery/MonthlyGroceryHubIcons';
+import {
+  fetchCopyLastMonthBasket,
+  fetchCopyLastMonthScreenConfig,
+  formatCopyTemplate,
+  formatInr,
+  CopyLastMonthBasket,
+  CopyLastMonthItem,
+  CopyLastMonthScreenConfig,
+} from '../../services/copyLastMonthApi';
+
+const SCREEN_BG = '#FBFAF6';
+
+function Stepper({
+  qty,
+  onMinus,
+  onPlus,
+}: {
+  qty: number;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  return (
+    <View style={styles.stepper}>
+      <TouchableOpacity style={styles.stepperBtn} onPress={onMinus} hitSlop={8}>
+        <Text style={styles.stepperBtnText}>−</Text>
+      </TouchableOpacity>
+      <Text style={styles.stepperCount}>{qty}</Text>
+      <TouchableOpacity style={styles.stepperBtn} onPress={onPlus} hitSlop={8}>
+        <Text style={styles.stepperBtnText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function CopyLastMonthScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { token, city, area } = useAuth();
   const { addToCart } = useCart();
+
+  const [screenConfig, setScreenConfig] = useState<CopyLastMonthScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [lastOrder, setLastOrder] = useState<any>(null);
-  const [reconciledItems, setReconciledItems] = useState<any[]>([]);
-  const [repricedCount, setRepricedCount] = useState(0);
-  const [outOfStockCount, setOutOfStockCount] = useState(0);
+  const [loadError, setLoadError] = useState(false);
+  const [basketMeta, setBasketMeta] = useState<Omit<
+    CopyLastMonthBasket,
+    'items'
+  > | null>(null);
+  const [items, setItems] = useState<CopyLastMonthItem[]>([]);
 
-  useEffect(() => {
-    const fetchAndReconcile = async () => {
-      setLoading(true);
-      try {
-        // 1. Fetch user's latest past order
-        const ordersRes = await fetch(`${API_BASE}/orders/mine`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const ordersData = await ordersRes.json();
+  const loadScreen = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchCopyLastMonthScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
 
-        // 2. Fetch live store catalog for active prices and availability
-        let catalogUrl = `${API_BASE}/products/all?limit=100`;
-        if (city) catalogUrl += `&city=${encodeURIComponent(city)}`;
-        if (area) catalogUrl += `&area_name=${encodeURIComponent(area)}`;
-        const catRes = await fetch(catalogUrl);
-        const catData = await catRes.json();
-        const activeProducts: Product[] = catData.success ? catData.products : [];
-        const prodMap = new Map<string, Product>();
-        activeProducts.forEach(p => prodMap.set(p.id, p));
+  const loadBasket = useCallback(async () => {
+    if (!token) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
 
-        if (ordersData.success && ordersData.orders?.length > 0) {
-          const prev = ordersData.orders[0];
-          setLastOrder(prev);
+    setLoading(true);
+    setLoadError(false);
 
-          let repriced = 0;
-          let outOfStock = 0;
+    const { basket, error } = await fetchCopyLastMonthBasket(token, city, area);
 
-          const merged = (prev.order_items || []).map((it: any) => {
-            const liveProd = prodMap.get(it.product_id);
-            const livePrice = liveProd ? parseFloat(liveProd.price as any) : it.unit_price;
-            const liveMrp = liveProd
-              ? parseFloat(liveProd.mrp as any) || livePrice
-              : it.unit_price;
-            const available = liveProd
-              ? ((liveProd as any).stock !== undefined ? (liveProd as any).stock > 0 : true)
-              : false;
+    if (error || !basket) {
+      setLoadError(true);
+      setBasketMeta(null);
+      setItems([]);
+    } else {
+      setBasketMeta({
+        has_order: basket.has_order,
+        order_id: basket.order_id,
+        month_label: basket.month_label,
+        delivered_date_label: basket.delivered_date_label,
+        item_count: basket.item_count,
+        available_count: basket.available_count,
+        repriced_count: basket.repriced_count,
+        unavailable_count: basket.unavailable_count,
+        total_amount: basket.total_amount,
+        changes_message: basket.changes_message,
+      });
+      setItems(basket.items);
+    }
 
-            if (livePrice !== it.unit_price) repriced++;
-            if (!available) outOfStock++;
-
-            return {
-              id: it.product_id || it.id,
-              name: it.product_name || liveProd?.name || 'Grocery Item',
-              unit: it.unit || liveProd?.unit || '1 unit',
-              price: livePrice,
-              mrp: liveMrp,
-              qty: parseInt(it.quantity) || 1,
-              available,
-              image_url: it.image_url || liveProd?.image_url || '',
-              liveProduct: liveProd || null,
-            };
-          });
-
-          setReconciledItems(merged);
-          setRepricedCount(repriced);
-          setOutOfStockCount(outOfStock);
-        } else {
-          setLastOrder(null);
-          setReconciledItems([]);
-        }
-      } catch (err) {
-        console.error('Error in copy last month:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAndReconcile();
+    setLoading(false);
   }, [token, city, area]);
 
-  const handleUpdateQty = (itemId: string, delta: number) => {
-    setReconciledItems((prev) =>
-      prev.map((it) =>
-        it.id === itemId
-          ? { ...it, qty: Math.max(0, it.qty + delta) }
-          : it
-      )
+  useFocusEffect(
+    useCallback(() => {
+      loadScreen().then(() => loadBasket());
+    }, [loadScreen, loadBasket]),
+  );
+
+  const handleRetry = () => loadBasket();
+
+  const handleUpdateQty = (productId: string, delta: number) => {
+    setItems((prev) =>
+      prev
+        .map((it) =>
+          it.product_id === productId
+            ? { ...it, quantity: Math.max(0, it.quantity + delta) }
+            : it,
+        )
+        .filter((it) => it.quantity > 0),
     );
   };
 
-  const availableItems = reconciledItems.filter((i) => i.available && i.qty > 0);
-  const totalItemCount = availableItems.reduce((sum, i) => sum + i.qty, 0);
-  const totalPrice = availableItems.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const availableItems = items.filter((i) => i.available && i.quantity > 0);
+  const totalAvailableCount = availableItems.reduce((sum, it) => sum + it.quantity, 0);
+  const totalPrice = availableItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
 
   const handleAddToCart = () => {
+    if (!screenConfig || availableItems.length === 0) return;
+
     for (const it of availableItems) {
-      const product: Product = it.liveProduct
-        ? { ...it.liveProduct, price: it.price, mrp: it.mrp }
-        : {
-            id: it.id,
-            shop_id: 'unknown',
-            name: it.name,
-            brand: '',
-            primary_category: '',
-            image_url: it.image_url || '',
-            unit: it.unit,
-            mrp: it.mrp,
-            price: it.price,
-          };
-      for (let i = 0; i < it.qty; i++) {
-        addToCart(product);
+      for (let i = 0; i < it.quantity; i++) {
+        addToCart({
+          id: it.product_id,
+          name: it.name,
+          price: it.price,
+          mrp: it.mrp,
+          unit: it.unit_label,
+          shop_id: it.shop_id || '',
+          brand: it.brand,
+          primary_category: it.primary_category,
+          image_url: it.image_url,
+        } as any);
       }
     }
 
     Alert.alert(
-      'Previous Basket Copied!',
-      `Added ${totalItemCount} live items directly to your active cart.`,
+      screenConfig.add_success_title,
+      formatCopyTemplate(screenConfig.add_success_message_template, {
+        count: totalAvailableCount,
+      }),
       [
-        { text: 'Keep Browsing', style: 'cancel' },
-        { text: 'View Cart ›', onPress: () => navigation.navigate('Cart') }
-      ]
+        { text: screenConfig.keep_browsing_label, style: 'cancel' },
+        {
+          text: screenConfig.view_cart_label,
+          onPress: () => navigation.navigate('Cart'),
+        },
+      ],
     );
   };
 
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <CheckoutBackIcon size={24} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Could not load screen configuration.</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadScreen()}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const insightTitle = basketMeta
+    ? formatCopyTemplate(screenConfig.insight_title_template, {
+        month: basketMeta.month_label,
+      })
+    : '';
+
+  const insightSubtitle = basketMeta
+    ? formatCopyTemplate(screenConfig.insight_subtitle_template, {
+        count: basketMeta.item_count,
+        date: basketMeta.delivered_date_label,
+      })
+    : '';
+
+  const availableLabel = formatCopyTemplate(screenConfig.available_count_template, {
+    count: totalAvailableCount,
+  });
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Copy last month</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
       {loading ? (
-        <View style={styles.centerWrap}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.green700} />
         </View>
-      ) : !lastOrder ? (
-        <View style={styles.emptyWrap}>
-          <View style={styles.emptyIconCircle}>
-            <AppIcon name="orders" size={32} color={COLORS.green700} />
-          </View>
-          <Text style={styles.emptyTitle}>No previous month orders found</Text>
-          <Text style={styles.emptySub}>
-            Once you complete your first order, you can recreate your monthly grocery basket in 1 tap here!
-          </Text>
+      ) : loadError ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{screenConfig.load_error_message}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
+            <Text style={styles.retryBtnText}>{screenConfig.retry_label}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : !city || !area ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>{screenConfig.no_location_title}</Text>
+          <Text style={styles.emptySub}>{screenConfig.no_location_message}</Text>
           <TouchableOpacity
-            style={styles.browseBtn}
-            onPress={() => navigation.navigate('Shop')}
-            activeOpacity={0.85}
+            style={styles.retryBtn}
+            onPress={() => navigation.navigate('CitySelection')}
           >
-            <Text style={styles.browseBtnText}>Explore staples</Text>
+            <Text style={styles.retryBtnText}>{screenConfig.empty_cta_label}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : !basketMeta?.has_order || items.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>{screenConfig.empty_title}</Text>
+          <Text style={styles.emptySub}>{screenConfig.empty_message}</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => navigation.navigate('Shop')}
+          >
+            <Text style={styles.retryBtnText}>{screenConfig.empty_cta_label}</Text>
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView
-          style={styles.scrollArea}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Top Info Box */}
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>
-              Your basket from {lastOrder?.created_at ? new Date(lastOrder.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Previous Order'}
-            </Text>
-            <Text style={styles.infoSub}>
-              {reconciledItems.length} items · verified with today's live store rates
-            </Text>
-          </View>
-
-          {/* Amber Notice Banner */}
-          <View style={styles.amberBanner}>
-            <Text style={styles.amberText}>
-              ⚠️ {repricedCount > 0 ? `${repricedCount} items updated with today's prices` : 'All items verified'} · {outOfStockCount > 0 ? `${outOfStockCount} out of stock` : 'all in stock'}
-            </Text>
-          </View>
-
-          {/* Product Items List */}
-          <View style={styles.listCard}>
-            {reconciledItems.map((item, idx) => {
-              const isLast = idx === reconciledItems.length - 1;
-
-              return (
-                <View
-                  key={item.id}
-                  style={[styles.itemRow, !isLast && styles.itemRowBorder]}
-                >
-                  <View style={styles.bagIconBox}>
-                    {item.image_url ? (
-                      <Image source={{ uri: item.image_url }} style={styles.itemThumb} resizeMode="contain" />
-                    ) : (
-                      <CheckoutFallbackEmoji index={idx} size={22} />
-                    )}
-                  </View>
-
-                  <View style={styles.itemDetails}>
-                    <Text style={[styles.itemName, !item.available && styles.itemNameMuted]} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                    {item.available ? (
-                      <Text style={styles.itemPriceText}>
-                        {item.unit} · ₹{item.price}
-                      </Text>
-                    ) : (
-                      <View style={styles.unavailableRow}>
-                        <Text style={styles.unavailableTag}>Unavailable</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Search')}>
-                          <Text style={styles.viewSimilarLink}>View similar ›</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-
-                  {item.available && (
-                    <View style={styles.stepperCapsule}>
-                      <TouchableOpacity
-                        style={styles.stepperBtn}
-                        onPress={() => handleUpdateQty(item.id, -1)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.stepperBtnText}>−</Text>
-                      </TouchableOpacity>
-
-                      <Text style={styles.stepperCount}>{item.qty}</Text>
-
-                      <TouchableOpacity
-                        style={styles.stepperBtn}
-                        onPress={() => handleUpdateQty(item.id, 1)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.stepperBtnText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Sticky Bottom Bar */}
-      {!loading && lastOrder && (
-        <View style={styles.bottomStickyBar}>
-          <View>
-            <Text style={styles.bottomItemsCountText}>{totalItemCount} items</Text>
-            <Text style={styles.bottomPriceText}>₹{totalPrice.toLocaleString('en-IN')}</Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.addCartBtn}
-            onPress={handleAddToCart}
-            activeOpacity={0.85}
+        <View style={styles.flex}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.addCartBtnText}>Add to cart</Text>
-          </TouchableOpacity>
+            <View style={styles.insightCard}>
+              <View style={styles.insightIconWrap}>
+                <HubCopyIcon size={20} />
+              </View>
+              <View style={styles.insightText}>
+                <Text style={styles.insightTitle}>{insightTitle}</Text>
+                <Text style={styles.insightSub}>{insightSubtitle}</Text>
+              </View>
+            </View>
+
+            {basketMeta?.changes_message ? (
+              <View style={styles.changesBanner}>
+                <SlotInfoIcon size={16} />
+                <Text style={styles.changesText}>{basketMeta.changes_message}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.listCard}>
+              {items.map((item, idx) => (
+                <ProductRow
+                  key={item.product_id}
+                  item={item}
+                  index={idx}
+                  isLast={idx === items.length - 1}
+                  screenConfig={screenConfig}
+                  onViewSimilar={() => navigation.navigate('Search')}
+                  onMinus={() => handleUpdateQty(item.product_id, -1)}
+                  onPlus={() => handleUpdateQty(item.product_id, 1)}
+                />
+              ))}
+            </View>
+          </ScrollView>
+
+          <View
+            style={[
+              styles.bottomBar,
+              { paddingBottom: Math.max(insets.bottom, 12) },
+            ]}
+          >
+            <View>
+              <Text style={styles.bottomCount}>{availableLabel}</Text>
+              <Text style={styles.bottomPrice}>{formatInr(totalPrice)}</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.addCartBtn,
+                totalAvailableCount === 0 && styles.addCartBtnDisabled,
+              ]}
+              onPress={handleAddToCart}
+              disabled={totalAvailableCount === 0}
+              activeOpacity={0.85}
+            >
+              <BasketSaveIcon size={18} />
+              <Text style={styles.addCartBtnText}>{screenConfig.add_to_cart_label}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </SafeAreaView>
   );
 }
 
+function ProductRow({
+  item,
+  index,
+  isLast,
+  screenConfig,
+  onViewSimilar,
+  onMinus,
+  onPlus,
+}: {
+  item: CopyLastMonthItem;
+  index: number;
+  isLast: boolean;
+  screenConfig: CopyLastMonthScreenConfig;
+  onViewSimilar: () => void;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  const priceLine = item.unit_label
+    ? `${item.unit_label} · ${formatInr(item.price)}`
+    : formatInr(item.price);
+
+  const wasPrice = item.previous_price
+    ? formatCopyTemplate(screenConfig.was_price_template, {
+        amount: Math.round(item.previous_price).toLocaleString('en-IN'),
+      })
+    : null;
+
+  return (
+    <View style={[styles.productRow, !isLast && styles.productRowBorder]}>
+      <View style={[styles.thumb, !item.image_url && styles.thumbEmpty]}>
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
+        ) : null}
+      </View>
+      <View style={styles.productText}>
+        <Text
+          style={[styles.productName, !item.available && styles.productNameMuted]}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+        {item.available ? (
+          <View style={styles.priceRow}>
+            <Text style={styles.productPrice}>{priceLine}</Text>
+            {wasPrice ? <Text style={styles.wasPrice}>{wasPrice}</Text> : null}
+          </View>
+        ) : (
+          <View style={styles.unavailableRow}>
+            <Text style={styles.unavailableText}>{screenConfig.unavailable_label}</Text>
+            <TouchableOpacity onPress={onViewSimilar}>
+              <Text style={styles.viewSimilar}>{screenConfig.view_similar_label}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+      {item.available ? (
+        <Stepper qty={item.quantity} onMinus={onMinus} onPlus={onPlus} />
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  flex: { flex: 1 },
+  centered: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
   },
-  topHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    height: 48,
+    gap: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink900,
-    marginLeft: 8,
-  },
-  centerWrap: {
-    flex: 1,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scrollArea: {
-    flex: 1,
+  headerTitle: {
+    ...FONTS.balooBold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: COLORS.ink900,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
-  infoCard: {
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    padding: 16,
+    padding: 12,
     marginBottom: 12,
+    gap: 12,
   },
-  infoTitle: {
+  insightIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  insightText: { flex: 1 },
+  insightTitle: {
+    ...FONTS.balooBold,
     fontSize: 15,
-    fontWeight: '800',
+    lineHeight: 20,
     color: COLORS.ink900,
-    marginBottom: 3,
   },
-  infoSub: {
-    fontSize: 12.5,
-    color: COLORS.ink500,
-  },
-  amberBanner: {
-    backgroundColor: '#FEF3C7',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 16,
-  },
-  amberText: {
+  insightSub: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
-    fontWeight: '700',
-    color: '#92400E',
+    lineHeight: 16,
+    color: COLORS.ink500,
+    marginTop: 1,
+  },
+  changesBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.marigold100,
+    borderWidth: 1,
+    borderColor: COLORS.marigold200,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
+    gap: 8,
+  },
+  changesText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: COLORS.marigold700,
+    flex: 1,
   },
   listCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
   },
-  itemRow: {
+  productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    height: 68,
   },
-  itemRowBorder: {
+  productRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: COLORS.line,
   },
-  bagIconBox: {
-    width: 40,
-    height: 40,
+  thumb: {
+    width: 46,
+    height: 46,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     overflow: 'hidden',
   },
-  itemThumb: {
-    width: 36,
-    height: 36,
+  thumbEmpty: {
+    backgroundColor: COLORS.muted,
   },
-  itemDetails: {
+  thumbImg: {
+    width: 28,
+    height: 28,
+  },
+  productText: {
     flex: 1,
     paddingRight: 8,
   },
-  itemName: {
-    fontSize: 13.5,
-    fontWeight: '700',
+  productName: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORS.ink900,
-    marginBottom: 3,
   },
-  itemNameMuted: {
+  productNameMuted: {
     color: COLORS.ink500,
   },
-  itemPriceText: {
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  productPrice: {
+    ...FONTS.muktaSemiBold,
     fontSize: 12,
-    fontWeight: '600',
+    lineHeight: 16,
     color: COLORS.ink700,
+  },
+  wasPrice: {
+    ...FONTS.muktaRegular,
+    fontSize: 11,
+    lineHeight: 14,
+    color: COLORS.ink500,
   },
   unavailableRow: {
     flexDirection: 'row',
@@ -416,26 +545,28 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 2,
   },
-  unavailableTag: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#DC2626',
+  unavailableText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: COLORS.error,
   },
-  viewSimilarLink: {
-    fontSize: 11.5,
-    fontWeight: '700',
+  viewSimilar: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 11,
+    lineHeight: 14,
     color: COLORS.green700,
   },
-  stepperCapsule: {
+  stepper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
     borderRadius: RADIUS.pill,
-    height: 32,
-    paddingHorizontal: 6,
+    height: 30,
+    paddingHorizontal: 4,
   },
   stepperBtn: {
-    width: 22,
+    width: 28,
     height: 30,
     justifyContent: 'center',
     alignItems: 'center',
@@ -449,83 +580,86 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
+    minWidth: 20,
+    textAlign: 'center',
   },
-  bottomStickyBar: {
+  bottomBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
+    gap: 12,
   },
-  bottomItemsCountText: {
+  bottomCount: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
+    lineHeight: 14,
     color: COLORS.ink500,
-    fontWeight: '600',
   },
-  bottomPriceText: {
-    fontSize: 18,
-    fontWeight: '900',
+  bottomPrice: {
+    ...FONTS.balooBold,
+    fontSize: 22,
+    lineHeight: 24,
     color: COLORS.ink900,
   },
   addCartBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: COLORS.green700,
-    paddingHorizontal: 24,
     height: 48,
     borderRadius: RADIUS.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
+    maxWidth: 294,
+  },
+  addCartBtnDisabled: {
+    opacity: 0.5,
   },
   addCartBtnText: {
-    color: '#FFFFFF',
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '800',
-  },
-  /* Empty State Styles */
-  emptyWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 28,
-  },
-  emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.green50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
+    lineHeight: 16,
+    color: '#FFFFFF',
   },
   emptyTitle: {
+    ...FONTS.balooBold,
     fontSize: 18,
-    fontWeight: '900',
     color: COLORS.ink900,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySub: {
+    ...FONTS.muktaRegular,
     fontSize: 13,
     color: COLORS.ink500,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 24,
-    paddingHorizontal: 12,
+    marginBottom: 20,
   },
-  browseBtn: {
+  errorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink700,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryBtn: {
     backgroundColor: COLORS.green700,
     paddingHorizontal: 24,
-    height: 48,
+    height: 44,
     borderRadius: RADIUS.pill,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  browseBtnText: {
-    color: '#FFFFFF',
+  retryBtnText: {
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

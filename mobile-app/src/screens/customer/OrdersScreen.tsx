@@ -1,302 +1,329 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  FlatList,
-  ActivityIndicator,
   TouchableOpacity,
+  ScrollView,
   Image,
   StatusBar,
   Alert,
-  ScrollView
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { API_BASE } from '../../config/api';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { COLORS, FONTS } from '../../constants/theme';
+import { CheckoutFallbackEmoji, THUMB_BG } from '../../components/CheckoutFigmaIcons';
+import {
+  ConsumerOrder,
+  OrdersScreenConfig,
+  fetchOrdersScreenConfig,
+  fetchMyOrders,
+  formatOrdersTemplate,
+  formatInr,
+  getOrderDisplayId,
+  isActiveOrderStatus,
+  addOrderItemsToCart,
+} from '../../services/ordersApi';
+
+const SCREEN_BG = '#FBFAF6';
 
 export default function OrdersScreen({ navigation }: any) {
-  const { token, city, area } = useAuth();
+  const { token } = useAuth();
   const { addToCart } = useCart();
-  const [orders, setOrders] = useState<any[]>([]);
+
+  const [screenConfig, setScreenConfig] = useState<OrdersScreenConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+  const [orders, setOrders] = useState<ConsumerOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/orders/mine`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (res.ok && data.success && Array.isArray(data.orders)) {
-        setOrders(data.orders);
-      } else {
-        setOrders([]);
-      }
-    } catch (err) {
-      setOrders([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadConfig = useCallback(async () => {
+    const config = await fetchOrdersScreenConfig();
+    setScreenConfig(config);
+    setConfigError(!config);
+    return config;
+  }, []);
 
-  useEffect(() => {
-    fetchOrders();
+  const loadOrders = useCallback(async () => {
+    if (!token) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setOrdersError(false);
+    const { orders: list, error } = await fetchMyOrders(token);
+    if (error) {
+      setOrdersError(true);
+      setOrders([]);
+    } else {
+      setOrders(list);
+    }
+    setLoading(false);
   }, [token]);
 
-  // 1-Tap Reorder Action (F3)
-  const handleReorder = async (order: any) => {
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  useEffect(() => {
+    if (screenConfig) loadOrders();
+  }, [screenConfig, loadOrders]);
+
+  const handleReorder = (order: ConsumerOrder) => {
+    if (!screenConfig) return;
     setReorderingId(order.id);
     try {
-      let addedCount = 0;
-      for (const item of order.order_items || []) {
-        const prodObj = {
-          id: item.product_id,
-          name: item.product_name,
-          price: item.unit_price,
-          mrp: item.mrp || Math.round(item.unit_price * 1.2),
-          unit: item.unit || '1 unit',
-          image_url: item.image_url || '',
-        };
-        const qty = item.quantity || 1;
-        for (let i = 0; i < qty; i++) {
-          addToCart({
-          id: item.product_id,
-          shop_id: item.shop_id || 'shop-1',
-          brand: item.brand || 'Groceries',
-          primary_category: item.primary_category || 'Essentials',
-          name: item.product_name,
-          price: item.unit_price,
-          mrp: item.mrp || Math.round(item.unit_price * 1.2),
-          unit: item.unit || '1 unit',
-          image_url: item.image_url || '',
-        } as any);
-        }
-        addedCount += qty;
-      }
-
-      Alert.alert(
-        'Basket Reordered!',
-        `Added ${addedCount} items from Order #${order.id} directly into your cart.`,
-        [
-          { text: 'Keep Browsing', style: 'cancel' },
-          { text: 'View Cart ›', onPress: () => navigation.navigate('Cart') }
-        ]
+      const addedCount = addOrderItemsToCart(
+        order,
+        addToCart,
+        screenConfig.default_product_name,
       );
-    } catch (err) {
-      Alert.alert('Error', 'Could not reorder items at this moment.');
+      Alert.alert(
+        screenConfig.reorder_success_title,
+        formatOrdersTemplate(screenConfig.reorder_success_message_template, {
+          count: addedCount,
+          order_id: getOrderDisplayId(order),
+        }),
+        [
+          { text: screenConfig.reorder_keep_browsing_label, style: 'cancel' },
+          {
+            text: screenConfig.reorder_view_cart_label,
+            onPress: () => navigation.navigate('Cart'),
+          },
+        ],
+      );
+    } catch {
+      Alert.alert(screenConfig.error_alert_title, screenConfig.reorder_error_message);
     } finally {
       setReorderingId(null);
     }
   };
 
-  const activeOrders = orders.filter((o) => ['pending', 'confirmed', 'packed', 'dispatched', 'out_for_delivery'].includes(o.status?.toLowerCase()));
-  const pastOrders = orders.filter((o) => ['delivered', 'cancelled'].includes(o.status?.toLowerCase()));
+  if (!screenConfig && configError) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
+            <ActivityIndicator color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const activeOrders = orders.filter((o) => isActiveOrderStatus(o.status));
+  const pastOrders = orders.filter((o) => !isActiveOrderStatus(o.status));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" />
-
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        <Text style={styles.headerTitle}>{token ? 'Orders & Tracking' : 'Your orders'}</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
       {!token ? (
-        /* =========================================================================
-           STATE: GUEST ORDERS SIGN IN GATE (F1 GUEST IN FIGMA)
-           ========================================================================= */
-        <View style={styles.guestOrdersWrap}>
-          <View style={styles.guestOrdersMintCircle}>
-            <AppIcon name="shopping-bag" size={32} color={COLORS.green700} />
+        <View style={styles.guestWrap}>
+          <View style={styles.guestCircle}>
+            <CheckoutFallbackEmoji index={0} size={40} />
           </View>
-
-          <Text style={styles.guestOrdersHeadline}>Sign in to see your orders</Text>
-          <Text style={styles.guestOrdersSubtitle}>
-            Track deliveries and reorder your monthly baskets once you sign in.
-          </Text>
-
+          <Text style={styles.guestTitle}>{screenConfig.guest_title}</Text>
+          <Text style={styles.guestSub}>{screenConfig.guest_subtitle}</Text>
           <TouchableOpacity
-            style={styles.guestOrdersBtn}
+            style={styles.primaryBtn}
             onPress={() => navigation.navigate('Login', { redirect: 'Orders' })}
             activeOpacity={0.85}
           >
-            <Text style={styles.guestOrdersBtnText}>Continue with phone number</Text>
+            <Text style={styles.primaryBtnTxt}>{screenConfig.guest_cta_label}</Text>
           </TouchableOpacity>
         </View>
       ) : loading ? (
-        <View style={styles.centerWrap}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.green700} />
         </View>
-      ) : orders.length === 0 ? (
-        /* Empty State */
+      ) : ordersError ? (
         <View style={styles.emptyWrap}>
-          <View style={styles.emptyIconCircle}>
-            <AppIcon name="shopping-bag" size={48} color={COLORS.green700} />
+          <Text style={styles.emptySub}>{screenConfig.load_error_message}</Text>
+          <TouchableOpacity style={styles.primaryBtn} onPress={loadOrders} activeOpacity={0.85}>
+            <Text style={styles.primaryBtnTxt}>{screenConfig.retry_label}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyCircle}>
+            <CheckoutFallbackEmoji index={1} size={48} />
           </View>
-          <Text style={styles.emptyTitle}>No orders yet</Text>
-          <Text style={styles.emptySubtitle}>
-            When you place your monthly grocery orders, you can track live deliveries and reorder in 1 tap here.
-          </Text>
+          <Text style={styles.emptyTitle}>{screenConfig.empty_title}</Text>
+          <Text style={styles.emptySub}>{screenConfig.empty_message}</Text>
           <TouchableOpacity
-            style={styles.startShopBtn}
+            style={styles.primaryBtn}
             onPress={() => navigation.navigate('Shop')}
             activeOpacity={0.85}
           >
-            <Text style={styles.startShopBtnText}>Start monthly shopping ›</Text>
+            <Text style={styles.primaryBtnTxt}>{screenConfig.empty_cta_label}</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
-          style={styles.scrollArea}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* =========================================================================
-             1. ACTIVE ORDERS SECTION (F1)
-             ========================================================================= */}
-          {activeOrders.length > 0 && (
-            <View style={styles.sectionWrap}>
-              <Text style={styles.sectionHeading}>ACTIVE DELIVERY</Text>
+          {activeOrders.map((order) => {
+            const slotText = order.delivery_slot
+              ? formatOrdersTemplate(screenConfig.active_arriving_template, {
+                  slot: order.delivery_slot,
+                })
+              : screenConfig.status_confirmed;
+            const isPacked = ['packed', 'packing', 'dispatched', 'out_for_delivery'].includes(
+              (order.status || '').toLowerCase(),
+            );
+            const statusLabel = isPacked
+              ? screenConfig.status_packed
+              : screenConfig.status_confirmed;
 
-              {activeOrders.map((order) => (
-                <TouchableOpacity
-                  key={order.id}
-                  style={styles.activeOrderCard}
-                  onPress={() => navigation.navigate('OrderDetail', { order })}
-                  activeOpacity={0.9}
-                >
-                  <View style={styles.activeCardTop}>
-                    <View style={styles.activeStatusPill}>
-                      <View style={styles.livePulseDot} />
-                      <Text style={styles.activeStatusText}>
-                        {order.status === 'out_for_delivery' ? 'Out for Delivery' : 'Order Confirmed'}
-                      </Text>
-                    </View>
-                    <Text style={styles.orderIdText}>#{order.id}</Text>
+            return (
+              <TouchableOpacity
+                key={order.id}
+                style={styles.activeCard}
+                onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+                activeOpacity={0.9}
+              >
+                <View style={styles.activeTop}>
+                  <View style={styles.statusPill}>
+                    <Text style={styles.statusPillTxt}>{statusLabel}</Text>
                   </View>
+                  <Text style={styles.orderId}>{getOrderDisplayId(order)}</Text>
+                </View>
 
-                  <Text style={styles.activeSlotText}>
-                    Arriving {order.delivery_slot || 'Today, 7:00 AM - 10:00 AM'}
-                  </Text>
+                <Text style={styles.arrivingTxt}>{slotText}</Text>
 
-                  {/* OTP Snippet */}
-                  {order.delivery_otp && (
-                    <View style={styles.otpBanner}>
-                      <Text style={styles.otpLabel}>Delivery OTP</Text>
-                      <Text style={styles.otpCode}>{order.delivery_otp}</Text>
-                    </View>
-                  )}
+                {order.delivery_otp ? (
+                  <View style={styles.otpRow}>
+                    <Text style={styles.otpLabel}>{screenConfig.delivery_otp_label}</Text>
+                    <Text style={styles.otpCode}>{order.delivery_otp}</Text>
+                  </View>
+                ) : null}
 
-                  {/* Item thumbs */}
+                <View style={styles.divider} />
+
+                <View style={styles.activeBottom}>
                   <View style={styles.thumbsRow}>
-                    {(order.order_items || []).slice(0, 4).map((it: any, idx: number) => (
-                      <View key={idx} style={styles.miniThumb}>
+                    {(order.order_items || []).slice(0, 3).map((it, idx) => (
+                      <View
+                        key={`${order.id}-${idx}`}
+                        style={[styles.thumb, { backgroundColor: THUMB_BG[idx % THUMB_BG.length] }]}
+                      >
                         {it.image_url ? (
-                          <Image source={{ uri: it.image_url }} style={styles.thumbImg} resizeMode="contain" />
+                          <Image source={{ uri: it.image_url }} style={styles.thumbImg} />
                         ) : (
-                          <AppIcon name="shopping-bag" size={16} color={COLORS.green700} />
+                          <CheckoutFallbackEmoji index={idx} size={22} />
                         )}
                       </View>
                     ))}
-                    {(order.order_items?.length || 0) > 4 && (
-                      <View style={styles.moreThumbsBadge}>
-                        <Text style={styles.moreThumbsText}>+{order.order_items.length - 4}</Text>
-                      </View>
-                    )}
                   </View>
-
-                  <View style={styles.activeCardBottom}>
-                    <Text style={styles.activeTotalText}>
-                      {order.order_items?.length || 0} items · ₹{order.total_amount}
+                  <View style={styles.activeMeta}>
+                    <Text style={styles.itemsTxt}>
+                      {formatOrdersTemplate(screenConfig.items_count_template, {
+                        count: order.item_count || order.order_items?.length || 0,
+                      })}
                     </Text>
-                    <View style={styles.trackActionBtn}>
-                      <Text style={styles.trackActionText}>Track live ›</Text>
-                    </View>
+                    <Text style={styles.amountTxt}>{formatInr(Number(order.total_amount) || 0)}</Text>
                   </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+                  <View style={styles.detailsBtn}>
+                    <Text style={styles.detailsBtnTxt}>{screenConfig.track_button_label}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
-          {/* =========================================================================
-             2. PAST ORDERS SECTION (F1)
-             ========================================================================= */}
-          {pastOrders.length > 0 && (
-            <View style={styles.sectionWrap}>
-              <Text style={styles.sectionHeading}>PAST MONTHLY BASKETS</Text>
-
+          {pastOrders.length > 0 ? (
+            <View style={styles.pastSection}>
+              <Text style={styles.sectionLabel}>{screenConfig.past_orders_section_label}</Text>
               {pastOrders.map((order) => {
-                const isReordering = reorderingId === order.id;
+                const isDelivered = order.status === 'delivered';
+                const dateLabel = isDelivered
+                  ? formatOrdersTemplate(screenConfig.delivered_status_template, {
+                      date: new Date(order.created_at).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      }),
+                    })
+                  : order.status;
 
                 return (
-                  <View key={order.id} style={styles.pastOrderCard}>
+                  <View key={order.id} style={styles.pastCard}>
                     <TouchableOpacity
-                      onPress={() => navigation.navigate('OrderDetail', { order })}
-                      activeOpacity={0.8}
+                      onPress={() =>
+                        navigation.navigate('OrderDetail', { orderId: order.id })
+                      }
+                      activeOpacity={0.85}
                     >
-                      <View style={styles.pastCardTop}>
-                        <View>
-                          <Text style={styles.pastOrderId}>#{order.id}</Text>
-                          <Text style={styles.pastDateText}>
-                            Placed on {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </Text>
-                        </View>
-                        <View style={styles.deliveredPill}>
-                          <Text style={styles.deliveredText}>✓ Delivered</Text>
-                        </View>
-                      </View>
-
-                      {/* Items row */}
-                      <Text style={styles.pastItemsSummary} numberOfLines={1}>
-                        {(order.order_items || []).map((i: any) => i.product_name).join(', ')}
-                      </Text>
-
-                      <View style={styles.pastCardPriceRow}>
-                        <Text style={styles.pastAmountText}>
-                          {order.order_items?.length || 0} items · ₹{order.total_amount}
+                      <View style={styles.pastTop}>
+                        <Text style={styles.pastStatus}>{dateLabel}</Text>
+                        <Text style={styles.pastAmount}>
+                          {formatInr(Number(order.total_amount) || 0)}
                         </Text>
-                        {order.discount_amount > 0 && (
-                          <View style={styles.savedPill}>
-                            <Text style={styles.savedPillText}>Saved ₹{order.discount_amount}</Text>
-                          </View>
-                        )}
+                      </View>
+                      <View style={styles.pastBottom}>
+                        <View style={styles.thumbsRow}>
+                          {(order.order_items || []).slice(0, 3).map((it, idx) => (
+                            <View
+                              key={`${order.id}-p-${idx}`}
+                              style={[
+                                styles.pastThumb,
+                                { backgroundColor: THUMB_BG[idx % THUMB_BG.length] },
+                              ]}
+                            >
+                              {it.image_url ? (
+                                <Image source={{ uri: it.image_url }} style={styles.thumbImg} />
+                              ) : (
+                                <CheckoutFallbackEmoji index={idx} size={22} />
+                              )}
+                            </View>
+                          ))}
+                        </View>
+                        <View style={styles.pastSpacer} />
+                        <Text style={styles.pastItems}>
+                          {formatOrdersTemplate(screenConfig.items_count_template, {
+                            count: order.item_count || order.order_items?.length || 0,
+                          })}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.reorderBtn}
+                          onPress={() => handleReorder(order)}
+                          disabled={reorderingId === order.id}
+                          activeOpacity={0.85}
+                        >
+                          {reorderingId === order.id ? (
+                            <ActivityIndicator size="small" color={COLORS.green700} />
+                          ) : (
+                            <Text style={styles.reorderBtnTxt}>
+                              {screenConfig.reorder_button_label}
+                            </Text>
+                          )}
+                        </TouchableOpacity>
                       </View>
                     </TouchableOpacity>
-
-                    {/* Action buttons row */}
-                    <View style={styles.pastActionsRow}>
-                      <TouchableOpacity
-                        style={styles.detailsBtn}
-                        onPress={() => navigation.navigate('OrderDetail', { order })}
-                      >
-                        <Text style={styles.detailsBtnText}>View details ›</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.reorderBtn}
-                        onPress={() => handleReorder(order)}
-                        disabled={isReordering}
-                        activeOpacity={0.85}
-                      >
-                        {isReordering ? (
-                          <ActivityIndicator size="small" color="#FFFFFF" />
-                        ) : (
-                          <Text style={styles.reorderBtnText}>↻ Reorder basket</Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
                   </View>
                 );
               })}
             </View>
-          )}
+          ) : null}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -304,359 +331,268 @@ export default function OrdersScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
-  },
-  topHeader: {
+  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  header: {
     paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    paddingTop: 6,
+    paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
+    ...FONTS.balooBold,
+    fontSize: 22,
     color: COLORS.ink900,
   },
-  centerWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollArea: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 32,
-  },
-  sectionWrap: {
-    marginBottom: 24,
-  },
-  sectionHeading: {
-    fontSize: 11,
-    fontWeight: '700',
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 28 },
+  errorMsg: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
     color: COLORS.ink500,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 12,
+    textAlign: 'center',
+    marginBottom: 16,
   },
-  /* Active Order Card */
-  activeOrderCard: {
-    backgroundColor: COLORS.surface,
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  retryTxt: { ...FONTS.balooBold, color: '#FFFFFF', fontSize: 15 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 32 },
+  activeCard: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: COLORS.green600,
-    borderRadius: RADIUS.md,
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 14,
-    shadowColor: COLORS.green700,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: 16,
   },
-  activeCardTop: {
+  activeTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  activeStatusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  statusPill: {
     backgroundColor: COLORS.green50,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: RADIUS.pill,
-    gap: 6,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
-  livePulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.green600,
-  },
-  activeStatusText: {
-    fontSize: 12,
-    fontWeight: '800',
+  statusPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
     color: COLORS.green700,
   },
-  orderIdText: {
+  orderId: {
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '700',
     color: COLORS.ink500,
   },
-  activeSlotText: {
-    fontSize: 15,
-    fontWeight: '800',
+  arrivingTxt: {
+    ...FONTS.balooBold,
+    fontSize: 16,
     color: COLORS.ink900,
     marginBottom: 12,
   },
-  otpBanner: {
+  otpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: COLORS.marigold100,
     borderWidth: 1,
     borderColor: COLORS.marigold200,
-    borderRadius: RADIUS.sm,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 12,
   },
   otpLabel: {
+    ...FONTS.muktaBold,
     fontSize: 12,
-    fontWeight: '700',
     color: COLORS.marigold700,
   },
   otpCode: {
+    ...FONTS.balooBold,
     fontSize: 16,
-    fontWeight: '900',
     color: COLORS.marigold700,
     letterSpacing: 2,
   },
-  thumbsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
+  divider: {
+    height: 1.5,
+    backgroundColor: COLORS.line,
+    marginVertical: 12,
   },
-  miniThumb: {
-    width: 42,
-    height: 42,
-    borderRadius: RADIUS.xs,
-    backgroundColor: COLORS.green50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.line,
-  },
-  thumbImg: {
-    width: 32,
-    height: 32,
-  },
-  moreThumbsBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: RADIUS.xs,
-    backgroundColor: COLORS.paper,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  moreThumbsText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.ink700,
-  },
-  activeCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    paddingTop: 12,
-  },
-  activeTotalText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink900,
-  },
-  trackActionBtn: {
-    backgroundColor: COLORS.green700,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: RADIUS.pill,
-  },
-  trackActionText: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  /* Past Order Card */
-  pastOrderCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 16,
-    marginBottom: 12,
-  },
-  pastCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  pastOrderId: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink900,
-  },
-  pastDateText: {
-    fontSize: 12,
-    color: COLORS.ink500,
-    marginTop: 2,
-  },
-  deliveredPill: {
-    backgroundColor: COLORS.green50,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.pill,
-  },
-  deliveredText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  pastItemsSummary: {
-    fontSize: 12.5,
-    color: COLORS.ink700,
-    marginBottom: 8,
-  },
-  pastCardPriceRow: {
+  activeBottom: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  pastAmountText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink900,
-  },
-  savedPill: {
-    backgroundColor: COLORS.green50,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-  },
-  savedPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.green700,
-  },
-  pastActionsRow: {
-    flexDirection: 'row',
     gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    paddingTop: 12,
+  },
+  thumbsRow: { flexDirection: 'row', gap: 6 },
+  thumb: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pastThumb: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbImg: { width: 28, height: 28 },
+  activeMeta: { flex: 1 },
+  itemsTxt: {
+    ...FONTS.balooBold,
+    fontSize: 14,
+    color: COLORS.ink900,
+  },
+  amountTxt: {
+    ...FONTS.muktaMedium,
+    fontSize: 13,
+    color: COLORS.ink500,
   },
   detailsBtn: {
-    flex: 1,
-    height: 40,
-    borderRadius: RADIUS.pill,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.paper,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailsBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.ink700,
-  },
-  reorderBtn: {
-    flex: 1.2,
-    height: 40,
-    borderRadius: RADIUS.pill,
     backgroundColor: COLORS.green700,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 9,
   },
-  reorderBtnText: {
+  detailsBtnTxt: {
+    ...FONTS.balooBold,
     fontSize: 13,
-    fontWeight: '800',
     color: '#FFFFFF',
   },
-  /* Empty State */
+  pastSection: { marginTop: 8 },
+  sectionLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: COLORS.ink500,
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  pastCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: COLORS.line,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  pastTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pastStatus: {
+    ...FONTS.muktaMedium,
+    fontSize: 13,
+    color: COLORS.ink700,
+  },
+  pastAmount: {
+    ...FONTS.balooBold,
+    fontSize: 16,
+    color: COLORS.ink900,
+  },
+  pastBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pastSpacer: { flex: 1 },
+  pastItems: {
+    ...FONTS.muktaMedium,
+    fontSize: 13,
+    color: COLORS.ink500,
+  },
+  reorderBtn: {
+    borderWidth: 1.5,
+    borderColor: COLORS.green700,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 9,
+    minWidth: 77,
+    alignItems: 'center',
+  },
+  reorderBtnTxt: {
+    ...FONTS.balooBold,
+    fontSize: 13,
+    color: COLORS.green700,
+  },
   emptyWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
   },
-  emptyIconCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+  emptyCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 22,
     color: COLORS.ink900,
     marginBottom: 8,
+    textAlign: 'center',
   },
-  emptySubtitle: {
-    fontSize: 13.5,
+  emptySub: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 28,
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  startShopBtn: {
-    backgroundColor: COLORS.green700,
-    paddingHorizontal: 24,
-    height: 48,
-    borderRadius: RADIUS.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  startShopBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  /* Guest State Styles */
-  guestOrdersWrap: {
+  guestWrap: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 28,
   },
-  guestOrdersMintCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  guestCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  guestOrdersHeadline: {
-    fontSize: 20,
-    fontWeight: '900',
+  guestTitle: {
+    ...FONTS.balooBold,
+    fontSize: 22,
     color: COLORS.ink900,
     marginBottom: 8,
     textAlign: 'center',
   },
-  guestOrdersSubtitle: {
-    fontSize: 13.5,
+  guestSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 28,
-    paddingHorizontal: 12,
+    lineHeight: 20,
+    marginBottom: 24,
   },
-  guestOrdersBtn: {
-    width: '100%',
+  primaryBtn: {
     backgroundColor: COLORS.green700,
-    height: 50,
-    borderRadius: RADIUS.pill,
-    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 999,
+    minWidth: 230,
     alignItems: 'center',
   },
-  guestOrdersBtnText: {
-    color: '#FFFFFF',
+  primaryBtnTxt: {
+    ...FONTS.balooBold,
     fontSize: 15,
-    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

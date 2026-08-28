@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,73 +11,76 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_BASE } from '../../config/api';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS, FONTS } from '../../constants/theme';
+import { COLORS, FONTS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
+import {
+  CheckoutBackIcon,
+  CheckoutPercentIcon,
+} from '../../components/CheckoutFigmaIcons';
+import {
+  CouponItem,
+  OffersCouponsScreenConfig,
+  fetchOffersCouponsScreenConfigWithStatus,
+  fetchLiveCoupons,
+  applyCouponCode,
+  formatOffersTemplate,
+} from '../../services/offersCouponsApi';
 
-export interface CouponItem {
-  id: string;
-  code: string;
-  title: string;
-  discount_type: 'fixed' | 'percentage';
-  discount_value: number;
-  min_order_amount: number;
-  max_discount: number;
-  expires_at: string;
-  badge?: string;
-  description?: string;
-  target_audience?: 'all' | 'new' | 'loyal';
-  usage_limit_per_user?: number;
-}
+/** Figma C3 canvas background */
+const SCREEN_BG = '#FBFAF6';
+
+export type { CouponItem };
 
 export default function OffersCouponsScreen({ navigation, route }: any) {
+  const [screenConfig, setScreenConfig] = useState<OffersCouponsScreenConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [couponsLoading, setCouponsLoading] = useState(true);
   const [manualCode, setManualCode] = useState('');
   const [applyingManual, setApplyingManual] = useState(false);
   const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
 
   const { token } = useAuth();
+  const { setAppliedCoupon } = useCart();
   const cartAmount = route.params?.currentTotal || route.params?.cartAmount || 0;
 
-  useEffect(() => {
-    const fetchLiveCoupons = async () => {
-      setLoading(true);
-      try {
-        const headers: any = {};
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        const res = await fetch(`${API_BASE}/coupons`, { headers });
-        const data = await res.json();
-        if (res.ok && data.success && data.coupons) {
-          setCoupons(data.coupons);
-        }
-      } catch (err) {
-        console.error('Coupons fetch notice:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLiveCoupons();
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const result = await fetchOffersCouponsScreenConfigWithStatus();
+    setScreenConfig(result.config);
+    setConfigError(result.error);
+    setConfigLoading(false);
+    return result;
   }, []);
 
-  const handleApplyCoupon = (coupon: CouponItem) => {
-    if (cartAmount > 0 && cartAmount < coupon.min_order_amount) {
-      Alert.alert(
-        'Minimum Order Not Met',
-        `Add ₹${coupon.min_order_amount - cartAmount} more to your basket to apply code ${coupon.code}.`
-      );
-      return;
-    }
+  const loadCoupons = useCallback(async () => {
+    setCouponsLoading(true);
+    const list = await fetchLiveCoupons(token);
+    setCoupons(list);
+    setCouponsLoading(false);
+  }, [token]);
 
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  useEffect(() => {
+    if (!configError && screenConfig) {
+      loadCoupons();
+    }
+  }, [configError, screenConfig, loadCoupons]);
+
+  const applyCouponAndReturn = (coupon: CouponItem & { discount_amount?: number }) => {
     if (route.params?.onSelectCoupon) {
       route.params.onSelectCoupon(coupon);
       navigation.goBack();
       return;
     }
+
+    setAppliedCoupon(coupon);
 
     if (route.params?.fromCheckout) {
       navigation.navigate({
@@ -88,64 +91,105 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
       return;
     }
 
-    Alert.alert('Coupon Applied!', `Code "${coupon.code}" will be applied at checkout!`);
+    navigation.goBack();
+  };
+
+  const handleApplyCoupon = (coupon: CouponItem) => {
+    if (!screenConfig) return;
+
+    if (cartAmount > 0 && cartAmount < coupon.min_order_amount) {
+      Alert.alert(
+        screenConfig.min_order_alert_title,
+        formatOffersTemplate(screenConfig.min_order_alert_template, {
+          amount: (coupon.min_order_amount - cartAmount).toLocaleString('en-IN'),
+          code: coupon.code,
+        }),
+      );
+      return;
+    }
+
+    applyCouponAndReturn(coupon);
   };
 
   const handleApplyManualCode = async () => {
-    if (!manualCode.trim()) return;
+    if (!manualCode.trim() || !screenConfig) return;
     setApplyingManual(true);
-    try {
-      const headers: any = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const res = await fetch(`${API_BASE}/coupons/apply`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ code: manualCode.trim(), cart_amount: cartAmount })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        if (route.params?.onSelectCoupon) {
-          route.params.onSelectCoupon(data.coupon);
-          navigation.goBack();
-        } else if (route.params?.fromCheckout) {
-          navigation.navigate({
-            name: 'Checkout',
-            params: { appliedCoupon: data.coupon },
-            merge: true,
-          });
-        } else {
-          Alert.alert('Coupon Applied', `Code "${data.coupon.code}" applied successfully!`);
-        }
-      } else {
-        Alert.alert('Invalid Coupon', data.error || 'Failed to apply coupon.');
-      }
-    } catch {
-      Alert.alert('Error', 'Connection error while applying coupon.');
-    } finally {
-      setApplyingManual(false);
+    const result = await applyCouponCode(manualCode, cartAmount, token);
+    if (result.success && result.coupon) {
+      applyCouponAndReturn(result.coupon);
+    } else {
+      Alert.alert(
+        screenConfig.invalid_coupon_alert_title,
+        result.error || screenConfig.apply_failed_fallback,
+      );
     }
+    setApplyingManual(false);
   };
 
   const toggleExpand = (id: string) => {
     setExpandedCouponId(expandedCouponId === id ? null : id);
   };
 
+  const buildGuidelineText = (coupon: CouponItem) => {
+    if (!screenConfig) return '';
+    const audience = coupon.target_audience || 'all';
+    let text =
+      audience === 'new'
+        ? screenConfig.audience_new_guideline
+        : audience === 'loyal'
+          ? screenConfig.audience_loyal_guideline
+          : screenConfig.audience_all_guideline;
+
+    if (coupon.usage_limit_per_user) {
+      const limitText = formatOffersTemplate(screenConfig.usage_limit_template, {
+        limit: coupon.usage_limit_per_user,
+      });
+      text = `${text} ${limitText}`;
+    }
+    return text.trim();
+  };
+
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (configError && !screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) return null;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Offers & coupons</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
       <ScrollView
@@ -153,14 +197,13 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Manual Apply Coupon Bar */}
         <View style={styles.applyInputBar}>
           <View style={styles.inputIcon}>
-            <AppIcon name="percent" size={15} color={COLORS.ink500} />
+            <CheckoutPercentIcon size={15} />
           </View>
           <TextInput
             style={styles.textInput}
-            placeholder="Enter coupon code"
+            placeholder={screenConfig.manual_code_placeholder}
             placeholderTextColor={COLORS.ink300}
             value={manualCode}
             onChangeText={setManualCode}
@@ -171,19 +214,19 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
             style={[styles.applyBtn, !manualCode.trim() && styles.applyBtnDisabled]}
             onPress={handleApplyManualCode}
             disabled={applyingManual || !manualCode.trim()}
+            activeOpacity={0.85}
           >
             {applyingManual ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.applyBtnTxt}>Apply</Text>
+              <Text style={styles.applyBtnTxt}>{screenConfig.manual_apply_label}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Section Title */}
-        <Text style={styles.sectionLabel}>AVAILABLE FOR YOU</Text>
+        <Text style={styles.sectionLabel}>{screenConfig.available_section_label}</Text>
 
-        {loading ? (
+        {couponsLoading ? (
           <View style={styles.centerLoading}>
             <ActivityIndicator size="large" color={COLORS.green700} />
           </View>
@@ -193,17 +236,17 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
               const isEligible = cartAmount === 0 || cartAmount >= coupon.min_order_amount;
               const remainingAmount = coupon.min_order_amount - cartAmount;
               const isExpanded = expandedCouponId === coupon.id;
+              const expiryLabel = formatOffersTemplate(screenConfig.expires_template, {
+                date: coupon.expires_at,
+              });
 
               return (
                 <View key={coupon.id} style={styles.couponCard}>
-                  {/* Stable Main Row View (replaces outer touchable to fix layout width/events) */}
                   <View style={styles.cardMainRow}>
-                    {/* Left Column (Figma width: 52px) */}
                     <View style={styles.leftColorPill}>
-                      <AppIcon name="percent" size={15} color="#C77E12" />
+                      <CheckoutPercentIcon size={15} />
                     </View>
 
-                    {/* Middle Column: Clickable Details to toggle accordion (Figma width: 243px) */}
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => toggleExpand(coupon.id)}
@@ -211,23 +254,23 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
                     >
                       <View style={styles.codeHeaderRow}>
                         <Text style={styles.couponCode}>{coupon.code}</Text>
-                        {coupon.badge && (
+                        {coupon.badge ? (
                           <View style={styles.badgePill}>
                             <Text style={styles.badgeTxt}>{coupon.badge}</Text>
                           </View>
-                        )}
+                        ) : null}
                       </View>
                       <Text style={styles.couponTitle} numberOfLines={2}>
                         {coupon.title}
                       </Text>
-                      <Text style={styles.expiryTxt}>Expires on {coupon.expires_at}</Text>
+                      <Text style={styles.expiryTxt}>{expiryLabel}</Text>
                     </TouchableOpacity>
 
-                    {/* Right Column: Centered text-only APPLY button (Figma width: 55px) */}
                     <TouchableOpacity
                       onPress={() => handleApplyCoupon(coupon)}
                       disabled={!isEligible}
                       style={styles.cardActionArea}
+                      activeOpacity={0.7}
                     >
                       <Text
                         style={[
@@ -235,51 +278,45 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
                           !isEligible && styles.cardActionTxtDisabled,
                         ]}
                       >
-                        APPLY
+                        {screenConfig.list_apply_label}
                       </Text>
                     </TouchableOpacity>
                   </View>
 
-                  {/* Collapsible Area */}
-                  {isExpanded && (
+                  {isExpanded ? (
                     <View style={styles.collapsibleArea}>
                       {coupon.description ? (
                         <Text style={styles.couponDesc}>{coupon.description}</Text>
                       ) : null}
 
-                      {/* Dynamic Guidelines / Limits Banner */}
                       <View style={styles.limitInfoRow}>
-                        <AppIcon name="help" size={11} color={COLORS.ink500} />
-                        <Text style={styles.limitInfoTxt}>
-                          {coupon.target_audience === 'new' ? 'Welcome Offer: Valid on first order only. ' :
-                           coupon.target_audience === 'loyal' ? 'Loyalty Offer: Valid for returning customers. ' : 'Valid for all customers. '}
-                          {coupon.usage_limit_per_user ? `Limit: Max ${coupon.usage_limit_per_user} uses per account.` : ''}
-                        </Text>
+                        <Text style={styles.limitInfoTxt}>{buildGuidelineText(coupon)}</Text>
                       </View>
 
-                      {!isEligible && (
+                      {!isEligible ? (
                         <View style={styles.warningContainer}>
                           <View style={styles.cardDivider} />
                           <View style={styles.warningRow}>
-                            <AppIcon name="help" size={12} color={COLORS.marigold700} />
                             <Text style={styles.warningTxt}>
-                              Add items worth ₹{remainingAmount} more to unlock this offer
+                              {formatOffersTemplate(screenConfig.unlock_offer_template, {
+                                amount: remainingAmount.toLocaleString('en-IN'),
+                              })}
                             </Text>
                           </View>
                         </View>
-                      )}
+                      ) : null}
                     </View>
-                  )}
+                  ) : null}
                 </View>
               );
             })}
 
-            {coupons.length === 0 && (
+            {coupons.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <AppIcon name="tag" size={40} color={COLORS.ink300} />
-                <Text style={styles.emptyTxt}>No offers available right now.</Text>
+                <CheckoutPercentIcon size={28} />
+                <Text style={styles.emptyTxt}>{screenConfig.empty_message}</Text>
               </View>
-            )}
+            ) : null}
           </View>
         )}
       </ScrollView>
@@ -287,22 +324,36 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FBFAF6',
+    backgroundColor: SCREEN_BG,
+  },
+  centeredState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 999,
+  },
+  retryBtnText: {
+    ...FONTS.balooBold,
+    fontSize: 15,
+    color: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
-    borderBottomWidth: 1.5,
-    borderBottomColor: COLORS.line,
-    backgroundColor: '#FBFAF6',
+    paddingTop: 4,
+    paddingBottom: 8,
     gap: 10,
+    backgroundColor: SCREEN_BG,
   },
   backBtn: {
     width: 36,
@@ -315,8 +366,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.ink900,
   },
-
-  // Scroll content
   scroll: {
     flex: 1,
   },
@@ -325,8 +374,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 40,
   },
-
-  // Apply Coupon Bar
   applyInputBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -341,7 +388,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   inputIcon: {
-    marginRight: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -353,7 +399,7 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   applyBtn: {
-    backgroundColor: '#1E7A46',
+    backgroundColor: COLORS.green700,
     width: 69,
     height: 36,
     borderRadius: 9,
@@ -361,15 +407,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyBtnDisabled: {
-    opacity: 1,
+    opacity: 0.45,
   },
   applyBtnTxt: {
     ...FONTS.balooBold,
     fontSize: 13,
     color: '#FFFFFF',
   },
-
-  // Section Label
   sectionLabel: {
     ...FONTS.muktaBold,
     fontSize: 12,
@@ -378,15 +422,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 14,
   },
-
-  // Loading wrapper
   centerLoading: {
     paddingVertical: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Coupons cards list
   listContainer: {
     gap: 14,
   },
@@ -402,8 +442,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 84,
   },
-
-  // Left Column (Figma width: 52px)
   leftColorPill: {
     width: 52,
     height: 84,
@@ -411,8 +449,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Middle Column (Figma width: 243px equivalent, using flex: 1 for fluid stretching between fixed boundaries)
   couponInfo: {
     flex: 1,
     paddingTop: 13,
@@ -453,8 +489,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.ink500,
   },
-
-  // Right Column (Figma width: 55px)
   cardActionArea: {
     width: 55,
     height: 84,
@@ -469,8 +503,6 @@ const styles = StyleSheet.create({
   cardActionTxtDisabled: {
     color: COLORS.ink300,
   },
-
-  // Collapsible content
   collapsibleArea: {
     backgroundColor: '#FAF9F6',
     borderTopWidth: 1,
@@ -485,8 +517,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 4,
   },
-
-  // Expiry / Warning details
   cardDivider: {
     height: 1,
     backgroundColor: COLORS.line,
@@ -496,9 +526,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   warningRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingHorizontal: 16,
   },
   warningTxt: {
@@ -506,8 +533,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.marigold700,
   },
-
-  // Empty view
   emptyWrap: {
     paddingVertical: 60,
     justifyContent: 'center',
@@ -520,9 +545,6 @@ const styles = StyleSheet.create({
     color: COLORS.ink500,
   },
   limitInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 6,
@@ -531,5 +553,6 @@ const styles = StyleSheet.create({
     ...FONTS.muktaMedium,
     fontSize: 11,
     color: COLORS.ink500,
+    lineHeight: 16,
   },
 });

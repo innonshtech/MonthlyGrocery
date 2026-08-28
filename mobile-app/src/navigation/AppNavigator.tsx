@@ -28,6 +28,7 @@ import EditProfileScreen from '../screens/customer/EditProfileScreen';
 import DeleteAccountScreen from '../screens/customer/DeleteAccountScreen';
 import SystemStateScreen from '../screens/customer/SystemStateScreen';
 import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
+import MyCouponsScreen from '../screens/customer/MyCouponsScreen';
 import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
 import AddAddressScreen from '../screens/customer/AddAddressScreen';
 import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
@@ -80,6 +81,7 @@ export default function AppNavigator() {
           <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
           <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
+          <Stack.Screen name="MyCoupons" component={MyCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />

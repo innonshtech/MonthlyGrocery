@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,119 +8,206 @@ import {
   ScrollView,
   Dimensions,
   Modal,
-  Switch,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
-import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
+import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import BrowseProductCard from '../../components/browse/BrowseProductCard';
+import {
+  fetchCategoryProductsConfigWithStatus,
+  fetchCategoryProducts,
+  fetchBrowseCategoryImage,
+  buildSidebarTabs,
+  formatCategoryProductsTemplate,
+  CategoryProductsScreenConfig,
+} from '../../services/categoryProductsApi';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
+import { getProductPackLabel } from '../../utils/packUnit';
 
 const { width } = Dimensions.get('window');
 
-// ─── Layout constants from Figma B4 ──────────────────────────────────────────
 const SIDEBAR_W = 76;
 const GRID_W = width - SIDEBAR_W;
-const CARD_W = (GRID_W - 12 - 12 - 10) / 2; // 2 columns, 12px sides, 10px gap
+const CARD_W = (GRID_W - 12 - 12 - 10) / 2;
 
-// ─── Derive sub-categories from product list ──────────────────────────────────
-function getSubCategories(products: Product[]): string[] {
-  const seen = new Set<string>();
-  const subs: string[] = [];
-  for (const p of products) {
-    const sub = (p as any).primary_category || '';
-    if (sub && !seen.has(sub)) {
-      seen.add(sub);
-      subs.push(sub);
-    }
-  }
-  // Always add an "All" entry
-  return ['All', ...subs].slice(0, 8);
-}
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CategoryProductsScreen({ route, navigation }: any) {
-  const { categoryName = 'Atta & Rice', categoryId } = route?.params || {};
+  const {
+    categoryName,
+    categoryId,
+    dealsOnly = false,
+  } = route?.params || {};
+
   const { city, area } = useAuth();
-  const { addToCart, items, updateQuantity, totalAmount } = useCart();
+  const { addToCart, items, updateQuantity } = useCart();
+
+  const [screenConfig, setScreenConfig] = useState<CategoryProductsScreenConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeSubCat, setActiveSubCat] = useState('All');
+  const [productsError, setProductsError] = useState(false);
+  const [activeSubCat, setActiveSubCat] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
-
-  // Filter & Sort (Figma B5: SORT BY + PACK SIZE)
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'discount'>('relevance');
   const [selectedPackSize, setSelectedPackSize] = useState('');
+  const [parentCategoryImage, setParentCategoryImage] = useState<string | undefined>();
 
+  const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
   const totalCartCount = items.reduce((s, i) => s + i.quantity, 0);
 
+  const loadConfig = useCallback(async () => {
+    const result = await fetchCategoryProductsConfigWithStatus();
+    setScreenConfig(result.config);
+    setConfigError(result.error);
+    return result;
+  }, []);
+
+  const loadProducts = useCallback(async () => {
+    if (!hasDeliveryArea) {
+      setProducts([]);
+      setProductsError(false);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setProductsError(false);
+    const result = await fetchCategoryProducts({
+      dealsOnly,
+      categoryName,
+      categoryId,
+      city: city ?? undefined,
+      area: area ?? undefined,
+    });
+
+    if (result.error) {
+      setProductsError(true);
+      setProducts([]);
+    } else {
+      setProducts(result.products);
+    }
+    setLoading(false);
+  }, [hasDeliveryArea, dealsOnly, categoryName, categoryId, city, area]);
+
+  const loadAll = useCallback(async () => {
+    await loadConfig();
+    if (!dealsOnly) {
+      const img = await fetchBrowseCategoryImage(categoryId, categoryName);
+      setParentCategoryImage(img);
+    } else {
+      setParentCategoryImage(undefined);
+    }
+    await loadProducts();
+  }, [loadConfig, loadProducts, dealsOnly, categoryId, categoryName]);
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        let url = `${API_BASE}/products/all?limit=50`;
-        const q = categoryName || categoryId;
-        if (q && q !== 'all') url += `&category=${encodeURIComponent(q)}`;
-        if (city) url += `&city=${encodeURIComponent(city)}`;
-        if (area) url += `&area_name=${encodeURIComponent(area)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        setProducts(res.ok && data.success ? data.products : []);
-      } catch {
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [categoryId, categoryName, city, area]);
+    loadAll();
+  }, [loadAll]);
+
+  useEffect(() => {
+    if (screenConfig?.sub_category_all_label) {
+      setActiveSubCat(screenConfig.sub_category_all_label);
+    }
+  }, [screenConfig?.sub_category_all_label]);
 
   const clearFilters = () => {
     setSortBy('relevance');
     setSelectedPackSize('');
   };
 
-  // ── Filter & sort ────────────────────────────────────────────────────────────
+  const allLabel = screenConfig?.sub_category_all_label ?? '';
+
+  const displayTitle = dealsOnly
+    ? (categoryName || screenConfig?.deals_title || '')
+    : (categoryName || categoryId || screenConfig?.deals_title || '');
+
   const filtered = products
     .filter((p) => {
-      if (activeSubCat !== 'All') {
-        const sub = (p as any).primary_category || '';
+      if (activeSubCat && activeSubCat !== allLabel) {
+        const sub = (p.secondary_category || '').trim();
         if (sub !== activeSubCat) return false;
       }
-      // PACK SIZE filter (Figma B5)
-      if (selectedPackSize && p.unit && p.unit.toLowerCase() !== selectedPackSize.toLowerCase()) return false;
+      if (selectedPackSize && getProductPackLabel(p).toLowerCase() !== selectedPackSize.toLowerCase()) {
+        return false;
+      }
       return true;
     })
     .sort((a, b) => {
-      const pa = parseFloat(a.price as any) || 0;
-      const pb = parseFloat(b.price as any) || 0;
+      const pa = parseFloat(String(a.price)) || 0;
+      const pb = parseFloat(String(b.price)) || 0;
       if (sortBy === 'price_low') return pa - pb;
       if (sortBy === 'price_high') return pb - pa;
       if (sortBy === 'discount') {
-        return ((parseFloat(b.mrp as any) || pb) - pb) - ((parseFloat(a.mrp as any) || pa) - pa);
+        return (
+          ((parseFloat(String(b.mrp)) || pb) - pb) - ((parseFloat(String(a.mrp)) || pa) - pa)
+        );
       }
       return 0;
     });
 
-  const subCats = getSubCategories(products);
+  const sidebarTabs = useMemo(
+    () => (allLabel ? buildSidebarTabs(products, allLabel, parentCategoryImage) : []),
+    [products, allLabel, parentCategoryImage],
+  );
 
-  // ── Derive unique pack sizes from real product units (Figma B5: PACK SIZE chips) ─
   const packSizes = Array.from(
-    new Set(products.map((p) => p.unit).filter((u): u is string => !!u && u.trim().length > 0))
+    new Set(products.map((p) => getProductPackLabel(p)).filter((u) => u.trim().length > 0)),
   ).slice(0, 6);
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const itemsCountLabel = screenConfig
+    ? formatCategoryProductsTemplate(screenConfig.items_count_template, {
+        category: displayTitle,
+        count: filtered.length,
+      })
+    : '';
+
+  const searchPlaceholder = screenConfig
+    ? formatCategoryProductsTemplate(screenConfig.search_placeholder_template, {
+        category: displayTitle,
+      })
+    : '';
+
+  const cartCountLabel =
+    totalCartCount === 1
+      ? screenConfig?.cart_item_label ?? ''
+      : screenConfig
+        ? formatCategoryProductsTemplate(screenConfig.cart_items_template, { count: totalCartCount })
+        : '';
+
+  const sortOptions = screenConfig
+    ? [
+        { key: 'relevance' as const, label: screenConfig.filter_sort_relevance },
+        { key: 'price_low' as const, label: screenConfig.filter_sort_price_low },
+        { key: 'price_high' as const, label: screenConfig.filter_sort_price_high },
+        { key: 'discount' as const, label: screenConfig.filter_sort_discount },
+      ]
+    : [];
+
+  if (configError && !screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>
+            Could not load product list screen. Check that the backend is running.
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ── Top header ──────────────────────────────────────────────────────── */}
       <View style={styles.topHeader}>
-        {/* Back */}
         <TouchableOpacity
           style={styles.iconBtn}
           onPress={() => navigation.goBack()}
@@ -129,52 +216,52 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
           <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
         </TouchableOpacity>
 
-        {/* Search bar (inline, Figma: height 44, radius 12) */}
         <TouchableOpacity
           style={styles.inlineSearch}
           onPress={() => navigation.navigate('Search')}
           activeOpacity={0.8}
         >
-          <AppIcon name="search" size={16} color={COLORS.ink300} />
+          <HomeSearchIcon size={16} color={COLORS.ink300} />
           <Text style={styles.inlineSearchTxt} numberOfLines={1}>
-            Search in {categoryName}
+            {searchPlaceholder}
           </Text>
         </TouchableOpacity>
 
-        {/* Cart icon with badge */}
-        <TouchableOpacity
-          style={styles.iconBtn}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <AppIcon name="cart" size={22} color={COLORS.ink900} badge={totalCartCount > 0 ? totalCartCount : undefined} />
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Cart')}>
+          <AppIcon
+            name="cart"
+            size={22}
+            color={COLORS.ink900}
+            badge={totalCartCount > 0 ? totalCartCount : undefined}
+          />
         </TouchableOpacity>
       </View>
 
-      {/* ── Body: left sidebar + right grid ────────────────────────────────── */}
       <View style={styles.body}>
-
-        {/* ── Left sidebar ── */}
         <View style={styles.sidebar}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sidebarContent}>
-            {subCats.map((sub, idx) => {
-              const active = activeSubCat === sub;
+            {sidebarTabs.map((tab) => {
+              const active = activeSubCat === tab.key;
               return (
                 <TouchableOpacity
-                  key={sub}
+                  key={tab.key}
                   style={[styles.subCatItem, active && styles.subCatItemActive]}
-                  onPress={() => setActiveSubCat(sub)}
+                  onPress={() => setActiveSubCat(tab.key)}
                   activeOpacity={0.75}
                 >
-                  {/* Active indicator bar */}
                   {active && <View style={styles.activeBar} />}
-
-                  {/* Icon tile */}
-                  <View style={[styles.subCatTile, active ? styles.subCatTileActive : styles.subCatTileInactive]}>
-                    <AppIcon name="shopping-bag" size={22} color={active ? COLORS.green700 : COLORS.ink500} />
+                  <View
+                    style={[
+                      styles.subCatTile,
+                      active ? styles.subCatTileActive : styles.subCatTileInactive,
+                    ]}
+                  >
+                    {tab.image_url ? (
+                      <Image source={{ uri: tab.image_url }} style={styles.subCatThumb} resizeMode="contain" />
+                    ) : null}
                   </View>
-
                   <Text style={[styles.subCatLabel, active && styles.subCatLabelActive]} numberOfLines={1}>
-                    {sub}
+                    {tab.label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -182,12 +269,10 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
           </ScrollView>
         </View>
 
-        {/* ── Right product grid ── */}
         <View style={styles.gridArea}>
-          {/* Sort row */}
           <View style={styles.sortRow}>
             <Text style={styles.sortRowTitle} numberOfLines={1}>
-              {categoryName} · {filtered.length} items
+              {itemsCountLabel}
             </Text>
             <TouchableOpacity
               style={styles.sortPill}
@@ -195,13 +280,31 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               activeOpacity={0.8}
             >
               <AppIcon name="trending-down" size={13} color={COLORS.ink700} />
-              <Text style={styles.sortPillTxt}>Sort</Text>
+              <Text style={styles.sortPillTxt}>{screenConfig?.sort_label}</Text>
             </TouchableOpacity>
           </View>
 
-          {loading ? (
+          {!hasDeliveryArea ? (
+            <View style={styles.centeredState}>
+              <Text style={styles.errorText}>{screenConfig?.location_required_message}</Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => navigation.navigate('CitySelection')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.retryBtnText}>{screenConfig?.choose_location_label}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : loading ? (
             <View style={styles.centerLoading}>
               <ActivityIndicator size="large" color={COLORS.green700} />
+            </View>
+          ) : productsError ? (
+            <View style={styles.centeredState}>
+              <Text style={styles.errorText}>{screenConfig?.load_error_message}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={loadProducts} activeOpacity={0.85}>
+                <Text style={styles.retryBtnText}>{screenConfig?.retry_label}</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <FlatList
@@ -220,6 +323,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                     index={index}
                     width={CARD_W}
                     quantity={qty}
+                    addButtonLabel={screenConfig?.add_button_label}
                     onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
                     onAdd={() => addToCart(item)}
                     onIncrement={() => addToCart(item)}
@@ -230,7 +334,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
                   <AppIcon name="shopping-bag" size={40} color={COLORS.ink300} />
-                  <Text style={styles.emptyTxt}>No products found</Text>
+                  <Text style={styles.emptyTxt}>{screenConfig?.empty_message}</Text>
                 </View>
               }
             />
@@ -238,7 +342,6 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
         </View>
       </View>
 
-      {/* ── Floating cart bar (Figma: rgba green pill, centered) ───────────── */}
       {totalCartCount > 0 && (
         <TouchableOpacity
           style={styles.floatingCart}
@@ -250,17 +353,14 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               <AppIcon name="cart" size={16} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={styles.floatingCartLabel}>View cart</Text>
-              <Text style={styles.floatingCartCount}>
-                {totalCartCount} {totalCartCount === 1 ? 'item' : 'items'}
-              </Text>
+              <Text style={styles.floatingCartLabel}>{screenConfig?.view_cart_label}</Text>
+              <Text style={styles.floatingCartCount}>{cartCountLabel}</Text>
             </View>
           </View>
           <AppIcon name="arrow-right" size={16} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
-      {/* ── B5 · Filter & Sort sheet (Figma #474:680) ──────────────────────── */}
       <Modal
         visible={showFilterModal}
         transparent
@@ -268,18 +368,15 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
         onRequestClose={() => setShowFilterModal(false)}
       >
         <View style={styles.modalOverlay}>
-          {/* Dark backdrop */}
           <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowFilterModal(false)} activeOpacity={1} />
 
           <View style={styles.sheet}>
-            {/* Drag handle */}
             <View style={styles.sheetHandleRow}>
               <View style={styles.sheetHandle} />
             </View>
 
-            {/* Header: title + X icon (Figma: #474:685) */}
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Sort & filter</Text>
+              <Text style={styles.sheetTitle}>{screenConfig?.filter_sheet_title}</Text>
               <TouchableOpacity
                 style={styles.sheetCloseBtn}
                 onPress={() => setShowFilterModal(false)}
@@ -289,20 +386,14 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* SORT BY (Figma: #474:690) */}
             <View style={styles.sheetSectionWrap}>
-              <Text style={styles.sheetSection}>SORT BY</Text>
+              <Text style={styles.sheetSection}>{screenConfig?.filter_sort_section_label}</Text>
               <View style={styles.radioGroup}>
-                {[
-                  { key: 'relevance', label: 'Relevance' },
-                  { key: 'price_low', label: 'Price — Low to High' },
-                  { key: 'price_high', label: 'Price — High to Low' },
-                  { key: 'discount', label: 'Discount — High to Low' },
-                ].map((r) => (
+                {sortOptions.map((r) => (
                   <TouchableOpacity
                     key={r.key}
                     style={styles.radioRow}
-                    onPress={() => setSortBy(r.key as any)}
+                    onPress={() => setSortBy(r.key)}
                   >
                     <Text style={[styles.radioTxt, sortBy === r.key && styles.radioTxtOn]}>{r.label}</Text>
                     {sortBy === r.key ? (
@@ -317,10 +408,9 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               </View>
             </View>
 
-            {/* PACK SIZE chips — from real product units (Figma: #474:706) */}
             {packSizes.length > 0 && (
               <View style={styles.sheetSectionWrap}>
-                <Text style={styles.sheetSection}>PACK SIZE</Text>
+                <Text style={styles.sheetSection}>{screenConfig?.filter_pack_section_label}</Text>
                 <View style={styles.chips}>
                   {packSizes.map((size) => (
                     <TouchableOpacity
@@ -328,28 +418,25 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                       style={[styles.chip, selectedPackSize === size && styles.chipOn]}
                       onPress={() => setSelectedPackSize(selectedPackSize === size ? '' : size)}
                     >
-                      <Text style={[styles.chipTxt, selectedPackSize === size && styles.chipTxtOn]}>{size}</Text>
+                      <Text style={[styles.chipTxt, selectedPackSize === size && styles.chipTxtOn]}>
+                        {size}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
             )}
 
-            {/* Bottom: Clear all + Apply side-by-side (Figma: #474:717) */}
             <View style={styles.sheetBtnsRow}>
-              <TouchableOpacity
-                style={styles.clearAllBtn}
-                onPress={clearFilters}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.clearAllBtnTxt}>Clear all</Text>
+              <TouchableOpacity style={styles.clearAllBtn} onPress={clearFilters} activeOpacity={0.85}>
+                <Text style={styles.clearAllBtnTxt}>{screenConfig?.filter_clear_label}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.applyBtn}
                 onPress={() => setShowFilterModal(false)}
                 activeOpacity={0.85}
               >
-                <Text style={styles.applyBtnTxt}>Apply</Text>
+                <Text style={styles.applyBtnTxt}>{screenConfig?.filter_apply_label}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -359,14 +446,11 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FBFAF6',
   },
-
-  // ── Top header ───────────────────────────────────────────────────────────────
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -402,14 +486,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.ink300,
   },
-
-  // ── Body split pane ───────────────────────────────────────────────────────────
   body: {
     flex: 1,
     flexDirection: 'row',
   },
-
-  // ── Left sidebar (Figma: 76px wide, #F4F3EE bg, shadow) ─────────────────────
   sidebar: {
     width: SIDEBAR_W,
     backgroundColor: '#F4F3EE',
@@ -427,7 +507,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 0,
     gap: 4,
     position: 'relative',
   },
@@ -449,6 +528,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   subCatTileActive: {
     backgroundColor: COLORS.green50,
@@ -456,23 +536,24 @@ const styles = StyleSheet.create({
   subCatTileInactive: {
     backgroundColor: '#FFFFFF',
   },
+  subCatThumb: {
+    width: 30,
+    height: 30,
+  },
   subCatLabel: {
     ...FONTS.muktaBold,
     fontSize: 10,
     color: COLORS.ink500,
     textAlign: 'center',
     lineHeight: 14,
+    maxWidth: SIDEBAR_W - 8,
   },
   subCatLabelActive: {
     color: COLORS.green700,
   },
-
-  // ── Right grid area ───────────────────────────────────────────────────────────
   gridArea: {
     flex: 1,
   },
-
-  // Sort row
   sortRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -503,14 +584,36 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.ink700,
   },
-
   centerLoading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Grid
+  centeredState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  errorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+  },
+  retryBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
   gridContent: {
     paddingHorizontal: 12,
     paddingBottom: 100,
@@ -519,8 +622,6 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 12,
   },
-
-  // Empty
   emptyWrap: {
     paddingVertical: 40,
     alignItems: 'center',
@@ -531,8 +632,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.ink500,
   },
-
-  // ── Floating cart bar (Figma: green 0.9 alpha, 100px radius, centered) ────────
   floatingCart: {
     position: 'absolute',
     bottom: 16,
@@ -577,8 +676,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#E4F3EA',
   },
-
-  // ── Filter & Sort sheet ───────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -692,7 +789,6 @@ const styles = StyleSheet.create({
     color: COLORS.ink700,
   },
   chipTxtOn: { color: '#FFFFFF' },
-  togglePlaceholder: { height: 0 }, // kept for type safety
   sheetBtnsRow: {
     flexDirection: 'row',
     gap: 12,

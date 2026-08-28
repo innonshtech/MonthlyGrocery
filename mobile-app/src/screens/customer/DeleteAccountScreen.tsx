@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,144 +7,111 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
+import {
+  DeleteAccountCheckboxBox,
+  DeleteAccountItemXIcon,
+  DeleteAccountSuccessCheckIcon,
+  DeleteAccountWarningIcon,
+} from '../../components/account/DeleteAccountIcons';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import {
+  DeleteAccountScreenConfig,
+  deleteAccount,
+  fetchDeleteAccountScreenConfig,
+} from '../../services/deleteAccountApi';
+
+const SCREEN_BG = '#FBFAF6';
 
 export default function DeleteAccountScreen({ navigation }: any) {
-  const { logout } = useAuth();
+  const { token, logout } = useAuth();
+
+  const [screenConfig, setScreenConfig] = useState<DeleteAccountScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [agreed, setAgreed] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
 
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchDeleteAccountScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConfig();
+    }, [loadConfig]),
+  );
+
   const handleDelete = async () => {
+    if (!screenConfig || !token) return;
+
     if (!agreed) {
-      Alert.alert('Required', 'Please check the confirmation box to proceed.');
+      Alert.alert(
+        screenConfig.agreement_required_title,
+        screenConfig.agreement_required_message,
+      );
       return;
     }
 
     setDeleting(true);
-    setTimeout(async () => {
-      try {
-        await AsyncStorage.clear();
-      } catch (err) {}
-      logout();
-      setDeleting(false);
-      setIsDeleted(true);
-    }, 1000);
+    const result = await deleteAccount(token);
+    setDeleting(false);
+
+    if (!result.success) {
+      Alert.alert(screenConfig.delete_error_message);
+      return;
+    }
+
+    await logout();
+    setIsDeleted(true);
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-
-      {/* =========================================================================
-         SLIDE 1: DELETE ACCOUNT CONFIRMATION (G BOTTOM 2ND IN FIGMA)
-         ========================================================================= */}
-      {!isDeleted ? (
-        <View style={{ flex: 1 }}>
-          {/* Header */}
-          <View style={styles.topHeader}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backBtn}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Text style={styles.backBtnText}>‹</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Delete account</Text>
-          </View>
-
-          <ScrollView
-            style={styles.scrollArea}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.mainWarningText}>
-              This permanently deletes your MonthlyGrocery account and all your saved data. This action cannot be undone.
-            </Text>
-
-            <Text style={styles.sectionHeading}>WHAT WILL BE DELETED:</Text>
-
-            <View style={styles.deleteListCard}>
-              {[
-                'Order history & tracking',
-                'Saved monthly baskets',
-                'Saved addresses',
-                'Coupons & rewards',
-              ].map((item, idx) => (
-                <View key={idx} style={styles.deleteItemRow}>
-                  <Text style={styles.deleteItemBullet}>✕</Text>
-                  <Text style={styles.deleteItemLabel}>{item}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Amber Warning Box */}
-            <View style={styles.amberCard}>
-              <Text style={styles.amberText}>
-                ⚠️ Any active orders will be delivered before your account is closed.
-              </Text>
-            </View>
-
-            {/* Agreement Checkbox */}
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => setAgreed(!agreed)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.checkboxBox, agreed && styles.checkboxBoxChecked]}>
-                {agreed && <Text style={styles.checkboxCheck}>✓</Text>}
-              </View>
-              <Text style={styles.checkboxLabel}>
-                I understand this is permanent and cannot be undone
-              </Text>
-            </TouchableOpacity>
-
-            {/* Red Delete Button */}
-            <TouchableOpacity
-              style={[styles.deleteBtn, !agreed && styles.deleteBtnDisabled]}
-              onPress={handleDelete}
-              disabled={!agreed || deleting}
-              activeOpacity={0.85}
-            >
-              {deleting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.deleteBtnText}>Delete my account</Text>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </ScrollView>
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
         </View>
-      ) : (
-        /* =========================================================================
-           SLIDE 2: ACCOUNT DELETED SUCCESS (G BOTTOM 3RD IN FIGMA)
-           ========================================================================= */
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadConfig()}>
+            <ActivityIndicator color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isDeleted) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.successWrap}>
-          {/* Green Checkmark Circle */}
           <View style={styles.greenTickCircle}>
-            <Text style={styles.greenTickSymbol}>✓</Text>
+            <DeleteAccountSuccessCheckIcon size={32} />
           </View>
 
-          <Text style={styles.successTitle}>Your account has been deleted</Text>
-          <Text style={styles.successSub}>
-            Your MonthlyGrocery account and all your associated data have been permanently removed. We're sorry to see you go — you're always welcome back!
-          </Text>
+          <Text style={styles.successTitle}>{screenConfig.success_title}</Text>
+          <Text style={styles.successSub}>{screenConfig.success_subtitle}</Text>
 
           <View style={styles.activeOrdersNoteBox}>
             <Text style={styles.activeOrdersNoteText}>
-              Active orders (if any) will still be delivered.
+              {screenConfig.success_active_orders_note}
             </Text>
           </View>
 
@@ -153,10 +120,81 @@ export default function DeleteAccountScreen({ navigation }: any) {
             onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Splash' }] })}
             activeOpacity={0.85}
           >
-            <Text style={styles.backHomeBtnText}>Back to Home</Text>
+            <Text style={styles.backHomeBtnText}>{screenConfig.success_back_home_label}</Text>
           </TouchableOpacity>
         </View>
-      )}
+      </SafeAreaView>
+    );
+  }
+
+  const deletedItems = screenConfig.deleted_items || [];
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle="dark-content" />
+
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <CheckoutBackIcon size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+      </View>
+
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.mainWarningText}>{screenConfig.warning_text}</Text>
+
+        <Text style={styles.sectionHeading}>{screenConfig.section_label}</Text>
+
+        <View style={styles.deleteListCard}>
+          {deletedItems.map((item) => (
+            <View key={item.id} style={styles.deleteItemRow}>
+              <DeleteAccountItemXIcon size={14} />
+              <Text style={styles.deleteItemLabel}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.amberCard}>
+          <View style={styles.amberRow}>
+            <DeleteAccountWarningIcon size={16} />
+            <Text style={styles.amberText}>{screenConfig.active_orders_warning}</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.checkboxRow}
+          onPress={() => setAgreed(!agreed)}
+          activeOpacity={0.8}
+        >
+          <DeleteAccountCheckboxBox checked={agreed} size={20} />
+          <Text style={styles.checkboxLabel}>{screenConfig.agreement_label}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.deleteBtn, !agreed && styles.deleteBtnDisabled]}
+          onPress={handleDelete}
+          disabled={!agreed || deleting || !token}
+          activeOpacity={0.85}
+        >
+          {deleting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.deleteBtnText}>{screenConfig.delete_button_label}</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.cancelBtnText}>{screenConfig.cancel_label}</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -164,33 +202,41 @@ export default function DeleteAccountScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: SCREEN_BG,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    gap: 10,
+    paddingLeft: 16,
+    paddingRight: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooSemiBold,
+    fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
-    marginLeft: 8,
   },
   scrollArea: {
     flex: 1,
@@ -201,14 +247,16 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
   },
   mainWarningText: {
+    ...FONTS.muktaRegular,
     fontSize: 13.5,
-    color: COLORS.ink700,
     lineHeight: 20,
+    color: COLORS.ink700,
     marginBottom: 20,
   },
   sectionHeading: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '800',
+    lineHeight: 14,
     color: COLORS.ink500,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -216,7 +264,7 @@ const styles = StyleSheet.create({
   },
   deleteListCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     padding: 16,
@@ -228,29 +276,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  deleteItemBullet: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#DC2626',
-  },
   deleteItemLabel: {
+    ...FONTS.muktaSemiBold,
     fontSize: 13.5,
-    fontWeight: '600',
+    lineHeight: 18,
     color: COLORS.ink900,
   },
   amberCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: COLORS.marigold100,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: COLORS.marigold200,
     borderRadius: RADIUS.md,
     padding: 12,
     marginBottom: 20,
   },
+  amberRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   amberText: {
+    flex: 1,
+    ...FONTS.muktaBold,
     fontSize: 12,
-    fontWeight: '700',
-    color: '#92400E',
     lineHeight: 16,
+    color: COLORS.marigold700,
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -258,29 +308,11 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 24,
   },
-  checkboxBox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: COLORS.ink300,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-  },
-  checkboxBoxChecked: {
-    borderColor: '#DC2626',
-    backgroundColor: '#DC2626',
-  },
-  checkboxCheck: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
   checkboxLabel: {
     flex: 1,
+    ...FONTS.muktaSemiBold,
     fontSize: 12.5,
-    fontWeight: '600',
+    lineHeight: 18,
     color: COLORS.ink900,
   },
   deleteBtn: {
@@ -295,9 +327,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   deleteBtnText: {
-    color: '#FFFFFF',
+    ...FONTS.muktaBold,
     fontSize: 15,
-    fontWeight: '800',
+    lineHeight: 20,
+    color: '#FFFFFF',
   },
   cancelBtn: {
     height: 40,
@@ -305,11 +338,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtnText: {
+    ...FONTS.muktaBold,
     fontSize: 13.5,
-    fontWeight: '700',
+    lineHeight: 18,
     color: COLORS.ink500,
   },
-  /* Success Screen */
   successWrap: {
     flex: 1,
     justifyContent: 'center',
@@ -325,23 +358,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  greenTickSymbol: {
-    fontSize: 32,
-    color: '#FFFFFF',
-    fontWeight: '900',
-  },
   successTitle: {
+    ...FONTS.balooBold,
     fontSize: 20,
-    fontWeight: '900',
+    lineHeight: 26,
     color: COLORS.ink900,
     marginBottom: 8,
     textAlign: 'center',
   },
   successSub: {
+    ...FONTS.muktaRegular,
     fontSize: 13,
+    lineHeight: 19,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 19,
     marginBottom: 20,
   },
   activeOrdersNoteBox: {
@@ -354,8 +384,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   activeOrdersNoteText: {
+    ...FONTS.muktaBold,
     fontSize: 12,
-    fontWeight: '700',
+    lineHeight: 16,
     color: COLORS.green700,
   },
   backHomeBtn: {
@@ -367,8 +398,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backHomeBtnText: {
-    color: '#FFFFFF',
+    ...FONTS.muktaBold,
     fontSize: 15,
-    fontWeight: '800',
+    lineHeight: 20,
+    color: '#FFFFFF',
   },
 });

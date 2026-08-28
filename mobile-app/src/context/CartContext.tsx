@@ -8,12 +8,17 @@ export interface Product {
   name: string;
   brand: string;
   primary_category: string;
+  secondary_category?: string;
   image_url: string;
   unit: string;
   mrp: number;
   price: number;
   place?: string;
   discount_percent?: number;
+  description?: string;
+  short_description?: string;
+  quantity_value?: number;
+  quantity_unit?: string;
 }
 
 export interface CartItem {
@@ -21,9 +26,24 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface AppliedCoupon {
+  id?: string;
+  code: string;
+  title?: string;
+  discount_type?: string;
+  discount_value?: number;
+  value?: number;
+  discount_amount?: number;
+  min_order_amount?: number;
+  max_discount?: number;
+}
+
 interface CartContextType {
   items: CartItem[];
   minOrderLimit: number;
+  appliedCoupon: AppliedCoupon | null;
+  setAppliedCoupon: (coupon: AppliedCoupon | null) => void;
+  clearAppliedCoupon: () => void;
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
@@ -37,6 +57,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [minOrderLimit, setMinOrderLimit] = useState(2500);
+  const [appliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(null);
   const [cartLoaded, setCartLoaded] = useState(false);
 
   // 1. Load persisted cart and backend config on mount
@@ -109,13 +130,36 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = () => {
     setItems([]);
+    setAppliedCouponState(null);
+  };
+
+  const setAppliedCoupon = (coupon: AppliedCoupon | null) => {
+    setAppliedCouponState(coupon);
+  };
+
+  const clearAppliedCoupon = () => {
+    setAppliedCouponState(null);
   };
 
   const totalAmount = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, minOrderLimit, addToCart, removeFromCart, updateQuantity, clearCart, totalAmount, itemCount }}>
+    <CartContext.Provider
+      value={{
+        items,
+        minOrderLimit,
+        appliedCoupon,
+        setAppliedCoupon,
+        clearAppliedCoupon,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        totalAmount,
+        itemCount,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

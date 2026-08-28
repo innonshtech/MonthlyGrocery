@@ -27,6 +27,7 @@ import {
   CheckoutFallbackEmoji,
   THUMB_BG,
 } from '../../components/CheckoutFigmaIcons';
+import { calculateCouponDiscount } from '../../utils/couponDiscount';
 
 /** Figma E1 Checkout canvas background */
 const CHECKOUT_BG = '#FBFAF6';
@@ -36,9 +37,8 @@ const formatInr = (n: number) =>
   `₹${Math.round(n).toLocaleString('en-IN')}`;
 
 export default function CheckoutScreen({ route, navigation }: any) {
-  const { items, minOrderLimit = 2500 } = useCart();
+  const { items, minOrderLimit = 2500, appliedCoupon, setAppliedCoupon } = useCart();
   const { token } = useAuth();
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(route?.params?.appliedCoupon || null);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
@@ -46,7 +46,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     if (route?.params?.appliedCoupon) {
       setAppliedCoupon(route.params.appliedCoupon);
     }
-  }, [route?.params?.appliedCoupon]);
+  }, [route?.params?.appliedCoupon, setAppliedCoupon]);
 
   // Sync address/slot when returning from child screens (merge params)
   useFocusEffect(
@@ -64,6 +64,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
       route?.params?.selectedAddress,
       route?.params?.selectedSlot,
       route?.params?.appliedCoupon,
+      setAppliedCoupon,
     ]),
   );
 
@@ -99,20 +100,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     return sum + price * item.quantity;
   }, 0);
 
-  let couponDiscount = 0;
-  if (appliedCoupon) {
-    const discountValue =
-      appliedCoupon.discount_value ?? appliedCoupon.value ?? appliedCoupon.discount_amount ?? 0;
-    const discountType = appliedCoupon.discount_type;
-    if (discountType === 'percentage') {
-      couponDiscount = Math.min(
-        Math.round((itemTotalPrice * discountValue) / 100),
-        appliedCoupon.max_discount || 200,
-      );
-    } else {
-      couponDiscount = discountValue || 50;
-    }
-  }
+  let couponDiscount = calculateCouponDiscount(appliedCoupon, itemTotalPrice);
 
   const productSavings = Math.max(0, itemTotalMrp - itemTotalPrice);
   const toPay = Math.max(0, itemTotalPrice - couponDiscount);

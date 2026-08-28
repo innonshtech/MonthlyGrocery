@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
+import { PACK_UNIT_OPTIONS, formatPackUnit } from '../config/packUnits';
 
 interface MasterProduct {
   id: string;
@@ -26,6 +27,9 @@ interface MasterProduct {
   image_url: string;
   mrp: string;
   price: string;
+  unit?: string;
+  short_description?: string;
+  description?: string;
 }
 
 interface ShopProduct {
@@ -71,6 +75,8 @@ export default function MerchantCatalogScreen() {
   const [localDiscount, setLocalDiscount] = useState('');
   const [localStock, setLocalStock] = useState('');
   const [localAvailable, setLocalAvailable] = useState(true);
+  const [localShortDescription, setLocalShortDescription] = useState('');
+  const [localDescription, setLocalDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
   // States for Suggesting New Product to Super Admin
@@ -78,8 +84,11 @@ export default function MerchantCatalogScreen() {
   const [newSkuName, setNewSkuName] = useState('');
   const [newSkuCategory, setNewSkuCategory] = useState('');
   const [newSkuBrand, setNewSkuBrand] = useState('');
-  const [newSkuUnit, setNewSkuUnit] = useState('');
+  const [newSkuQuantityValue, setNewSkuQuantityValue] = useState('');
+  const [newSkuQuantityUnit, setNewSkuQuantityUnit] = useState('kg');
   const [newSkuMrp, setNewSkuMrp] = useState('');
+  const [newSkuShortDescription, setNewSkuShortDescription] = useState('');
+  const [newSkuDescription, setNewSkuDescription] = useState('');
   const [submittingSuggestion, setSubmittingSuggestion] = useState(false);
 
   const { token } = useMerchantAuth();
@@ -155,6 +164,8 @@ export default function MerchantCatalogScreen() {
     
     setLocalStock(String(existingMapping ? existingMapping.stock : 0));
     setLocalAvailable(existingMapping ? existingMapping.available : false);
+    setLocalShortDescription(prod.short_description || '');
+    setLocalDescription(prod.description || '');
     setConfigModalVisible(true);
   };
 
@@ -206,7 +217,27 @@ export default function MerchantCatalogScreen() {
         }
       }
 
-      // Configure it
+      // Update catalog highlights / MRP (master product fields)
+      const contentRes = await fetch(`${API_BASE}/admin/shop-products/product-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          product_id: selectedProduct.id,
+          short_description: localShortDescription,
+          description: localDescription,
+        })
+      });
+      const contentData = await contentRes.json();
+      if (!contentRes.ok || !contentData.success) {
+        Alert.alert('Error', contentData.error || 'Failed to update product highlights.');
+        setSaving(false);
+        return;
+      }
+
+      // Configure shop price / stock
       const res = await fetch(`${API_BASE}/admin/shop-products/configure`, {
         method: 'POST',
         headers: {
@@ -237,8 +268,8 @@ export default function MerchantCatalogScreen() {
   };
 
   const handleSuggestProduct = async () => {
-    if (!newSkuName.trim() || !newSkuCategory.trim() || !newSkuUnit.trim() || !newSkuMrp.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields (Name, Category, Unit, MRP).');
+    if (!newSkuName.trim() || !newSkuCategory.trim() || !newSkuQuantityValue.trim() || !newSkuMrp.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields (Name, Category, Quantity, MRP).');
       return;
     }
     setSubmittingSuggestion(true);
@@ -253,8 +284,12 @@ export default function MerchantCatalogScreen() {
           name: newSkuName,
           category: newSkuCategory,
           brand: newSkuBrand,
-          unit: newSkuUnit,
-          mrp: parseFloat(newSkuMrp) || 0
+          unit: formatPackUnit(newSkuQuantityValue, newSkuQuantityUnit),
+          quantity_value: parseFloat(newSkuQuantityValue) || 0,
+          quantity_unit: newSkuQuantityUnit,
+          mrp: parseFloat(newSkuMrp) || 0,
+          short_description: newSkuShortDescription,
+          description: newSkuDescription,
         })
       });
       const data = await res.json();
@@ -264,8 +299,11 @@ export default function MerchantCatalogScreen() {
         setNewSkuName('');
         setNewSkuCategory('');
         setNewSkuBrand('');
-        setNewSkuUnit('');
+        setNewSkuQuantityValue('');
+        setNewSkuQuantityUnit('kg');
         setNewSkuMrp('');
+        setNewSkuShortDescription('');
+        setNewSkuDescription('');
       } else {
         Alert.alert('Error', data.error || 'Failed to submit request.');
       }
@@ -300,7 +338,9 @@ export default function MerchantCatalogScreen() {
           <View style={styles.headerTextContainer}>
             <Text style={styles.productTitle} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.categorySub}>{item.primary_category} • {item.brand || 'Unbranded'}</Text>
-            <Text style={styles.mrpText}>Base MRP: ₹{item.mrp} | Default: ₹{item.price}</Text>
+            <Text style={styles.mrpText}>
+              {item.unit ? `${item.unit} · ` : ''}Base MRP: ₹{item.mrp} | Default: ₹{item.price}
+            </Text>
           </View>
         </View>
 
@@ -441,6 +481,27 @@ export default function MerchantCatalogScreen() {
               placeholder="e.g. 50"
             />
 
+            {selectedProduct?.unit ? (
+              <Text style={styles.readOnlyUnit}>Pack unit: {selectedProduct.unit} (set at catalog level)</Text>
+            ) : null}
+
+            <Text style={styles.inputLabel}>Short description</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={localShortDescription}
+              onChangeText={setLocalShortDescription}
+              placeholder="One-line summary for customers"
+            />
+
+            <Text style={styles.inputLabel}>Highlights (semicolon-separated)</Text>
+            <TextInput
+              style={[styles.modalInput, { minHeight: 72, textAlignVertical: 'top' }]}
+              multiline
+              value={localDescription}
+              onChangeText={setLocalDescription}
+              placeholder="e.g. Stone ground; 100% whole wheat; Milled in small batches"
+            />
+
             <View style={styles.switchRow}>
               <Text style={styles.switchText}>In-Stock & Visible</Text>
               <Switch
@@ -506,14 +567,15 @@ export default function MerchantCatalogScreen() {
               placeholder="e.g. Britannia"
             />
 
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 8 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Unit</Text>
+                <Text style={styles.inputLabel}>Quantity</Text>
                 <TextInput
                   style={styles.modalInput}
-                  value={newSkuUnit}
-                  onChangeText={setNewSkuUnit}
-                  placeholder="e.g. 250 g"
+                  keyboardType="numeric"
+                  value={newSkuQuantityValue}
+                  onChangeText={setNewSkuQuantityValue}
+                  placeholder="e.g. 5"
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -527,6 +589,46 @@ export default function MerchantCatalogScreen() {
                 />
               </View>
             </View>
+
+            <Text style={styles.inputLabel}>Unit type</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {PACK_UNIT_OPTIONS.map((opt) => {
+                  const active = newSkuQuantityUnit === opt.code;
+                  return (
+                    <TouchableOpacity
+                      key={opt.code}
+                      style={[styles.unitPill, active && styles.unitPillActive]}
+                      onPress={() => setNewSkuQuantityUnit(opt.code)}
+                    >
+                      <Text style={[styles.unitPillText, active && styles.unitPillTextActive]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+            {newSkuQuantityValue ? (
+              <Text style={{ fontSize: 12, color: '#16A34A', marginBottom: 12, fontWeight: '600' }}>
+                Pack: {formatPackUnit(newSkuQuantityValue, newSkuQuantityUnit)}
+              </Text>
+            ) : null}
+
+            <Text style={styles.inputLabel}>Short description</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newSkuShortDescription}
+              onChangeText={setNewSkuShortDescription}
+              placeholder="e.g. Chakki-fresh whole wheat atta"
+            />
+
+            <Text style={styles.inputLabel}>Highlights (semicolon-separated)</Text>
+            <TextInput
+              style={[styles.modalInput, { minHeight: 72, textAlignVertical: 'top' }]}
+              multiline
+              value={newSkuDescription}
+              onChangeText={setNewSkuDescription}
+              placeholder="e.g. Stone ground; Zero maida; Soft rotis"
+            />
 
             <View style={styles.modalActions}>
               <TouchableOpacity
@@ -831,6 +933,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0F172A',
   },
+  readOnlyUnit: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 8,
+  },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -868,5 +975,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 13,
+  },
+  unitPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  unitPillActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  unitPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  unitPillTextActive: {
+    color: '#FFFFFF',
   },
 });

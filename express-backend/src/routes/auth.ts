@@ -160,6 +160,12 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(404).json({ success: false, error: 'Profile not found' });
     }
 
+    let email = '';
+    const { data: authUser } = await supabase.auth.admin.getUserById(req.user.id);
+    if (authUser?.user?.user_metadata?.email) {
+      email = String(authUser.user.user_metadata.email).trim();
+    }
+
     return res.json({
       success: true,
       user: {
@@ -167,8 +173,19 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
         mobile: profile.phone,
         name: profile.name,
         role: profile.role,
+        email,
       }
     });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+router.get('/account-summary', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { buildAccountSummary } = require('../services/accountSummary');
+    const summary = await buildAccountSummary(req.user!.id);
+    return res.json({ success: true, summary });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -197,10 +214,17 @@ router.patch('/profile', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(500).json({ success: false, error: error?.message || 'Failed to update profile' });
     }
 
+    let savedEmail = '';
     if (email && String(email).trim()) {
+      savedEmail = String(email).trim();
       await supabase.auth.admin.updateUserById(req.user.id, {
-        user_metadata: { email: String(email).trim() },
+        user_metadata: { email: savedEmail },
       });
+    } else {
+      const { data: authUser } = await supabase.auth.admin.getUserById(req.user.id);
+      if (authUser?.user?.user_metadata?.email) {
+        savedEmail = String(authUser.user.user_metadata.email).trim();
+      }
     }
 
     return res.json({
@@ -210,8 +234,33 @@ router.patch('/profile', authMiddleware, async (req: AuthRequest, res: Response)
         mobile: profile.phone,
         name: profile.name,
         role: profile.role,
+        email: savedEmail,
       },
     });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+router.delete('/account', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  if (req.user.role !== 'consumer') {
+    return res.status(403).json({
+      success: false,
+      error: 'This account type cannot be deleted from the app.',
+    });
+  }
+
+  try {
+    const { deleteConsumerAccount } = require('../services/deleteAccount');
+    const result = await deleteConsumerAccount(req.user.id);
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error || 'Failed to delete account' });
+    }
+    return res.json({ success: true });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }

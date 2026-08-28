@@ -34,6 +34,8 @@ export default function MerchantInventoryScreen() {
   const [editPrice, setEditPrice] = useState('');
   const [editMrp, setEditMrp] = useState('');
   const [editStock, setEditStock] = useState('');
+  const [editShortDescription, setEditShortDescription] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [categories, setCategories] = useState<string[]>(['All']);
@@ -143,6 +145,8 @@ export default function MerchantInventoryScreen() {
     setEditPrice(String(item.selling_price || ''));
     setEditMrp(String(item.mrp || ''));
     setEditStock(String(item.stock || '0'));
+    setEditShortDescription(item.short_description || '');
+    setEditDescription(item.description || '');
     setEditModalVisible(true);
   };
 
@@ -169,6 +173,26 @@ export default function MerchantInventoryScreen() {
 
     setSaving(true);
     try {
+      const contentRes = await fetch(`${API_BASE}/admin/shop-products/product-content`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          product_id: editingProduct.product_id,
+          short_description: editShortDescription,
+          description: editDescription,
+          mrp: mrpVal,
+        })
+      });
+      const contentData = await contentRes.json();
+      if (!contentRes.ok || !contentData.success) {
+        Alert.alert('Error', contentData.error || 'Failed to update product highlights');
+        setSaving(false);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/admin/shop-products/configure`, {
         method: 'POST',
         headers: {
@@ -188,7 +212,15 @@ export default function MerchantInventoryScreen() {
       if (res.ok && data.success) {
         setProducts(prev => prev.map(p => 
           p.product_id === editingProduct.product_id 
-            ? { ...p, selling_price: priceVal, discount_percentage: calculatedDiscount, stock: stockVal }
+            ? {
+                ...p,
+                selling_price: priceVal,
+                discount_percentage: calculatedDiscount,
+                stock: stockVal,
+                mrp: mrpVal,
+                short_description: editShortDescription,
+                description: editDescription,
+              }
             : p
         ));
         setEditModalVisible(false);
@@ -218,7 +250,10 @@ export default function MerchantInventoryScreen() {
             <View style={styles.nameRow}>
               <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
             </View>
-            <Text style={styles.skuText}>SKU: {item.sku || 'N/A'} • {item.primary_category}</Text>
+            <Text style={styles.skuText}>
+              SKU: {item.sku || 'N/A'} • {item.primary_category}
+              {item.unit ? ` • ${item.unit}` : ''}
+            </Text>
 
             <View style={styles.priceRow}>
               <Text style={styles.sellingPrice}>₹{item.selling_price}</Text>
@@ -365,6 +400,9 @@ export default function MerchantInventoryScreen() {
               <ScrollView>
                 <Text style={styles.modalProductName}>{editingProduct.name}</Text>
                 <Text style={styles.modalProductSku}>SKU: {editingProduct.sku || 'N/A'}</Text>
+                {editingProduct.unit ? (
+                  <Text style={styles.readOnlyUnit}>Pack unit: {editingProduct.unit} (catalog level)</Text>
+                ) : null}
 
                 {/* Selling Price input */}
                 <View style={styles.inputGroup}>
@@ -399,6 +437,27 @@ export default function MerchantInventoryScreen() {
                     value={editStock}
                     onChangeText={setEditStock}
                     placeholder="e.g. 50"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>SHORT DESCRIPTION</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editShortDescription}
+                    onChangeText={setEditShortDescription}
+                    placeholder="One-line summary for customers"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>HIGHLIGHTS (SEMICOLON-SEPARATED)</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.modalTextArea]}
+                    multiline
+                    value={editDescription}
+                    onChangeText={setEditDescription}
+                    placeholder="e.g. Stone ground; 100% whole wheat"
                   />
                 </View>
 
@@ -721,6 +780,11 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginBottom: 16,
   },
+  readOnlyUnit: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 12,
+  },
   inputGroup: {
     marginBottom: 14,
   },
@@ -740,6 +804,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: '#0F172A',
+  },
+  modalTextArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   modalSaveBtn: {
     backgroundColor: '#22C55E',

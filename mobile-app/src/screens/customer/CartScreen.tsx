@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,25 +8,24 @@ import {
   ScrollView,
   Alert,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
+import { homeDealBg } from '../../utils/productDiscount';
+import { getProductPackLabel } from '../../utils/packUnit';
+import {
+  fetchCartScreenConfigWithStatus,
+  formatCartTemplate,
+  getEmptyPreviewImages,
+  CartScreenConfig,
+} from '../../services/cartApi';
+import { calculateCouponDiscount } from '../../utils/couponDiscount';
 
-// ─── Category pastel colour for product image tile bg ────────────────────────
-const PRODUCT_BG_COLORS = [
-  '#FFF3D6', '#E4F3EA', '#F6E9E1', '#FDE7E7',
-  '#EDE9FB', '#FBEEDD', '#EAF6D6', '#E1F0FB',
-  '#FDEFD3', '#FDE4E7',
-];
-function getProductBg(index: number): string {
-  return PRODUCT_BG_COLORS[index % PRODUCT_BG_COLORS.length];
-}
-
-// ─── Inline Stepper (Figma: green pill, 30×32 buttons) ───────────────────────
 function Stepper({
   quantity,
   onDecrement,
@@ -49,54 +48,78 @@ function Stepper({
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CartScreen({ route, navigation }: any) {
   const { token } = useAuth();
-  const { items, minOrderLimit = 2000, updateQuantity, addToCart } = useCart();
-  const [appliedCoupon, setAppliedCoupon] = useState<any>(
-    route?.params?.appliedCoupon || null
-  );
+  const insets = useSafeAreaInsets();
+  const { items, minOrderLimit, updateQuantity, addToCart, appliedCoupon, setAppliedCoupon } = useCart();
+
+  const [screenConfig, setScreenConfig] = useState<CartScreenConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+
   const [authGateVisible, setAuthGateVisible] = useState(false);
   const [authGateType, setAuthGateType] = useState<AuthGateType>('checkout');
 
-  const minLimit = minOrderLimit || 2000;
+  useEffect(() => {
+    if (route?.params?.appliedCoupon) {
+      setAppliedCoupon(route.params.appliedCoupon);
+    }
+  }, [route?.params?.appliedCoupon, setAppliedCoupon]);
 
-  // ── Calculations ────────────────────────────────────────────────────────────
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const result = await fetchCartScreenConfigWithStatus();
+    setScreenConfig(result.config);
+    setConfigError(result.error);
+    setConfigLoading(false);
+    return result;
+  }, []);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  const minLimit = minOrderLimit || 0;
+
   const itemTotalMrp = items.reduce((sum, item) => {
-    const mrp =
-      parseFloat(item.product.mrp as any) ||
-      Math.round(Number(item.product.price) * 1.22);
+    const mrp = parseFloat(String(item.product.mrp)) || parseFloat(String(item.product.price)) || 0;
     return sum + mrp * item.quantity;
   }, 0);
 
   const itemTotalPrice = items.reduce((sum, item) => {
-    return sum + (parseFloat(item.product.price as any) || 0) * item.quantity;
+    return sum + (parseFloat(String(item.product.price)) || 0) * item.quantity;
   }, 0);
 
-  let couponDiscount = 0;
-  if (appliedCoupon) {
-    couponDiscount =
-      appliedCoupon.discount_type === 'percentage'
-        ? Math.min(
-            Math.round((itemTotalPrice * appliedCoupon.value) / 100),
-            appliedCoupon.max_discount || 200
-          )
-        : appliedCoupon.value || 50;
-  }
+  const couponDiscount = useMemo(
+    () => calculateCouponDiscount(appliedCoupon, itemTotalPrice),
+    [appliedCoupon, itemTotalPrice],
+  );
 
-  const rawSavings = itemTotalMrp - itemTotalPrice;
+  const rawSavings = Math.max(0, itemTotalMrp - itemTotalPrice);
   const totalSavings = rawSavings + couponDiscount;
   const toPay = Math.max(0, itemTotalPrice - couponDiscount);
-  const isBelowMin = toPay < minLimit;
-  const amountNeeded = minLimit - toPay;
+  const isBelowMin = minLimit > 0 && toPay < minLimit;
+  const amountNeeded = Math.max(0, minLimit - toPay);
   const totalItemCount = items.reduce((s, i) => s + i.quantity, 0);
+  const progressPct = minLimit > 0 ? Math.min(100, Math.round((toPay / minLimit) * 100)) : 100;
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  const headerCountLabel =
+    totalItemCount === 1
+      ? screenConfig?.cart_item_label ?? ''
+      : screenConfig
+        ? formatCartTemplate(screenConfig.cart_items_template, { count: totalItemCount })
+        : '';
+
+  const emptyPreviewImages = getEmptyPreviewImages(screenConfig);
+
   const handleCheckout = () => {
-    if (isBelowMin) {
+    if (isBelowMin && screenConfig) {
       Alert.alert(
         'Minimum order value',
-        `Please add ₹${amountNeeded} more to reach the ₹${minLimit} minimum order value.`
+        formatCartTemplate(screenConfig.min_order_alert_template, {
+          amount: amountNeeded.toLocaleString('en-IN'),
+          minimum: minLimit.toLocaleString('en-IN'),
+        }),
       );
       return;
     }
@@ -114,58 +137,70 @@ export default function CartScreen({ route, navigation }: any) {
       setAuthGateVisible(true);
       return;
     }
-    navigation.navigate('SavedBaskets');
+    navigation.navigate('SavedBaskets', { openSave: true });
   };
 
-  // ── Empty State (C2 · Cart — Empty Slide #528:679) ──────────────────────────
+  if (configError && !screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (configLoading && !screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" />
 
-        {/* Header */}
         <View style={styles.topHeader}>
-          <Text style={styles.topTitle}>Your cart</Text>
+          <Text style={styles.topTitle}>{screenConfig?.title}</Text>
         </View>
 
-        {/* Empty body */}
         <View style={styles.emptyWrap}>
-          {/* Main Empty Circle with Floating Emojis */}
           <View style={styles.emptyIconContainer}>
             <View style={styles.emptyIconCircle}>
               <AppIcon name="cart" size={48} color={COLORS.green700} />
             </View>
-            
-            {/* Top-Left Atta badge */}
-            <View style={[styles.floatingBadge, styles.floatingBadgeTopLeft]}>
-              <Image
-                source={{ uri: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png' }}
-                style={styles.badgeImg}
-                resizeMode="contain"
-              />
-            </View>
 
-            {/* Bottom-Right Oil badge */}
-            <View style={[styles.floatingBadge, styles.floatingBadgeBottomRight]}>
-              <Image
-                source={{ uri: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/amul_pure_ghee_1l.png' }}
-                style={styles.badgeImg}
-                resizeMode="contain"
-              />
-            </View>
+            {emptyPreviewImages[0] ? (
+              <View style={[styles.floatingBadge, styles.floatingBadgeTopLeft]}>
+                <Image source={{ uri: emptyPreviewImages[0] }} style={styles.badgeImg} resizeMode="contain" />
+              </View>
+            ) : null}
+
+            {emptyPreviewImages[1] ? (
+              <View style={[styles.floatingBadge, styles.floatingBadgeBottomRight]}>
+                <Image source={{ uri: emptyPreviewImages[1] }} style={styles.badgeImg} resizeMode="contain" />
+              </View>
+            ) : null}
           </View>
 
-          <Text style={styles.emptyTitle}>Your cart is empty</Text>
-          <Text style={styles.emptySub}>
-            Add your monthly essentials and they’ll show up here.
-          </Text>
+          <Text style={styles.emptyTitle}>{screenConfig?.empty_title}</Text>
+          <Text style={styles.emptySub}>{screenConfig?.empty_message}</Text>
 
           <TouchableOpacity
             style={styles.startBtn}
             onPress={() => navigation.navigate('Home')}
             activeOpacity={0.85}
           >
-            <Text style={styles.startBtnTxt}>Start shopping</Text>
+            <Text style={styles.startBtnTxt}>{screenConfig?.start_shopping_label}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -175,7 +210,7 @@ export default function CartScreen({ route, navigation }: any) {
           >
             <View style={styles.reorderLinkInner}>
               <AppIcon name="trending-down" size={16} color={COLORS.green700} />
-              <Text style={styles.reorderLinkTxt}>Reorder last month’s basket</Text>
+              <Text style={styles.reorderLinkTxt}>{screenConfig?.reorder_last_month_label}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -183,17 +218,42 @@ export default function CartScreen({ route, navigation }: any) {
     );
   }
 
-  // ── Filled Cart ─────────────────────────────────────────────────────────────
+  const belowMinTitle = screenConfig
+    ? formatCartTemplate(screenConfig.below_min_title_template, {
+        amount: amountNeeded.toLocaleString('en-IN'),
+      })
+    : '';
+  const belowMinFootnote = screenConfig
+    ? formatCartTemplate(screenConfig.below_min_footnote_template, {
+        current: toPay.toLocaleString('en-IN'),
+        minimum: minLimit.toLocaleString('en-IN'),
+      })
+    : '';
+  const savingsBannerText = screenConfig
+    ? formatCartTemplate(screenConfig.savings_banner_template, {
+        savings: totalSavings.toLocaleString('en-IN'),
+      })
+    : '';
+  const addMoreCheckoutLabel = screenConfig
+    ? formatCartTemplate(screenConfig.add_more_checkout_template, {
+        amount: amountNeeded.toLocaleString('en-IN'),
+      })
+    : '';
+  const couponAppliedLabel =
+    appliedCoupon && screenConfig
+      ? formatCartTemplate(screenConfig.coupon_applied_template, {
+          code: appliedCoupon.code,
+          discount: couponDiscount.toLocaleString('en-IN'),
+        })
+      : '';
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <View style={styles.topHeader}>
-        <Text style={styles.topTitle}>Your cart</Text>
-        <Text style={styles.topCount}>
-          {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}
-        </Text>
+        <Text style={styles.topTitle}>{screenConfig?.title}</Text>
+        {headerCountLabel ? <Text style={styles.topCount}>{headerCountLabel}</Text> : null}
       </View>
 
       <ScrollView
@@ -201,50 +261,36 @@ export default function CartScreen({ route, navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── 1. Notice banner ──────────────────────────────────────────────── */}
         {isBelowMin ? (
           <View style={styles.belowMinBanner}>
             <View style={styles.belowMinHeaderRow}>
               <AppIcon name="help" size={18} color="#155A38" />
-              <Text style={styles.belowMinTitle}>
-                Add ₹{amountNeeded.toLocaleString('en-IN')} more to check out
-              </Text>
+              <Text style={styles.belowMinTitle}>{belowMinTitle}</Text>
             </View>
-            
-            {/* Horizontal progress bar */}
             <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${Math.min(100, Math.round((toPay / minLimit) * 100))}%` }]} />
+              <View style={[styles.progressBarFill, { width: `${progressPct}%` }]} />
             </View>
-
-            <Text style={styles.belowMinFootnote}>
-              You’re at ₹{toPay.toLocaleString('en-IN')} of the ₹{minLimit.toLocaleString('en-IN')} monthly minimum order
-            </Text>
+            <Text style={styles.belowMinFootnote}>{belowMinFootnote}</Text>
           </View>
         ) : (
           <View style={styles.savingsBanner}>
             <AppIcon name="tag" size={18} color="#8A5200" />
-            <Text style={styles.savingsTxt}>
-              You're saving ₹{totalSavings.toLocaleString('en-IN')} on this order 🎉
-            </Text>
+            <Text style={styles.savingsTxt}>{savingsBannerText}</Text>
           </View>
         )}
 
-        {/* ── 2. Cart items card ────────────────────────────────────────────── */}
         <View style={styles.itemsCard}>
           {items.map((cartItem, idx) => {
-            const price = parseFloat(cartItem.product.price as any) || 0;
+            const price = parseFloat(String(cartItem.product.price)) || 0;
             const lineTotal = price * cartItem.quantity;
+            const packLabel = getProductPackLabel(cartItem.product);
 
             return (
               <View
                 key={cartItem.product.id}
-                style={[
-                  styles.itemRow,
-                  idx < items.length - 1 && styles.itemRowBorder,
-                ]}
+                style={[styles.itemRow, idx < items.length - 1 && styles.itemRowBorder]}
               >
-                {/* Product image tile */}
-                <View style={[styles.imgTile, { backgroundColor: getProductBg(idx) }]}>
+                <View style={[styles.imgTile, { backgroundColor: homeDealBg(idx) }]}>
                   {cartItem.product.image_url ? (
                     <Image
                       source={{ uri: cartItem.product.image_url }}
@@ -256,25 +302,15 @@ export default function CartScreen({ route, navigation }: any) {
                   )}
                 </View>
 
-                {/* Info */}
                 <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={2}>
-                    {cartItem.product.name}
-                  </Text>
-                  {cartItem.product.unit ? (
-                    <Text style={styles.itemUnit}>{cartItem.product.unit}</Text>
-                  ) : null}
-                  <Text style={styles.itemPrice}>
-                    ₹{lineTotal.toLocaleString('en-IN')}
-                  </Text>
+                  <Text style={styles.itemName} numberOfLines={2}>{cartItem.product.name}</Text>
+                  {packLabel ? <Text style={styles.itemUnit}>{packLabel}</Text> : null}
+                  <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
                 </View>
 
-                {/* Stepper */}
                 <Stepper
                   quantity={cartItem.quantity}
-                  onDecrement={() =>
-                    updateQuantity(cartItem.product.id, cartItem.quantity - 1)
-                  }
+                  onDecrement={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1)}
                   onIncrement={() => addToCart(cartItem.product)}
                 />
               </View>
@@ -282,116 +318,91 @@ export default function CartScreen({ route, navigation }: any) {
           })}
         </View>
 
-        {/* ── 3. Save cart as basket ────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.saveBasketRow}
-          onPress={handleSaveBasket}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={styles.saveBasketRow} onPress={handleSaveBasket} activeOpacity={0.8}>
           <View style={styles.saveBasketIcon}>
             <AppIcon name="tag" size={16} color="#FFFFFF" />
           </View>
-          <Text style={styles.saveBasketTxt}>Save this cart as a basket</Text>
+          <Text style={styles.saveBasketTxt}>{screenConfig?.save_basket_label}</Text>
           <AppIcon name="arrow-right" size={16} color={COLORS.green700} />
         </TouchableOpacity>
 
-        {/* ── 4. Apply coupon ───────────────────────────────────────────────── */}
         <TouchableOpacity
           style={styles.couponRow}
-          onPress={() =>
-            navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })
-          }
+          onPress={() => navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })}
           activeOpacity={0.8}
         >
           <AppIcon name="tag" size={18} color={COLORS.green700} />
           <Text style={styles.couponTxt}>
-            {appliedCoupon
-              ? `${appliedCoupon.code} applied · ₹${couponDiscount} saved`
-              : 'Apply coupon'}
+            {appliedCoupon ? couponAppliedLabel : screenConfig?.apply_coupon_label}
           </Text>
           <AppIcon name="arrow-right" size={16} color={COLORS.ink300} />
         </TouchableOpacity>
 
-        {/* ── 5. Bill details ───────────────────────────────────────────────── */}
         <View style={styles.billCard}>
-          <Text style={styles.billTitle}>Bill details</Text>
+          <Text style={styles.billTitle}>{screenConfig?.bill_details_title}</Text>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Item total (MRP)</Text>
+            <Text style={styles.billLabel}>{screenConfig?.bill_item_total_label}</Text>
             <Text style={styles.billVal}>₹{itemTotalMrp.toLocaleString('en-IN')}</Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Savings</Text>
-            <Text style={[styles.billVal, { color: '#8A5200' }]}>
+            <Text style={styles.billLabel}>{screenConfig?.bill_savings_label}</Text>
+            <Text style={[styles.billVal, styles.savingsVal]}>
               − ₹{totalSavings.toLocaleString('en-IN')}
             </Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Delivery fee</Text>
-            <Text style={[styles.billVal, { color: COLORS.green700 }]}>FREE</Text>
+            <Text style={styles.billLabel}>{screenConfig?.bill_delivery_fee_label}</Text>
+            <Text style={[styles.billVal, styles.freeDeliveryVal]}>
+              {screenConfig?.bill_delivery_fee_value}
+            </Text>
           </View>
 
           {couponDiscount > 0 && (
             <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Coupon discount</Text>
-              <Text style={[styles.billVal, { color: '#8A5200' }]}>
-                − ₹{couponDiscount}
+              <Text style={styles.billLabel}>{screenConfig?.bill_coupon_discount_label}</Text>
+              <Text style={[styles.billVal, styles.savingsVal]}>
+                − ₹{couponDiscount.toLocaleString('en-IN')}
               </Text>
             </View>
           )}
 
-          {/* Divider */}
           <View style={styles.billDivider} />
 
           <View style={styles.billTotalRow}>
-            <Text style={styles.billTotalLabel}>To pay</Text>
-            <Text style={styles.billTotalVal}>
-              ₹{toPay.toLocaleString('en-IN')}
-            </Text>
+            <Text style={styles.billTotalLabel}>{screenConfig?.bill_to_pay_label}</Text>
+            <Text style={styles.billTotalVal}>₹{toPay.toLocaleString('en-IN')}</Text>
           </View>
         </View>
 
-        {/* spacing for sticky bar */}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* ── 6. Sticky bottom checkout bar ───────────────────────────────────── */}
-      <View style={styles.checkoutBar}>
+      <View style={[styles.checkoutBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.checkoutBarInner}>
-          {/* To pay label + amount */}
           <View style={styles.toPayCol}>
-            <Text style={styles.toPayLabel}>TO PAY</Text>
-            <Text style={styles.toPayAmount}>
-              ₹{toPay.toLocaleString('en-IN')}
-            </Text>
+            <Text style={styles.toPayLabel}>{screenConfig?.sticky_to_pay_label}</Text>
+            <Text style={styles.toPayAmount}>₹{toPay.toLocaleString('en-IN')}</Text>
           </View>
 
-          {/* CTA button */}
           {isBelowMin ? (
             <TouchableOpacity
               style={styles.checkoutBtnDisabled}
               onPress={handleCheckout}
               activeOpacity={0.9}
             >
-              <Text style={styles.checkoutBtnTxt}>
-                Add ₹{amountNeeded.toLocaleString('en-IN')} more
-              </Text>
+              <Text style={styles.checkoutBtnTxt}>{addMoreCheckoutLabel}</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity
-              style={styles.checkoutBtn}
-              onPress={handleCheckout}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.checkoutBtnTxt}>Proceed to pay</Text>
+            <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout} activeOpacity={0.85}>
+              <Text style={styles.checkoutBtnTxt}>{screenConfig?.proceed_to_pay_label}</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Auth gate modal */}
       <AuthGateModal
         visible={authGateVisible}
         type={authGateType}
@@ -407,14 +418,28 @@ export default function CartScreen({ route, navigation }: any) {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#FBFAF6',
   },
-
-  // Header
+  centeredState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -435,15 +460,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.ink500,
   },
-
-  // Scroll
   scroll: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 14,
   },
-
-  // ── Empty state ──────────────────────────────────────────────────────────────
   emptyWrap: {
     flex: 1,
     alignItems: 'center',
@@ -534,8 +555,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.green700,
   },
-
-  // ── Notice banners ───────────────────────────────────────────────────────────
   savingsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -591,8 +610,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.ink700,
   },
-
-  // ── Cart items card ──────────────────────────────────────────────────────────
   itemsCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
@@ -612,8 +629,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1.5,
     borderBottomColor: COLORS.line,
   },
-
-  // Image tile: 52×52, coloured bg, 10px radius (Figma spec)
   imgTile: {
     width: 52,
     height: 52,
@@ -626,8 +641,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
   },
-
-  // Item info
   itemInfo: {
     flex: 1,
     gap: 2,
@@ -649,8 +662,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.ink900,
   },
-
-  // Stepper: green pill, 30×32 hit areas (Figma spec)
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -678,8 +689,6 @@ const styles = StyleSheet.create({
     minWidth: 18,
     textAlign: 'center',
   },
-
-  // ── Save basket row ──────────────────────────────────────────────────────────
   saveBasketRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -707,8 +716,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.green700,
   },
-
-  // ── Coupon row ───────────────────────────────────────────────────────────────
   couponRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -727,8 +734,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.green700,
   },
-
-  // ── Bill details card ────────────────────────────────────────────────────────
   billCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
@@ -758,6 +763,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.ink900,
   },
+  savingsVal: {
+    color: '#8A5200',
+  },
+  freeDeliveryVal: {
+    color: COLORS.green700,
+  },
   billDivider: {
     height: 1.5,
     backgroundColor: COLORS.line,
@@ -778,19 +789,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.ink900,
   },
-
-  // ── Sticky checkout bar (Figma: frosted, TO PAY + button) ───────────────────
   checkoutBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: 'rgba(255,255,255,0.96)',
     borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    paddingBottom: 16,
+    paddingTop: 8,
   },
   checkoutBarInner: {
     flexDirection: 'row',

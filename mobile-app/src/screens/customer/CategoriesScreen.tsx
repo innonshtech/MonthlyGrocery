@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,60 +9,65 @@ import {
   Dimensions,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import AppIcon, { IconName } from '../../components/AppIcon';
+import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
+import {
+  fetchCategoriesConfigWithStatus,
+  fetchCategoryList,
+  CategoriesScreenConfig,
+  CategoryItem,
+} from '../../services/categoriesApi';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
-import { API_BASE } from '../../config/api';
 
 const { width } = Dimensions.get('window');
+const H_PADDING = 20;
+const TILE_SIZE = 78;
+const TILE_ICON_HEIGHT = 74;
+const tileGap = Math.max(4, (width - H_PADDING * 2 - TILE_SIZE * 4) / 3);
 
-// Tile width: 4 per row, 20px side padding + 8px gaps × 3
-const TILE_W = Math.floor((width - 40 - 24) / 4);
-
-interface CategoryTile {
-  id: string;
-  name: string;
+interface CategoryTile extends CategoryItem {
   icon: IconName;
-  image_url?: string;
 }
 
 // ─── Pastel background per category (from Figma) ──────────────────────────────
 const CATEGORY_BG: Record<string, string> = {
-  'atta':         '#FFF3D6',
-  'rice':         '#FFF3D6',
-  'oil':          '#E4F3EA',
-  'ghee':         '#E4F3EA',
-  'dal':          '#F6E9E1',
-  'pulse':        '#F6E9E1',
-  'spice':        '#FDE7E7',
-  'masala':       '#FDE7E7',
-  'dairy':        '#EDE9FB',
-  'egg':          '#EDE9FB',
-  'milk':         '#EDE9FB',
-  'bakery':       '#FBEEDD',
-  'bread':        '#FBEEDD',
-  'fruit':        '#EAF6D6',
-  'veg':          '#EAF6D6',
-  'dry':          '#E1F0FB',
-  'snack':        '#FBEEDD',
-  'namkeen':      '#FBEEDD',
-  'drink':        '#E1F0FB',
-  'cold':         '#E1F0FB',
-  'beverage':     '#E1F0FB',
-  'biscuit':      '#FDEFD3',
-  'cookie':       '#FDEFD3',
-  'tea':          '#F6E9E1',
-  'coffee':       '#F6E9E1',
-  'clean':        '#EAF6D6',
-  'detergent':    '#E4F3EA',
-  'personal':     '#FDE7E7',
-  'care':         '#FDE7E7',
-  'soap':         '#FDE7E7',
-  'shampoo':      '#FDE7E7',
-  'baby':         '#EDE9FB',
-  'diaper':       '#EDE9FB',
-  'home':         '#E4F3EA',
-  'kitchen':      '#E4F3EA',
+  atta: '#FFF3D6',
+  rice: '#FFF3D6',
+  oil: '#E4F3EA',
+  ghee: '#E4F3EA',
+  dal: '#F6E9E1',
+  pulse: '#F6E9E1',
+  spice: '#FDE7E7',
+  masala: '#FDE7E7',
+  dairy: '#EDE9FB',
+  egg: '#EDE9FB',
+  milk: '#EDE9FB',
+  bakery: '#FBEEDD',
+  bread: '#FBEEDD',
+  fruit: '#EAF6D6',
+  veg: '#EAF6D6',
+  dry: '#E1F0FB',
+  snack: '#FBEEDD',
+  namkeen: '#FBEEDD',
+  drink: '#E1F0FB',
+  cold: '#E1F0FB',
+  beverage: '#E1F0FB',
+  biscuit: '#FDEFD3',
+  cookie: '#FDEFD3',
+  tea: '#F6E9E1',
+  coffee: '#F6E9E1',
+  clean: '#EAF6D6',
+  detergent: '#E4F3EA',
+  personal: '#FDE7E7',
+  care: '#FDE7E7',
+  soap: '#FDE7E7',
+  shampoo: '#FDE7E7',
+  baby: '#EDE9FB',
+  diaper: '#EDE9FB',
+  home: '#E4F3EA',
+  kitchen: '#E4F3EA',
 };
 
 function getCategoryBg(name: string): string {
@@ -81,10 +86,14 @@ function getCategoryIcon(name: string): IconName {
   if (norm.includes('spice') || norm.includes('masala')) return 'cat-spices-masala';
   if (norm.includes('dry') || norm.includes('fruit')) return 'cat-dry-fruits';
   if (norm.includes('snack') || norm.includes('namkeen')) return 'cat-snacks';
-  if (norm.includes('beverage') || norm.includes('drink') || norm.includes('tea') || norm.includes('coffee')) return 'cat-beverages';
+  if (norm.includes('beverage') || norm.includes('drink') || norm.includes('tea') || norm.includes('coffee')) {
+    return 'cat-beverages';
+  }
   if (norm.includes('biscuit') || norm.includes('cookie') || norm.includes('bakery')) return 'cat-biscuits';
   if (norm.includes('clean') || norm.includes('detergent')) return 'cat-cleaning';
-  if (norm.includes('personal') || norm.includes('care') || norm.includes('soap') || norm.includes('shampoo')) return 'cat-personal-care';
+  if (norm.includes('personal') || norm.includes('care') || norm.includes('soap') || norm.includes('shampoo')) {
+    return 'cat-personal-care';
+  }
   if (norm.includes('home') || norm.includes('kitchen')) return 'cat-home-kitchen';
   if (norm.includes('baby') || norm.includes('diaper')) return 'cat-baby-care';
   if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return 'cat-baby-care';
@@ -92,50 +101,35 @@ function getCategoryIcon(name: string): IconName {
   return 'shopping-bag';
 }
 
-// ─── Section definitions (Figma layout) ──────────────────────────────────────
-const SECTION_GROUPS = [
-  {
-    label: 'GROCERY & KITCHEN',
-    keywords: ['atta', 'rice', 'oil', 'ghee', 'dal', 'pulse', 'spice', 'masala',
-               'dairy', 'milk', 'egg', 'bakery', 'bread', 'fruit', 'veg', 'dry'],
-  },
-  {
-    label: 'SNACKS & BEVERAGES',
-    keywords: ['snack', 'namkeen', 'cold', 'drink', 'beverage', 'biscuit', 'cookie', 'tea', 'coffee'],
-  },
-  {
-    label: 'HOUSEHOLD & CARE',
-    keywords: ['clean', 'detergent', 'personal', 'care', 'soap', 'shampoo', 'baby', 'diaper', 'home', 'kitchen'],
-  },
-];
+const SECTION_KEYWORDS = {
+  grocery: [
+    'atta', 'rice', 'oil', 'ghee', 'dal', 'pulse', 'spice', 'masala',
+    'dairy', 'milk', 'egg', 'bakery', 'bread', 'fruit', 'veg', 'dry',
+  ],
+  snacks: ['snack', 'namkeen', 'cold', 'drink', 'beverage', 'biscuit', 'cookie', 'tea', 'coffee'],
+  household: ['clean', 'detergent', 'personal', 'care', 'soap', 'shampoo', 'baby', 'diaper', 'home', 'kitchen'],
+} as const;
 
-function getSectionLabel(name: string): string {
-  const norm = name.toLowerCase();
-  for (const sec of SECTION_GROUPS) {
-    if (sec.keywords.some((k) => norm.includes(k))) return sec.label;
-  }
-  return 'GROCERY & KITCHEN'; // default
+function buildSectionGroups(config: CategoriesScreenConfig) {
+  return [
+    { label: config.section_grocery_label, keywords: SECTION_KEYWORDS.grocery },
+    { label: config.section_snacks_label, keywords: SECTION_KEYWORDS.snacks },
+    { label: config.section_household_label, keywords: SECTION_KEYWORDS.household },
+  ];
 }
 
-// ─── Fallback list ────────────────────────────────────────────────────────────
-const fallbackCategories: CategoryTile[] = [
-  { id: 'atta-rice',     name: 'Atta & Rice',     icon: 'cat-atta-rice' },
-  { id: 'oils-ghee',     name: 'Oils & Ghee',     icon: 'cat-oils-ghee' },
-  { id: 'dals-pulses',   name: 'Dals & Pulses',   icon: 'cat-dals-pulses' },
-  { id: 'spices-masala', name: 'Spices & Masala', icon: 'cat-spices-masala' },
-  { id: 'dry-fruits',    name: 'Dry Fruits',      icon: 'cat-dry-fruits' },
-  { id: 'dairy-eggs',    name: 'Dairy & Eggs',    icon: 'cat-baby-care' },
-  { id: 'snacks',        name: 'Snacks',          icon: 'cat-snacks' },
-  { id: 'cold-drinks',   name: 'Cold Drinks',     icon: 'cat-beverages' },
-  { id: 'biscuits',      name: 'Biscuits',        icon: 'cat-biscuits' },
-  { id: 'tea-coffee',    name: 'Tea & Coffee',    icon: 'cat-beverages' },
-  { id: 'cleaning',      name: 'Cleaning',        icon: 'cat-cleaning' },
-  { id: 'personal-care', name: 'Personal Care',   icon: 'cat-personal-care' },
-  { id: 'detergents',    name: 'Detergents',      icon: 'cat-cleaning' },
-  { id: 'baby-care',     name: 'Baby Care',       icon: 'cat-baby-care' },
-];
+function getSectionLabel(
+  name: string,
+  groups: ReturnType<typeof buildSectionGroups>,
+  defaultLabel: string,
+): string {
+  const norm = name.toLowerCase();
+  for (const sec of groups) {
+    if (sec.keywords.some((k) => norm.includes(k))) return sec.label;
+  }
+  return defaultLabel;
+}
 
-// ─── Category Tile ────────────────────────────────────────────────────────────
 function CategoryTileItem({
   item,
   onPress,
@@ -148,11 +142,7 @@ function CategoryTileItem({
     <TouchableOpacity style={styles.tile} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.tileIconBox, { backgroundColor: bg }]}>
         {item.image_url ? (
-          <Image
-            source={{ uri: item.image_url }}
-            style={styles.tilePng}
-            resizeMode="contain"
-          />
+          <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="contain" />
         ) : (
           <AppIcon name={item.icon} size={26} color={COLORS.green700} />
         )}
@@ -164,12 +154,10 @@ function CategoryTileItem({
   );
 }
 
-// ─── Section Header ───────────────────────────────────────────────────────────
 function SectionHeader({ label }: { label: string }) {
   return <Text style={styles.sectionEyebrow}>{label}</Text>;
 }
 
-// ─── Tile Row (4 per row) ─────────────────────────────────────────────────────
 function TileRow({
   tiles,
   navigation,
@@ -177,9 +165,10 @@ function TileRow({
   tiles: CategoryTile[];
   navigation: any;
 }) {
-  // Always render 4 slots; fill empty with ghost placeholders
   const slots = [...tiles];
-  while (slots.length < 4) slots.push({ id: `__empty_${slots.length}`, name: '', icon: 'shopping-bag' });
+  while (slots.length < 4) {
+    slots.push({ id: `__empty_${slots.length}`, name: '', icon: 'shopping-bag' });
+  }
 
   return (
     <View style={styles.tileRow}>
@@ -197,143 +186,178 @@ function TileRow({
               })
             }
           />
-        )
+        ),
       )}
     </View>
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function CategoriesScreen({ navigation }: any) {
+  const [screenConfig, setScreenConfig] = useState<CategoriesScreenConfig | null>(null);
+  const [configError, setConfigError] = useState(false);
+  const [categories, setCategories] = useState<CategoryTile[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categories, setCategories] = useState<CategoryTile[]>(fallbackCategories);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/products/categories`);
-        const data = await res.json();
-        if (res.ok && data.success) {
-          const list = data.categoriesFull || [];
-          const mapped: CategoryTile[] = list.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            icon: getCategoryIcon(item.name),
-            image_url: item.image_url,
-          }));
-          if (mapped.length > 0) setCategories(mapped);
-          else if (data.categories) {
-            setCategories(
-              (data.categories as string[]).map((name, i) => ({
-                id: `cat-${i}`,
-                name,
-                icon: getCategoryIcon(name),
-              }))
-            );
-          }
-        }
-      } catch (e) {
-        // keep fallback
-      }
-    };
-    load();
+  const loadConfig = useCallback(async () => {
+    const result = await fetchCategoriesConfigWithStatus();
+    setScreenConfig(result.categories);
+    setConfigError(result.error);
+    return result;
   }, []);
 
-  // ── Filter by search ────────────────────────────────────────────────────────
-  const filtered = categories.filter((c) =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const loadCategories = useCallback(async () => {
+    setCategoriesLoading(true);
+    setCategoriesError(false);
+    const result = await fetchCategoryList();
+    if (result.error) {
+      setCategoriesError(true);
+      setCategories([]);
+    } else {
+      setCategories(
+        result.items.map((item) => ({
+          ...item,
+          icon: getCategoryIcon(item.name),
+        })),
+      );
+    }
+    setCategoriesLoading(false);
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    await loadConfig();
+    await loadCategories();
+  }, [loadConfig, loadCategories]);
+
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
+  const sectionGroups = useMemo(
+    () => (screenConfig ? buildSectionGroups(screenConfig) : []),
+    [screenConfig],
   );
 
-  // ── Group into sections ─────────────────────────────────────────────────────
+  const filtered = categories.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
   type SectionData = { label: string; rows: CategoryTile[][] };
-  const buildSections = (): SectionData[] => {
+
+  const sections = useMemo((): SectionData[] => {
+    if (!screenConfig) return [];
     const map: Record<string, CategoryTile[]> = {};
-    for (const sec of SECTION_GROUPS) map[sec.label] = [];
+    for (const sec of sectionGroups) map[sec.label] = [];
 
     for (const cat of filtered) {
-      const sec = getSectionLabel(cat.name);
+      const sec = getSectionLabel(cat.name, sectionGroups, screenConfig.section_default_label);
       if (!map[sec]) map[sec] = [];
       map[sec].push(cat);
     }
 
     const result: SectionData[] = [];
-    for (const sec of SECTION_GROUPS) {
+    for (const sec of sectionGroups) {
       const cats = map[sec.label];
-      if (cats.length === 0) continue;
+      if (!cats || cats.length === 0) continue;
       const rows: CategoryTile[][] = [];
       for (let i = 0; i < cats.length; i += 4) rows.push(cats.slice(i, i + 4));
       result.push({ label: sec.label, rows });
     }
     return result;
-  };
+  }, [filtered, sectionGroups, screenConfig]);
 
-  const sections = buildSections();
+  if (configError && !screenConfig) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>
+            Could not load categories screen. Check that the backend is running.
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadAll} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const emptyMessage = screenConfig?.empty_message ?? '';
+  const loadErrorMessage = screenConfig?.load_error_message ?? '';
+  const retryLabel = screenConfig?.retry_label ?? 'Retry';
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <Text style={styles.mainTitle}>All categories</Text>
+        <Text style={styles.mainTitle}>{screenConfig?.title}</Text>
 
-        {/* Search bar */}
         <View style={styles.searchBar}>
-          <AppIcon name="search" size={18} color={COLORS.ink300} />
+          <HomeSearchIcon size={18} color={COLORS.ink300} />
           <TextInput
             style={styles.searchInput}
-            placeholder={`Search "atta", "rice", "oil"…`}
+            placeholder={screenConfig?.search_placeholder}
             placeholderTextColor={COLORS.ink300}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={styles.clearText}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* ── Grouped sections ───────────────────────────────────────────────── */}
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {sections.map((section) => (
-          <View key={section.label} style={styles.section}>
-            <SectionHeader label={section.label} />
-            {section.rows.map((row, ri) => (
-              <TileRow key={ri} tiles={row} navigation={navigation} />
-            ))}
-          </View>
-        ))}
+      {categoriesLoading ? (
+        <View style={styles.centeredState}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      ) : categoriesError ? (
+        <View style={styles.centeredState}>
+          <Text style={styles.errorText}>{loadErrorMessage}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadCategories} activeOpacity={0.85}>
+            <Text style={styles.retryBtnText}>{retryLabel}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {sections.map((section) => (
+            <View key={section.label} style={styles.section}>
+              <SectionHeader label={section.label} />
+              {section.rows.map((row, ri) => (
+                <TileRow key={ri} tiles={row} navigation={navigation} />
+              ))}
+            </View>
+          ))}
 
-        {sections.length === 0 && (
-          <View style={styles.emptyState}>
-            <AppIcon name="search" size={40} color={COLORS.ink300} />
-            <Text style={styles.emptyText}>No categories found</Text>
-          </View>
-        )}
+          {sections.length === 0 && (
+            <View style={styles.emptyState}>
+              <AppIcon name="search" size={40} color={COLORS.ink300} />
+              <Text style={styles.emptyText}>{emptyMessage}</Text>
+            </View>
+          )}
 
-        {/* Bottom spacing for nav bar */}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FBFAF6',
   },
-
-  // Header
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: H_PADDING,
     paddingTop: 14,
     paddingBottom: 8,
     gap: 12,
@@ -345,8 +369,6 @@ const styles = StyleSheet.create({
     color: COLORS.ink900,
     letterSpacing: -0.22,
   },
-
-  // Search
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -370,17 +392,13 @@ const styles = StyleSheet.create({
     color: COLORS.ink300,
     paddingHorizontal: 4,
   },
-
-  // Scroll
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: H_PADDING,
     paddingTop: 8,
   },
-
-  // Section
   section: {
     marginBottom: 24,
   },
@@ -388,27 +406,23 @@ const styles = StyleSheet.create({
     ...FONTS.muktaBold,
     fontSize: 12,
     color: COLORS.ink500,
-    letterSpacing: 1.44, // 0.12em of 12px
+    letterSpacing: 1.44,
     textTransform: 'uppercase',
     marginBottom: 12,
   },
-
-  // Tile row
   tileRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     marginBottom: 12,
+    gap: tileGap,
   },
-
-  // Tile
   tile: {
-    width: TILE_W,
+    width: TILE_SIZE,
     alignItems: 'center',
     gap: 6,
   },
   tileIconBox: {
-    width: TILE_W,
-    height: 74,
+    width: TILE_SIZE,
+    height: TILE_ICON_HEIGHT,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -425,8 +439,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
   },
-
-  // Empty
+  centeredState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  errorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+  },
+  retryBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',

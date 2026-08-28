@@ -23,8 +23,10 @@ import {
   Tag,
   Package,
   Ticket,
-  ShoppingBag
+  ShoppingBag,
+  Home
 } from 'lucide-react';
+import { PACK_UNIT_OPTIONS, resolvePackUnitLabel, packUnitPayloadFromInput } from '../lib/packUnits';
 
 interface Shop {
   id: string;
@@ -52,6 +54,152 @@ interface PromotionalBanner {
   image_url: string;
   action_link: string;
   active: boolean;
+  kind?: 'image' | 'promo';
+  subtitle?: string;
+  body?: string;
+  cta_text?: string;
+}
+
+interface HomeScreenConfig {
+  delivering_label: string;
+  location_prefix: string;
+  choose_location_label: string;
+  delivery_pill_text: string;
+  search_placeholder: string;
+  mmg_label: string;
+  mmg_title: string;
+  mmg_subtitle: string;
+  categories_title: string;
+  categories_see_all: string;
+  deals_title: string;
+  deals_see_all: string;
+  loading_deals_label: string;
+  empty_deals_label: string;
+  reorder_title: string;
+  reorder_subtitle_template: string;
+  reorder_cta_label: string;
+  first_basket_title: string;
+  first_basket_subtitle: string;
+  first_basket_cta_label: string;
+  load_error_message: string;
+  retry_label: string;
+  location_required_deals_label: string;
+}
+
+interface SearchScreenConfig {
+  search_placeholder: string;
+  popular_searches_label: string;
+  products_section_label: string;
+  empty_title_template: string;
+  empty_subtitle: string;
+  location_required_message: string;
+  choose_location_label: string;
+  load_error_message: string;
+  retry_label: string;
+}
+
+interface CategoriesScreenConfig {
+  title: string;
+  search_placeholder: string;
+  section_grocery_label: string;
+  section_snacks_label: string;
+  section_household_label: string;
+  section_default_label: string;
+  empty_message: string;
+  load_error_message: string;
+  retry_label: string;
+}
+
+interface CategoryProductsScreenConfig {
+  search_placeholder_template: string;
+  items_count_template: string;
+  sort_label: string;
+  sub_category_all_label: string;
+  empty_message: string;
+  deals_title: string;
+  location_required_message: string;
+  choose_location_label: string;
+  load_error_message: string;
+  retry_label: string;
+  view_cart_label: string;
+  cart_item_label: string;
+  cart_items_template: string;
+  add_button_label: string;
+  filter_sheet_title: string;
+  filter_sort_section_label: string;
+  filter_sort_relevance: string;
+  filter_sort_price_low: string;
+  filter_sort_price_high: string;
+  filter_sort_discount: string;
+  filter_pack_section_label: string;
+  filter_clear_label: string;
+  filter_apply_label: string;
+}
+
+interface ProductDetailScreenConfig {
+  delivery_window_label: string;
+  highlights_section_label: string;
+  add_to_cart_label: string;
+  unit_price_suffix_template: string;
+  not_found_message: string;
+  location_required_message: string;
+  choose_location_label: string;
+  load_error_message: string;
+  retry_label: string;
+}
+
+interface CartScreenConfig {
+  title: string;
+  cart_item_label: string;
+  cart_items_template: string;
+  empty_title: string;
+  empty_message: string;
+  start_shopping_label: string;
+  reorder_last_month_label: string;
+  save_basket_label: string;
+  apply_coupon_label: string;
+  coupon_applied_template: string;
+  bill_details_title: string;
+  bill_item_total_label: string;
+  bill_savings_label: string;
+  bill_delivery_fee_label: string;
+  bill_delivery_fee_value: string;
+  bill_coupon_discount_label: string;
+  bill_to_pay_label: string;
+  sticky_to_pay_label: string;
+  proceed_to_pay_label: string;
+  below_min_title_template: string;
+  below_min_footnote_template: string;
+  savings_banner_template: string;
+  add_more_checkout_template: string;
+  min_order_alert_template: string;
+  empty_preview_image_1: string;
+  empty_preview_image_2: string;
+  load_error_message: string;
+  retry_label: string;
+}
+
+interface OffersCouponsScreenConfig {
+  title: string;
+  manual_code_placeholder: string;
+  manual_apply_label: string;
+  available_section_label: string;
+  expires_template: string;
+  list_apply_label: string;
+  empty_message: string;
+  load_error_message: string;
+  retry_label: string;
+  min_order_alert_title: string;
+  min_order_alert_template: string;
+  invalid_coupon_alert_title: string;
+  apply_failed_fallback: string;
+  connection_error_title: string;
+  connection_error_message: string;
+  unlock_offer_template: string;
+  audience_new_guideline: string;
+  audience_loyal_guideline: string;
+  audience_all_guideline: string;
+  usage_limit_template: string;
 }
 
 interface FranchiseRequest {
@@ -90,7 +238,7 @@ interface Area {
   name: string;
 }
 
-type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'franchise' | 'bulk-loader' | 'cities-areas' | 'sku-requests' | 'categories-admin' | 'master-catalog' | 'coupons-admin' | 'orders-admin';
+type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'home-screen' | 'franchise' | 'bulk-loader' | 'cities-areas' | 'sku-requests' | 'categories-admin' | 'master-catalog' | 'coupons-admin' | 'orders-admin';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -109,6 +257,9 @@ export default function DashboardPage() {
   const [skuRequests, setSkuRequests] = useState<any[]>([]);
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryImageFile, setNewCategoryImageFile] = useState<File | null>(null);
+  const [newCategoryImageUploading, setNewCategoryImageUploading] = useState(false);
+  const [categoryImageUploadingId, setCategoryImageUploadingId] = useState<string | null>(null);
   
   // Master Catalog States
   const [masterProductsList, setMasterProductsList] = useState<any[]>([]);
@@ -121,9 +272,13 @@ export default function DashboardPage() {
   const [newProdImageFile, setNewProdImageFile] = useState<File | null>(null);
   const [newProdImagePreview, setNewProdImagePreview] = useState('');
   const [newProdImageUploading, setNewProdImageUploading] = useState(false);
-  const [newProdVariants, setNewProdVariants] = useState<Array<{ sku: string; unit: string; mrp: string; price: string }>>([
-    { sku: '', unit: '1 L', mrp: '', price: '' }
+  const [newProdVariants, setNewProdVariants] = useState<Array<{ sku: string; quantityValue: string; quantityUnit: string; mrp: string; price: string }>>([
+    { sku: '', quantityValue: '1', quantityUnit: 'kg', mrp: '', price: '' }
   ]);
+  const [packEditProduct, setPackEditProduct] = useState<any | null>(null);
+  const [packEditQty, setPackEditQty] = useState('');
+  const [packEditUnit, setPackEditUnit] = useState('kg');
+  const [packEditSaving, setPackEditSaving] = useState(false);
 
   // Shop Inventory Modal States
   const [selectedShopForInventory, setSelectedShopForInventory] = useState<any | null>(null);
@@ -178,6 +333,24 @@ export default function DashboardPage() {
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImage, setBannerImage] = useState('');
   const [bannerLink, setBannerLink] = useState('');
+  const [bannerKind, setBannerKind] = useState<'image' | 'promo'>('image');
+  const [bannerSubtitle, setBannerSubtitle] = useState('');
+  const [bannerBody, setBannerBody] = useState('');
+  const [bannerCta, setBannerCta] = useState('');
+  const [homeScreenDraft, setHomeScreenDraft] = useState<HomeScreenConfig | null>(null);
+  const [homeScreenSaving, setHomeScreenSaving] = useState(false);
+  const [searchScreenDraft, setSearchScreenDraft] = useState<SearchScreenConfig | null>(null);
+  const [searchScreenSaving, setSearchScreenSaving] = useState(false);
+  const [categoriesScreenDraft, setCategoriesScreenDraft] = useState<CategoriesScreenConfig | null>(null);
+  const [categoriesScreenSaving, setCategoriesScreenSaving] = useState(false);
+  const [categoryProductsDraft, setCategoryProductsDraft] = useState<CategoryProductsScreenConfig | null>(null);
+  const [categoryProductsSaving, setCategoryProductsSaving] = useState(false);
+  const [productDetailDraft, setProductDetailDraft] = useState<ProductDetailScreenConfig | null>(null);
+  const [productDetailSaving, setProductDetailSaving] = useState(false);
+  const [cartScreenDraft, setCartScreenDraft] = useState<CartScreenConfig | null>(null);
+  const [cartScreenSaving, setCartScreenSaving] = useState(false);
+  const [offersCouponsDraft, setOffersCouponsDraft] = useState<OffersCouponsScreenConfig | null>(null);
+  const [offersCouponsSaving, setOffersCouponsSaving] = useState(false);
 
   // 1. Guard check on mount
   useEffect(() => {
@@ -245,6 +418,44 @@ export default function DashboardPage() {
         const data = await res.json();
         if (res.ok && data.success) {
           setBanners(data.banners);
+        }
+      }
+
+      if (activeTab === 'home-screen') {
+        const res = await fetch('http://localhost:8001/api/admin/home');
+        const data = await res.json();
+        if (res.ok && data.success && data.home) {
+          setHomeScreenDraft(data.home);
+        }
+        const searchRes = await fetch('http://localhost:8001/api/admin/search-screen');
+        const searchData = await searchRes.json();
+        if (searchRes.ok && searchData.success && searchData.search) {
+          setSearchScreenDraft(searchData.search);
+        }
+        const categoriesRes = await fetch('http://localhost:8001/api/admin/categories-screen');
+        const categoriesData = await categoriesRes.json();
+        if (categoriesRes.ok && categoriesData.success && categoriesData.categories) {
+          setCategoriesScreenDraft(categoriesData.categories);
+        }
+        const categoryProductsRes = await fetch('http://localhost:8001/api/admin/category-products-screen');
+        const categoryProductsData = await categoryProductsRes.json();
+        if (categoryProductsRes.ok && categoryProductsData.success && categoryProductsData.category_products) {
+          setCategoryProductsDraft(categoryProductsData.category_products);
+        }
+        const productDetailRes = await fetch('http://localhost:8001/api/admin/product-detail-screen');
+        const productDetailData = await productDetailRes.json();
+        if (productDetailRes.ok && productDetailData.success && productDetailData.product_detail) {
+          setProductDetailDraft(productDetailData.product_detail);
+        }
+        const cartScreenRes = await fetch('http://localhost:8001/api/admin/cart-screen');
+        const cartScreenData = await cartScreenRes.json();
+        if (cartScreenRes.ok && cartScreenData.success && cartScreenData.cart) {
+          setCartScreenDraft(cartScreenData.cart);
+        }
+        const offersCouponsRes = await fetch('http://localhost:8001/api/admin/offers-coupons-screen');
+        const offersCouponsData = await offersCouponsRes.json();
+        if (offersCouponsRes.ok && offersCouponsData.success && offersCouponsData.offers_coupons) {
+          setOffersCouponsDraft(offersCouponsData.offers_coupons);
         }
       }
 
@@ -542,23 +753,84 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
     try {
+      let imageUrl = '';
+      if (newCategoryImageFile) {
+        setNewCategoryImageUploading(true);
+        const formData = new FormData();
+        formData.append('image', newCategoryImageFile);
+        const uploadRes = await fetch('http://localhost:8001/api/products/upload-image', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        setNewCategoryImageUploading(false);
+        if (!uploadRes.ok || !uploadData.image_url) {
+          alert('Image upload failed: ' + (uploadData.error || 'Unknown error'));
+          return;
+        }
+        imageUrl = uploadData.image_url;
+      }
+
       const res = await fetch('http://localhost:8001/api/admin/categories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ name: newCategoryName })
+        body: JSON.stringify({
+          name: newCategoryName,
+          ...(imageUrl ? { image_url: imageUrl } : {}),
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setNewCategoryName('');
+        setNewCategoryImageFile(null);
         fetchData();
       } else {
         alert(data.error || 'Failed to add category');
       }
     } catch (err) {
       alert('Error adding category');
+    }
+  };
+
+  const handleCategoryImageChange = async (catId: string, file: File) => {
+    if (!token || !file) return;
+    setCategoryImageUploadingId(catId);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const uploadRes = await fetch('http://localhost:8001/api/products/upload-image', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.image_url) {
+        alert('Image upload failed: ' + (uploadData.error || 'Unknown error'));
+        return;
+      }
+
+      const res = await fetch(`http://localhost:8001/api/admin/categories/${catId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ image_url: uploadData.image_url }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to update category image');
+      }
+    } catch {
+      alert('Error updating category image');
+    } finally {
+      setCategoryImageUploadingId(null);
     }
   };
 
@@ -589,9 +861,11 @@ export default function DashboardPage() {
     if (!newProdName.trim() || !newProdCategory) return;
     
     // Validate variants
-    const validVariants = newProdVariants.filter(v => v.unit.trim() && v.mrp.trim() && v.price.trim() && v.sku.trim());
+    const validVariants = newProdVariants.filter(
+      (v) => v.quantityValue.trim() && v.quantityUnit.trim() && v.mrp.trim() && v.price.trim() && v.sku.trim(),
+    );
     if (validVariants.length === 0) {
-      alert('Please add at least one valid unit variant (with Unit, SKU, MRP, and Default Price).');
+      alert('Please add at least one valid pack variant (quantity, unit type, SKU, MRP, and default price).');
       return;
     }
 
@@ -619,8 +893,8 @@ export default function DashboardPage() {
 
       // Step 2: Loop and create each variant SKU
       const createPromises = validVariants.map(async (v) => {
-        // Amazon-style: Product Name = Base Name + " " + Unit
-        const variantName = `${newProdName.trim()} ${v.unit.trim()}`;
+        const pack = packUnitPayloadFromInput(v.quantityValue, v.quantityUnit);
+        const variantName = `${newProdName.trim()} ${pack.unit}`.trim();
         const res = await fetch('http://localhost:8001/api/products/create', {
           method: 'POST',
           headers: {
@@ -638,7 +912,9 @@ export default function DashboardPage() {
             price: parseFloat(v.price),
             primary_category: newProdCategory,
             image_url: uploadedImageUrl,
-            unit: v.unit.trim()
+            quantity_value: pack.quantity_value,
+            quantity_unit: pack.quantity_unit,
+            unit: pack.unit,
           })
         });
         return res.json();
@@ -659,7 +935,7 @@ export default function DashboardPage() {
         setNewProdShortDescription('');
         setNewProdImageFile(null);
         setNewProdImagePreview('');
-        setNewProdVariants([{ sku: '', unit: '1 L', mrp: '', price: '' }]);
+        setNewProdVariants([{ sku: '', quantityValue: '1', quantityUnit: 'kg', mrp: '', price: '' }]);
         fetchData();
       }
     } catch (err) {
@@ -686,6 +962,66 @@ export default function DashboardPage() {
       }
     } catch (err) {
       alert('Error updating category');
+    }
+  };
+
+  const openPackEditModal = (prod: any) => {
+    setPackEditProduct(prod);
+    const qty = prod.quantity_value != null ? String(prod.quantity_value) : '';
+    const unitCode = prod.quantity_unit || 'kg';
+    if (qty) {
+      setPackEditQty(qty);
+      setPackEditUnit(unitCode);
+    } else {
+      const label = resolvePackUnitLabel(prod);
+      const match = label.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+      if (match) {
+        setPackEditQty(match[1]);
+        setPackEditUnit(match[2] === 'L' ? 'L' : match[2].toLowerCase());
+      } else {
+        setPackEditQty('1');
+        setPackEditUnit('kg');
+      }
+    }
+  };
+
+  const handleSavePackSize = async () => {
+    if (!packEditProduct || !token) return;
+    const pack = packUnitPayloadFromInput(packEditQty, packEditUnit);
+    if (!pack.unit) {
+      alert('Enter a valid quantity and unit type.');
+      return;
+    }
+
+    setPackEditSaving(true);
+    try {
+      const baseName = String(packEditProduct.name || '')
+        .replace(/\s+\d+(?:\.\d+)?\s*(kg|g|ml|l|L|pcs|pack|dozen)\s*$/i, '')
+        .trim();
+      const res = await fetch(`http://localhost:8001/api/products/master/${packEditProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          quantity_value: pack.quantity_value,
+          quantity_unit: pack.quantity_unit,
+          unit: pack.unit,
+          name: baseName ? `${baseName} ${pack.unit}` : packEditProduct.name,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPackEditProduct(null);
+        fetchData();
+      } else {
+        alert(data.error || 'Failed to update pack size');
+      }
+    } catch {
+      alert('Error updating pack size');
+    } finally {
+      setPackEditSaving(false);
     }
   };
 
@@ -904,8 +1240,12 @@ export default function DashboardPage() {
   // Add festive promotional banner
   const handleAddBanner = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token || !bannerTitle || !bannerImage) {
-      alert('Please enter banner title and image URL');
+    if (!token || !bannerTitle) {
+      alert('Please enter a banner title');
+      return;
+    }
+    if (bannerKind === 'image' && !bannerImage) {
+      alert('Please enter an image URL for image banners');
       return;
     }
     try {
@@ -918,7 +1258,11 @@ export default function DashboardPage() {
         body: JSON.stringify({
           title: bannerTitle,
           image_url: bannerImage,
-          action_link: bannerLink
+          action_link: bannerLink,
+          kind: bannerKind,
+          subtitle: bannerSubtitle || undefined,
+          body: bannerBody || undefined,
+          cta_text: bannerCta || undefined,
         })
       });
       const data = await res.json();
@@ -927,6 +1271,10 @@ export default function DashboardPage() {
         setBannerTitle('');
         setBannerImage('');
         setBannerLink('');
+        setBannerKind('image');
+        setBannerSubtitle('');
+        setBannerBody('');
+        setBannerCta('');
         alert('Campaign banner added successfully!');
       } else {
         alert(data.error || 'Failed to add campaign banner');
@@ -934,6 +1282,230 @@ export default function DashboardPage() {
     } catch (err) {
       alert('Error saving campaign banner');
     }
+  };
+
+  const handleSaveHomeScreen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !homeScreenDraft) return;
+    setHomeScreenSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/home', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(homeScreenDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setHomeScreenDraft(data.home);
+        alert('Home screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update home screen copy');
+      }
+    } catch {
+      alert('Error saving home screen copy');
+    } finally {
+      setHomeScreenSaving(false);
+    }
+  };
+
+  const updateHomeField = (key: keyof HomeScreenConfig, value: string) => {
+    if (!homeScreenDraft) return;
+    setHomeScreenDraft({ ...homeScreenDraft, [key]: value });
+  };
+
+  const handleSaveSearchScreen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !searchScreenDraft) return;
+    setSearchScreenSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/search-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(searchScreenDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSearchScreenDraft(data.search);
+        alert('Search screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update search screen copy');
+      }
+    } catch {
+      alert('Error saving search screen copy');
+    } finally {
+      setSearchScreenSaving(false);
+    }
+  };
+
+  const updateSearchField = (key: keyof SearchScreenConfig, value: string) => {
+    if (!searchScreenDraft) return;
+    setSearchScreenDraft({ ...searchScreenDraft, [key]: value });
+  };
+
+  const handleSaveCategoriesScreen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !categoriesScreenDraft) return;
+    setCategoriesScreenSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/categories-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(categoriesScreenDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCategoriesScreenDraft(data.categories);
+        alert('Categories screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update categories screen copy');
+      }
+    } catch {
+      alert('Error saving categories screen copy');
+    } finally {
+      setCategoriesScreenSaving(false);
+    }
+  };
+
+  const updateCategoriesField = (key: keyof CategoriesScreenConfig, value: string) => {
+    if (!categoriesScreenDraft) return;
+    setCategoriesScreenDraft({ ...categoriesScreenDraft, [key]: value });
+  };
+
+  const handleSaveCategoryProducts = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !categoryProductsDraft) return;
+    setCategoryProductsSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/category-products-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(categoryProductsDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCategoryProductsDraft(data.category_products);
+        alert('Product list screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update product list screen copy');
+      }
+    } catch {
+      alert('Error saving product list screen copy');
+    } finally {
+      setCategoryProductsSaving(false);
+    }
+  };
+
+  const updateCategoryProductsField = (key: keyof CategoryProductsScreenConfig, value: string) => {
+    if (!categoryProductsDraft) return;
+    setCategoryProductsDraft({ ...categoryProductsDraft, [key]: value });
+  };
+
+  const handleSaveProductDetail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !productDetailDraft) return;
+    setProductDetailSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/product-detail-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(productDetailDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProductDetailDraft(data.product_detail);
+        alert('Product detail screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update product detail screen copy');
+      }
+    } catch {
+      alert('Error saving product detail screen copy');
+    } finally {
+      setProductDetailSaving(false);
+    }
+  };
+
+  const updateProductDetailField = (key: keyof ProductDetailScreenConfig, value: string) => {
+    if (!productDetailDraft) return;
+    setProductDetailDraft({ ...productDetailDraft, [key]: value });
+  };
+
+  const handleSaveCartScreen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !cartScreenDraft) return;
+    setCartScreenSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/cart-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(cartScreenDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCartScreenDraft(data.cart);
+        alert('Cart screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update cart screen copy');
+      }
+    } catch {
+      alert('Error saving cart screen copy');
+    } finally {
+      setCartScreenSaving(false);
+    }
+  };
+
+  const updateCartScreenField = (key: keyof CartScreenConfig, value: string) => {
+    if (!cartScreenDraft) return;
+    setCartScreenDraft({ ...cartScreenDraft, [key]: value });
+  };
+
+  const handleSaveOffersCouponsScreen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !offersCouponsDraft) return;
+    setOffersCouponsSaving(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/admin/offers-coupons-screen', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(offersCouponsDraft),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOffersCouponsDraft(data.offers_coupons);
+        alert('Offers & coupons screen copy updated successfully!');
+      } else {
+        alert(data.error || 'Failed to update offers screen copy');
+      }
+    } catch {
+      alert('Error saving offers screen copy');
+    } finally {
+      setOffersCouponsSaving(false);
+    }
+  };
+
+  const updateOffersCouponsField = (key: keyof OffersCouponsScreenConfig, value: string) => {
+    if (!offersCouponsDraft) return;
+    setOffersCouponsDraft({ ...offersCouponsDraft, [key]: value });
   };
 
   // Delete promotional banner
@@ -1174,6 +1746,17 @@ export default function DashboardPage() {
               }`}
             >
               <BarChart3 className="w-4 h-4" /> Platform Analytics
+            </button>
+
+            <button
+              onClick={() => setActiveTab('home-screen')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                activeTab === 'home-screen' 
+                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+              }`}
+            >
+              <Home className="w-4 h-4" /> App Screen Copy
             </button>
 
             <button
@@ -1554,6 +2137,372 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* 3b. HOME SCREEN COPY TAB */}
+        {activeTab === 'home-screen' && (
+          <div className="max-w-4xl">
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+              <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Home className="w-5 h-5 text-emerald-400" /> Home Screen Copy (B1)
+              </h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Labels and messages shown on the customer app home screen. Changes apply immediately after save.
+              </p>
+
+              {!homeScreenDraft ? (
+                <p className="text-slate-400 text-sm">Loading home screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveHomeScreen} className="space-y-6">
+                  {([
+                    ['delivering_label', 'Delivering label'],
+                    ['location_prefix', 'Location prefix'],
+                    ['choose_location_label', 'Choose location label'],
+                    ['delivery_pill_text', 'Delivery pill text'],
+                    ['search_placeholder', 'Search placeholder'],
+                    ['mmg_label', 'MMG label'],
+                    ['mmg_title', 'MMG title'],
+                    ['mmg_subtitle', 'MMG subtitle'],
+                    ['categories_title', 'Categories title'],
+                    ['categories_see_all', 'Categories see all'],
+                    ['deals_title', 'Deals title'],
+                    ['deals_see_all', 'Deals see all'],
+                    ['loading_deals_label', 'Loading deals label'],
+                    ['empty_deals_label', 'Empty deals label'],
+                    ['location_required_deals_label', 'Location required (deals)'],
+                    ['reorder_title', 'Reorder title'],
+                    ['reorder_subtitle_template', 'Reorder subtitle template ({count}, {total})'],
+                    ['reorder_cta_label', 'Reorder CTA'],
+                    ['first_basket_title', 'First basket title'],
+                    ['first_basket_subtitle', 'First basket subtitle'],
+                    ['first_basket_cta_label', 'First basket CTA'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={homeScreenDraft[key]}
+                        onChange={(e) => updateHomeField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={homeScreenSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {homeScreenSaving ? 'Saving…' : 'Save Home Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
+              <h2 className="text-lg font-bold text-white mb-2">Search Screen Copy (B2)</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Labels for the customer search screen. Popular chips use live categories from the catalog.
+              </p>
+
+              {!searchScreenDraft ? (
+                <p className="text-slate-400 text-sm">Loading search screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveSearchScreen} className="space-y-6">
+                  {([
+                    ['search_placeholder', 'Search placeholder'],
+                    ['popular_searches_label', 'Popular searches label'],
+                    ['products_section_label', 'Products section label'],
+                    ['empty_title_template', 'Empty title template ({query})'],
+                    ['empty_subtitle', 'Empty subtitle'],
+                    ['location_required_message', 'Location required message'],
+                    ['choose_location_label', 'Choose location label'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={searchScreenDraft[key]}
+                        onChange={(e) => updateSearchField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={searchScreenSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {searchScreenSaving ? 'Saving…' : 'Save Search Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
+              <h2 className="text-lg font-bold text-white mb-2">Categories Screen Copy (B3)</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Title, search placeholder, and section labels on the customer categories tab. Category tiles use live catalog data.
+              </p>
+
+              {!categoriesScreenDraft ? (
+                <p className="text-slate-400 text-sm">Loading categories screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveCategoriesScreen} className="space-y-6">
+                  {([
+                    ['title', 'Screen title'],
+                    ['search_placeholder', 'Search placeholder'],
+                    ['section_grocery_label', 'Grocery section label'],
+                    ['section_snacks_label', 'Snacks section label'],
+                    ['section_household_label', 'Household section label'],
+                    ['section_default_label', 'Default section label'],
+                    ['empty_message', 'Empty search message'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={categoriesScreenDraft[key]}
+                        onChange={(e) => updateCategoriesField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={categoriesScreenSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {categoriesScreenSaving ? 'Saving…' : 'Save Categories Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
+              <h2 className="text-lg font-bold text-white mb-2">Product List Screen Copy (B4)</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Category product grid, sort bar, floating cart, and filter sheet labels. Products load from the catalog API.
+              </p>
+
+              {!categoryProductsDraft ? (
+                <p className="text-slate-400 text-sm">Loading product list screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveCategoryProducts} className="space-y-6">
+                  {([
+                    ['search_placeholder_template', 'Search placeholder ({category})'],
+                    ['items_count_template', 'Items count ({category}, {count})'],
+                    ['sort_label', 'Sort button label'],
+                    ['sub_category_all_label', 'Sidebar “All” label'],
+                    ['empty_message', 'Empty products message'],
+                    ['deals_title', 'Deals screen title'],
+                    ['location_required_message', 'Location required message'],
+                    ['choose_location_label', 'Choose location button'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                    ['view_cart_label', 'View cart label'],
+                    ['cart_item_label', 'Cart — 1 item label'],
+                    ['cart_items_template', 'Cart items template ({count})'],
+                    ['add_button_label', 'ADD button label'],
+                    ['filter_sheet_title', 'Filter sheet title'],
+                    ['filter_sort_section_label', 'Filter sort section label'],
+                    ['filter_sort_relevance', 'Sort — Relevance'],
+                    ['filter_sort_price_low', 'Sort — Price low to high'],
+                    ['filter_sort_price_high', 'Sort — Price high to low'],
+                    ['filter_sort_discount', 'Sort — Discount'],
+                    ['filter_pack_section_label', 'Pack size section label'],
+                    ['filter_clear_label', 'Clear all button'],
+                    ['filter_apply_label', 'Apply button'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={categoryProductsDraft[key]}
+                        onChange={(e) => updateCategoryProductsField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={categoryProductsSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {categoryProductsSaving ? 'Saving…' : 'Save Product List Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
+              <h2 className="text-lg font-bold text-white mb-2">Product Detail Screen Copy (C1)</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Product detail hero, delivery banner, highlights section, and sticky add-to-cart bar. Product data loads from the catalog API.
+              </p>
+
+              {!productDetailDraft ? (
+                <p className="text-slate-400 text-sm">Loading product detail screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveProductDetail} className="space-y-6">
+                  {([
+                    ['delivery_window_label', 'Delivery window banner'],
+                    ['highlights_section_label', 'Highlights section title'],
+                    ['add_to_cart_label', 'Add to cart button'],
+                    ['unit_price_suffix_template', 'Unit price suffix ({unit})'],
+                    ['not_found_message', 'Product not found message'],
+                    ['location_required_message', 'Location required message'],
+                    ['choose_location_label', 'Choose location button'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={productDetailDraft[key]}
+                        onChange={(e) => updateProductDetailField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={productDetailSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {productDetailSaving ? 'Saving…' : 'Save Product Detail Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
+              <h2 className="text-lg font-bold text-white mb-2">Cart Screen Copy (C2)</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Cart header, empty state, bill details, min-order banners, and checkout bar. Min order amount comes from server config API.
+              </p>
+
+              {!cartScreenDraft ? (
+                <p className="text-slate-400 text-sm">Loading cart screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveCartScreen} className="space-y-6">
+                  {([
+                    ['title', 'Screen title'],
+                    ['cart_item_label', 'Header — 1 item'],
+                    ['cart_items_template', 'Header items template ({count})'],
+                    ['empty_title', 'Empty cart title'],
+                    ['empty_message', 'Empty cart message'],
+                    ['start_shopping_label', 'Start shopping button'],
+                    ['reorder_last_month_label', 'Reorder last month link'],
+                    ['save_basket_label', 'Save basket row'],
+                    ['apply_coupon_label', 'Apply coupon label'],
+                    ['coupon_applied_template', 'Coupon applied ({code}, {discount})'],
+                    ['bill_details_title', 'Bill details title'],
+                    ['bill_item_total_label', 'Bill — item total (MRP)'],
+                    ['bill_savings_label', 'Bill — savings label'],
+                    ['bill_delivery_fee_label', 'Bill — delivery fee label'],
+                    ['bill_delivery_fee_value', 'Bill — delivery fee value'],
+                    ['bill_coupon_discount_label', 'Bill — coupon discount label'],
+                    ['bill_to_pay_label', 'Bill — to pay label'],
+                    ['sticky_to_pay_label', 'Sticky bar — TO PAY label'],
+                    ['proceed_to_pay_label', 'Proceed to pay button'],
+                    ['below_min_title_template', 'Below min banner ({amount})'],
+                    ['below_min_footnote_template', 'Below min footnote ({current}, {minimum})'],
+                    ['savings_banner_template', 'Savings banner ({savings})'],
+                    ['add_more_checkout_template', 'Add more checkout CTA ({amount})'],
+                    ['min_order_alert_template', 'Min order alert ({amount}, {minimum})'],
+                    ['empty_preview_image_1', 'Empty state preview image URL 1'],
+                    ['empty_preview_image_2', 'Empty state preview image URL 2'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={cartScreenDraft[key]}
+                        onChange={(e) => updateCartScreenField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={cartScreenSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {cartScreenSaving ? 'Saving…' : 'Save Cart Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+
+            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
+              <h2 className="text-lg font-bold text-white mb-2">Offers & Coupons Screen Copy (C3)</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Coupon list screen header, manual apply bar, section labels, and eligibility messages. Live coupons load from the coupons API.
+              </p>
+
+              {!offersCouponsDraft ? (
+                <p className="text-slate-400 text-sm">Loading offers screen config…</p>
+              ) : (
+                <form onSubmit={handleSaveOffersCouponsScreen} className="space-y-6">
+                  {([
+                    ['title', 'Screen title'],
+                    ['manual_code_placeholder', 'Manual code placeholder'],
+                    ['manual_apply_label', 'Manual apply button'],
+                    ['available_section_label', 'Available section label'],
+                    ['expires_template', 'Expiry template ({date})'],
+                    ['list_apply_label', 'List APPLY button'],
+                    ['empty_message', 'Empty state message'],
+                    ['load_error_message', 'Load error message'],
+                    ['retry_label', 'Retry button label'],
+                    ['min_order_alert_title', 'Min order alert title'],
+                    ['min_order_alert_template', 'Min order alert ({amount}, {code})'],
+                    ['invalid_coupon_alert_title', 'Invalid coupon alert title'],
+                    ['apply_failed_fallback', 'Apply failed fallback'],
+                    ['connection_error_title', 'Connection error title'],
+                    ['connection_error_message', 'Connection error message'],
+                    ['unlock_offer_template', 'Unlock offer template ({amount})'],
+                    ['audience_new_guideline', 'New customer guideline'],
+                    ['audience_loyal_guideline', 'Loyal customer guideline'],
+                    ['audience_all_guideline', 'All customers guideline'],
+                    ['usage_limit_template', 'Usage limit template ({limit})'],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
+                      <input
+                        type="text"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={offersCouponsDraft[key]}
+                        onChange={(e) => updateOffersCouponsField(key, e.target.value)}
+                      />
+                    </div>
+                  ))}
+
+                  <button
+                    type="submit"
+                    disabled={offersCouponsSaving}
+                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
+                  >
+                    {offersCouponsSaving ? 'Saving…' : 'Save Offers Screen Copy'}
+                  </button>
+                </form>
+              )}
+            </section>
+          </div>
+        )}
+
         {/* 4. FESTIVE CAMPAIGNS TAB */}
         {activeTab === 'banners' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
@@ -1566,9 +2515,21 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 {banners.map((b) => (
                   <div key={b.id} className="flex gap-4 p-4 border border-slate-800/80 rounded-2xl items-center bg-slate-950/40">
-                    <img src={b.image_url} alt={b.title} className="w-24 h-16 object-cover rounded-lg bg-slate-900 border border-slate-800" />
+                    {b.kind === 'promo' ? (
+                      <div className="w-24 h-16 rounded-lg bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-300 text-xs font-bold px-2 text-center">
+                        Promo card
+                      </div>
+                    ) : (
+                      <img src={b.image_url} alt={b.title} className="w-24 h-16 object-cover rounded-lg bg-slate-900 border border-slate-800" />
+                    )}
                     <div className="flex-1">
-                      <h4 className="font-bold text-sm text-slate-200">{b.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm text-slate-200">{b.title}</h4>
+                        <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
+                          {b.kind || 'image'}
+                        </span>
+                      </div>
+                      {b.subtitle ? <p className="text-xs text-slate-400 mt-1">{b.subtitle}</p> : null}
                       <p className="text-xs text-slate-500 mt-1">Deep Link: {b.action_link || 'None'}</p>
                     </div>
                     <button
@@ -1588,26 +2549,73 @@ export default function DashboardPage() {
               
               <form onSubmit={handleAddBanner} className="space-y-4">
                 <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Banner Type</label>
+                  <select
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={bannerKind}
+                    onChange={(e) => setBannerKind(e.target.value as 'image' | 'promo')}
+                  >
+                    <option value="image">Image banner</option>
+                    <option value="promo">Promo text card (orange)</option>
+                  </select>
+                </div>
+
+                <div>
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Banner Title</label>
                   <input
                     type="text"
-                    placeholder="e.g. Save 10% on Oils!"
+                    placeholder="e.g. MONTHLY SAVINGS SALE"
                     className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={bannerTitle}
                     onChange={(e) => setBannerTitle(e.target.value)}
                   />
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Image URL</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. https://images.unsplash.com/..."
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={bannerImage}
-                    onChange={(e) => setBannerImage(e.target.value)}
-                  />
-                </div>
+                {bannerKind === 'promo' ? (
+                  <>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Promo Headline</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Up to ₹500 off"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={bannerSubtitle}
+                        onChange={(e) => setBannerSubtitle(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Promo Body</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. on your full monthly basket"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={bannerBody}
+                        onChange={(e) => setBannerBody(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">CTA Label</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Grab deals"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={bannerCta}
+                        onChange={(e) => setBannerCta(e.target.value)}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Image URL</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://images.unsplash.com/..."
+                      className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                      value={bannerImage}
+                      onChange={(e) => setBannerImage(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Deep Link</label>
@@ -1879,9 +2887,11 @@ export default function DashboardPage() {
                   <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
                     <th className="pb-3">Merchant / Shop</th>
                     <th className="pb-3">Product Name</th>
+                    <th className="pb-3">Unit</th>
                     <th className="pb-3">Category</th>
                     <th className="pb-3">Brand</th>
                     <th className="pb-3">MRP (Master)</th>
+                    <th className="pb-3">Highlights</th>
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1890,9 +2900,13 @@ export default function DashboardPage() {
                     <tr key={req.id} className="hover:bg-slate-800/20 transition-colors">
                       <td className="py-4 pr-3 font-semibold text-slate-200">{req.shop_name}</td>
                       <td className="py-4 pr-3 font-semibold text-white">{req.product_name}</td>
+                      <td className="py-4 pr-3 text-slate-400">{req.unit || '—'}</td>
                       <td className="py-4 pr-3 text-slate-400">{req.category}</td>
                       <td className="py-4 pr-3 text-slate-400">{req.brand}</td>
                       <td className="py-4 pr-3 text-slate-300">₹{req.mrp}</td>
+                      <td className="py-4 pr-3 text-slate-400 max-w-[200px] truncate" title={req.description || req.short_description || ''}>
+                        {req.description || req.short_description || '—'}
+                      </td>
                       <td className="py-4 text-right space-x-2">
                         <button
                           onClick={() => handleUpdateSkuRequestStatus(req.id, 'approved')}
@@ -1911,7 +2925,7 @@ export default function DashboardPage() {
                   ))}
                   {skuRequests.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-slate-500 italic">No pending SKU requests found.</td>
+                      <td colSpan={8} className="py-6 text-center text-slate-500 italic">No pending SKU requests found.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1923,35 +2937,67 @@ export default function DashboardPage() {
         {/* 9. CATEGORIES MANAGEMENT TAB */}
         {activeTab === 'categories-admin' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl">
-            {/* List Table */}
             <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Tag className="w-5 h-5 text-emerald-400" /> Platform Categories
                 </h2>
                 <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
               </div>
+              <p className="text-sm text-slate-500 mb-6">
+                Tile PNGs shown on Home and All Categories in the customer app. Upload a new image to replace any category icon.
+              </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3">ID</th>
+                      <th className="pb-3 pr-3">Tile</th>
                       <th className="pb-3">Category Name</th>
-                      <th className="pb-3 text-right">Action</th>
+                      <th className="pb-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/30 text-sm">
                     {categoriesList.map((cat) => (
                       <tr key={cat.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-4 pr-3 font-semibold text-slate-500">{cat.id}</td>
-                        <td className="py-4 pr-3 font-bold text-white">{cat.name}</td>
+                        <td className="py-4 pr-3">
+                          <div className="w-14 h-14 rounded-xl bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden">
+                            {cat.image_url ? (
+                              <img src={cat.image_url} alt={cat.name} className="w-full h-full object-contain p-1" />
+                            ) : (
+                              <span className="text-[10px] text-slate-500 font-bold uppercase">No PNG</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 pr-3">
+                          <div className="font-bold text-white">{cat.name}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{cat.id}</div>
+                        </td>
                         <td className="py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <label
+                              className={`text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 text-emerald-400 hover:bg-emerald-500/10 transition-all cursor-pointer ${
+                                categoryImageUploadingId === cat.id ? 'opacity-60 pointer-events-none' : ''
+                              }`}
+                            >
+                              {categoryImageUploadingId === cat.id ? 'Uploading…' : 'Change PNG'}
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleCategoryImageChange(cat.id, file);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                            <button
+                              onClick={() => handleDeleteCategory(cat.id)}
+                              className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1965,9 +3011,9 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            {/* Create Category Panel */}
             <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
-              <h2 className="text-lg font-bold text-white mb-6">Create New Category</h2>
+              <h2 className="text-lg font-bold text-white mb-2">Create New Category</h2>
+              <p className="text-sm text-slate-500 mb-6">Optional tile PNG — same flow as master catalog image upload.</p>
               <form onSubmit={handleCreateCategory} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category Name</label>
@@ -1980,11 +3026,21 @@ export default function DashboardPage() {
                     className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
                   />
                 </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tile PNG (optional)</label>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(e) => setNewCategoryImageFile(e.target.files?.[0] ?? null)}
+                    className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer"
+                  />
+                </div>
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  disabled={newCategoryImageUploading}
+                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <Plus className="w-4 h-4" /> Add Category
+                  <Plus className="w-4 h-4" /> {newCategoryImageUploading ? 'Uploading…' : 'Add Category'}
                 </button>
               </form>
             </section>
@@ -2007,6 +3063,7 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Product Info</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Pack Size</th>
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">SKU</th>
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Brand</th>
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">MRP (Master)</th>
@@ -2024,9 +3081,21 @@ export default function DashboardPage() {
                             )}
                             <div>
                               <p className="font-bold text-white leading-tight">{prod.name}</p>
-                              <p className="text-[10px] text-slate-500">{prod.unit || 'units'}</p>
+                              <p className="text-[10px] text-slate-500">{prod.brand || 'Unbranded'}</p>
                             </div>
                           </div>
+                        </td>
+                        <td className="py-4 pr-3">
+                          <button
+                            type="button"
+                            onClick={() => openPackEditModal(prod)}
+                            className="text-left group cursor-pointer"
+                          >
+                            <span className="font-semibold text-emerald-300 group-hover:text-emerald-200">
+                              {resolvePackUnitLabel(prod) || '—'}
+                            </span>
+                            <span className="block text-[10px] text-slate-500 group-hover:text-slate-400">Edit pack</span>
+                          </button>
                         </td>
                         <td className="py-4 pr-3 text-slate-300 font-semibold">{prod.sku}</td>
                         <td className="py-4 pr-3 text-slate-400">{prod.brand || '-'}</td>
@@ -2055,7 +3124,7 @@ export default function DashboardPage() {
                     ))}
                     {masterProductsList.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="py-6 text-center text-slate-500 italic">No products found in catalogue. Use Bulk Excel Loader or create one on the right.</td>
+                        <td colSpan={7} className="py-6 text-center text-slate-500 italic">No products found in catalogue. Use Bulk Excel Loader or create one on the right.</td>
                       </tr>
                     )}
                   </tbody>
@@ -2173,7 +3242,7 @@ export default function DashboardPage() {
                     <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Pack Unit Variants</h3>
                     <button
                       type="button"
-                      onClick={() => setNewProdVariants([...newProdVariants, { sku: '', unit: '', mrp: '', price: '' }])}
+                      onClick={() => setNewProdVariants([...newProdVariants, { sku: '', quantityValue: '', quantityUnit: 'kg', mrp: '', price: '' }])}
                       className="text-xs font-bold px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 transition-all cursor-pointer"
                     >
                       + Add Pack Size
@@ -2192,21 +3261,22 @@ export default function DashboardPage() {
                             ✕
                           </button>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Unit Size (e.g. 1 L, 5 kg)</label>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Quantity</label>
                             <input
-                              type="text"
+                              type="number"
+                              step="any"
+                              min="0"
                               required
-                              placeholder="e.g. 5 L"
-                              value={item.unit}
+                              placeholder="e.g. 5"
+                              value={item.quantityValue}
                               onChange={(e) => {
                                 const copy = [...newProdVariants];
-                                copy[idx].unit = e.target.value;
-                                // Auto-fill SKU suffix helper
+                                copy[idx].quantityValue = e.target.value;
                                 if (newProdName.trim() && !copy[idx].sku) {
                                   const baseCode = newProdName.trim().slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '');
-                                  const unitCode = e.target.value.toUpperCase().replace(/\s+/g, '');
+                                  const unitCode = `${e.target.value}${copy[idx].quantityUnit}`.toUpperCase();
                                   copy[idx].sku = `${baseCode}-${unitCode}`;
                                 }
                                 setNewProdVariants(copy);
@@ -2214,6 +3284,38 @@ export default function DashboardPage() {
                               className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
                             />
                           </div>
+                          <div>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Unit type</label>
+                            <select
+                              required
+                              value={item.quantityUnit}
+                              onChange={(e) => {
+                                const copy = [...newProdVariants];
+                                copy[idx].quantityUnit = e.target.value;
+                                if (newProdName.trim() && copy[idx].quantityValue) {
+                                  const baseCode = newProdName.trim().slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                  const unitCode = `${copy[idx].quantityValue}${e.target.value}`.toUpperCase();
+                                  copy[idx].sku = `${baseCode}-${unitCode}`;
+                                }
+                                setNewProdVariants(copy);
+                              }}
+                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                            >
+                              {PACK_UNIT_OPTIONS.map((opt) => (
+                                <option key={opt.code} value={opt.code}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Preview</label>
+                            <div className="h-[30px] flex items-center px-2.5 rounded-lg bg-slate-900/60 border border-slate-850 text-xs text-emerald-300 font-semibold">
+                              {item.quantityValue && item.quantityUnit
+                                ? packUnitPayloadFromInput(item.quantityValue, item.quantityUnit).unit
+                                : '—'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
                           <div>
                             <label className="block text-[9px] font-semibold text-slate-500 mb-1">Variant SKU *</label>
                             <input
@@ -2281,6 +3383,60 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {packEditProduct && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
+            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-white mb-1">Edit pack size</h3>
+              <p className="text-xs text-slate-400 mb-4 truncate">{packEditProduct.name}</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quantity</label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={packEditQty}
+                    onChange={(e) => setPackEditQty(e.target.value)}
+                    className="w-full mt-1 h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Unit type</label>
+                  <select
+                    value={packEditUnit}
+                    onChange={(e) => setPackEditUnit(e.target.value)}
+                    className="w-full mt-1 h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:border-emerald-500 outline-none cursor-pointer"
+                  >
+                    {PACK_UNIT_OPTIONS.map((opt) => (
+                      <option key={opt.code} value={opt.code}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="text-sm text-emerald-300 font-semibold mb-5">
+                Customer will see: {packEditQty && packEditUnit ? packUnitPayloadFromInput(packEditQty, packEditUnit).unit : '—'}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPackEditProduct(null)}
+                  className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={packEditSaving}
+                  onClick={handleSavePackSize}
+                  className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 cursor-pointer"
+                >
+                  {packEditSaving ? 'Saving…' : 'Save pack size'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SHOP INVENTORY MANAGEMENT MODAL */}
         {selectedShopForInventory && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
@@ -2315,7 +3471,9 @@ export default function DashboardPage() {
                       >
                         <option value="">-- Choose Product --</option>
                         {masterProductsList.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} (MRP: ₹{p.mrp})</option>
+                          <option key={p.id} value={p.id}>
+                            {p.name} · {resolvePackUnitLabel(p)} (MRP: ₹{p.mrp})
+                          </option>
                         ))}
                       </select>
                     </div>

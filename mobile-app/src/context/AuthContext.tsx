@@ -7,6 +7,7 @@ export interface User {
   mobile: string;
   name: string;
   role: 'consumer' | 'admin' | 'super_admin';
+  email?: string;
 }
 
 interface AuthContextType {

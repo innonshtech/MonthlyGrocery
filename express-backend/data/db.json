@@ -6,7 +6,7 @@
       "area_name": "Andheri West",
       "pincode": "400053",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     },
     {
       "id": "loc-2",
@@ -14,7 +14,7 @@
       "area_name": "Bandra West",
       "pincode": "400050",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     },
     {
       "id": "loc-3",
@@ -22,7 +22,7 @@
       "area_name": "Powai",
       "pincode": "400076",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     },
     {
       "id": "loc-4",
@@ -30,7 +30,7 @@
       "area_name": "Juhu",
       "pincode": "400049",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     },
     {
       "id": "loc-5",
@@ -38,7 +38,7 @@
       "area_name": "Baner",
       "pincode": "411045",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     },
     {
       "id": "loc-6",
@@ -46,7 +46,7 @@
       "area_name": "Kothrud",
       "pincode": "411038",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     },
     {
       "id": "loc-7",
@@ -54,7 +54,7 @@
       "area_name": "Hinjawadi Phase 1",
       "pincode": "411057",
       "is_serviceable": true,
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
     }
   ],
   "promotional_banners": [
@@ -375,60 +375,248 @@
       "stock": 100,
       "available": true,
       "status": "approved"
+    },
+    {
+      "id": "sp-seed-0-0cee79",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "c36f4620-bb90-4297-8db6-9f7f5ee62123",
+      "selling_price": 409,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-1-2fidsr",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "1d180a34-9b08-4863-9293-889caa1569e3",
+      "selling_price": 809,
+      "discount_percentage": 10,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-2-6vyfvf",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "a86acacf-4d9a-4649-9f07-2cfea6ff6952",
+      "selling_price": 25,
+      "discount_percentage": 12,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-3-emssp2",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "51ba3924-06e0-4a27-b577-91d5cb10ba7e",
+      "selling_price": 553,
+      "discount_percentage": 21,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-4-mkkfch",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "2052e9e6-e111-4aef-b5e3-10106a7c70a2",
+      "selling_price": 420,
+      "discount_percentage": 16,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-5-5aniva",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "0b3392a8-61ff-471d-9bc8-c5b4a7e2140e",
+      "selling_price": 231,
+      "discount_percentage": 23,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-6-wb57vl",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "36c6a9a0-439f-4523-b29c-4245fd2de65c",
+      "selling_price": 248,
+      "discount_percentage": 20,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-7-4dz7w9",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "a1267479-c34f-4f94-827e-41628940f65b",
+      "selling_price": 390,
+      "discount_percentage": 25,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-8-sit4jx",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "87b93b6c-6c7f-486a-91a2-08ee5a6037e5",
+      "selling_price": 405,
+      "discount_percentage": 25,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-9-iowcnp",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "8135a325-532c-4d09-8f5c-407da3372a30",
+      "selling_price": 146,
+      "discount_percentage": 19,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-10-krtw3i",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "ef1bfa61-0f8d-4308-8047-9579df3803be",
+      "selling_price": 612,
+      "discount_percentage": 10,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-11-gljm4h",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "ef2cf9f1-5cc6-445e-9214-0aaa6cca9d9e",
+      "selling_price": 370,
+      "discount_percentage": 12,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-12-tzzrp1",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "9028a9c1-0c21-44d7-84aa-460d5681d174",
+      "selling_price": 206,
+      "discount_percentage": 14,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-13-rtutis",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "78a171d1-447e-4e32-9861-691f2108337d",
+      "selling_price": 116,
+      "discount_percentage": 23,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-14-zs7dzq",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "6d1ae73b-4f9e-43ab-9bf1-8f3716883fa8",
+      "selling_price": 262,
+      "discount_percentage": 18,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-15-k68dwa",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "6bb490e9-1edb-46e2-be3e-eff75d5e9cb1",
+      "selling_price": 96,
+      "discount_percentage": 20,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-16-x3vrj1",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "889511d3-1ae9-404b-a17c-559d82ec2864",
+      "selling_price": 125,
+      "discount_percentage": 22,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-seed-17-i4yp8g",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "product_id": "1ffad00f-7b46-4054-9a0e-338caed0718c",
+      "selling_price": 165,
+      "discount_percentage": 25,
+      "stock": 100,
+      "available": true,
+      "status": "approved"
     }
   ],
   "categories": [
     {
       "id": "cat-1",
       "name": "Atta & Rice",
-      "image_url": "https://images.unsplash.com/photo-1574316071802-0d684efa7bf5?w=200&h=200&fit=crop"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
     },
     {
       "id": "cat-2",
       "name": "Oils & Ghee",
-      "image_url": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&h=200&fit=crop"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_mustard_oil_5l.png"
     },
     {
       "id": "cat-3",
       "name": "Dals & Pulses",
-      "image_url": "https://images.unsplash.com/photo-1515942400756-12822287e6a6?w=200&h=200&fit=crop"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_basmati_rice_5kg.png"
     },
     {
       "id": "cat-4",
       "name": "Spices & Masala",
-      "image_url": "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=200&h=200&fit=crop"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/everest_garam_masala_100g.png"
     },
     {
       "id": "cat-5",
-      "name": "Dry Fruits"
+      "name": "Dry Fruits",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/cadbury_bournvita_1kg.png"
     },
     {
       "id": "cat-6",
-      "name": "Snacks"
+      "name": "Snacks",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/maggi_masala_noodles_12pack.png"
     },
     {
       "id": "cat-7",
-      "name": "Beverages"
+      "name": "Beverages",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_tea_gold_500g.png"
     },
     {
       "id": "cat-8",
-      "name": "Biscuits"
+      "name": "Biscuits",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_salt_lite_1kg.png"
     },
     {
       "id": "cat-9",
-      "name": "Cleaning"
+      "name": "Cleaning",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/surf_excel_detergent_3kg.png"
     },
     {
       "id": "cat-10",
-      "name": "Personal Care"
+      "name": "Personal Care",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/amul_pure_ghee_1l.png"
     },
     {
       "id": "cat-11",
-      "name": "Home & Kitchen"
+      "name": "Home & Kitchen",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/lizol_floor_cleaner_2l.png"
     },
     {
       "id": "cat-12",
-      "name": "Baby Care"
+      "name": "Baby Care",
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/cadbury_bournvita_1kg.png"
     }
   ],
   "coupons": [
@@ -805,6 +993,564 @@
     "reorder_cta_label": "Reorder",
     "first_basket_title": "Build your first basket",
     "first_basket_subtitle": "Curated essentials for your home",
-    "first_basket_cta_label": "Start"
+    "first_basket_cta_label": "Start",
+    "load_error_message": "Could not load home screen. Check that the backend is running.",
+    "retry_label": "Retry",
+    "location_required_deals_label": "Choose your delivery area to see deals from your local store."
+  },
+  "search_screen": {
+    "search_placeholder": "Search atta, rice, oil…",
+    "popular_searches_label": "POPULAR SEARCHES",
+    "products_section_label": "PRODUCTS",
+    "empty_title_template": "No results for \"{query}\"",
+    "empty_subtitle": "Try another search term or check spelling",
+    "location_required_message": "Choose your delivery area to search products from your local store.",
+    "choose_location_label": "Choose delivery area",
+    "load_error_message": "Could not load search screen. Check that the backend is running.",
+    "retry_label": "Retry"
+  },
+  "categories_screen": {
+    "title": "All categories",
+    "search_placeholder": "Search \"atta\", \"rice\", \"oil\"…",
+    "section_grocery_label": "GROCERY & KITCHEN",
+    "section_snacks_label": "SNACKS & BEVERAGES",
+    "section_household_label": "HOUSEHOLD & CARE",
+    "section_default_label": "GROCERY & KITCHEN",
+    "empty_message": "No categories match your search",
+    "load_error_message": "Could not load categories. Check that the backend is running.",
+    "retry_label": "Retry"
+  },
+  "category_products_screen": {
+    "search_placeholder_template": "Search in {category}",
+    "items_count_template": "{category} · {count} items",
+    "sort_label": "Sort",
+    "sub_category_all_label": "All",
+    "empty_message": "No products found",
+    "deals_title": "Deals of the month",
+    "location_required_message": "Choose your delivery area to see products from your local store.",
+    "choose_location_label": "Choose delivery area",
+    "load_error_message": "Could not load products. Check that the backend is running.",
+    "retry_label": "Retry",
+    "view_cart_label": "View cart",
+    "cart_item_label": "1 item",
+    "cart_items_template": "{count} items",
+    "add_button_label": "ADD",
+    "filter_sheet_title": "Sort & filter",
+    "filter_sort_section_label": "SORT BY",
+    "filter_sort_relevance": "Relevance",
+    "filter_sort_price_low": "Price — Low to High",
+    "filter_sort_price_high": "Price — High to Low",
+    "filter_sort_discount": "Discount — High to Low",
+    "filter_pack_section_label": "PACK SIZE",
+    "filter_clear_label": "Clear all",
+    "filter_apply_label": "Apply"
+  },
+  "area_notify_requests": [],
+  "product_detail_screen": {
+    "delivery_window_label": "Delivered in your planned 4-hour window",
+    "highlights_section_label": "HIGHLIGHTS",
+    "add_to_cart_label": "Add to cart",
+    "unit_price_suffix_template": "{unit} · incl. taxes",
+    "not_found_message": "Product not found or unavailable in your area.",
+    "location_required_message": "Choose your delivery area to see product details and prices.",
+    "choose_location_label": "Choose delivery area",
+    "load_error_message": "Could not load product. Check that the backend is running.",
+    "retry_label": "Retry"
+  },
+  "cart_screen": {
+    "title": "Your cart",
+    "cart_item_label": "1 item",
+    "cart_items_template": "{count} items",
+    "empty_title": "Your cart is empty",
+    "empty_message": "Add your monthly essentials and they’ll show up here.",
+    "start_shopping_label": "Start shopping",
+    "reorder_last_month_label": "Reorder last month’s basket",
+    "save_basket_label": "Save this cart as a basket",
+    "apply_coupon_label": "Apply coupon",
+    "coupon_applied_template": "{code} applied · ₹{discount} saved",
+    "bill_details_title": "Bill details",
+    "bill_item_total_label": "Item total (MRP)",
+    "bill_savings_label": "Savings",
+    "bill_delivery_fee_label": "Delivery fee",
+    "bill_delivery_fee_value": "FREE",
+    "bill_coupon_discount_label": "Coupon discount",
+    "bill_to_pay_label": "To pay",
+    "sticky_to_pay_label": "TO PAY",
+    "proceed_to_pay_label": "Proceed to pay",
+    "below_min_title_template": "Add ₹{amount} more to check out",
+    "below_min_footnote_template": "You’re at ₹{current} of the ₹{minimum} monthly minimum order",
+    "savings_banner_template": "You're saving ₹{savings} on this order 🎉",
+    "add_more_checkout_template": "Add ₹{amount} more",
+    "min_order_alert_template": "Please add ₹{amount} more to reach the ₹{minimum} minimum order value.",
+    "empty_preview_image_1": "",
+    "empty_preview_image_2": "",
+    "load_error_message": "Could not load cart screen. Check that the backend is running.",
+    "retry_label": "Retry"
+  },
+  "offers_coupons_screen": {
+    "title": "Offers & coupons",
+    "manual_code_placeholder": "Enter coupon code",
+    "manual_apply_label": "Apply",
+    "available_section_label": "AVAILABLE FOR YOU",
+    "expires_template": "Expires {date}",
+    "list_apply_label": "APPLY",
+    "empty_message": "No offers available right now.",
+    "load_error_message": "Could not load offers screen. Check that the backend is running.",
+    "retry_label": "Retry",
+    "min_order_alert_title": "Minimum Order Not Met",
+    "min_order_alert_template": "Add ₹{amount} more to your basket to apply code {code}.",
+    "invalid_coupon_alert_title": "Invalid Coupon",
+    "apply_failed_fallback": "Failed to apply coupon.",
+    "connection_error_title": "Error",
+    "connection_error_message": "Connection error while applying coupon.",
+    "unlock_offer_template": "Add items worth ₹{amount} more to unlock this offer",
+    "audience_new_guideline": "Welcome Offer: Valid on first order only.",
+    "audience_loyal_guideline": "Loyalty Offer: Valid for returning customers.",
+    "audience_all_guideline": "Valid for all customers.",
+    "usage_limit_template": "Limit: Max {limit} uses per account."
+  },
+  "orders_screen": {
+    "title": "Your orders",
+    "guest_title": "Sign in to see your orders",
+    "guest_subtitle": "View deliveries and reorder your monthly baskets once you sign in.",
+    "guest_cta_label": "Continue with phone number",
+    "empty_title": "No orders yet",
+    "empty_message": "Once you place your monthly grocery order, you can track it right here.",
+    "empty_cta_label": "Start monthly shopping",
+    "past_orders_section_label": "PAST ORDERS",
+    "active_arriving_template": "Arriving {slot}",
+    "track_button_label": "Details",
+    "delivery_otp_label": "Delivery OTP",
+    "items_count_template": "{count} items",
+    "reorder_button_label": "Reorder",
+    "delivered_status_template": "Delivered · {date}",
+    "status_out_for_delivery": "Out for delivery",
+    "status_confirmed": "Order confirmed",
+    "status_packed": "Packed",
+    "load_error_message": "Could not load orders. Check that the backend is running.",
+    "retry_label": "Retry",
+    "reorder_success_title": "Basket reordered",
+    "reorder_success_message_template": "Added {count} items from {order_id} to your cart.",
+    "reorder_keep_browsing_label": "Keep browsing",
+    "reorder_view_cart_label": "View cart",
+    "reorder_error_message": "Could not reorder items at this moment.",
+    "error_alert_title": "Something went wrong",
+    "default_product_name": "Grocery item"
+  },
+  "order_tracking_screen": {
+    "title": "Track order",
+    "out_for_delivery_banner": "OUT FOR DELIVERY",
+    "arriving_template": "Arriving {slot}",
+    "subtitle": "Your whole monthly order, in one trip",
+    "delivery_otp_label": "DELIVERY OTP",
+    "delivery_otp_subtitle": "Share this with your delivery partner",
+    "timeline_confirmed": "Order confirmed",
+    "timeline_packed": "Packed at your store",
+    "timeline_dispatched": "Dispatched",
+    "timeline_out_for_delivery": "Out for delivery",
+    "timeline_delivered": "Delivered",
+    "timeline_pending_time": "Pending",
+    "timeline_expected_template": "Expected by {time}",
+    "delivery_partner_label": "Your delivery partner",
+    "view_summary_title": "View order summary",
+    "view_summary_subtitle_template": "{count} items · {amount}",
+    "help_title": "Need help with this order?",
+    "help_subtitle": "Chat with support",
+    "load_error_message": "Could not load order tracking. Check that the backend is running.",
+    "retry_label": "Retry"
+  },
+  "order_detail_screen": {
+    "title": "Order details",
+    "items_section_template": "{count} ITEMS",
+    "items_not_delivered_template": "{count} ITEMS · NOT DELIVERED",
+    "qty_template": "Qty {qty}",
+    "delivery_details_section_label": "DELIVERY DETAILS",
+    "delivered_to_label": "Delivered to",
+    "delivery_window_label": "Delivery window",
+    "paid_via_label": "Paid via",
+    "paid_via_template": "{method} · {amount}",
+    "bill_details_title": "BILL DETAILS",
+    "bill_item_total_label": "Item total (MRP)",
+    "bill_coupon_template": "Coupon ({code})",
+    "bill_savings_label": "Savings",
+    "bill_delivery_fee_label": "Delivery fee",
+    "bill_delivery_fee_value": "FREE",
+    "bill_total_paid_label": "Total paid",
+    "reorder_button_label": "Reorder this basket",
+    "invoice_label": "Invoice",
+    "get_help_label": "Get help",
+    "status_timeline_section_label": "ORDER STATUS",
+    "active_arriving_template": "Arriving {slot}",
+    "status_out_for_delivery": "Out for delivery",
+    "status_confirmed": "Order confirmed",
+    "status_packed": "Packed",
+    "timeline_confirmed": "Order confirmed",
+    "timeline_packed": "Packed at your store",
+    "timeline_dispatched": "Dispatched",
+    "timeline_out_for_delivery": "Out for delivery",
+    "timeline_delivered": "Delivered",
+    "timeline_pending_time": "Pending",
+    "timeline_expected_template": "Expected by {time}",
+    "delivery_otp_label": "Delivery OTP",
+    "delivery_otp_subtitle": "Share this with your delivery partner",
+    "delivery_partner_label": "Your delivery partner",
+    "delivered_status_label": "Delivered",
+    "delivered_on_template": "On {datetime} · {order_id}",
+    "cancelled_status_label": "Order cancelled",
+    "cancelled_on_template": "Cancelled on {datetime} · {cancelled_by}",
+    "cancelled_by_you_label": "by you",
+    "cancelled_by_support_label": "by support",
+    "reorder_cancelled_button_label": "Reorder these items",
+    "cancelled_help_label": "Need help with this order?",
+    "cancel_order_label": "Cancel order",
+    "cancel_order_confirm_title": "Cancel this order?",
+    "cancel_order_confirm_message": "You can cancel anytime before your store starts packing this monthly basket.",
+    "cancel_order_confirm_yes": "Yes, cancel",
+    "cancel_order_confirm_no": "Keep order",
+    "cancel_order_error_message": "Could not cancel this order. It may have already started packing.",
+    "refund_initiated_template": "Refund of {amount} initiated",
+    "refund_eta_message": "Refund timeline depends on your payment method.",
+    "load_error_message": "Could not load order details. Check that the backend is running.",
+    "retry_label": "Retry",
+    "reorder_success_title": "Reorder successful",
+    "reorder_success_message_template": "Added {count} items to your cart.",
+    "reorder_keep_browsing_label": "Keep browsing",
+    "reorder_view_cart_label": "View cart",
+    "reorder_error_message": "Could not reorder items at this moment.",
+    "error_alert_title": "Something went wrong",
+    "default_product_name": "Grocery item"
+  },
+  "monthly_grocery_hub_screen": {
+    "title": "My Monthly Grocery",
+    "hero_badge": "PLAN ONCE · SAVE MORE",
+    "hero_title": "Your whole month, sorted in one tap",
+    "hero_subtitle": "Smart baskets built from what your home actually buys — reorder in seconds.",
+    "hero_savings_template": "₹{amount} saved this month",
+    "card_one_click_title": "One-click monthly cart",
+    "card_one_click_subtitle": "Auto-build this month’s basket from what you usually buy",
+    "card_copy_title": "Copy last month’s basket",
+    "card_copy_subtitle_template": "Recreate your {month} order · {count} items",
+    "card_copy_empty_subtitle": "Reorder from your most recent monthly order",
+    "card_saved_title": "Saved baskets",
+    "card_saved_subtitle_template": "{count} baskets ready to reorder",
+    "card_saved_empty_subtitle": "Save baskets to reorder faster",
+    "card_build_title": "Build from your list",
+    "card_build_soon_badge": "SOON",
+    "card_build_subtitle": "Type, snap a photo, or say it aloud",
+    "load_error_message": "Could not load monthly grocery hub. Check that the backend is running.",
+    "retry_label": "Retry",
+    "metrics_error_message": "Could not load your savings and order summary.",
+    "no_last_order_title": "No past order yet",
+    "no_last_order_message": "Place your first monthly grocery order to copy it next time."
+  },
+  "one_click_cart_screen": {
+    "title": "Your monthly basket",
+    "generating_title": "Building your basket",
+    "generating_subtitle": "Looking at what your home buys every month…",
+    "insight_title_template": "Built from your last {months} months",
+    "insight_subtitle_template": "{count} essentials your home buys every month",
+    "items_count_template": "{count} items",
+    "add_all_label": "Add all to cart",
+    "add_all_success_title": "Monthly basket added",
+    "add_all_success_message_template": "Added {count} items to your cart.",
+    "keep_browsing_label": "Keep browsing",
+    "view_cart_label": "View cart",
+    "empty_title": "No monthly pattern yet",
+    "empty_message": "Place a few monthly orders and we will auto-build a basket from what your home buys.",
+    "empty_cta_label": "Start shopping",
+    "no_location_title": "Choose delivery area",
+    "no_location_message": "Select your city and area to load live store prices for your basket.",
+    "load_error_message": "Could not build your monthly basket. Please try again.",
+    "retry_label": "Retry",
+    "unavailable_label": "Unavailable at your store",
+    "source_months": 3,
+    "section_label_overrides": {
+      "Atta & Rice": "STAPLES",
+      "Dals & Pulses": "STAPLES",
+      "Cooking Essentials": "STAPLES",
+      "Oils & Ghee": "TEA, OILS & DAIRY",
+      "Tea & Coffee": "TEA, OILS & DAIRY",
+      "Dairy Staples": "TEA, OILS & DAIRY",
+      "Beverages": "TEA, OILS & DAIRY",
+      "Cleaning & Home": "HOUSEHOLD",
+      "Personal Care": "HOUSEHOLD"
+    }
+  },
+  "copy_last_month_screen": {
+    "title": "Copy last month",
+    "insight_title_template": "Your basket from {month}",
+    "insight_subtitle_template": "{count} items · delivered {date}",
+    "changes_all_good_message": "All items match your last order — prices and stock verified",
+    "changes_both_template": "A few things changed — {repriced} repriced, {unavailable} now unavailable",
+    "changes_repriced_only_template": "{repriced} items updated with today’s prices",
+    "changes_unavailable_only_template": "{unavailable} items now unavailable",
+    "available_count_template": "{count} available",
+    "add_to_cart_label": "Add to cart",
+    "add_success_title": "Previous basket copied",
+    "add_success_message_template": "Added {count} items to your cart.",
+    "keep_browsing_label": "Keep browsing",
+    "view_cart_label": "View cart",
+    "empty_title": "No previous orders yet",
+    "empty_message": "Once you complete your first monthly grocery order, you can recreate that basket here in one tap.",
+    "empty_cta_label": "Start shopping",
+    "no_location_title": "Choose delivery area",
+    "no_location_message": "Select your city and area to verify live store prices for your last order.",
+    "load_error_message": "Could not load your last order basket. Please try again.",
+    "retry_label": "Retry",
+    "unavailable_label": "Unavailable",
+    "view_similar_label": "View similar",
+    "was_price_template": "was ₹{amount}"
+  },
+  "saved_baskets_screen": {
+    "title": "Saved baskets",
+    "new_basket_label": "+ New",
+    "items_summary_template": "{count} items · {preview}",
+    "add_to_cart_label": "Add to cart",
+    "add_success_title": "Basket added",
+    "add_success_message_template": "Added items from \"{name}\" to your cart.",
+    "keep_browsing_label": "Keep browsing",
+    "view_cart_label": "View cart",
+    "empty_title": "No saved baskets yet",
+    "empty_message": "Save your current cart or a past order as a basket to reorder in one tap next month.",
+    "empty_cta_label": "Start shopping",
+    "save_sheet_title": "Save as a basket",
+    "save_sheet_subtitle": "Reuse these items next month in one tap.",
+    "basket_name_label": "BASKET NAME",
+    "default_basket_name_template": "Monthly basket · {month}",
+    "items_will_save_template": "{count} items · {amount} will be saved",
+    "save_basket_button_label": "Save basket",
+    "success_title": "Saved to your baskets",
+    "success_message_template": "“{name}” is ready to reorder anytime.",
+    "view_saved_baskets_label": "View saved baskets",
+    "done_label": "Done",
+    "empty_cart_title": "Cart is empty",
+    "empty_cart_message": "Add items to your cart before saving a basket.",
+    "no_location_title": "Choose delivery area",
+    "no_location_message": "Select your city and area to add baskets with live store prices.",
+    "unavailable_skip_message": "Some items were unavailable and were skipped.",
+    "load_error_message": "Could not load saved baskets screen. Please try again.",
+    "retry_label": "Retry",
+    "preview_name_count": 4
+  },
+  "account_screen": {
+    "title": "Account",
+    "edit_label": "Edit",
+    "savings_header": "SAVED WITH MONTHLYGROCERY",
+    "savings_since_template": "since you joined in {month}",
+    "menu_saved_addresses": "Saved addresses",
+    "menu_my_coupons": "My coupons",
+    "menu_help_support": "Help & support",
+    "menu_about_terms": "About & terms",
+    "logout_label": "Log out",
+    "guest_title": "You’re browsing as a guest",
+    "guest_subtitle": "Log in to track orders, save your monthly baskets, and check out faster.",
+    "guest_login_label": "Log in or sign up",
+    "guest_delivery_area_label": "Delivery area",
+    "guest_delivery_area_template": "{area}, {city}",
+    "guest_no_area_label": "Choose your delivery area",
+    "about_alert_title": "MonthlyGrocery",
+    "about_alert_message": "Version 1.0.0 · Your monthly grocery savings platform.",
+    "logout_sheet_title": "Log out of MonthlyGrocery?",
+    "logout_sheet_subtitle": "You can log back in anytime with your phone number to access your saved monthly baskets and order history.",
+    "logout_cancel_label": "Cancel",
+    "logout_confirm_label": "Log out",
+    "load_error_message": "Could not load account screen. Please try again.",
+    "retry_label": "Retry",
+    "metrics_error_message": "Could not load your savings summary."
+  },
+  "edit_profile_screen": {
+    "title": "Edit profile",
+    "change_photo_label": "Change photo",
+    "change_photo_alert_title": "Change photo",
+    "change_photo_alert_message": "Photo upload is coming soon.",
+    "full_name_label": "Full name",
+    "full_name_placeholder": "Enter full name",
+    "phone_label": "Phone number",
+    "verified_label": "Verified",
+    "email_label": "Email (optional)",
+    "email_placeholder": "Enter email address",
+    "delete_account_label": "Delete account",
+    "save_button_label": "Save changes",
+    "name_required_title": "Required",
+    "name_required_message": "Please enter your full name.",
+    "save_success_title": "Profile updated",
+    "save_success_message": "Your profile details have been saved successfully!",
+    "save_error_message": "Could not save your profile. Please try again.",
+    "load_error_message": "Could not load edit profile screen. Please try again.",
+    "retry_label": "Retry"
+  },
+  "saved_addresses_screen": {
+    "title": "Saved addresses",
+    "select_title": "Select delivery address",
+    "empty_title": "No saved addresses yet",
+    "empty_message": "Add your delivery address to continue checkout.",
+    "add_address_label": "Add a new address",
+    "deliver_button_label": "Deliver to this address",
+    "default_badge_label": "DEFAULT",
+    "select_alert_title": "Select an address",
+    "select_alert_message": "Please choose a delivery address to continue.",
+    "load_error_message": "Could not load saved addresses. Please try again.",
+    "retry_label": "Retry"
+  },
+  "add_address_screen": {
+    "add_title": "Add address",
+    "edit_title": "Edit address",
+    "flat_label": "FLAT / HOUSE NO.",
+    "flat_placeholder": "Enter flat or house number",
+    "street_label": "AREA / LOCALITY",
+    "street_placeholder": "Enter area, locality, and city",
+    "landmark_label": "LANDMARK (OPTIONAL)",
+    "landmark_placeholder": "Near hospital, school, etc.",
+    "pincode_label": "PINCODE",
+    "pincode_placeholder": "6-digit pincode",
+    "phone_label": "PHONE",
+    "phone_placeholder": "10-digit mobile",
+    "save_as_label": "SAVE AS",
+    "tag_home_key": "Home",
+    "tag_home_label": "Home",
+    "tag_work_key": "Work",
+    "tag_work_label": "Work",
+    "tag_other_key": "Other",
+    "tag_other_label": "Other",
+    "default_tag_key": "Home",
+    "save_button_label": "Save address",
+    "saving_button_label": "Saving…",
+    "login_required_title": "Login required",
+    "login_required_message": "Please log in to save your delivery address.",
+    "incomplete_title": "Incomplete details",
+    "incomplete_message": "Please fill flat/house, area/locality, and pincode.",
+    "save_error_title": "Error",
+    "load_error_message": "Could not load add address screen. Please try again.",
+    "retry_label": "Retry"
+  },
+  "my_coupons_screen": {
+    "title": "My coupons",
+    "banner_title": "Monthly Savings Club",
+    "banner_subtitle": "Use these coupons at checkout to unlock guaranteed monthly discounts on pantry staples.",
+    "section_label": "AVAILABLE OFFERS",
+    "expires_template": "Expires on {date}",
+    "list_copy_label": "COPY",
+    "empty_message": "No offers available right now.",
+    "copy_alert_title": "Coupon copied",
+    "copy_alert_message_template": "Promo code \"{code}\" is ready. You can paste it during checkout.",
+    "copy_alert_go_cart_label": "Go to cart",
+    "copy_alert_ok_label": "OK",
+    "load_error_message": "Could not load my coupons screen. Please try again.",
+    "retry_label": "Retry",
+    "audience_new_guideline": "Welcome Offer: Valid on first order only.",
+    "audience_loyal_guideline": "Loyalty Offer: Valid for returning customers.",
+    "audience_all_guideline": "Valid for all customers.",
+    "usage_limit_template": "Limit: Max {limit} uses per account."
+  },
+  "help_support_screen": {
+    "title": "Help & support",
+    "chat_title": "Chat with us",
+    "chat_subtitle": "Avg reply: < 5 min",
+    "call_title": "Call us",
+    "call_subtitle": "7:00 AM - 10:00 PM daily",
+    "phone_number": "+918830480015",
+    "whatsapp_phone": "918830480015",
+    "whatsapp_message": "Hi MonthlyGrocery Support",
+    "chat_fallback_alert_title": "Support chat",
+    "chat_fallback_alert_message": "Could not open WhatsApp. Please try again later.",
+    "call_fallback_alert_title": "Helpline",
+    "call_fallback_alert_message": "Could not start a phone call on this device.",
+    "call_fallback_message_template": "Call our support team at {phone} ({hours}).",
+    "faq_section_label": "FREQUENTLY ASKED QUESTIONS",
+    "delivery_areas_answer_template": "We currently deliver across {areas} with expanding coverage across Maharashtra.",
+    "faqs": [
+      {
+        "id": "faq-delivery",
+        "question": "Where do you deliver?",
+        "answer_template": "{delivery_areas}"
+      },
+      {
+        "id": "faq-min-order",
+        "question": "How does the ₹2,000 minimum work?",
+        "answer": "To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,000."
+      },
+      {
+        "id": "faq-edit-cancel",
+        "question": "Can I edit or cancel a placed order?",
+        "answer": "Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket."
+      },
+      {
+        "id": "faq-baskets",
+        "question": "How do subscriptions & baskets work?",
+        "answer": "You can tap \"Save as a basket\" on any active cart to create a reusable template. Next month, open Saved Baskets and reorder in one tap with verified live rates."
+      },
+      {
+        "id": "faq-slots",
+        "question": "Delivery slots and timing",
+        "answer": "We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM)."
+      }
+    ],
+    "load_error_message": "Could not load help & support. Please try again.",
+    "retry_label": "Retry"
+  },
+  "delete_account_screen": {
+    "title": "Delete account",
+    "warning_text": "This permanently deletes your MonthlyGrocery account and all your saved data. This action cannot be undone.",
+    "section_label": "WHAT WILL BE DELETED:",
+    "deleted_items": [
+      {
+        "id": "item-orders",
+        "label": "Order history & tracking"
+      },
+      {
+        "id": "item-baskets",
+        "label": "Saved monthly baskets"
+      },
+      {
+        "id": "item-addresses",
+        "label": "Saved addresses"
+      },
+      {
+        "id": "item-coupons",
+        "label": "Coupons & rewards"
+      }
+    ],
+    "active_orders_warning": "Any active orders will be delivered before your account is closed.",
+    "agreement_label": "I understand this is permanent and cannot be undone",
+    "delete_button_label": "Delete my account",
+    "cancel_label": "Cancel",
+    "agreement_required_title": "Required",
+    "agreement_required_message": "Please check the confirmation box to proceed.",
+    "delete_error_message": "Could not delete your account. Please try again.",
+    "success_title": "Your account has been deleted",
+    "success_subtitle": "Your MonthlyGrocery account and all your associated data have been permanently removed. We're sorry to see you go — you're always welcome back!",
+    "success_active_orders_note": "Active orders (if any) will still be delivered.",
+    "success_back_home_label": "Back to Home",
+    "load_error_message": "Could not load delete account screen. Please try again.",
+    "retry_label": "Retry"
+  },
+  "system_states_screen": {
+    "offline": {
+      "title": "You're offline",
+      "subtitle": "Check your internet connection and try again.",
+      "primary_button_label": "Retry"
+    },
+    "unserviceable": {
+      "title": "We're not here yet",
+      "subtitle_template": "MonthlyGrocery doesn't deliver to {area} yet, but we're expanding fast.",
+      "subtitle": "",
+      "primary_button_label": "Notify me when you're live",
+      "secondary_button_label": "Change area",
+      "notify_success_message": "We've saved your request. You'll be the first to know when MonthlyGrocery begins deliveries in your area.",
+      "notify_error_message": "Could not save your request. Please try again."
+    },
+    "error": {
+      "title": "Something went wrong",
+      "subtitle": "We hit a snag on our end. Please try again in a moment.",
+      "primary_button_label": "Try again",
+      "secondary_button_label": "Go to home"
+    },
+    "maintenance": {
+      "title": "Back in a bit",
+      "subtitle": "We're doing some quick upkeep to serve you better. Please check back shortly.",
+      "primary_button_label": "Retry"
+    },
+    "load_error_message": "Could not load system state screen. Please try again.",
+    "retry_label": "Retry"
   }
 }

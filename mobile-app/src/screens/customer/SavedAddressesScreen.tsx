@@ -23,7 +23,9 @@ import {
 } from '../../components/CheckoutFigmaIcons';
 import {
   type AddressItem,
+  type SavedAddressesScreenConfig,
   fetchUserAddresses,
+  fetchSavedAddressesScreenConfig,
   cacheAddressesLocally,
 } from '../../services/addressApi';
 
@@ -36,11 +38,21 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
   const isSelectMode =
     route?.name === 'DeliveryAddress' || typeof route?.params?.onSelect === 'function';
 
+  const [screenConfig, setScreenConfig] = useState<SavedAddressesScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>(
     route?.params?.selectedAddress?.id || '',
   );
+
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchSavedAddressesScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
 
   const loadStoredAddresses = useCallback(async () => {
     if (!token) {
@@ -74,8 +86,8 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      loadStoredAddresses();
-    }, [loadStoredAddresses]),
+      loadConfig().then(() => loadStoredAddresses());
+    }, [loadConfig, loadStoredAddresses]),
   );
 
   const formatLine = (addr: AddressItem) =>
@@ -95,9 +107,13 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
   };
 
   const handleDeliver = () => {
+    if (!screenConfig) return;
     const addr = addresses.find((a) => a.id === selectedId);
     if (!addr) {
-      Alert.alert('Select an address', 'Please choose a delivery address to continue.');
+      Alert.alert(
+        screenConfig.select_alert_title,
+        screenConfig.select_alert_message,
+      );
       return;
     }
 
@@ -107,6 +123,30 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
       merge: true,
     });
   };
+
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadConfig()}>
+            <ActivityIndicator color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const headerTitle = isSelectMode ? screenConfig.select_title : screenConfig.title;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -120,9 +160,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
         >
           <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isSelectMode ? 'Select delivery address' : 'Saved addresses'}
-        </Text>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
       </View>
 
       <ScrollView
@@ -136,57 +174,66 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
           </View>
         ) : addresses.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>No saved addresses yet</Text>
-            <Text style={styles.emptySub}>Add your delivery address to continue checkout.</Text>
+            <Text style={styles.emptyTitle}>{screenConfig.empty_title}</Text>
+            <Text style={styles.emptySub}>{screenConfig.empty_message}</Text>
           </View>
         ) : (
           addresses.map((addr) => {
-          const selected = addr.id === selectedId;
-          return (
-            <TouchableOpacity
-              key={addr.id}
-              style={[styles.addressCard, selected ? styles.addressCardSelected : styles.addressCardIdle]}
-              onPress={() => setSelectedId(addr.id)}
-              activeOpacity={0.85}
-            >
-              {selected ? <AddressRadioOnIcon size={22} /> : <AddressRadioOffIcon size={22} />}
-
-              <View style={styles.cardBody}>
-                <View style={styles.titleRow}>
-                  <AddressPinIcon size={16} />
-                  <Text style={styles.tagText}>{addr.tag}</Text>
-                  {addr.isDefault ? (
-                    <View style={styles.defaultBadge}>
-                      <Text style={styles.defaultBadgeText}>DEFAULT</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text style={styles.addressLine}>{formatLine(addr)}</Text>
-              </View>
-
+            const selected = addr.id === selectedId;
+            return (
               <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => handleOpenEdit(addr)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                key={addr.id}
+                style={[
+                  styles.addressCard,
+                  selected ? styles.addressCardSelected : styles.addressCardIdle,
+                ]}
+                onPress={() => setSelectedId(addr.id)}
+                activeOpacity={0.85}
               >
-                <AddressEditIcon size={17} />
+                {selected ? <AddressRadioOnIcon size={22} /> : <AddressRadioOffIcon size={22} />}
+
+                <View style={styles.cardBody}>
+                  <View style={styles.titleRow}>
+                    <AddressPinIcon size={16} />
+                    <Text style={styles.tagText}>{addr.tag}</Text>
+                    {addr.isDefault ? (
+                      <View style={styles.defaultBadge}>
+                        <Text style={styles.defaultBadgeText}>
+                          {screenConfig.default_badge_label}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={styles.addressLine}>{formatLine(addr)}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.editBtn}
+                  onPress={() => handleOpenEdit(addr)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <AddressEditIcon size={17} />
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        })
+            );
+          })
         )}
 
         <TouchableOpacity style={styles.addCard} onPress={handleOpenAdd} activeOpacity={0.85}>
           <CheckoutPlusIcon size={18} />
-          <Text style={styles.addCardText}>Add a new address</Text>
+          <Text style={styles.addCardText}>{screenConfig.add_address_label}</Text>
         </TouchableOpacity>
       </ScrollView>
 
       {isSelectMode ? (
         <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
           <View style={styles.bottomBar}>
-            <TouchableOpacity style={styles.deliverBtn} onPress={handleDeliver} activeOpacity={0.85}>
-              <Text style={styles.deliverBtnText}>Deliver to this address</Text>
+            <TouchableOpacity
+              style={styles.deliverBtn}
+              onPress={handleDeliver}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.deliverBtnText}>{screenConfig.deliver_button_label}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -199,6 +246,20 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: SCREEN_BG,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topHeader: {
     flexDirection: 'row',

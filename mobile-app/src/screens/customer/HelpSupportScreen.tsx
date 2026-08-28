@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,68 +7,119 @@ import {
   ScrollView,
   StatusBar,
   Linking,
-  Alert
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { useFocusEffect } from '@react-navigation/native';
+import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
+import {
+  AccountChevronIcon,
+  AccountMenuHelpIcon,
+  HelpSupportPhoneIcon,
+} from '../../components/account/AccountHubIcons';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import {
+  HelpSupportScreenConfig,
+  buildTelUrl,
+  buildWhatsAppUrl,
+  fetchHelpSupportScreenConfig,
+  formatHelpTemplate,
+} from '../../services/helpSupportApi';
 
-const FAQS = [
-  {
-    q: 'Where do you deliver?',
-    a: 'We currently deliver across Pune (Kothrud, Baner, Aundh, Hinjewadi, Wakad, Viman Nagar) with expanding coverage across Maharashtra.'
-  },
-  {
-    q: 'How does the ₹2,000 minimum work?',
-    a: 'To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,000.'
-  },
-  {
-    q: 'Can I edit or cancel a placed order?',
-    a: 'Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket.'
-  },
-  {
-    q: 'How do subscriptions & baskets work?',
-    a: 'You can tap "Save as a basket" on any active cart to create a reusable template. Next month, open Saved Baskets and reorder in 1 tap with verified live rates.'
-  },
-  {
-    q: 'Delivery slots and timing',
-    a: 'We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM).'
-  }
-];
+const SCREEN_BG = '#FBFAF6';
 
 export default function HelpSupportScreen({ navigation }: any) {
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [screenConfig, setScreenConfig] = useState<HelpSupportScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const toggleFaq = (idx: number) => {
-    setExpandedIdx(expandedIdx === idx ? null : idx);
-  };
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchHelpSupportScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConfig();
+    }, [loadConfig]),
+  );
 
   const handleChatWhatsApp = () => {
-    Linking.openURL('https://wa.me/919876543210?text=Hi%20MonthlyGrocery%20Support').catch(() => {
-      Alert.alert('Support Chat', 'Connecting with customer care executive...');
+    if (!screenConfig) return;
+    const url = buildWhatsAppUrl(
+      screenConfig.whatsapp_phone,
+      screenConfig.whatsapp_message,
+    );
+    Linking.openURL(url).catch(() => {
+      Alert.alert(
+        screenConfig.chat_fallback_alert_title,
+        screenConfig.chat_fallback_alert_message,
+      );
     });
   };
 
   const handleCallUs = () => {
-    Linking.openURL('tel:+919876543210').catch(() => {
-      Alert.alert('Helpline', 'Call our support team at +91 98765 43210 (7:00 AM - 10:00 PM daily).');
+    if (!screenConfig) return;
+    Linking.openURL(buildTelUrl(screenConfig.phone_number)).catch(() => {
+      const fallbackMessage = formatHelpTemplate(
+        screenConfig.call_fallback_message_template,
+        {
+          phone: screenConfig.phone_number,
+          hours: screenConfig.call_subtitle,
+        },
+      );
+      Alert.alert(
+        screenConfig.call_fallback_alert_title,
+        fallbackMessage || screenConfig.call_fallback_alert_message,
+      );
     });
   };
 
+  const toggleFaq = (id: string) => {
+    setExpandedId(expandedId === id ? null : id);
+  };
+
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadConfig()}>
+            <ActivityIndicator color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const faqs = screenConfig.faqs || [];
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Header */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & support</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
       <ScrollView
@@ -76,59 +127,63 @@ export default function HelpSupportScreen({ navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top 2 Quick Contact Cards */}
         <View style={styles.contactRow}>
-          {/* Chat with us */}
           <TouchableOpacity
             style={styles.contactCard}
             onPress={handleChatWhatsApp}
             activeOpacity={0.85}
           >
             <View style={styles.contactIconBox}>
-              <AppIcon name="help" size={20} color={COLORS.green700} />
+              <AccountMenuHelpIcon size={20} />
             </View>
-            <Text style={styles.contactTitle}>Chat with us</Text>
-            <Text style={styles.contactSub}>Avg reply: &lt; 5 min</Text>
+            <Text style={styles.contactTitle}>{screenConfig.chat_title}</Text>
+            <Text style={styles.contactSub}>{screenConfig.chat_subtitle}</Text>
           </TouchableOpacity>
 
-          {/* Call us */}
           <TouchableOpacity
             style={styles.contactCard}
             onPress={handleCallUs}
             activeOpacity={0.85}
           >
             <View style={styles.contactIconBox}>
-              <AppIcon name="phone" size={20} color={COLORS.green700} />
+              <HelpSupportPhoneIcon size={20} />
             </View>
-            <Text style={styles.contactTitle}>Call us</Text>
-            <Text style={styles.contactSub}>7:00 AM - 10:00 PM daily</Text>
+            <Text style={styles.contactTitle}>{screenConfig.call_title}</Text>
+            <Text style={styles.contactSub}>{screenConfig.call_subtitle}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* FAQs Section */}
-        <Text style={styles.sectionHeading}>FREQUENTLY ASKED QUESTIONS</Text>
+        <Text style={styles.sectionHeading}>{screenConfig.faq_section_label}</Text>
 
         <View style={styles.faqsCard}>
-          {FAQS.map((faq, idx) => {
-            const isExpanded = expandedIdx === idx;
-            const isLast = idx === FAQS.length - 1;
+          {faqs.map((faq, idx) => {
+            const isExpanded = expandedId === faq.id;
+            const isLast = idx === faqs.length - 1;
 
             return (
-              <View key={idx} style={[styles.faqItem, !isLast && styles.faqBorder]}>
+              <View key={faq.id} style={[styles.faqItem, !isLast && styles.faqBorder]}>
                 <TouchableOpacity
                   style={styles.faqQuestionRow}
-                  onPress={() => toggleFaq(idx)}
+                  onPress={() => toggleFaq(faq.id)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.faqQuestionText}>{faq.q}</Text>
-                  <Text style={[styles.faqChevron, isExpanded && styles.faqChevronRotated]}>
-                    {isExpanded ? '⌃' : '⌄'}
-                  </Text>
+                  <Text style={styles.faqQuestionText}>{faq.question}</Text>
+                  <View
+                    style={[
+                      styles.chevronWrap,
+                      isExpanded && styles.chevronExpanded,
+                    ]}
+                  >
+                    <AccountChevronIcon
+                      size={18}
+                      color={isExpanded ? COLORS.green700 : COLORS.ink500}
+                    />
+                  </View>
                 </TouchableOpacity>
 
-                {isExpanded && (
-                  <Text style={styles.faqAnswerText}>{faq.a}</Text>
-                )}
+                {isExpanded && faq.answer ? (
+                  <Text style={styles.faqAnswerText}>{faq.answer}</Text>
+                ) : null}
               </View>
             );
           })}
@@ -141,39 +196,47 @@ export default function HelpSupportScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: SCREEN_BG,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    gap: 10,
+    paddingLeft: 16,
+    paddingRight: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooSemiBold,
+    fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
-    marginLeft: 8,
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 36,
   },
@@ -185,7 +248,7 @@ const styles = StyleSheet.create({
   contactCard: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     padding: 16,
@@ -200,18 +263,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   contactTitle: {
+    ...FONTS.muktaBold,
     fontSize: 14,
-    fontWeight: '800',
+    lineHeight: 20,
     color: COLORS.ink900,
     marginBottom: 2,
   },
   contactSub: {
+    ...FONTS.muktaRegular,
     fontSize: 11,
+    lineHeight: 16,
     color: COLORS.ink500,
   },
   sectionHeading: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '800',
+    lineHeight: 14,
     color: COLORS.ink500,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
@@ -219,7 +286,7 @@ const styles = StyleSheet.create({
   },
   faqsCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     paddingHorizontal: 16,
@@ -235,26 +302,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 10,
   },
   faqQuestionText: {
     flex: 1,
+    ...FONTS.muktaSemiBold,
     fontSize: 13.5,
-    fontWeight: '700',
+    lineHeight: 18,
     color: COLORS.ink900,
-    paddingRight: 10,
   },
-  faqChevron: {
-    fontSize: 16,
-    color: COLORS.ink500,
-    fontWeight: 'bold',
+  chevronWrap: {
+    transform: [{ rotate: '90deg' }],
   },
-  faqChevronRotated: {
-    color: COLORS.green700,
+  chevronExpanded: {
+    transform: [{ rotate: '-90deg' }],
   },
   faqAnswerText: {
+    ...FONTS.muktaRegular,
     fontSize: 12.5,
-    color: COLORS.ink500,
     lineHeight: 18,
+    color: COLORS.ink500,
     marginTop: 8,
     paddingTop: 4,
   },

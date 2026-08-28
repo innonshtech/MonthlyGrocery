@@ -60,24 +60,31 @@ function buildPaymentRetryParams(
 }
 
 function mapOrderItemsForBasket(orderItems: any[]) {
-  return (orderItems || []).map((oi) => ({
-    id: oi.product_id || oi.id,
-    name: oi.product_name || oi.name || 'Grocery Item',
-    price: oi.unit_price || oi.price || 0,
-    qty: oi.quantity || oi.qty || 1,
-    unit: oi.unit || '1 unit',
-  }));
+  return (orderItems || []).map((oi) => {
+    const name = (oi.product_name || oi.name || '').trim();
+    return {
+      id: oi.product_id || oi.id,
+      name,
+      price: oi.unit_price || oi.price || 0,
+      qty: oi.quantity || oi.qty || 1,
+      unit: oi.unit || '1 unit',
+    };
+  });
 }
 
 export default function PaymentMethodScreen({ route, navigation }: any) {
   const { token } = useAuth();
   const { items, clearCart } = useCart();
+  const cartSubtotal = items.reduce(
+    (sum, i) => sum + (Number(i.product.price) || 0) * (i.quantity || 1),
+    0,
+  );
   const {
     selectedAddress,
     selectedSlot,
     appliedCoupon,
     couponDiscount = 0,
-    totalAmount = 2500,
+    totalAmount = Math.max(0, cartSubtotal - couponDiscount),
     totalSavings = 0,
     productSavings = 0,
   } = route?.params || {};
@@ -91,6 +98,24 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
       return;
     }
 
+    if (!selectedAddress) {
+      Alert.alert('Address required', 'Please select a delivery address before placing the order.');
+      return;
+    }
+
+    const shippingAddress = buildShippingAddress(selectedAddress);
+    if (!shippingAddress) {
+      Alert.alert('Address incomplete', 'Please complete your delivery address before placing the order.');
+      return;
+    }
+
+    if (!selectedSlot?.dateLabel || !selectedSlot?.timeWindow) {
+      Alert.alert('Delivery slot required', 'Please select a delivery slot before placing the order.');
+      return;
+    }
+
+    const slotLabel = `${selectedSlot.dateLabel}, ${selectedSlot.timeWindow}`;
+
     setProcessing(true);
     try {
       const deliverToLabel = buildDeliverToLabel(selectedAddress);
@@ -103,12 +128,10 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           unit: i.product.unit,
           image_url: i.product.image_url || '',
         })),
-        shipping_address: buildShippingAddress(selectedAddress),
-        deliver_to_label: deliverToLabel,
+        shipping_address: shippingAddress,
+        deliver_to_label: deliverToLabel || shippingAddress,
         product_savings: productSavings || Math.max(0, totalSavings - couponDiscount),
-        delivery_slot: selectedSlot
-          ? `${selectedSlot.dateLabel}, ${selectedSlot.timeWindow}`
-          : 'Tomorrow Morning',
+        delivery_slot: slotLabel,
         delivery_slot_date: selectedSlot?.date || null,
         delivery_slot_window_id: selectedSlot?.windowId || null,
         shop_id: selectedSlot?.shopId || items[0]?.product?.shop_id || null,
@@ -148,12 +171,9 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           backendOrderId: order?.id,
           total: order?.total_amount ?? totalAmount,
           savings: order?.total_savings ?? totalSavings,
-          arriving: order?.delivery_slot ||
-            (selectedSlot
-              ? `${selectedSlot.dateLabel}, ${selectedSlot.timeWindow}`
-              : 'Tomorrow Morning'),
-          deliverTo: order?.deliver_to_label || deliverToLabel,
-          paymentMethod: order?.payment_method_label || 'Cash on Delivery',
+          arriving: order?.delivery_slot || slotLabel,
+          deliverTo: order?.deliver_to_label || deliverToLabel || shippingAddress,
+          paymentMethod: order?.payment_method_label || order?.payment_method || 'Cash on Delivery',
           orderItems: orderItemsSnapshot,
         });
       } else {

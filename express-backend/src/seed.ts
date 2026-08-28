@@ -1,4 +1,12 @@
 import { supabase } from './config/supabase';
+import { readDb, writeDb } from './config/localDb';
+
+type InsertedProduct = {
+  id: string;
+  mrp: number;
+  price: number;
+  todays_deal: boolean;
+};
 
 const dummyProducts = [
   {
@@ -31,7 +39,7 @@ const dummyProducts = [
     name: "Fortune Premium Kachi Ghani Mustard Oil 5L",
     sku: "FORT-MUST-5L",
     barcode: "8906007281313",
-    primary_category: "Cooking Essentials",
+    primary_category: "Oils & Ghee",
     secondary_category: "Mustard Oil",
     brand: "Fortune",
     company: "Adani Wilmar",
@@ -57,7 +65,7 @@ const dummyProducts = [
     name: "Tata Salt Lite 1kg",
     sku: "TATA-SALT-1KG",
     barcode: "8901058002313",
-    primary_category: "Cooking Essentials",
+    primary_category: "Spices & Masala",
     secondary_category: "Salt",
     brand: "Tata",
     company: "Tata Consumer Products",
@@ -83,7 +91,7 @@ const dummyProducts = [
     name: "Amul Pure Ghee 1L Tin",
     sku: "AMUL-GHEE-1L",
     barcode: "8901262070016",
-    primary_category: "Dairy Staples",
+    primary_category: "Oils & Ghee",
     secondary_category: "Ghee",
     brand: "Amul",
     company: "GCMMF",
@@ -110,7 +118,7 @@ const dummyProducts = [
     sku: "DAAW-RICE-5KG",
     barcode: "8901537006121",
     primary_category: "Atta & Rice",
-    secondary_category: "Basmati Rice",
+    secondary_category: "Rice",
     brand: "Daawat",
     company: "LT Foods",
     description: "Rich aroma, long slender grains, ideal for daily biryani or pulao.",
@@ -132,10 +140,114 @@ const dummyProducts = [
     ]
   },
   {
+    name: "Fortune Chakki Fresh Atta 5kg",
+    sku: "FORT-ATTA-5KG",
+    barcode: "8906007281206",
+    primary_category: "Atta & Rice",
+    secondary_category: "Atta",
+    brand: "Fortune",
+    company: "Adani Wilmar",
+    description: "Chakki fresh atta made from 100% MP wheat. Soft rotis for daily use.",
+    short_description: "MP sharbati chakki atta",
+    place: "Madhya Pradesh",
+    image_url: "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png",
+    mrp: 300.0,
+    price: 265.0,
+    stock: 90,
+    unit: "5 Kg",
+    available: true,
+    is_veg: true,
+    featured: true,
+    todays_deal: true,
+    best_seller: true,
+    city_prices: [
+      { city_name: "Mumbai", mrp: 300.0, price: 265.0, wholesaler_price: 220.0, is_live: true },
+      { city_name: "Pune", mrp: 300.0, price: 255.0, wholesaler_price: 220.0, is_live: true }
+    ]
+  },
+  {
+    name: "Pillsbury Chakki Fresh Atta 5kg",
+    sku: "PILL-ATTA-5KG",
+    barcode: "8906007281314",
+    primary_category: "Atta & Rice",
+    secondary_category: "Atta",
+    brand: "Pillsbury",
+    company: "General Mills",
+    description: "Soft and fluffy rotis with premium whole wheat chakki atta.",
+    short_description: "Whole wheat chakki atta",
+    place: "Madhya Pradesh",
+    image_url: "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png",
+    mrp: 310.0,
+    price: 275.0,
+    stock: 85,
+    unit: "5 Kg",
+    available: true,
+    is_veg: true,
+    featured: false,
+    todays_deal: false,
+    best_seller: true,
+    city_prices: [
+      { city_name: "Mumbai", mrp: 310.0, price: 275.0, wholesaler_price: 230.0, is_live: true },
+      { city_name: "Pune", mrp: 310.0, price: 270.0, wholesaler_price: 230.0, is_live: true }
+    ]
+  },
+  {
+    name: "India Gate Classic Basmati Rice 5kg",
+    sku: "INDG-RICE-5KG",
+    barcode: "8901537006122",
+    primary_category: "Atta & Rice",
+    secondary_category: "Rice",
+    brand: "India Gate",
+    company: "KRBL",
+    description: "Aged basmati rice with long grains and rich aroma.",
+    short_description: "Classic aged basmati rice",
+    place: "Haryana",
+    image_url: "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_basmati_rice_5kg.png",
+    mrp: 520.0,
+    price: 460.0,
+    stock: 70,
+    unit: "5 Kg",
+    available: true,
+    is_veg: true,
+    featured: true,
+    todays_deal: true,
+    best_seller: true,
+    city_prices: [
+      { city_name: "Mumbai", mrp: 520.0, price: 460.0, wholesaler_price: 380.0, is_live: true },
+      { city_name: "Pune", mrp: 520.0, price: 455.0, wholesaler_price: 380.0, is_live: true }
+    ]
+  },
+  {
+    name: "Kohinoor Royale Basmati Rice 5kg",
+    sku: "KOHN-RICE-5KG",
+    barcode: "8901537006123",
+    primary_category: "Atta & Rice",
+    secondary_category: "Rice",
+    brand: "Kohinoor",
+    company: "LT Foods",
+    description: "Extra-long grain basmati ideal for biryani and pulao.",
+    short_description: "Royale basmati rice",
+    place: "Haryana",
+    image_url: "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_basmati_rice_5kg.png",
+    mrp: 540.0,
+    price: 480.0,
+    stock: 65,
+    unit: "5 Kg",
+    available: true,
+    is_veg: true,
+    featured: false,
+    todays_deal: false,
+    best_seller: true,
+    city_prices: [
+      { city_name: "Mumbai", mrp: 540.0, price: 480.0, wholesaler_price: 400.0, is_live: true },
+      { city_name: "Pune", mrp: 540.0, price: 475.0, wholesaler_price: 400.0, is_live: true }
+    ]
+  },
+  {
     name: "Maggi 2-Minute Masala Noodles 12-Pack",
     sku: "MAGG-NOOD-12P",
     barcode: "8901058895612",
-    primary_category: "Packaged Foods",
+    primary_category: "Snacks",
     secondary_category: "Noodles",
     brand: "Maggi",
     company: "Nestle",
@@ -161,7 +273,7 @@ const dummyProducts = [
     name: "Surf Excel Easy Wash Detergent Powder 5kg",
     sku: "SURF-DETG-5KG",
     barcode: "8901030753011",
-    primary_category: "Household Items",
+    primary_category: "Cleaning",
     secondary_category: "Detergents",
     brand: "Surf Excel",
     company: "Hindustan Unilever",
@@ -239,7 +351,7 @@ const dummyProducts = [
     name: "Rajdhani Kabuli Chana 1kg",
     sku: "RAJD-CHAN-1KG",
     barcode: "8906023250212",
-    primary_category: "Pulses & Grains",
+    primary_category: "Dals & Pulses",
     secondary_category: "Chana",
     brand: "Rajdhani",
     company: "Rajdhani Group",
@@ -265,7 +377,7 @@ const dummyProducts = [
     name: "Rajdhani Toor Dal 2kg",
     sku: "RAJD-TDAL-2KG",
     barcode: "8906023250123",
-    primary_category: "Pulses & Grains",
+    primary_category: "Dals & Pulses",
     secondary_category: "Dal",
     brand: "Rajdhani",
     company: "Rajdhani Group",
@@ -317,11 +429,8 @@ const dummyProducts = [
     name: "Catch Turmeric Powder 500g",
     sku: "CATC-HALD-500G",
     barcode: "8901058004515",
-    primary_category: "Cooking Essentials",
-    secondary_category: "Spices",
-    brand: "Catch",
-    company: "DS Group",
-    description: "Premium grounded turmeric powder with natural curcumin oils preserved.",
+    primary_category: "Spices & Masala",
+    secondary_category: "Turmeric",
     short_description: "Pure grounded turmeric powder",
     place: "Andhra Pradesh",
     image_url: "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=600&q=80",
@@ -343,8 +452,8 @@ const dummyProducts = [
     name: "Catch Red Chilli Powder 500g",
     sku: "CATC-MIRCH-500G",
     barcode: "8901058004522",
-    primary_category: "Cooking Essentials",
-    secondary_category: "Spices",
+    primary_category: "Spices & Masala",
+    secondary_category: "Chilli",
     brand: "Catch",
     company: "DS Group",
     description: "Pure red hot pepper powder. Adds rich red color and heat to dishes.",
@@ -367,39 +476,98 @@ const dummyProducts = [
   }
 ];
 
+async function resolveShopId(): Promise<string> {
+  const db = readDb();
+  let { data: shops, error: shopError } = await supabase
+    .from('shops')
+    .select('id, shop_name')
+    .limit(1);
+
+  let shop = shops?.[0];
+
+  if (shopError) {
+    console.error('Error checking shop:', shopError.message);
+    process.exit(1);
+  }
+
+  if (!shop) {
+    console.log('No shop in Supabase — creating default MonthlyGrocery shop...');
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'super_admin')
+      .maybeSingle();
+
+    const ownerId = profile?.id;
+    if (!ownerId) {
+      const { data: fallbackProfile } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
+      if (!fallbackProfile?.id) {
+        console.error('No profile found. Run npm run dev once so server seeds super admin.');
+        process.exit(1);
+      }
+      const { data: newShop, error: insertError } = await supabase
+        .from('shops')
+        .insert({
+          owner_id: fallbackProfile.id,
+          shop_name: 'MonthlyGrocery',
+          status: 'approved',
+        })
+        .select('id, shop_name')
+        .single();
+      if (insertError || !newShop) {
+        console.error('Failed to create shop:', insertError?.message);
+        process.exit(1);
+      }
+      shop = newShop;
+    } else {
+      const { data: newShop, error: insertError } = await supabase
+        .from('shops')
+        .insert({
+          owner_id: ownerId,
+          shop_name: 'MonthlyGrocery',
+          status: 'approved',
+        })
+        .select('id, shop_name')
+        .single();
+      if (insertError || !newShop) {
+        console.error('Failed to create shop:', insertError?.message);
+        process.exit(1);
+      }
+      shop = newShop;
+    }
+    console.log(`Created shop: ${shop.shop_name} (${shop.id})`);
+  } else {
+    console.log(`Using shop: ${shop.shop_name ?? 'MonthlyGrocery'} (${shop.id})`);
+  }
+
+  if (db.serviceable_locations?.length) {
+    let changed = false;
+    for (const loc of db.serviceable_locations) {
+      if (loc.shop_id !== shop.id) {
+        loc.shop_id = shop.id;
+        changed = true;
+      }
+    }
+    if (changed) {
+      writeDb(db);
+      console.log('Updated serviceable_locations shop_id to match Supabase shop.');
+    }
+  }
+
+  return shop.id;
+}
+
 async function seed() {
   console.log("Starting product seeding...");
 
-  // 1. Fetch default shop
-  const { data: shop, error: shopError } = await supabase
-    .from('shops')
-    .select('id')
-    .maybeSingle();
+  const shopId = await resolveShopId();
 
-  if (shopError || !shop) {
-    console.error("Error: Default shop not seeded yet. Run server.ts first to auto-seed shop!");
-    process.exit(1);
-  }
+  const insertedProducts: InsertedProduct[] = [];
 
-  console.log(`Found shop: ${shop.id}`);
-
-  // 2. Clear existing products to prevent duplicates
-  const { error: clearError } = await supabase
-    .from('products')
-    .delete()
-    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-
-  if (clearError) {
-    console.error("Failed to clear existing products:", clearError.message);
-    process.exit(1);
-  }
-
-  console.log("Existing products cleared from PostgreSQL.");
-
-  // 3. Insert new products
+  // Upsert catalog products (no mass delete — orders reference product rows)
   for (const dp of dummyProducts) {
     const productData = {
-      shop_id: shop.id,
+      shop_id: shopId,
       name: dp.name,
       sku: dp.sku,
       barcode: dp.barcode,
@@ -422,20 +590,51 @@ async function seed() {
       best_seller: dp.best_seller
     };
 
-    const { data: inserted, error: insertError } = await supabase
+    const { data: existing } = await supabase
       .from('products')
-      .insert(productData)
-      .select()
-      .single();
+      .select('id')
+      .eq('sku', dp.sku)
+      .maybeSingle();
 
-    if (insertError || !inserted) {
-      console.error(`Failed to insert product ${dp.name}:`, insertError?.message);
-      continue;
+    let inserted: { id: string; name: string } | null = null;
+
+    if (existing?.id) {
+      const { data: updated, error: updateError } = await supabase
+        .from('products')
+        .update(productData)
+        .eq('id', existing.id)
+        .select('id, name')
+        .single();
+      if (updateError || !updated) {
+        console.error(`Failed to update product ${dp.name}:`, updateError?.message);
+        continue;
+      }
+      inserted = updated;
+      console.log(`Updated: ${updated.name} (${updated.id})`);
+    } else {
+      const { data: created, error: insertError } = await supabase
+        .from('products')
+        .insert(productData)
+        .select('id, name')
+        .single();
+      if (insertError || !created) {
+        console.error(`Failed to insert product ${dp.name}:`, insertError?.message);
+        continue;
+      }
+      inserted = created;
+      console.log(`Inserted: ${created.name} (${created.id})`);
     }
 
-    console.log(`Inserted: ${inserted.name} (${inserted.id})`);
+    insertedProducts.push({
+      id: inserted.id,
+      mrp: dp.mrp,
+      price: dp.price,
+      todays_deal: dp.todays_deal,
+    });
 
-    // 4. Insert city prices for this product
+    // Refresh city prices for this SKU
+    await supabase.from('product_city_prices').delete().eq('product_id', inserted.id);
+
     const cityPrices = dp.city_prices.map(cp => ({
       product_id: inserted.id,
       city_name: cp.city_name,
@@ -453,6 +652,35 @@ async function seed() {
       console.error(`Failed to insert city prices for ${inserted.name}:`, cityPricesError.message);
     }
   }
+
+  // 5. Sync merchant shop_products in local db.json (real merchant pricing path)
+  const db = readDb();
+
+  const discountTiers = [6, 10, 12, 14, 16, 18, 20, 22, 25];
+
+  db.shop_products = [
+    ...db.shop_products.filter((sp) => sp.shop_id !== shopId),
+    ...insertedProducts.map((p, index) => {
+    const discountPct = p.todays_deal
+      ? 18 + (index % 8)
+      : discountTiers[index % discountTiers.length];
+    const sellingPrice = Math.round(p.mrp * (1 - discountPct / 100));
+
+    return {
+      id: `sp-seed-${index}-${Math.random().toString(36).substring(2, 8)}`,
+      shop_id: shopId,
+      product_id: p.id,
+      selling_price: sellingPrice,
+      discount_percentage: discountPct,
+      stock: 100,
+      available: true,
+      status: 'approved' as const,
+    };
+    }),
+  ];
+
+  writeDb(db);
+  console.log(`Synced ${db.shop_products.length} shop_products to local db for shop ${shopId}`);
 
   console.log("Product database seeding completed successfully!");
   process.exit(0);

@@ -1,6 +1,13 @@
 import { Router, Response } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
+import {
+  enrichConsumerOrder,
+  applyStatusTimestamps,
+  canConsumerCancelOrder,
+  buildDefaultRefundMessage,
+  sanitizeOrderAddress,
+} from '../utils/orderEnrichment';
 
 const router = Router();
 
@@ -14,6 +21,52 @@ function formatPaymentMethodLabel(method?: string): string {
   if (method === 'UPI') return 'UPI';
   if (method === 'CARD') return 'Card';
   return method;
+}
+
+async function fetchCatalogMap(productIds: string[]) {
+  const catalogMap = new Map<string, { name: string; image_url: string; unit: string }>();
+  if (!productIds.length) return catalogMap;
+
+  const { data: catalogProducts } = await supabase
+    .from('products')
+    .select('id, name, image_url, unit')
+    .in('id', productIds);
+
+  for (const p of catalogProducts || []) {
+    catalogMap.set(p.id, {
+      name: p.name,
+      image_url: p.image_url || '',
+      unit: p.unit || '1 unit',
+    });
+  }
+  return catalogMap;
+}
+
+function enrichOrderItems(order: any, catalogMap: Map<string, { name: string; image_url: string; unit: string }>) {
+  order.order_items = (order.order_items || []).map((it: any) => {
+    const catalog = catalogMap.get(it.product_id);
+    const catalogName = catalog?.name?.trim();
+    const itemName = (it.product_name || it.name || '').trim();
+    const resolvedName =
+      catalogName ||
+      (itemName && itemName.toLowerCase() !== 'grocery item' ? itemName : '');
+    return {
+      ...it,
+      product_name: resolvedName,
+      name: resolvedName,
+      image_url: it.image_url || catalog?.image_url || '',
+      unit: it.unit || catalog?.unit || '1 unit',
+    };
+  });
+  return order;
+}
+
+async function enrichOrderFromSupabaseItems(order: any) {
+  const productIds = (order.order_items || [])
+    .map((it: any) => it.product_id)
+    .filter(Boolean);
+  const catalogMap = await fetchCatalogMap(productIds);
+  return enrichOrderItems(order, catalogMap);
 }
 
 // 1. POST /checkout and POST /: Create a new order (Checkout Flow)
@@ -34,11 +87,21 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     product_savings,
   } = req.body;
 
-  const finalAddress = shipping_address || delivery_address || 'Pune, Maharashtra';
+  const finalAddress = sanitizeOrderAddress(shipping_address || delivery_address);
 
   if (!items || !Array.isArray(items) || items.length === 0 || !total_amount) {
     return res.status(400).json({ success: false, error: 'Incomplete order checkout details' });
   }
+
+  if (!finalAddress) {
+    return res.status(400).json({ success: false, error: 'Delivery address is required' });
+  }
+
+  if (!delivery_slot?.trim()) {
+    return res.status(400).json({ success: false, error: 'Delivery slot is required' });
+  }
+
+  const deliverLabel = sanitizeOrderAddress(deliver_to_label) || finalAddress;
 
   try {
     const { readDb, writeDb } = require('../config/localDb');
@@ -164,6 +227,28 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     const displayId = generateDisplayOrderId();
     const validatedProductSavings = Math.max(0, parseFloat(String(product_savings)) || 0);
 
+    const productIds = items.map((it: any) => it.product_id || it.id).filter(Boolean);
+    const catalogMap = await fetchCatalogMap(productIds);
+
+    const mappedOrderItems = items.map((it: any) => {
+      const productId = it.product_id || it.id;
+      const catalog = catalogMap.get(productId);
+      const itemName = (it.name || it.product_name || '').trim();
+      const productName =
+        catalog?.name?.trim() ||
+        (itemName && itemName.toLowerCase() !== 'grocery item' ? itemName : '') ||
+        '';
+      return {
+        product_id: productId,
+        product_name: productName,
+        name: productName,
+        quantity: parseInt(it.quantity) || 1,
+        unit_price: parseFloat(it.price || it.unit_price) || 0.00,
+        unit: it.unit || catalog?.unit || '1 unit',
+        image_url: it.image_url || catalog?.image_url || '',
+      };
+    });
+
     const enrichedOrder = {
       id: order.id,
       display_id: displayId,
@@ -176,23 +261,17 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       total_savings: validatedProductSavings + validatedDiscount,
       coupon_code: coupon_code || null,
       shipping_address: finalAddress,
-      deliver_to_label: deliver_to_label || null,
-      delivery_slot: delivery_slot || 'Tomorrow Morning',
+      deliver_to_label: deliverLabel,
+      delivery_slot: delivery_slot.trim(),
       delivery_slot_date: delivery_slot_date || null,
       delivery_slot_window_id: delivery_slot_window_id || null,
       delivery_otp: deliveryOtp,
       payment_method: payment_method || 'COD',
       payment_method_label: formatPaymentMethodLabel(payment_method || 'COD'),
       status: 'confirmed',
+      confirmed_at: new Date().toISOString(),
       created_at: new Date().toISOString(),
-      order_items: items.map((it: any) => ({
-        product_id: it.product_id || it.id,
-        product_name: it.name || it.product_name || 'Grocery Item',
-        quantity: parseInt(it.quantity) || 1,
-        unit_price: parseFloat(it.price || it.unit_price) || 0.00,
-        unit: it.unit || '1 unit',
-        image_url: it.image_url || '',
-      }))
+      order_items: mappedOrderItems,
     };
 
     db.orders.unshift(enrichedOrder);
@@ -201,7 +280,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     return res.json({
       success: true,
       message: 'Order placed successfully',
-      order: enrichedOrder
+      order: enrichConsumerOrder(enrichedOrder),
     });
 
   } catch (error: any) {
@@ -226,43 +305,12 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    let catalogMap = new Map<string, { name: string; image_url: string; unit: string }>();
-    if (productIds.size > 0) {
-      const { data: catalogProducts } = await supabase
-        .from('products')
-        .select('id, name, image_url, unit')
-        .in('id', Array.from(productIds));
-      for (const p of catalogProducts || []) {
-        catalogMap.set(p.id, {
-          name: p.name,
-          image_url: p.image_url || '',
-          unit: p.unit || '1 unit',
-        });
-      }
-    }
+    const catalogMap = await fetchCatalogMap(Array.from(productIds));
 
-    const enrichLocalOrderItems = (order: any) => {
-      order.order_items = (order.order_items || []).map((it: any) => {
-        const catalog = catalogMap.get(it.product_id);
-        if (!catalog) return it;
-        return {
-          ...it,
-          product_name:
-            !it.product_name || it.product_name === 'Grocery Item'
-              ? catalog.name
-              : it.product_name,
-          image_url: it.image_url || catalog.image_url || '',
-          unit: it.unit || catalog.unit || '1 unit',
-        };
-      });
-      return order;
-    };
+    const enrichedLocal = localUserOrders.map((order: any) =>
+      enrichConsumerOrder(enrichOrderItems({ ...order }, catalogMap)),
+    );
 
-    for (let i = 0; i < localUserOrders.length; i++) {
-      localUserOrders[i] = enrichLocalOrderItems(localUserOrders[i]);
-    }
-
-    // Also fetch from Supabase
     const { data: supaOrders } = await supabase
       .from('orders')
       .select(`
@@ -275,6 +323,7 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
           id,
           quantity,
           unit_price,
+          product_id,
           products (
             name,
             image_url,
@@ -285,36 +334,49 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
       .eq('consumer_id', req.user!.id)
       .order('created_at', { ascending: false });
 
-    // Merge and format
-    const mergedMap = new Map();
-    for (const lo of localUserOrders) {
+    const mergedMap = new Map<string, any>();
+    for (const lo of enrichedLocal) {
       mergedMap.set(lo.id, lo);
     }
 
     for (const so of supaOrders || []) {
       if (!mergedMap.has(so.id)) {
-        mergedMap.set(so.id, {
-          id: so.id,
-          status: so.status,
-          total_amount: so.total_amount,
-          shipping_address: so.delivery_address,
-          delivery_slot: 'Today, 7:00 AM - 10:00 AM',
-          delivery_otp: '4819',
-          created_at: so.created_at,
-          order_items: (so.order_items || []).map((oi: any) => ({
-            product_name: oi.products?.name || 'Grocery Item',
-            unit_price: oi.unit_price,
-            quantity: oi.quantity,
-            unit: oi.products?.unit || '1 unit',
-            image_url: oi.products?.image_url || '',
-          }))
-        });
+        const mappedItems = (so.order_items || []).map((oi: any) => ({
+          product_id: oi.product_id,
+          product_name: oi.products?.name || '',
+          name: oi.products?.name || '',
+          unit_price: oi.unit_price,
+          quantity: oi.quantity,
+          unit: oi.products?.unit || '1 unit',
+          image_url: oi.products?.image_url || '',
+        }));
+
+        const supaOrder = enrichConsumerOrder(
+          await enrichOrderFromSupabaseItems({
+            id: so.id,
+            status: so.status,
+            total_amount: so.total_amount,
+            shipping_address: so.delivery_address,
+            deliver_to_label: so.delivery_address,
+            delivery_slot: null,
+            delivery_otp: null,
+            payment_method: null,
+            payment_method_label: null,
+            product_savings: 0,
+            discount_amount: 0,
+            created_at: so.created_at,
+            confirmed_at: so.created_at,
+            order_items: mappedItems,
+          }),
+        );
+        mergedMap.set(so.id, supaOrder);
       }
     }
 
-    const finalOrders = Array.from(mergedMap.values());
+    const finalOrders = Array.from(mergedMap.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
     return res.json({ success: true, orders: finalOrders });
-
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -323,6 +385,192 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
 router.get('/mine', authMiddleware, handleFetchMyOrders);
 router.get('/my', authMiddleware, handleFetchMyOrders);
 
+router.get('/monthly-hub-summary', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { readDb } = require('../config/localDb');
+    const db = readDb() as any;
+    const consumerId = req.user!.id;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const localOrders = (db.orders || [])
+      .filter((o: any) => o.consumer_id === consumerId)
+      .map((o: any) => enrichConsumerOrder(o));
+
+    let supaOrders: any[] = [];
+    const { data: supaData } = await supabase
+      .from('orders')
+      .select('id, total_amount, discount_amount, status, created_at, order_items(quantity, unit_price)')
+      .eq('consumer_id', consumerId)
+      .order('created_at', { ascending: false });
+
+    if (supaData?.length) {
+      supaOrders = supaData.map((o: any) =>
+        enrichConsumerOrder({
+          ...o,
+          order_items: o.order_items || [],
+        }),
+      );
+    }
+
+    const mergedMap = new Map<string, any>();
+    for (const o of localOrders) mergedMap.set(o.id, o);
+    for (const o of supaOrders) {
+      if (!mergedMap.has(o.id)) mergedMap.set(o.id, o);
+    }
+
+    const orders = Array.from(mergedMap.values())
+      .filter((o) => (o.status || '').toLowerCase() !== 'cancelled')
+      .sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
+    const savedThisMonth = orders
+      .filter((o) => new Date(o.created_at) >= monthStart)
+      .reduce((sum, o) => sum + (Number(o.total_savings) || 0), 0);
+
+    const lastOrder = orders[0];
+    let lastOrderItemCount = 0;
+    let lastOrderMonth = '';
+    if (lastOrder) {
+      lastOrderItemCount =
+        Number(lastOrder.item_count) ||
+        (lastOrder.order_items || []).reduce(
+          (sum: number, it: any) => sum + (parseInt(String(it.quantity), 10) || 1),
+          0,
+        );
+      lastOrderMonth = new Date(lastOrder.created_at).toLocaleDateString('en-IN', { month: 'long' });
+    }
+
+    return res.json({
+      success: true,
+      summary: {
+        saved_this_month: Math.round(savedThisMonth),
+        last_order_item_count: lastOrderItemCount,
+        last_order_month: lastOrderMonth,
+        has_last_order: Boolean(lastOrder),
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// POST /:order_id/cancel — Consumer cancel before packing
+router.post('/:order_id/cancel', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { order_id } = req.params;
+
+  try {
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+    if (!db.orders) db.orders = [];
+
+    const orderIdx = db.orders.findIndex(
+      (o: any) => o.id === order_id || o.display_id === order_id,
+    );
+
+    if (orderIdx === -1) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const order = db.orders[orderIdx];
+    if (order.consumer_id !== req.user!.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    if (!canConsumerCancelOrder(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'This order can no longer be cancelled because packing has started.',
+      });
+    }
+
+    order.status = 'cancelled';
+    order.cancelled_by = 'consumer';
+    applyStatusTimestamps(order, 'cancelled');
+    order.refund_message = buildDefaultRefundMessage(order);
+    db.orders[orderIdx] = order;
+    writeDb(db);
+
+    await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id);
+
+    const enriched = enrichConsumerOrder(
+      await enrichOrderFromSupabaseItems({ ...order }),
+    );
+    return res.json({ success: true, order: enriched });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// POST /reconcile-basket — Live catalog prices for saved basket items
+router.post('/reconcile-basket', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { reconcileBasketItems } = require('../services/reconcileBasket');
+    const city = String(req.body?.city || req.query.city || '').trim();
+    const area = String(req.body?.area_name || req.body?.area || req.query.area_name || '').trim();
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+
+    const reconciled = await reconcileBasketItems(items, city || undefined, area || undefined);
+
+    return res.json({ success: true, items: reconciled });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// GET /copy-last-month — Reconcile most recent order with live catalog
+router.get('/copy-last-month', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { readDb } = require('../config/localDb');
+    const { buildCopyLastMonth } = require('../services/copyLastMonth');
+    const db = readDb() as any;
+    const screen = db.copy_last_month_screen || {};
+    const city = String(req.query.city || '').trim();
+    const area = String(req.query.area_name || req.query.area || '').trim();
+
+    const basket = await buildCopyLastMonth(
+      req.user!.id,
+      city || undefined,
+      area || undefined,
+      {
+        changes_all_good_message: screen.changes_all_good_message || '',
+        changes_both_template: screen.changes_both_template || '',
+        changes_repriced_only_template: screen.changes_repriced_only_template || '',
+        changes_unavailable_only_template: screen.changes_unavailable_only_template || '',
+      },
+    );
+
+    return res.json({ success: true, basket });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// GET /one-click-cart — Smart monthly basket from order history
+router.get('/one-click-cart', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { readDb } = require('../config/localDb');
+    const { buildOneClickCart } = require('../services/oneClickCart');
+    const db = readDb() as any;
+    const screen = db.one_click_cart_screen || {};
+    const city = String(req.query.city || '').trim();
+    const area = String(req.query.area_name || req.query.area || '').trim();
+
+    const basket = await buildOneClickCart(
+      req.user!.id,
+      city || undefined,
+      area || undefined,
+      screen.section_label_overrides || {},
+      Number(screen.source_months) || 3,
+    );
+
+    return res.json({ success: true, basket });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 // GET /:order_id — Single order confirmation / detail (consumer)
 router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response) => {
   const { order_id } = req.params;
@@ -330,24 +578,22 @@ router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response)
   try {
     const { readDb } = require('../config/localDb');
     const db = readDb() as any;
+    const normalizedLookup = String(order_id).replace(/^#/, '');
     const localOrder = (db.orders || []).find(
-      (o: any) => o.id === order_id || o.display_id === order_id
+      (o: any) =>
+        o.id === order_id ||
+        o.display_id === order_id ||
+        String(o.display_id || '').replace(/^#/, '') === normalizedLookup,
     );
 
     if (localOrder) {
       if (localOrder.consumer_id !== req.user!.id) {
         return res.status(403).json({ success: false, error: 'Forbidden' });
       }
-      return res.json({
-        success: true,
-        order: {
-          ...localOrder,
-          payment_method_label: localOrder.payment_method_label ||
-            formatPaymentMethodLabel(localOrder.payment_method),
-          total_savings: localOrder.total_savings ??
-            ((localOrder.product_savings || 0) + (localOrder.discount_amount || 0)),
-        },
-      });
+      const enriched = enrichConsumerOrder(
+        await enrichOrderFromSupabaseItems({ ...localOrder }),
+      );
+      return res.json({ success: true, order: enriched });
     }
 
     const { data: supaOrder, error } = await supabase
@@ -358,7 +604,18 @@ router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response)
         status,
         delivery_address,
         created_at,
-        consumer_id
+        consumer_id,
+        order_items (
+          id,
+          quantity,
+          unit_price,
+          product_id,
+          products (
+            name,
+            image_url,
+            unit
+          )
+        )
       `)
       .eq('id', order_id)
       .maybeSingle();
@@ -371,24 +628,42 @@ router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response)
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
-    return res.json({
-      success: true,
-      order: {
+    const mappedItems = (supaOrder.order_items || []).map((oi: any) => ({
+      product_id: oi.product_id,
+      product_name: oi.products?.name || '',
+      name: oi.products?.name || '',
+      unit_price: oi.unit_price,
+      quantity: oi.quantity,
+      unit: oi.products?.unit || '1 unit',
+      image_url: oi.products?.image_url || '',
+    }));
+
+    const localShadow = (db.orders || []).find(
+      (o: any) => o.id === order_id || o.display_id === order_id,
+    );
+
+    const enriched = enrichConsumerOrder(
+      await enrichOrderFromSupabaseItems({
         id: supaOrder.id,
-        display_id: `MG${String(supaOrder.id).replace(/-/g, '').slice(-5).toUpperCase()}`,
+        display_id: localShadow?.display_id,
         total_amount: supaOrder.total_amount,
-        shipping_address: supaOrder.delivery_address,
-        deliver_to_label: supaOrder.delivery_address,
-        delivery_slot: 'Scheduled delivery',
-        payment_method: 'COD',
-        payment_method_label: 'Cash on Delivery',
-        status: supaOrder.status,
+        shipping_address: localShadow?.shipping_address || supaOrder.delivery_address,
+        deliver_to_label: localShadow?.deliver_to_label || supaOrder.delivery_address,
+        delivery_slot: localShadow?.delivery_slot || null,
+        delivery_otp: localShadow?.delivery_otp || null,
+        payment_method: localShadow?.payment_method || 'COD',
+        payment_method_label: localShadow?.payment_method_label || null,
+        status: localShadow?.status || supaOrder.status,
         created_at: supaOrder.created_at,
-        product_savings: 0,
-        discount_amount: 0,
-        total_savings: 0,
-      },
-    });
+        confirmed_at: localShadow?.confirmed_at || supaOrder.created_at,
+        product_savings: localShadow?.product_savings || 0,
+        discount_amount: localShadow?.discount_amount || 0,
+        coupon_code: localShadow?.coupon_code || null,
+        order_items: localShadow?.order_items?.length ? localShadow.order_items : mappedItems,
+      }),
+    );
+
+    return res.json({ success: true, order: enriched });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -409,7 +684,7 @@ router.get('/merchant/all', authMiddleware, async (req: AuthRequest, res) => {
 // 4. POST /:order_id/status: Merchant update order status (Swiggy/Zomato Operational Pipeline)
 router.post('/:order_id/status', authMiddleware, async (req: AuthRequest, res) => {
   const { order_id } = req.params;
-  const { status } = req.body;
+  const { status, delivery_partner_name, refund_message } = req.body;
 
   const validStatuses = ['pending', 'confirmed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
   if (!status || !validStatuses.includes(status)) {
@@ -425,6 +700,18 @@ router.post('/:order_id/status', authMiddleware, async (req: AuthRequest, res) =
     const orderIdx = db.orders.findIndex((o: any) => o.id === order_id);
     if (orderIdx !== -1) {
       db.orders[orderIdx].status = status;
+      applyStatusTimestamps(db.orders[orderIdx], status);
+      if (delivery_partner_name) {
+        db.orders[orderIdx].delivery_partner_name = delivery_partner_name;
+      }
+      if (status === 'cancelled') {
+        if (!db.orders[orderIdx].cancelled_by) {
+          db.orders[orderIdx].cancelled_by = 'support';
+        }
+        db.orders[orderIdx].refund_message = buildDefaultRefundMessage(db.orders[orderIdx]);
+      } else if (refund_message) {
+        db.orders[orderIdx].refund_message = refund_message;
+      }
       writeDb(db);
     }
 
@@ -437,7 +724,7 @@ router.post('/:order_id/status', authMiddleware, async (req: AuthRequest, res) =
     return res.json({
       success: true,
       message: `Order status updated to ${status}`,
-      order: orderIdx !== -1 ? db.orders[orderIdx] : { id: order_id, status }
+      order: orderIdx !== -1 ? enrichConsumerOrder(db.orders[orderIdx]) : { id: order_id, status },
     });
 
   } catch (error: any) {

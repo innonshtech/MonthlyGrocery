@@ -22,7 +22,7 @@ import {
   HomeArrowRightIcon,
 } from '../../components/home/HomeFigmaIcons';
 import {
-  fetchHomeConfig,
+  fetchHomeConfigWithStatus,
   fetchPromotionalBanners,
   formatHomeTemplate,
   navigateFromActionLink,
@@ -119,6 +119,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const { city, area, token, user } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
   const [home, setHome] = useState<HomeScreenConfig | null>(null);
+  const [homeLoadError, setHomeLoadError] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [banners, setBanners] = useState<PromotionalBanner[]>([]);
@@ -129,7 +130,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   }>({ orderCount: 0, lastOrder: null });
 
   const displayLocation = buildDisplayLocation(home, city, area);
-  const userInitial = (user?.name?.trim()?.[0] || 'A').toUpperCase();
+  const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
+  const userInitial = user?.name?.trim()?.[0]?.toUpperCase();
   const hasPastOrder = orderStats.orderCount > 0 && orderStats.lastOrder;
   const lastOrderItemCount = hasPastOrder
     ? (orderStats.lastOrder.order_items || []).reduce(
@@ -140,8 +142,14 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const lastOrderTotal = hasPastOrder ? Number(orderStats.lastOrder.total_amount) || 0 : 0;
   const reorderPreviewItems = hasPastOrder ? getReorderPreviewItems(orderStats.lastOrder) : [];
 
+  const loadHomeConfig = async () => {
+    const result = await fetchHomeConfigWithStatus();
+    setHome(result.home);
+    setHomeLoadError(result.error);
+  };
+
   useEffect(() => {
-    fetchHomeConfig().then(setHome);
+    loadHomeConfig();
     fetchPromotionalBanners().then((list) => setBanners(sortBanners(list)));
   }, []);
 
@@ -184,23 +192,32 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 
   useEffect(() => {
     const fetchFeatured = async () => {
+      if (!hasDeliveryArea) {
+        setProducts([]);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
       try {
         let url = `${API_BASE}/products/all?deals=true&limit=8`;
-        if (city) url += `&city=${encodeURIComponent(city)}`;
-        if (area) url += `&area_name=${encodeURIComponent(area)}`;
+        url += `&city=${encodeURIComponent(city!)}`;
+        url += `&area_name=${encodeURIComponent(area!)}`;
         const res = await fetch(url);
         const data = await res.json();
         if (res.ok && data.success && data.products) {
           setProducts(data.products);
+        } else {
+          setProducts([]);
         }
       } catch (err) {
         console.error('Error fetching featured products:', err);
+        setProducts([]);
       } finally {
         setLoading(false);
       }
     };
     fetchFeatured();
-  }, [city, area]);
+  }, [city, area, hasDeliveryArea]);
 
   useEffect(() => {
     const fetchUserStats = async () => {
@@ -233,6 +250,13 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const openCategories = () => {
     if (setActiveTab) setActiveTab('Categories');
     else navigation.navigate('Categories');
+  };
+
+  const openDeals = () => {
+    navigation.navigate('CategoryProducts', {
+      dealsOnly: true,
+      categoryName: home?.deals_title || 'Deals of the month',
+    });
   };
 
   const handleBannerPress = (banner: PromotionalBanner) => {
@@ -278,6 +302,17 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       bounces={false}
       contentContainerStyle={styles.scrollContent}
     >
+      {homeLoadError && !home ? (
+        <View style={[styles.homeErrorWrap, { paddingTop: insets.top + 24 }]}>
+          <Text style={styles.homeErrorText}>
+            {home?.load_error_message ?? 'Could not load home screen. Check that the backend is running.'}
+          </Text>
+          <TouchableOpacity style={styles.homeRetryBtn} onPress={loadHomeConfig} activeOpacity={0.85}>
+            <Text style={styles.homeRetryBtnText}>{home?.retry_label ?? 'Retry'}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.mainContent}>
       {/* ── Green header (Figma: 390×470) ── */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View style={styles.headerTopRow}>
@@ -296,7 +331,11 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
-            <Text style={styles.avatarText}>{userInitial}</Text>
+            {userInitial ? (
+              <Text style={styles.avatarText}>{userInitial}</Text>
+            ) : (
+              <AppIcon name="account" size={20} color="#FFFFFF" />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -395,12 +434,23 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 
         <View style={[styles.sectionHeader, { marginTop: 6 }]}>
           <Text style={styles.sectionTitle}>{home?.deals_title}</Text>
-          <TouchableOpacity onPress={openCategories}>
+          <TouchableOpacity onPress={openDeals}>
             <Text style={styles.seeAll}>{home?.deals_see_all}</Text>
           </TouchableOpacity>
         </View>
 
-        {loading ? (
+        {!hasDeliveryArea ? (
+          <TouchableOpacity
+            style={styles.locationHintRow}
+            onPress={() => navigation.navigate('CitySelection')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.locationHintText}>
+              {home?.location_required_deals_label}
+            </Text>
+            <Text style={styles.locationHintCta}>{home?.choose_location_label}</Text>
+          </TouchableOpacity>
+        ) : loading ? (
           <Text style={styles.loadingText}>{home?.loading_deals_label}</Text>
         ) : products.length > 0 ? (
           <ScrollView
@@ -494,6 +544,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           </View>
         </TouchableOpacity>
       </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -501,10 +553,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5A524',
+    backgroundColor: COLORS.surface,
   },
   scrollContent: {
+    flexGrow: 1,
+    backgroundColor: COLORS.surface,
     paddingBottom: 16,
+  },
+  mainContent: {
+    flexGrow: 1,
   },
   header: {
     backgroundColor: '#F5A524',
@@ -708,6 +765,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   contentSheet: {
+    flexGrow: 1,
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -844,5 +902,51 @@ const styles = StyleSheet.create({
     ...FONTS.balooBold,
     fontSize: 13,
     color: '#FFFFFF',
+  },
+  homeErrorWrap: {
+    flex: 1,
+    paddingHorizontal: H_PAD,
+    paddingBottom: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 280,
+  },
+  homeErrorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  homeRetryBtn: {
+    backgroundColor: COLORS.green700,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  homeRetryBtnText: {
+    ...FONTS.balooBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  locationHintRow: {
+    backgroundColor: COLORS.muted,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 18,
+  },
+  locationHintText: {
+    ...FONTS.muktaRegular,
+    fontSize: 13,
+    color: COLORS.ink700,
+    lineHeight: 18,
+  },
+  locationHintCta: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: COLORS.green700,
+    marginTop: 6,
   },
 });

@@ -9,6 +9,7 @@ import {
 import { Product } from '../../context/CartContext';
 import AppIcon from '../AppIcon';
 import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
+import { getProductPackLabel } from '../../utils/packUnit';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 
 /** Figma B1 Home deals rail — node 542:852 (150×227) */
@@ -39,6 +40,7 @@ export default function HomeDealCard({
   const price = parseFloat(String(item.price)) || 0;
   const mrp = parseFloat(String(item.mrp)) || price;
   const pctOff = getProductDiscountPercent(item);
+  const packLabel = getProductPackLabel(item);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
@@ -56,7 +58,7 @@ export default function HomeDealCard({
       </View>
 
       <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-      {item.unit ? <Text style={styles.unit}>{item.unit}</Text> : null}
+      {packLabel ? <Text style={styles.unit}>{packLabel}</Text> : null}
 
       <View style={styles.priceRow}>
         <View style={styles.priceCol}>

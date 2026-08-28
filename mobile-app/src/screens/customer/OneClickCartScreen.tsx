@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,297 +7,335 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { useCart, Product } from '../../context/CartContext';
-import { API_BASE } from '../../config/api';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { useCart } from '../../context/CartContext';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import {
+  CheckoutBackIcon,
+  SlotInfoIcon,
+  BasketSaveIcon,
+} from '../../components/CheckoutFigmaIcons';
+import {
+  fetchOneClickCartBasket,
+  fetchOneClickCartScreenConfig,
+  formatInr,
+  formatOneClickTemplate,
+  OneClickCartBasket,
+  OneClickCartGroup,
+  OneClickCartItem,
+  OneClickCartScreenConfig,
+} from '../../services/oneClickCartApi';
 
-interface CategoryGroup {
-  category: string;
-  items: Array<{
-    id: string;
-    name: string;
-    unit: string;
-    price: number;
-    mrp: number;
-    qty: number;
-    image_url?: string;
-  }>;
+const SCREEN_BG = '#FBFAF6';
+
+type LocalGroup = OneClickCartGroup;
+
+function Stepper({
+  qty,
+  onMinus,
+  onPlus,
+}: {
+  qty: number;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  return (
+    <View style={styles.stepper}>
+      <TouchableOpacity style={styles.stepperBtn} onPress={onMinus} hitSlop={8}>
+        <Text style={styles.stepperBtnText}>−</Text>
+      </TouchableOpacity>
+      <Text style={styles.stepperCount}>{qty}</Text>
+      <TouchableOpacity style={styles.stepperBtn} onPress={onPlus} hitSlop={8}>
+        <Text style={styles.stepperBtnText}>+</Text>
+      </TouchableOpacity>
+    </View>
+  );
 }
 
 export default function OneClickCartScreen({ navigation }: any) {
-  const { city, area } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { token, city, area } = useAuth();
   const { addToCart } = useCart();
+
+  const [screenConfig, setScreenConfig] = useState<OneClickCartScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [generating, setGenerating] = useState(true);
-  const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [basketMeta, setBasketMeta] = useState<Pick<
+    OneClickCartBasket,
+    'has_history' | 'source_months' | 'item_count' | 'total_amount'
+  > | null>(null);
+  const [groups, setGroups] = useState<LocalGroup[]>([]);
 
-  // Dynamically fetch live products from database and assemble the smart basket
-  useEffect(() => {
-    const buildSmartBasket = async () => {
-      setGenerating(true);
-      try {
-        let url = `${API_BASE}/products/all?limit=50`;
-        if (city) url += `&city=${encodeURIComponent(city)}`;
-        if (area) url += `&area_name=${encodeURIComponent(area)}`;
+  const loadScreen = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchOneClickCartScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
 
-        const res = await fetch(url);
-        const data = await res.json();
+  const loadBasket = useCallback(async (config: OneClickCartScreenConfig) => {
+    if (!token) {
+      setLoadError(true);
+      setGenerating(false);
+      return;
+    }
 
-        if (res.ok && data.success && data.products?.length > 0) {
-          const prods: Product[] = data.products;
+    setGenerating(true);
+    setLoadError(false);
 
-          // Group by category dynamically from database
-          const staplesCategory = prods.filter(p =>
-            ['Atta & Rice', 'Dals & Pulses', 'Cooking Essentials'].includes(p.primary_category)
-          );
-          const oilsBeveragesCategory = prods.filter(p =>
-            ['Oils & Ghee', 'Beverages', 'Dairy Staples'].includes(p.primary_category)
-          );
-          const othersCategory = prods.filter(p =>
-            !['Atta & Rice', 'Dals & Pulses', 'Cooking Essentials', 'Oils & Ghee', 'Beverages', 'Dairy Staples'].includes(p.primary_category)
-          );
+    const { basket, error } = await fetchOneClickCartBasket(token, city, area);
 
-          const dynamicGroups: CategoryGroup[] = [];
+    if (error || !basket) {
+      setLoadError(true);
+      setBasketMeta(null);
+      setGroups([]);
+    } else {
+      setBasketMeta({
+        has_history: basket.has_history,
+        source_months: basket.source_months,
+        item_count: basket.item_count,
+        total_amount: basket.total_amount,
+      });
+      setGroups(basket.groups);
+    }
 
-          if (staplesCategory.length > 0) {
-            dynamicGroups.push({
-              category: 'STAPLES',
-              items: staplesCategory.slice(0, 4).map(p => ({
-                id: p.id,
-                name: p.name,
-                unit: p.unit || '1 unit',
-                price: parseFloat(p.price as any) || 0,
-                mrp: parseFloat(p.mrp as any) || Math.round(Number(p.price) * 1.2),
-                qty: p.name.toLowerCase().includes('oil') || p.name.toLowerCase().includes('atta') ? 2 : 1,
-                image_url: p.image_url,
-              }))
-            });
-          }
+    setGenerating(false);
+  }, [token, city, area]);
 
-          if (oilsBeveragesCategory.length > 0) {
-            dynamicGroups.push({
-              category: 'TEA, OILS & DAIRY',
-              items: oilsBeveragesCategory.slice(0, 3).map(p => ({
-                id: p.id,
-                name: p.name,
-                unit: p.unit || '1 unit',
-                price: parseFloat(p.price as any) || 0,
-                mrp: parseFloat(p.mrp as any) || Math.round(Number(p.price) * 1.2),
-                qty: 1,
-                image_url: p.image_url,
-              }))
-            });
-          }
+  useFocusEffect(
+    useCallback(() => {
+      loadScreen().then((config) => {
+        if (config) loadBasket(config);
+      });
+    }, [loadScreen, loadBasket]),
+  );
 
-          if (othersCategory.length > 0) {
-            dynamicGroups.push({
-              category: 'PANTRY & HOME',
-              items: othersCategory.slice(0, 3).map(p => ({
-                id: p.id,
-                name: p.name,
-                unit: p.unit || '1 unit',
-                price: parseFloat(p.price as any) || 0,
-                mrp: parseFloat(p.mrp as any) || Math.round(Number(p.price) * 1.2),
-                qty: 1,
-                image_url: p.image_url,
-              }))
-            });
-          }
+  const handleRetry = () => {
+    if (screenConfig) loadBasket(screenConfig);
+    else loadScreen().then((c) => c && loadBasket(c));
+  };
 
-          setGroups(dynamicGroups);
-        } else {
-          setGroups([]);
-        }
-      } catch (err) {
-        console.error('Error generating smart basket:', err);
-        setGroups([]);
-      } finally {
-        setTimeout(() => {
-          setGenerating(false);
-        }, 1000);
-      }
-    };
-
-    buildSmartBasket();
-  }, [city, area]);
-
-  const handleUpdateQty = (itemId: string, delta: number) => {
-    setGroups((prevGroups) =>
-      prevGroups.map((grp) => ({
-        ...grp,
-        items: grp.items.map((it) =>
-          it.id === itemId
-            ? { ...it, qty: Math.max(0, it.qty + delta) }
-            : it
-        ).filter((it) => it.qty > 0)
-      })).filter((grp) => grp.items.length > 0)
+  const handleUpdateQty = (productId: string, delta: number) => {
+    setGroups((prev) =>
+      prev
+        .map((grp) => ({
+          ...grp,
+          items: grp.items
+            .map((it) =>
+              it.product_id === productId
+                ? { ...it, quantity: Math.max(0, it.quantity + delta) }
+                : it,
+            )
+            .filter((it) => it.quantity > 0),
+        }))
+        .filter((grp) => grp.items.length > 0),
     );
   };
 
-  const allItems = groups.flatMap((g) => g.items);
-  const totalItemCount = allItems.reduce((sum, it) => sum + it.qty, 0);
-  const totalBasketPrice = allItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+  const availableItems = groups
+    .flatMap((g) => g.items)
+    .filter((i) => i.available && i.quantity > 0);
+
+  const totalItemCount = availableItems.reduce((sum, it) => sum + it.quantity, 0);
+  const totalBasketPrice = availableItems.reduce(
+    (sum, it) => sum + it.price * it.quantity,
+    0,
+  );
 
   const handleAddAllToCart = () => {
-    for (const it of allItems) {
-      for (let i = 0; i < it.qty; i++) {
+    if (!screenConfig || availableItems.length === 0) return;
+
+    for (const it of availableItems) {
+      for (let i = 0; i < it.quantity; i++) {
         addToCart({
-          id: it.id,
+          id: it.product_id,
           name: it.name,
           price: it.price,
           mrp: it.mrp,
-          unit: it.unit,
-          shop_id: 'shop-1',
-          brand: 'Essentials',
-          primary_category: 'Staples',
-          image_url: it.image_url || '',
+          unit: it.unit_label,
+          shop_id: it.shop_id || '',
+          brand: it.brand,
+          primary_category: it.primary_category,
+          image_url: it.image_url,
         } as any);
       }
     }
 
     Alert.alert(
-      'Monthly Basket Added!',
-      `Added ${totalItemCount} items to your active cart.`,
+      screenConfig.add_all_success_title,
+      formatOneClickTemplate(screenConfig.add_all_success_message_template, {
+        count: totalItemCount,
+      }),
       [
-        { text: 'Keep Browsing', style: 'cancel' },
-        { text: 'View Cart ›', onPress: () => navigation.navigate('Cart') }
-      ]
+        { text: screenConfig.keep_browsing_label, style: 'cancel' },
+        {
+          text: screenConfig.view_cart_label,
+          onPress: () => navigation.navigate('Cart'),
+        },
+      ],
     );
   };
 
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <CheckoutBackIcon size={24} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Could not load screen configuration.</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadScreen()}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const insightTitle = formatOneClickTemplate(screenConfig.insight_title_template, {
+    months: basketMeta?.source_months ?? screenConfig.source_months,
+  });
+
+  const insightCount = groups
+    .flatMap((g) => g.items)
+    .filter((i) => i.available).length;
+
+  const insightSubtitle = formatOneClickTemplate(screenConfig.insight_subtitle_template, {
+    count: insightCount,
+  });
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={styles.backBtnText}>‹</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Your monthly basket</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
       </View>
 
-      {/* =========================================================================
-         STATE 1: GENERATING STATE (D2 GENERATING SCREEN IN FIGMA)
-         ========================================================================= */}
       {generating ? (
         <View style={styles.generatingWrap}>
-          {/* Progress Ring */}
-          <View style={styles.progressRingCircle}>
-            <View style={styles.progressRingInner}>
-              <ActivityIndicator size="large" color={COLORS.green700} />
-            </View>
-            <View style={styles.goldAccentDot} />
+          <View style={styles.progressRing}>
+            <ActivityIndicator size="large" color={COLORS.green700} />
+            <View style={styles.goldDot} />
           </View>
-
-          <Text style={styles.generatingHeading}>Building your basket</Text>
-          <Text style={styles.generatingSub}>
-            Analyzing live store inventory and household staples...
-          </Text>
-
-          {/* Skeleton Cards */}
-          <View style={styles.skeletonCard} />
-          <View style={[styles.skeletonCard, { width: '85%' }]} />
-          <View style={[styles.skeletonCard, { width: '92%' }]} />
+          <Text style={styles.generatingTitle}>{screenConfig.generating_title}</Text>
+          <Text style={styles.generatingSub}>{screenConfig.generating_subtitle}</Text>
+          <View style={styles.skeletonStack}>
+            <View style={styles.skeletonCard} />
+            <View style={[styles.skeletonCard, { width: '92%' }]} />
+            <View style={[styles.skeletonCard, { width: '88%' }]} />
+          </View>
+        </View>
+      ) : loadError ? (
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>{screenConfig.load_error_message}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={handleRetry}>
+            <Text style={styles.retryBtnText}>{screenConfig.retry_label}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : !city || !area ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>{screenConfig.no_location_title}</Text>
+          <Text style={styles.emptySub}>{screenConfig.no_location_message}</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => navigation.navigate('CitySelection')}
+          >
+            <Text style={styles.retryBtnText}>{screenConfig.empty_cta_label}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : !basketMeta?.has_history || groups.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>{screenConfig.empty_title}</Text>
+          <Text style={styles.emptySub}>{screenConfig.empty_message}</Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => navigation.navigate('Shop')}
+          >
+            <Text style={styles.retryBtnText}>{screenConfig.empty_cta_label}</Text>
+          </TouchableOpacity>
         </View>
       ) : (
-        /* =========================================================================
-           STATE 2: GENERATED MONTHLY BASKET REVIEW (D2 SCREEN IN FIGMA)
-           ========================================================================= */
-        <View style={{ flex: 1 }}>
+        <View style={styles.flex}>
           <ScrollView
-            style={styles.scrollArea}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Top Mint Callout Box */}
-            <View style={styles.mintCallout}>
-              <Text style={styles.calloutSparkle}>✦</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.calloutTitle}>Live Store Catalog Basket</Text>
-                <Text style={styles.calloutSub}>
-                  Auto-assembled from {allItems.length} active database staples with verified prices
-                </Text>
+            <View style={styles.insightCard}>
+              <SlotInfoIcon size={20} />
+              <View style={styles.insightText}>
+                <Text style={styles.insightTitle}>{insightTitle}</Text>
+                <Text style={styles.insightSub}>{insightSubtitle}</Text>
               </View>
             </View>
 
-            {/* Categorized Product List */}
             {groups.map((group) => (
-              <View key={group.category} style={styles.groupSection}>
-                <Text style={styles.groupHeaderLabel}>{group.category}</Text>
-
+              <View key={group.section_label} style={styles.groupSection}>
+                <Text style={styles.sectionLabel}>{group.section_label}</Text>
                 <View style={styles.groupCard}>
-                  {group.items.map((item, idx) => {
-                    const isLast = idx === group.items.length - 1;
-
-                    return (
-                      <View
-                        key={item.id}
-                        style={[styles.productRow, !isLast && styles.productRowBorder]}
-                      >
-                        <View style={styles.bagIconBox}>
-                          <AppIcon name="shopping-bag" size={22} color={COLORS.green700} />
-                        </View>
-
-                        <View style={styles.productDetailsCol}>
-                          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-                          <Text style={styles.productPackPrice}>
-                            {item.unit} · ₹{item.price}{' '}
-                            {item.mrp > item.price && (
-                              <Text style={styles.strikethroughMrp}>₹{item.mrp}</Text>
-                            )}
-                          </Text>
-                        </View>
-
-                        {/* Dark Green Stepper Capsule */}
-                        <View style={styles.stepperCapsule}>
-                          <TouchableOpacity
-                            style={styles.stepperBtn}
-                            onPress={() => handleUpdateQty(item.id, -1)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.stepperBtnText}>−</Text>
-                          </TouchableOpacity>
-
-                          <Text style={styles.stepperCount}>{item.qty}</Text>
-
-                          <TouchableOpacity
-                            style={styles.stepperBtn}
-                            onPress={() => handleUpdateQty(item.id, 1)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.stepperBtnText}>+</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  })}
+                  {group.items.map((item, idx) => (
+                    <ProductRow
+                      key={item.product_id}
+                      item={item}
+                      index={idx}
+                      isLast={idx === group.items.length - 1}
+                      unavailableLabel={screenConfig.unavailable_label}
+                      onMinus={() => handleUpdateQty(item.product_id, -1)}
+                      onPlus={() => handleUpdateQty(item.product_id, 1)}
+                    />
+                  ))}
                 </View>
               </View>
             ))}
           </ScrollView>
 
-          {/* Sticky Bottom Bar */}
-          <View style={styles.bottomStickyBar}>
+          <View
+            style={[
+              styles.bottomBar,
+              { paddingBottom: Math.max(insets.bottom, 12) },
+            ]}
+          >
             <View>
-              <Text style={styles.bottomItemsCountText}>{totalItemCount} items</Text>
-              <Text style={styles.bottomPriceText}>₹{totalBasketPrice.toLocaleString('en-IN')}</Text>
+              <Text style={styles.bottomCount}>
+                {formatOneClickTemplate(screenConfig.items_count_template, {
+                  count: totalItemCount,
+                })}
+              </Text>
+              <Text style={styles.bottomPrice}>{formatInr(totalBasketPrice)}</Text>
             </View>
-
             <TouchableOpacity
-              style={styles.addAllCartBtn}
+              style={[
+                styles.addAllBtn,
+                totalItemCount === 0 && styles.addAllBtnDisabled,
+              ]}
               onPress={handleAddAllToCart}
+              disabled={totalItemCount === 0}
               activeOpacity={0.85}
             >
-              <Text style={styles.addAllCartBtnText}>Add all to cart</Text>
+              <BasketSaveIcon size={18} />
+              <Text style={styles.addAllBtnText}>{screenConfig.add_all_label}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -306,48 +344,92 @@ export default function OneClickCartScreen({ navigation }: any) {
   );
 }
 
+function ProductRow({
+  item,
+  index,
+  isLast,
+  unavailableLabel,
+  onMinus,
+  onPlus,
+}: {
+  item: OneClickCartItem;
+  index: number;
+  isLast: boolean;
+  unavailableLabel: string;
+  onMinus: () => void;
+  onPlus: () => void;
+}) {
+  const priceLine = item.unit_label
+    ? `${item.unit_label} · ${formatInr(item.price)}`
+    : formatInr(item.price);
+
+  return (
+    <View style={[styles.productRow, !isLast && styles.productRowBorder]}>
+      <View style={[styles.thumb, !item.image_url && styles.thumbEmpty]}>
+        {item.image_url ? (
+          <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
+        ) : null}
+      </View>
+      <View style={styles.productText}>
+        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+        {item.available ? (
+          <View style={styles.priceRow}>
+            <Text style={styles.productPrice}>{priceLine}</Text>
+            {item.previous_price ? (
+              <Text style={styles.wasPrice}>
+                was {formatInr(item.previous_price)}
+              </Text>
+            ) : null}
+          </View>
+        ) : (
+          <Text style={styles.unavailableText}>{unavailableLabel}</Text>
+        )}
+      </View>
+      {item.available ? (
+        <Stepper qty={item.quantity} onMinus={onMinus} onPlus={onPlus} />
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  flex: { flex: 1 },
+  centered: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
   },
-  topHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    height: 48,
+    gap: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORS.ink900,
-    marginLeft: 8,
-  },
-  /* Generating State */
-  generatingWrap: {
-    flex: 1,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
   },
-  progressRingCircle: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+  headerTitle: {
+    ...FONTS.balooBold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: COLORS.ink900,
+  },
+  generatingWrap: {
+    flex: 1,
+    paddingHorizontal: 40,
+    paddingTop: 48,
+    alignItems: 'center',
+  },
+  progressRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 4,
     borderColor: COLORS.green600,
     justifyContent: 'center',
@@ -355,145 +437,143 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     position: 'relative',
   },
-  progressRingInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  goldAccentDot: {
+  goldDot: {
     position: 'absolute',
-    top: -4,
+    top: 4,
+    right: 8,
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: COLORS.marigold500,
   },
-  generatingHeading: {
+  generatingTitle: {
+    ...FONTS.balooBold,
     fontSize: 20,
-    fontWeight: '800',
     color: COLORS.ink900,
     marginBottom: 8,
   },
   generatingSub: {
-    fontSize: 13.5,
+    ...FONTS.muktaRegular,
+    fontSize: 14,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 19,
-    marginBottom: 36,
+    lineHeight: 20,
+    marginBottom: 32,
   },
+  skeletonStack: { width: '100%', gap: 12 },
   skeletonCard: {
     width: '100%',
-    height: 48,
-    backgroundColor: 'rgba(0,0,0,0.04)',
+    height: 62,
     borderRadius: RADIUS.md,
-    marginBottom: 12,
-  },
-  /* Generated Review State */
-  scrollArea: {
-    flex: 1,
+    backgroundColor: COLORS.muted,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 24,
   },
-  mintCallout: {
+  insightCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    gap: 10,
     backgroundColor: COLORS.green50,
     borderWidth: 1,
     borderColor: COLORS.green100,
     borderRadius: RADIUS.md,
-    padding: 14,
-    marginBottom: 20,
-    gap: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    minHeight: 61,
+    marginBottom: 16,
   },
-  calloutSparkle: {
-    fontSize: 16,
-    color: COLORS.green700,
-    fontWeight: 'bold',
-    marginTop: 1,
-  },
-  calloutTitle: {
-    fontSize: 13.5,
-    fontWeight: '800',
+  insightText: { flex: 1 },
+  insightTitle: {
+    ...FONTS.balooBold,
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORS.green700,
     marginBottom: 2,
   },
-  calloutSub: {
+  insightSub: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
-    color: COLORS.ink700,
     lineHeight: 16,
+    color: COLORS.ink700,
   },
-  groupSection: {
-    marginBottom: 20,
-  },
-  groupHeaderLabel: {
+  groupSection: { marginBottom: 16 },
+  sectionLabel: {
+    ...FONTS.muktaBold,
     fontSize: 11,
-    fontWeight: '800',
     color: COLORS.ink500,
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
     marginBottom: 8,
-    paddingLeft: 4,
+    paddingLeft: 2,
   },
   groupCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
+    overflow: 'hidden',
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    minHeight: 68,
   },
   productRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: COLORS.line,
   },
-  bagIconBox: {
-    width: 40,
-    height: 40,
+  thumb: {
+    width: 46,
+    height: 46,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
-  productDetailsCol: {
-    flex: 1,
-    paddingRight: 8,
+  thumbEmpty: {
+    backgroundColor: COLORS.muted,
   },
+  thumbImg: { width: 38, height: 38 },
+  productText: { flex: 1, paddingRight: 8 },
   productName: {
-    fontSize: 13.5,
-    fontWeight: '700',
+    ...FONTS.balooBold,
+    fontSize: 13,
+    lineHeight: 18,
     color: COLORS.ink900,
-    marginBottom: 3,
+    marginBottom: 2,
   },
-  productPackPrice: {
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  productPrice: {
+    ...FONTS.muktaMedium,
     fontSize: 12,
-    fontWeight: '600',
     color: COLORS.ink700,
   },
-  strikethroughMrp: {
+  wasPrice: {
+    ...FONTS.muktaRegular,
     fontSize: 11,
     color: COLORS.ink300,
-    textDecorationLine: 'line-through',
   },
-  stepperCapsule: {
+  unavailableText: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: COLORS.error,
+  },
+  stepper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
     borderRadius: RADIUS.pill,
-    height: 32,
-    paddingHorizontal: 6,
+    height: 30,
+    paddingHorizontal: 4,
+    minWidth: 63,
   },
   stepperBtn: {
-    width: 22,
+    width: 28,
     height: 30,
     justifyContent: 'center',
     alignItems: 'center',
@@ -501,45 +581,84 @@ const styles = StyleSheet.create({
   stepperBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    lineHeight: 18,
   },
   stepperCount: {
-    color: '#FFFFFF',
+    ...FONTS.muktaBold,
     fontSize: 13,
-    fontWeight: '800',
-    paddingHorizontal: 8,
+    color: '#FFFFFF',
+    minWidth: 14,
+    textAlign: 'center',
   },
-  bottomStickyBar: {
+  bottomBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.line,
   },
-  bottomItemsCountText: {
+  bottomCount: {
+    ...FONTS.muktaMedium,
     fontSize: 12,
     color: COLORS.ink500,
-    fontWeight: '600',
+    lineHeight: 14,
   },
-  bottomPriceText: {
-    fontSize: 18,
-    fontWeight: '900',
+  bottomPrice: {
+    ...FONTS.balooBold,
+    fontSize: 20,
+    lineHeight: 24,
     color: COLORS.ink900,
   },
-  addAllCartBtn: {
+  addAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: COLORS.green700,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     height: 48,
     borderRadius: RADIUS.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  addAllCartBtnText: {
-    color: '#FFFFFF',
+  addAllBtnDisabled: { opacity: 0.45 },
+  addAllBtnText: {
+    ...FONTS.muktaBold,
     fontSize: 14,
-    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  emptyTitle: {
+    ...FONTS.balooBold,
+    fontSize: 18,
+    color: COLORS.ink900,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptySub: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  errorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+  },
+  retryBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
   },
 });

@@ -102,6 +102,39 @@ export const getMergedCouponsList = () => {
   return merged;
 };
 
+export function filterCouponsForUser(userId: string | null, orders: any[] = []) {
+  const userOrders = userId
+    ? orders.filter((o: any) => o.consumer_id === userId && o.status !== 'cancelled')
+    : [];
+  const orderCount = userOrders.length;
+  const coupons = getMergedCouponsList();
+
+  return coupons.filter((c) => {
+    const target = c.target_audience || 'all';
+    if (target === 'new' && orderCount > 0) return false;
+    if (target === 'loyal' && orderCount < 1) return false;
+
+    if (userId) {
+      const userUsage = userOrders.filter(
+        (o: any) => o.coupon_code?.toUpperCase() === c.code.toUpperCase(),
+      ).length;
+      const userLimit = c.usage_limit_per_user || 1;
+      if (userUsage >= userLimit) return false;
+    }
+
+    if (c.max_global_uses) {
+      const globalUsage = orders.filter(
+        (o: any) =>
+          o.coupon_code?.toUpperCase() === c.code.toUpperCase() &&
+          o.status !== 'cancelled',
+      ).length;
+      if (globalUsage >= c.max_global_uses) return false;
+    }
+
+    return true;
+  });
+};
+
 // 1. GET /api/coupons - Fetch targeted live active coupons
 router.get('/', async (req: Request, res: Response): Promise<any> => {
   try {
@@ -120,43 +153,7 @@ router.get('/', async (req: Request, res: Response): Promise<any> => {
 
     const db = readDb() as any;
     const orders = db.orders || [];
-
-    // Count user's total non-cancelled orders to determine audience eligibility
-    const userOrders = userId ? orders.filter((o: any) => o.consumer_id === userId && o.status !== 'cancelled') : [];
-    const orderCount = userOrders.length;
-
-    const coupons = getMergedCouponsList();
-
-    // Filter coupons dynamically based on target_audience, user limits, and global limits (Swiggy logic)
-    const filteredCoupons = coupons.filter(c => {
-      // 1. Target Audience filter
-      const target = c.target_audience || 'all';
-      if (target === 'new' && orderCount > 0) {
-        return false;
-      }
-      if (target === 'loyal' && orderCount < 1) {
-        return false;
-      }
-
-      // 2. User usage limit filter
-      if (userId) {
-        const userUsage = userOrders.filter((o: any) => o.coupon_code?.toUpperCase() === c.code.toUpperCase()).length;
-        const userLimit = c.usage_limit_per_user || 1;
-        if (userUsage >= userLimit) {
-          return false; // User exceeded limit for this coupon
-        }
-      }
-
-      // 3. Global usage limit filter
-      if (c.max_global_uses) {
-        const globalUsage = orders.filter((o: any) => o.coupon_code?.toUpperCase() === c.code.toUpperCase() && o.status !== 'cancelled').length;
-        if (globalUsage >= c.max_global_uses) {
-          return false; // Global coupon uses exceeded
-        }
-      }
-
-      return true;
-    });
+    const filteredCoupons = filterCouponsForUser(userId, orders);
 
     return res.json({ success: true, coupons: filteredCoupons });
   } catch (err: any) {

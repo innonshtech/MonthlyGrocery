@@ -21,6 +21,9 @@ export interface HomeScreenConfig {
   first_basket_title: string;
   first_basket_subtitle: string;
   first_basket_cta_label: string;
+  load_error_message: string;
+  retry_label: string;
+  location_required_deals_label: string;
 }
 
 export interface PromotionalBanner {
@@ -76,6 +79,21 @@ export async function fetchHomeConfig(): Promise<HomeScreenConfig | null> {
     return data.home as HomeScreenConfig;
   } catch {
     return null;
+  }
+}
+
+export type HomeConfigResult = { home: HomeScreenConfig | null; error: boolean };
+
+export async function fetchHomeConfigWithStatus(): Promise<HomeConfigResult> {
+  try {
+    const res = await fetch(`${API_BASE}/admin/home`);
+    const data = await res.json();
+    if (!res.ok || !data.success || !data.home) {
+      return { home: null, error: true };
+    }
+    return { home: data.home as HomeScreenConfig, error: false };
+  } catch {
+    return { home: null, error: true };
   }
 }
 

@@ -1,15 +1,33 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   StatusBar,
-  Alert
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import {
+  SYSTEM_STATE_ICON_SIZES,
+  SystemStateErrorIcon,
+  SystemStateMaintenanceIcon,
+  SystemStateOfflineIcon,
+  SystemStateUnserviceableIcon,
+} from '../../components/system/SystemStateFigmaIcons';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import {
+  SystemStatesScreenConfig,
+  SystemStateVariantConfig,
+  fetchSystemStatesScreenConfig,
+  formatSystemStateTemplate,
+} from '../../services/systemStatesApi';
+import { submitAreaNotifyRequest } from '../../services/areasApi';
+
+const SCREEN_BG = '#FBFAF6';
 
 export type SystemStateType = 'offline' | 'unserviceable' | 'error' | 'maintenance';
 
@@ -18,6 +36,7 @@ interface SystemStateProps {
     params?: {
       type?: SystemStateType;
       areaName?: string;
+      cityName?: string;
       onRetry?: () => void;
     };
   };
@@ -26,159 +45,200 @@ interface SystemStateProps {
   onRetry?: () => void;
 }
 
-export default function SystemStateScreen({ route, navigation, type: propType, onRetry: propOnRetry }: SystemStateProps) {
+type StateViewProps = {
+  config: SystemStateVariantConfig;
+  iconCircleStyle: object;
+  icon: React.ReactNode;
+  onPrimary: () => void;
+  onSecondary?: () => void;
+  primaryLoading?: boolean;
+};
+
+function StateView({
+  config,
+  iconCircleStyle,
+  icon,
+  onPrimary,
+  onSecondary,
+  primaryLoading,
+}: StateViewProps) {
+  return (
+    <View style={styles.stateContainer}>
+      <View style={iconCircleStyle}>{icon}</View>
+      <Text style={styles.headline}>{config.title}</Text>
+      <Text style={styles.subtitle}>{config.subtitle}</Text>
+
+      <TouchableOpacity
+        style={styles.primaryBtn}
+        onPress={onPrimary}
+        disabled={primaryLoading}
+        activeOpacity={0.85}
+      >
+        {primaryLoading ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.primaryBtnText}>{config.primary_button_label}</Text>
+        )}
+      </TouchableOpacity>
+
+      {config.secondary_button_label && onSecondary ? (
+        <TouchableOpacity
+          style={styles.secondaryLinkBtn}
+          onPress={onSecondary}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.secondaryLinkText}>{config.secondary_button_label}</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+export default function SystemStateScreen({
+  route,
+  navigation,
+  type: propType,
+  onRetry: propOnRetry,
+}: SystemStateProps) {
+  const { city, area, user } = useAuth();
   const stateType: SystemStateType = propType || route?.params?.type || 'offline';
-  const areaName = route?.params?.areaName || 'this area';
+  const areaName =
+    route?.params?.areaName?.trim() || area?.trim() || 'this area';
+  const cityName = route?.params?.cityName?.trim() || city?.trim() || '';
   const onRetry = propOnRetry || route?.params?.onRetry;
+
+  const [screenConfig, setScreenConfig] = useState<SystemStatesScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+
+  const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchSystemStatesScreenConfig();
+    setScreenConfig(config);
+    setConfigLoading(false);
+    return config;
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadConfig();
+    }, [loadConfig]),
+  );
 
   const handleRetry = () => {
     if (onRetry) {
       onRetry();
-    } else if (navigation?.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation?.reset({ index: 0, routes: [{ name: 'Splash' }] });
+      return;
     }
+    if (navigation?.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation?.reset({ index: 0, routes: [{ name: 'Splash' }] });
   };
 
-  const handleNotifyMe = () => {
-    Alert.alert(
-      'Notification Saved!',
-      `We've saved your request. You'll be the first to know the moment MonthlyGrocery begins deliveries in ${areaName}!`
-    );
+  const handleNotifyMe = async () => {
+    if (!screenConfig) return;
+    const unserviceable = screenConfig.unserviceable;
+    if (!cityName || !areaName || areaName === 'this area') {
+      Alert.alert(unserviceable.notify_error_message);
+      return;
+    }
+
+    setNotifyLoading(true);
+    const result = await submitAreaNotifyRequest(cityName, areaName, user?.mobile);
+    setNotifyLoading(false);
+
+    if (result.success) {
+      Alert.alert('', unserviceable.notify_success_message);
+    } else {
+      Alert.alert(result.error || unserviceable.notify_error_message);
+    }
   };
 
   const handleChangeArea = () => {
-    if (navigation) {
-      navigation.navigate('CitySelection');
-    }
+    navigation?.navigate('CitySelection');
   };
 
   const handleGoHome = () => {
-    if (navigation) {
-      navigation.reset({ index: 0, routes: [{ name: 'Shop' }] });
-    }
+    navigation?.reset({ index: 0, routes: [{ name: 'Shop' }] });
+  };
+
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!screenConfig) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.centered}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => loadConfig()}>
+            <ActivityIndicator color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const unserviceableConfig: SystemStateVariantConfig = {
+    ...screenConfig.unserviceable,
+    subtitle: screenConfig.unserviceable.subtitle_template
+      ? formatSystemStateTemplate(screenConfig.unserviceable.subtitle_template, {
+          area: areaName,
+          city: cityName,
+        })
+      : screenConfig.unserviceable.subtitle,
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
       <StatusBar barStyle="dark-content" />
-
-      {/* Top Status Space */}
       <View style={styles.topSpace} />
-
       <View style={styles.contentWrap}>
-        {/* =========================================================================
-           1. STATE: OFFLINE / NO INTERNET (H1 IN FIGMA)
-           ========================================================================= */}
-        {stateType === 'offline' && (
-          <View style={styles.stateContainer}>
-            <View style={styles.mintCircle}>
-              <Text style={styles.iconWifiCross}>📡 ✕</Text>
-            </View>
+        {stateType === 'offline' ? (
+          <StateView
+            config={screenConfig.offline}
+            iconCircleStyle={styles.mintCircle}
+            icon={<SystemStateOfflineIcon size={SYSTEM_STATE_ICON_SIZES.offline} />}
+            onPrimary={handleRetry}
+          />
+        ) : null}
 
-            <Text style={styles.headline}>You're offline</Text>
-            <Text style={styles.subtitle}>
-              Check your internet connection and try again.
-            </Text>
+        {stateType === 'unserviceable' ? (
+          <StateView
+            config={unserviceableConfig}
+            iconCircleStyle={styles.peachCircle}
+            icon={<SystemStateUnserviceableIcon size={SYSTEM_STATE_ICON_SIZES.unserviceable} />}
+            onPrimary={handleNotifyMe}
+            onSecondary={handleChangeArea}
+            primaryLoading={notifyLoading}
+          />
+        ) : null}
 
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleRetry}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryBtnText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {stateType === 'error' ? (
+          <StateView
+            config={screenConfig.error}
+            iconCircleStyle={styles.errorCircle}
+            icon={<SystemStateErrorIcon size={SYSTEM_STATE_ICON_SIZES.error} />}
+            onPrimary={handleRetry}
+            onSecondary={handleGoHome}
+          />
+        ) : null}
 
-        {/* =========================================================================
-           2. STATE: AREA NOT SERVICEABLE (H2 IN FIGMA)
-           ========================================================================= */}
-        {stateType === 'unserviceable' && (
-          <View style={styles.stateContainer}>
-            <View style={styles.mintCircle}>
-              <AppIcon name="map-pin" size={30} color={COLORS.green700} />
-            </View>
-
-            <Text style={styles.headline}>We're not here yet</Text>
-            <Text style={styles.subtitle}>
-              MonthlyGrocery doesn't deliver to {areaName} yet, but we're expanding fast.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleNotifyMe}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryBtnText}>Notify me when you're live</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryLinkBtn}
-              onPress={handleChangeArea}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryLinkText}>Change area</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* =========================================================================
-           3. STATE: GENERIC ERROR (H3 IN FIGMA)
-           ========================================================================= */}
-        {stateType === 'error' && (
-          <View style={styles.stateContainer}>
-            <View style={styles.peachCircle}>
-              <Text style={styles.warningTriangleEmoji}>⚠️</Text>
-            </View>
-
-            <Text style={styles.headline}>Something went wrong</Text>
-            <Text style={styles.subtitle}>
-              We hit a snag on our end. Please try again in a moment.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleRetry}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryBtnText}>Try again</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.secondaryLinkBtn}
-              onPress={handleGoHome}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.secondaryLinkText}>Go to home</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* =========================================================================
-           4. STATE: MAINTENANCE (H4 IN FIGMA)
-           ========================================================================= */}
-        {stateType === 'maintenance' && (
-          <View style={styles.stateContainer}>
-            <View style={styles.mintCircle}>
-              <Text style={styles.wrenchEmoji}>🔧</Text>
-            </View>
-
-            <Text style={styles.headline}>Back in a bit</Text>
-            <Text style={styles.subtitle}>
-              We're doing some quick upkeep to serve you better. Please check back shortly.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleRetry}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.primaryBtnText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {stateType === 'maintenance' ? (
+          <StateView
+            config={screenConfig.maintenance}
+            iconCircleStyle={styles.mintCircle}
+            icon={<SystemStateMaintenanceIcon size={SYSTEM_STATE_ICON_SIZES.maintenance} />}
+            onPrimary={handleRetry}
+          />
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -187,7 +247,20 @@ export default function SystemStateScreen({ route, navigation, type: propType, o
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper #FAF9F5
+    backgroundColor: SCREEN_BG,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  retryBtn: {
+    backgroundColor: COLORS.green700,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topSpace: {
     height: 40,
@@ -204,69 +277,76 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mintCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.green50, // Mint #E4F3EA
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.green50,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
   },
   peachCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FEE2E2',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.marigold100,
+    borderWidth: 1.5,
+    borderColor: COLORS.marigold200,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
   },
-  iconWifiCross: {
-    fontSize: 26,
-    color: COLORS.green700,
-  },
-  warningTriangleEmoji: {
-    fontSize: 32,
-  },
-  wrenchEmoji: {
-    fontSize: 30,
+  errorCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.errorBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   headline: {
-    fontSize: 20,
-    fontWeight: '900',
+    ...FONTS.balooBold,
+    fontSize: 22,
+    lineHeight: 28,
     color: COLORS.ink900,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 13.5,
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    lineHeight: 24,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 20,
     marginBottom: 28,
     paddingHorizontal: 12,
+    maxWidth: 310,
   },
   primaryBtn: {
-    width: '100%',
-    backgroundColor: COLORS.green700, // Primary Green #1E7A46
-    height: 50,
-    borderRadius: RADIUS.pill, // 999px
+    width: 250,
+    alignSelf: 'center',
+    backgroundColor: COLORS.green700,
+    height: 52,
+    borderRadius: RADIUS.pill,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   primaryBtnText: {
-    color: '#FFFFFF',
+    ...FONTS.muktaBold,
     fontSize: 15,
-    fontWeight: '800',
+    lineHeight: 20,
+    color: '#FFFFFF',
   },
   secondaryLinkBtn: {
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
   secondaryLinkText: {
+    ...FONTS.muktaBold,
     fontSize: 13.5,
-    fontWeight: '700',
+    lineHeight: 18,
     color: COLORS.green700,
   },
 });
