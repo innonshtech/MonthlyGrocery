@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
+import AppLoader from '../components/AppLoader';
 
 import LoginScreen from '../screens/LoginScreen';
 import LandingScreen from '../screens/LandingScreen';
@@ -40,16 +41,6 @@ import SavedBasketsScreen from '../screens/customer/SavedBasketsScreen';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#22C55E" />
-      </View>
-    );
-  }
-
   return (
     <NavigationContainer>
       <CartProvider>

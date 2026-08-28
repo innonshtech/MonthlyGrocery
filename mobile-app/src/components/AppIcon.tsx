@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 
 export type IconName =
   | 'home'
@@ -217,71 +218,33 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 3. Cart Icon (Trolley + Badge)
+  // 3. Cart Icon (Exact Figma Shopping Cart Vector + Dynamic Badge)
   if (name === 'cart') {
     return (
       <View style={[styles.center, { width: size, height: size, position: 'relative' }]}>
-        <View style={{ width: 22, height: 20, position: 'relative' }}>
-          <View
-            style={{
-              position: 'absolute',
-              top: 1,
-              left: 0,
-              width: 5,
-              height: stroke,
-              backgroundColor: color,
-              borderRadius: 1,
-            }}
+        <Svg width={size * 0.9} height={size * 0.9} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M9 21.4C9.7732 21.4 10.4 20.7732 10.4 20C10.4 19.2268 9.7732 18.6 9 18.6C8.2268 18.6 7.6 19.2268 7.6 20C7.6 20.7732 8.2268 21.4 9 21.4Z"
+            stroke={color}
+            strokeWidth={1.9}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <View
-            style={{
-              position: 'absolute',
-              top: 1,
-              left: 3.5,
-              width: stroke,
-              height: 10,
-              backgroundColor: color,
-              borderRadius: 1,
-              transform: [{ rotate: '-15deg' }],
-            }}
+          <Path
+            d="M18 21.4C18.7732 21.4 19.4 20.7732 19.4 20C19.4 19.2268 18.7732 18.6 18 18.6C17.2268 18.6 16.6 19.2268 16.6 20C16.6 20.7732 17.2268 21.4 18 21.4Z"
+            stroke={color}
+            strokeWidth={1.9}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <View
-            style={{
-              position: 'absolute',
-              top: 4.5,
-              left: 5.5,
-              width: 14,
-              height: 9.5,
-              borderWidth: stroke,
-              borderColor: color,
-              borderTopWidth: 0,
-              borderBottomLeftRadius: 3,
-              borderBottomRightRadius: 3,
-            }}
+          <Path
+            d="M2 3H5L7.4 15.4C7.47013 15.7439 7.65864 16.0523 7.93271 16.2716C8.20679 16.4909 8.54908 16.6071 8.9 16.6H17.1C17.4509 16.6071 17.7932 16.4909 18.0673 16.2716C18.3414 16.0523 18.5299 15.7439 18.6 15.4L21 7H6"
+            stroke={color}
+            strokeWidth={1.9}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 7,
-              width: 4,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: color,
-            }}
-          />
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 15,
-              width: 4,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: color,
-            }}
-          />
-        </View>
+        </Svg>
 
         {badge !== undefined && badge > 0 && (
           <View
@@ -289,16 +252,17 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
               position: 'absolute',
               top: -3,
               right: -5,
-              backgroundColor: '#1E7A46',
-              width: 16,
+              backgroundColor: '#0F3D28',
+              minWidth: 16,
               height: 16,
-              borderRadius: 8,
+              paddingHorizontal: 3,
+              borderRadius: 999,
               justifyContent: 'center',
               alignItems: 'center',
               zIndex: 10,
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 9.5, fontWeight: '800', lineHeight: 11 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 9, fontWeight: '700', lineHeight: 11 }}>
               {badge}
             </Text>
           </View>

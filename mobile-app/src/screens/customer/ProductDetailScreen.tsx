@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
 import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
@@ -124,7 +125,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     if (loading) {
       return (
         <View style={styles.centerLoading}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading product..." />
         </View>
       );
     }

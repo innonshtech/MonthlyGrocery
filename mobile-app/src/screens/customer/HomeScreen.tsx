@@ -30,6 +30,7 @@ import {
   PromotionalBanner,
 } from '../../services/homeApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
+import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
@@ -451,7 +452,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             <Text style={styles.locationHintCta}>{home?.choose_location_label}</Text>
           </TouchableOpacity>
         ) : loading ? (
-          <Text style={styles.loadingText}>{home?.loading_deals_label}</Text>
+          <AppLoader message={home?.loading_deals_label || 'Loading deals...'} />
         ) : products.length > 0 ? (
           <ScrollView
             horizontal

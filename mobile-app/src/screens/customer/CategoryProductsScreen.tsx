@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import BrowseProductCard from '../../components/browse/BrowseProductCard';
 import {
@@ -296,8 +297,8 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
           ) : loading ? (
-            <View style={styles.centerLoading}>
-              <ActivityIndicator size="large" color={COLORS.green700} />
+            <View style={styles.centeredState}>
+              <AppLoader message="Loading items..." />
             </View>
           ) : productsError ? (
             <View style={styles.centeredState}>

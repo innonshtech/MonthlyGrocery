@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AppIcon, { IconName } from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import {
   fetchCategoriesConfigWithStatus,
@@ -313,7 +314,7 @@ export default function CategoriesScreen({ navigation }: any) {
 
       {categoriesLoading ? (
         <View style={styles.centeredState}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading categories..." />
         </View>
       ) : categoriesError ? (
         <View style={styles.centeredState}>
