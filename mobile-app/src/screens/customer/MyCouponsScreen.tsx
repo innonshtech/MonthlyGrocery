@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -88,7 +89,7 @@ export default function MyCouponsScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.centeredState}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading coupons..." />
         </View>
       </SafeAreaView>
     );
@@ -140,7 +141,7 @@ export default function MyCouponsScreen({ navigation }: any) {
 
         {couponsLoading ? (
           <View style={styles.centerLoading}>
-            <ActivityIndicator size="large" color={COLORS.green700} />
+            <AppLoader message="Loading coupons..." />
           </View>
         ) : (
           <View style={styles.listContainer}>

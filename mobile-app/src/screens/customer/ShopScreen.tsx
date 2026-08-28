@@ -7,9 +7,10 @@ import {
   Image,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
-  SafeAreaView
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
@@ -192,7 +193,7 @@ export default function ShopScreen({ navigation }: any) {
       {/* Product List */}
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#22C55E" />
+          <AppLoader message="Loading items..." />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>

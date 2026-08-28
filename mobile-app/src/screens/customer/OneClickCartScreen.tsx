@@ -13,6 +13,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
@@ -187,7 +189,7 @@ export default function OneClickCartScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Building basket..." />
         </View>
       </SafeAreaView>
     );
@@ -236,11 +238,7 @@ export default function OneClickCartScreen({ navigation }: any) {
 
       {generating ? (
         <View style={styles.generatingWrap}>
-          <View style={styles.progressRing}>
-            <ActivityIndicator size="large" color={COLORS.green700} />
-            <View style={styles.goldDot} />
-          </View>
-          <Text style={styles.generatingTitle}>{screenConfig.generating_title}</Text>
+          <AppLoader message={screenConfig.generating_title} />
           <Text style={styles.generatingSub}>{screenConfig.generating_subtitle}</Text>
           <View style={styles.skeletonStack}>
             <View style={styles.skeletonCard} />

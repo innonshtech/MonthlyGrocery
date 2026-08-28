@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { API_BASE } from '../../config/api';
 import { COLORS, FONTS } from '../../constants/theme';
 import { getOrderDisplayId } from '../../services/ordersApi';
@@ -151,8 +153,7 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
-          <Text style={styles.loadingText}>Loading order details…</Text>
+          <AppLoader message="Loading order details..." />
         </View>
       </SafeAreaView>
     );

@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppIcon from '../components/AppIcon';
+import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
   OnboardingPrimaryButton,
@@ -129,7 +130,7 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
         <StatusBar barStyle="dark-content" />
-        <ActivityIndicator size="large" color={COLORS.green700} />
+        <AppLoader message="Loading profile setup..." />
       </SafeAreaView>
     );
   }

@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import AppLoader from '../../components/AppLoader';
 import {
   AccountChevronIcon,
   AccountGuestIcon,
@@ -63,23 +64,12 @@ function MenuRow({ icon, label, onPress, badge, isLast }: MenuRowProps) {
   );
 }
 
-const DEFAULT_ACCOUNT_CONFIG: AccountScreenConfig = {
-  title: 'My Account',
-  guest_delivery_area_template: '{area}, {city}',
-  guest_no_area_label: 'Select Location',
-  orders_menu_label: 'My Orders',
-  coupons_menu_label: 'Coupons & Offers',
-  help_menu_label: 'Help & Support',
-  about_menu_label: 'About MonthlyGrocery',
-  logout_button_label: 'Log Out',
-};
-
 export default function AccountScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { user, token, logout, city, area } = useAuth();
 
-  const [screenConfig, setScreenConfig] = useState<AccountScreenConfig | null>(DEFAULT_ACCOUNT_CONFIG);
-  const [configLoading, setConfigLoading] = useState(false);
+  const [screenConfig, setScreenConfig] = useState<AccountScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [summary, setSummary] = useState<AccountSummary | null>(null);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [metricsError, setMetricsError] = useState(false);
@@ -126,7 +116,15 @@ export default function AccountScreen({ navigation }: any) {
     });
   };
 
-
+  if (configLoading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <View style={styles.centered}>
+          <AppLoader message="Loading account..." />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!screenConfig) {
     return (

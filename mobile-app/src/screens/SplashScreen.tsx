@@ -12,6 +12,7 @@ import {
 import Svg, { Defs, LinearGradient, Stop, Rect, Path, Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, RADIUS, FONTS } from '../constants/theme';
+import AppLoader from '../components/AppLoader';
 import { OnboardingEmojiChip } from '../components/onboarding/OnboardingUI';
 import {
   ONBOARDING_FIGMA_HEIGHT,
@@ -160,7 +161,7 @@ export default function SplashScreen({ navigation }: any) {
 
       {!configReady ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.green100} />
+          <AppLoader color={COLORS.green100} />
         </View>
       ) : null}
 

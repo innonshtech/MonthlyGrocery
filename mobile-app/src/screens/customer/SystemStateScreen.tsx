@@ -18,6 +18,7 @@ import {
   SystemStateOfflineIcon,
   SystemStateUnserviceableIcon,
 } from '../../components/system/SystemStateFigmaIcons';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
   SystemStatesScreenConfig,
@@ -168,7 +169,7 @@ export default function SystemStateScreen({
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading..." />
         </View>
       </SafeAreaView>
     );

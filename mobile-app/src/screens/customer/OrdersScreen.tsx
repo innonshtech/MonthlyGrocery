@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { COLORS, FONTS } from '../../constants/theme';
+import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji, THUMB_BG } from '../../components/CheckoutFigmaIcons';
 import {
   ConsumerOrder,
@@ -119,7 +120,7 @@ export default function OrdersScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading orders..." />
         </View>
       </SafeAreaView>
     );
@@ -152,7 +153,7 @@ export default function OrdersScreen({ navigation }: any) {
         </View>
       ) : loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading orders..." />
         </View>
       ) : ordersError ? (
         <View style={styles.emptyWrap}>

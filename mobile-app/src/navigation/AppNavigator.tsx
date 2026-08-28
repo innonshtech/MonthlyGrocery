@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { CartProvider } from '../context/CartContext';
-import AppLoader from '../components/AppLoader';
 
 import LoginScreen from '../screens/LoginScreen';
 import LandingScreen from '../screens/LandingScreen';
@@ -38,9 +37,21 @@ import OneClickCartScreen from '../screens/customer/OneClickCartScreen';
 import CopyLastMonthScreen from '../screens/customer/CopyLastMonthScreen';
 import SavedBasketsScreen from '../screens/customer/SavedBasketsScreen';
 
+import AppLoader from '../components/AppLoader';
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <AppLoader message="Initializing app..." />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <CartProvider>

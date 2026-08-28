@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import { AccountDeleteTrashIcon } from '../../components/account/AccountHubIcons';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
   EditProfileScreenConfig,
@@ -101,7 +102,7 @@ export default function EditProfileScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading profile..." />
         </View>
       </SafeAreaView>
     );

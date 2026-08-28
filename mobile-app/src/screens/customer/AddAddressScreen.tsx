@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
@@ -162,7 +164,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading..." />
         </View>
       </SafeAreaView>
     );

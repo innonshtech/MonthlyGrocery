@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
@@ -184,7 +186,7 @@ export default function OrderDetailScreen({ route, navigation }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading order details..." />
         </View>
       </SafeAreaView>
     );

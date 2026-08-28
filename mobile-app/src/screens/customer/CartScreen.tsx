@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
 import { homeDealBg } from '../../utils/productDiscount';
@@ -158,7 +159,7 @@ export default function CartScreen({ route, navigation }: any) {
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.centeredState}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading cart..." />
         </View>
       </SafeAreaView>
     );

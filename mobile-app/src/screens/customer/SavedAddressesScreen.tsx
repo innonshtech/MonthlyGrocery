@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
@@ -128,7 +130,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading addresses..." />
         </View>
       </SafeAreaView>
     );
@@ -139,7 +141,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
           <TouchableOpacity style={styles.retryBtn} onPress={() => loadConfig()}>
-            <ActivityIndicator color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF' }}>Retry</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -170,7 +172,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
       >
         {loading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={COLORS.green700} />
+            <AppLoader message="Loading addresses..." />
           </View>
         ) : addresses.length === 0 ? (
           <View style={styles.emptyWrap}>

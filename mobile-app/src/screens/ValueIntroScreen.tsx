@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AppLoader from '../components/AppLoader';
 import {
   OnboardingCategoryBadge,
   OnboardingEmojiChip,
@@ -74,7 +75,7 @@ export default function ValueIntroScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
         <StatusBar barStyle="dark-content" />
-        <ActivityIndicator size="large" color={COLORS.green700} />
+        <AppLoader message="Loading..." />
       </SafeAreaView>
     );
   }

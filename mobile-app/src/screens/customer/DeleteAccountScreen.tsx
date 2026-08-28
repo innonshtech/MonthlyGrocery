@@ -19,6 +19,7 @@ import {
   DeleteAccountSuccessCheckIcon,
   DeleteAccountWarningIcon,
 } from '../../components/account/DeleteAccountIcons';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
   DeleteAccountScreenConfig,
@@ -79,7 +80,7 @@ export default function DeleteAccountScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading..." />
         </View>
       </SafeAreaView>
     );

@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { HomeSearchIcon, HomeMicIcon, HomeArrowRightIcon } from '../../components/home/HomeFigmaIcons';
 import {
   fetchSearchConfigWithStatus,
@@ -231,7 +232,7 @@ export default function SearchScreen({ navigation }: any) {
         </View>
       ) : loading && products.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Searching..." />
         </View>
       ) : (
         <FlatList

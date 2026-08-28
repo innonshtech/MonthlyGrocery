@@ -18,6 +18,7 @@ import {
   AccountMenuHelpIcon,
   HelpSupportPhoneIcon,
 } from '../../components/account/AccountHubIcons';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
   HelpSupportScreenConfig,
@@ -87,7 +88,7 @@ export default function HelpSupportScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading support..." />
         </View>
       </SafeAreaView>
     );

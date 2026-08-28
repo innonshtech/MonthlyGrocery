@@ -16,6 +16,7 @@ import {
   AddressRadioOffIcon,
   SlotInfoIcon,
 } from '../../components/CheckoutFigmaIcons';
+import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
 import { API_BASE } from '../../config/api';
 
@@ -129,8 +130,7 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
-          <Text style={styles.loadingText}>Loading live delivery slots…</Text>
+          <AppLoader message="Loading live delivery slots..." />
         </View>
       </SafeAreaView>
     );

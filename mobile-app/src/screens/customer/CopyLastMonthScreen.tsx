@@ -13,6 +13,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
@@ -175,7 +177,7 @@ export default function CopyLastMonthScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading last month items..." />
         </View>
       </SafeAreaView>
     );
@@ -229,7 +231,7 @@ export default function CopyLastMonthScreen({ navigation }: any) {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading last month items..." />
         </View>
       ) : loadError ? (
         <View style={styles.centered}>

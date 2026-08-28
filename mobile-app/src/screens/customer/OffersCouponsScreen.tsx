@@ -11,7 +11,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, FONTS } from '../../constants/theme';
+import AppIcon from '../../components/AppIcon';
+import AppLoader from '../../components/AppLoader';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import {
@@ -154,7 +156,7 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.centeredState}>
-          <ActivityIndicator size="large" color={COLORS.green700} />
+          <AppLoader message="Loading offers..." />
         </View>
       </SafeAreaView>
     );
@@ -228,7 +230,7 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
 
         {couponsLoading ? (
           <View style={styles.centerLoading}>
-            <ActivityIndicator size="large" color={COLORS.green700} />
+            <AppLoader message="Loading coupons..." />
           </View>
         ) : (
           <View style={styles.listContainer}>

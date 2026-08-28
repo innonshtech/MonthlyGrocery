@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
   OnboardingPrimaryButton,
@@ -86,7 +87,7 @@ export default function CitySelectionScreen({ navigation }: any) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
         <StatusBar barStyle="dark-content" />
-        <ActivityIndicator size="large" color={COLORS.green700} />
+        <AppLoader message="Loading cities..." />
       </SafeAreaView>
     );
   }

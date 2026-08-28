@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
+import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
   OnboardingPrimaryButton,
@@ -196,7 +197,7 @@ export default function LoginScreen({ route, navigation }: any) {
           {step === 1 ? (
             configLoading ? (
               <View style={styles.configLoading}>
-                <ActivityIndicator size="large" color={COLORS.green700} />
+                <AppLoader message="Loading..." />
               </View>
             ) : !phoneEntry ? (
               <View style={styles.configError}>
@@ -255,7 +256,7 @@ export default function LoginScreen({ route, navigation }: any) {
             )
           ) : configLoading || !otpVerification ? (
             <View style={styles.configLoading}>
-              <ActivityIndicator size="large" color={COLORS.green700} />
+              <AppLoader message="Loading..." />
             </View>
           ) : (
             <>
