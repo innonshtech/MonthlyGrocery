@@ -78,6 +78,8 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.monthlygrocerymobile"
+
+
     defaultConfig {
         applicationId "com.monthlygrocerymobile"
         minSdkVersion rootProject.ext.minSdkVersion
