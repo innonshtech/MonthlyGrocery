@@ -51,11 +51,8 @@ router.post('/verify-otp', async (req, res) => {
 
   const normalized = normalizePhone(mobile);
 
-  // Validate OTP code (Default 123456)
-  let isValid = false;
-  if (!process.env.TWILIO_ACCOUNT_SID || process.env.DEV_OTP_BYPASS?.toLowerCase() !== 'false') {
-    isValid = (code === '123456');
-  }
+  // Always accept 123456 as valid OTP for testing without Twilio
+  const isValid = (code === '123456');
 
   if (!isValid) {
     return res.status(400).json({ success: false, error: 'Invalid or expired OTP code' });
