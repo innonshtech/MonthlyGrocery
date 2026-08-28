@@ -8,6 +8,10 @@ import {
   ViewStyle,
 } from 'react-native';
 import AppIcon from '../AppIcon';
+import {
+  OnboardingBackIcon,
+  OnboardingRadioIcon,
+} from './OnboardingFigmaIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
@@ -17,7 +21,7 @@ export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
       style={styles.backBtn}
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
     >
-      <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
+      <OnboardingBackIcon size={22} />
     </TouchableOpacity>
   );
 }
@@ -57,11 +61,7 @@ export function OnboardingEmojiChip({
 }
 
 export function OnboardingRadio({ selected }: { selected: boolean }) {
-  return (
-    <View style={[styles.radioOuter, selected && styles.radioOuterSelected]}>
-      {selected ? <View style={styles.radioInner} /> : null}
-    </View>
-  );
+  return <OnboardingRadioIcon selected={selected} size={22} />;
 }
 
 export function OnboardingPrimaryButton({
@@ -180,24 +180,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 2,
-  },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioOuterSelected: {
-    borderColor: COLORS.green700,
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.green700,
   },
   primaryBtn: {
     height: 48,

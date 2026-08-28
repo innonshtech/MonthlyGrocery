@@ -9,9 +9,11 @@ import {
   Linking,
   StatusBar
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 
 export default function StoreSettingsScreen() {
+  const navigation = useNavigation<any>();
   const { user, logout } = useMerchantAuth();
 
   const handleLogout = () => {
@@ -76,6 +78,23 @@ export default function StoreSettingsScreen() {
               <Text style={styles.guideDesc}>Ensure dispatch matches the customer's chosen Morning, Afternoon, or Evening slot.</Text>
             </View>
           </View>
+        </View>
+
+        {/* Delivery slot management */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>DELIVERY OPERATIONS</Text>
+
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => navigation.navigate('DeliverySlots')}
+          >
+            <Text style={styles.actionIcon}>🕐</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.actionTitle}>Manage Delivery Slots</Text>
+              <Text style={styles.actionSub}>Set capacity, mark full, recommended windows</Text>
+            </View>
+            <Text style={styles.actionArrow}>➔</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Support & Contacts */}

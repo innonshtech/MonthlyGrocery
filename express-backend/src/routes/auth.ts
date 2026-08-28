@@ -174,4 +174,47 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
   }
 });
 
+// 4. Update consumer profile (name + optional email metadata)
+router.patch('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { name, email } = req.body;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ success: false, error: 'Name is required' });
+  }
+
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .update({ name: String(name).trim() })
+      .eq('id', req.user.id)
+      .select()
+      .single();
+
+    if (error || !profile) {
+      return res.status(500).json({ success: false, error: error?.message || 'Failed to update profile' });
+    }
+
+    if (email && String(email).trim()) {
+      await supabase.auth.admin.updateUserById(req.user.id, {
+        user_metadata: { email: String(email).trim() },
+      });
+    }
+
+    return res.json({
+      success: true,
+      user: {
+        id: profile.id,
+        mobile: profile.phone,
+        name: profile.name,
+        role: profile.role,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 export default router;

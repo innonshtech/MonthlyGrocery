@@ -59,9 +59,22 @@
   ],
   "promotional_banners": [
     {
+      "id": "banner-promo-monthly",
+      "kind": "promo",
+      "title": "MONTHLY SAVINGS SALE",
+      "subtitle": "Up to ₹500 off",
+      "body": "on your full monthly basket",
+      "cta_text": "Grab deals",
+      "image_url": "",
+      "action_link": "OffersCoupons",
+      "active": true
+    },
+    {
       "id": "banner-1",
+      "kind": "image",
       "title": "Monthly Staples Sale: 10% Off on Atta & Rice!",
       "image_url": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600",
+      "action_link": "CategoryProducts?category=Atta%20%26%20Rice",
       "active": true
     },
     {
@@ -93,19 +106,23 @@
   "cities": [
     {
       "id": "city-1",
-      "name": "Mumbai"
+      "name": "Mumbai",
+      "region": "Maharashtra"
     },
     {
       "id": "city-2",
-      "name": "Pune"
+      "name": "Pune",
+      "region": "Maharashtra"
     },
     {
       "id": "city-3",
-      "name": "Bengaluru"
+      "name": "Bengaluru",
+      "region": "Karnataka"
     },
     {
       "id": "city-4",
-      "name": "Delhi NCR"
+      "name": "Delhi NCR",
+      "region": "NCR"
     },
     {
       "id": "city-1786686694575",
@@ -434,6 +451,33 @@
   ],
   "orders": [
     {
+      "id": "9093ab62-52cd-49a8-ab81-99103bf61680",
+      "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
+      "consumer_name": "917777777777",
+      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
+      "total_amount": 3060,
+      "discount_amount": 0,
+      "coupon_code": null,
+      "shipping_address": "Flat 402, Green Meadows, Paud Road, Kothrud, Pune, undefined 4110386",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-08-27",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "9961",
+      "payment_method": "COD",
+      "status": "confirmed",
+      "created_at": "2026-08-27T08:28:25.683Z",
+      "order_items": [
+        {
+          "product_id": "6214394d-03aa-4f2f-a5ed-69fe78fdd565",
+          "product_name": "Grocery Item",
+          "quantity": 12,
+          "unit_price": 255,
+          "unit": "1 unit",
+          "image_url": ""
+        }
+      ]
+    },
+    {
       "id": "18ebd1c0-1e5f-45ce-acc9-29fa871ad5fa",
       "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
       "consumer_name": "917777777777",
@@ -484,5 +528,283 @@
       ]
     }
   ],
-  "new_product_requests": []
+  "new_product_requests": [],
+  "delivery_slot_configs": [
+    {
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "window_id": "w1",
+      "date": "2026-08-27",
+      "max_capacity": 15,
+      "is_closed": false,
+      "is_recommended": false
+    },
+    {
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "window_id": "w3",
+      "date": "2026-08-27",
+      "max_capacity": 15,
+      "is_closed": false,
+      "is_recommended": true
+    }
+  ],
+  "user_addresses": [],
+  "onboarding": {
+    "splash": {
+      "tagline": "Plan once · Order monthly · Save more",
+      "footnote": "from your neighbourhood store",
+      "emoji_chips": [
+        {
+          "emoji": "🍚",
+          "size": 66,
+          "left": 84,
+          "top": 210
+        },
+        {
+          "emoji": "🫒",
+          "size": 62,
+          "left": 226,
+          "top": 102
+        },
+        {
+          "emoji": "🍎",
+          "size": 60,
+          "left": 318,
+          "top": 224
+        },
+        {
+          "emoji": "🥬",
+          "size": 68,
+          "left": 60,
+          "top": 498
+        },
+        {
+          "emoji": "🍞",
+          "size": 64,
+          "left": 270,
+          "top": 536
+        },
+        {
+          "emoji": "🥕",
+          "size": 62,
+          "left": 140,
+          "top": 618
+        }
+      ]
+    },
+    "value_intro_slides": [
+      {
+        "id": "value-intro-1",
+        "order": 1,
+        "category": "MONTHLY BASKET",
+        "title": "Plan your whole month in one go",
+        "subtitle": "Add everything your home needs for the month, order once, and skip the weekly grocery runs.",
+        "badge_label": "Save ₹340/mo",
+        "badge_left": 250,
+        "badge_top": 176,
+        "show_skip": true,
+        "gradient_start": "#E4F3EA",
+        "gradient_end": "#C6E9D3",
+        "center_emoji": "🍚",
+        "center_size": 88,
+        "emoji_chips": [
+          {
+            "emoji": "🫒",
+            "size": 70,
+            "left": 74,
+            "top": 116
+          },
+          {
+            "emoji": "🥬",
+            "size": 78,
+            "left": 258,
+            "top": 104
+          },
+          {
+            "emoji": "🫘",
+            "size": 68,
+            "left": 72,
+            "top": 244
+          },
+          {
+            "emoji": "🍎",
+            "size": 66,
+            "left": 286,
+            "top": 236
+          },
+          {
+            "emoji": "🍞",
+            "size": 72,
+            "left": 214,
+            "top": 286
+          }
+        ]
+      },
+      {
+        "id": "value-intro-2",
+        "order": 2,
+        "category": "REORDER",
+        "title": "Copy last month in one tap",
+        "subtitle": "Your last basket, ready to go. Tweak what you need and check out in seconds.",
+        "badge_label": "1-tap reorder",
+        "badge_left": 232,
+        "badge_top": 182,
+        "show_skip": true,
+        "gradient_start": "#E7EEFB",
+        "gradient_end": "#D3DFF6",
+        "center_emoji": "📋",
+        "center_size": 112,
+        "emoji_chips": [
+          {
+            "emoji": "🍚",
+            "size": 66,
+            "left": 58,
+            "top": 112
+          },
+          {
+            "emoji": "🫒",
+            "size": 64,
+            "left": 272,
+            "top": 116
+          },
+          {
+            "emoji": "🫘",
+            "size": 64,
+            "left": 66,
+            "top": 266
+          },
+          {
+            "emoji": "🥬",
+            "size": 68,
+            "left": 264,
+            "top": 260
+          }
+        ]
+      },
+      {
+        "id": "value-intro-3",
+        "order": 3,
+        "category": "BEST VALUE",
+        "title": "Save more on every order",
+        "subtitle": "We compare and pick the lowest area price for you, so your monthly basket always costs less.",
+        "badge_label": "20% OFF",
+        "badge_left": 250,
+        "badge_top": 120,
+        "show_skip": false,
+        "gradient_start": "#FDEFD3",
+        "gradient_end": "#FBE7B6",
+        "center_emoji": "💰",
+        "center_size": 112,
+        "emoji_chips": [
+          {
+            "emoji": "🫒",
+            "size": 64,
+            "left": 74,
+            "top": 116
+          },
+          {
+            "emoji": "🍚",
+            "size": 64,
+            "left": 262,
+            "top": 262
+          }
+        ]
+      }
+    ],
+    "phone_entry": {
+      "title": "Enter your mobile number",
+      "subtitle": "We'll send a one-time code to verify it's you.",
+      "country_flag": "🇮🇳",
+      "country_code": "+91",
+      "phone_placeholder": "98765 43210",
+      "continue_label": "Continue",
+      "guest_label": "Browse as a guest",
+      "terms_text": "By continuing you agree to our Terms & Privacy Policy.",
+      "invalid_phone_error": "Enter a valid 10-digit mobile number."
+    },
+    "otp_verification": {
+      "title": "Verify your number",
+      "subtitle_prefix": "Enter the code sent to",
+      "edit_label": "Edit",
+      "verify_label": "Verify",
+      "incomplete_error": "Please enter the complete 6-digit code.",
+      "invalid_otp_error": "Incorrect code. Please check and try again.",
+      "resend_timer_label": "Resend code in",
+      "resend_label": "Resend code",
+      "resend_seconds": 28
+    },
+    "city_selection": {
+      "title": "Choose your city",
+      "subtitle": "We deliver monthly groceries in these cities.",
+      "detect_title": "Use my current location",
+      "detect_subtitle": "Find your city automatically",
+      "search_placeholder": "Search for your city",
+      "section_label": "POPULAR CITIES",
+      "empty_search_message": "No city found matching your search.",
+      "load_error_message": "Could not load cities. Check that the backend is running.",
+      "detect_unavailable_message": "Location detection is not available. Please select your city from the list.",
+      "retry_label": "Retry"
+    },
+    "area_selection": {
+      "title": "Select your area",
+      "serving_prefix": "Serving",
+      "change_label": "Change",
+      "search_placeholder": "Search your area or pincode",
+      "section_label": "AREAS WE DELIVER TO",
+      "serviceable_subtitle": "4-hour windows · daily",
+      "coming_soon_subtitle": "Launching next month",
+      "coming_soon_badge": "Coming soon",
+      "load_error_message": "Could not load areas. Check that the backend is running.",
+      "retry_label": "Retry",
+      "missing_city_message": "Please choose a city first.",
+      "unserviceable_title": "We're not here yet",
+      "unserviceable_subtitle_template": "MonthlyGrocery doesn't deliver to {area}, {city} just yet — but we're expanding fast.",
+      "notify_button_label": "Notify me when you're live",
+      "notify_success_message": "We'll notify you when we start delivering in your area.",
+      "choose_different_label": "Choose a different area"
+    },
+    "profile_setup": {
+      "title": "What should we call you?",
+      "subtitle": "We'll use this to personalise your monthly grocery.",
+      "name_label": "YOUR NAME",
+      "name_placeholder": "Your full name",
+      "email_label": "EMAIL (OPTIONAL)",
+      "email_placeholder": "your.email@example.com",
+      "submit_label": "Start shopping",
+      "name_required_title": "Name required",
+      "name_required_message": "Please enter your name to personalize your monthly grocery.",
+      "photo_unavailable_message": "Profile photo upload is not available yet.",
+      "load_error_message": "Could not load profile setup. Check that the backend is running.",
+      "retry_label": "Retry",
+      "save_error_message": "Could not save your profile. Please try again."
+    },
+    "value_intro_meta": {
+      "final_cta_label": "Get started",
+      "load_error_title": "Could not load intro slides",
+      "load_error_subtitle": "Check that the backend is running, then try again.",
+      "retry_label": "Retry",
+      "skip_to_login_label": "Continue to login"
+    }
+  },
+  "home_screen": {
+    "delivering_label": "DELIVERING TO",
+    "location_prefix": "Home ·",
+    "choose_location_label": "Choose delivery area",
+    "delivery_pill_text": "Planned monthly delivery · 4-hour window",
+    "search_placeholder": "Search atta, rice, oil…",
+    "mmg_label": "MY MONTHLY GROCERY",
+    "mmg_title": "Build your month in one tap",
+    "mmg_subtitle": "A smart basket from what your home buys",
+    "categories_title": "Shop by category",
+    "categories_see_all": "See all",
+    "deals_title": "Deals of the month",
+    "deals_see_all": "See all",
+    "loading_deals_label": "Loading deals…",
+    "empty_deals_label": "No deals available in your area right now.",
+    "reorder_title": "Reorder last month",
+    "reorder_subtitle_template": "{count} items · ₹{total}",
+    "reorder_cta_label": "Reorder",
+    "first_basket_title": "Build your first basket",
+    "first_basket_subtitle": "Curated essentials for your home",
+    "first_basket_cta_label": "Start"
+  }
 }

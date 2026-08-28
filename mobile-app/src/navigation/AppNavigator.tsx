@@ -29,7 +29,9 @@ import DeleteAccountScreen from '../screens/customer/DeleteAccountScreen';
 import SystemStateScreen from '../screens/customer/SystemStateScreen';
 import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
 import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
+import AddAddressScreen from '../screens/customer/AddAddressScreen';
 import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
+import PaymentFailedScreen from '../screens/customer/PaymentFailedScreen';
 import OneClickCartScreen from '../screens/customer/OneClickCartScreen';
 import CopyLastMonthScreen from '../screens/customer/CopyLastMonthScreen';
 import SavedBasketsScreen from '../screens/customer/SavedBasketsScreen';
@@ -73,8 +75,10 @@ export default function AppNavigator() {
           <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
           <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
           <Stack.Screen name="DeliveryAddress" component={SavedAddressesScreen} />
+          <Stack.Screen name="AddAddress" component={AddAddressScreen} />
           <Stack.Screen name="DeliverySlot" component={DeliverySlotScreen} />
           <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
+          <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
@@ -15,8 +17,12 @@ import {
   OnboardingBackButton,
   OnboardingPrimaryButton,
 } from '../components/onboarding/OnboardingUI';
+import {
+  useOnboardingLayout,
+} from '../components/onboarding/onboardingLayout';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, FONTS } from '../constants/theme';
+import { fetchOnboardingConfig, PhoneEntryConfig, OtpVerificationConfig } from '../services/onboardingApi';
 
 export default function LoginScreen({ route, navigation }: any) {
   const [mobile, setMobile] = useState('');
@@ -24,11 +30,35 @@ export default function LoginScreen({ route, navigation }: any) {
   const [activeOtpIndex, setActiveOtpIndex] = useState(0);
   const [step, setStep] = useState<1 | 2>(1);
   const [loading, setLoading] = useState(false);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [phoneEntry, setPhoneEntry] = useState<PhoneEntryConfig | null>(null);
+  const [otpVerification, setOtpVerification] = useState<OtpVerificationConfig | null>(null);
+  const [configLoadError, setConfigLoadError] = useState({ message: '', retry: 'Retry' });
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(28);
   const [canResend, setCanResend] = useState(false);
   const { sendOtp, verifyOtp } = useAuth();
   const inputRefs = useRef<any[]>([]);
+  const { bottomPadding: bottomPad, insets, keyboardBehavior } = useOnboardingLayout();
+
+  const loadOnboardingConfig = useCallback(async () => {
+    setConfigLoading(true);
+    const config = await fetchOnboardingConfig();
+    setPhoneEntry(config?.phone_entry ?? null);
+    setOtpVerification(config?.otp_verification ?? null);
+    setConfigLoadError({
+      message: config?.phone_entry?.load_error_message ?? '',
+      retry: config?.phone_entry?.retry_label ?? 'Retry',
+    });
+    if (config?.otp_verification?.resend_seconds) {
+      setResendTimer(config.otp_verification.resend_seconds);
+    }
+    setConfigLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadOnboardingConfig();
+  }, [loadOnboardingConfig]);
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -53,7 +83,7 @@ export default function LoginScreen({ route, navigation }: any) {
 
   const handleSendOtp = async () => {
     if (mobile.length < 10) {
-      setError('Enter a valid 10-digit mobile number.');
+      setError(phoneEntry?.invalid_phone_error || '');
       return;
     }
     setError('');
@@ -62,7 +92,8 @@ export default function LoginScreen({ route, navigation }: any) {
     setLoading(false);
     if (res.success) {
       setStep(2);
-      setResendTimer(28);
+      const seconds = otpVerification?.resend_seconds ?? 28;
+      setResendTimer(seconds);
       setCanResend(false);
       setOtpDigits(['', '', '', '', '', '']);
       setActiveOtpIndex(0);
@@ -74,7 +105,7 @@ export default function LoginScreen({ route, navigation }: any) {
   const handleVerifyOtp = async () => {
     const fullCode = otpDigits.join('');
     if (fullCode.length < 6) {
-      setError('Please enter the complete 6-digit code');
+      setError(otpVerification?.incomplete_error || '');
       return;
     }
     setError('');
@@ -85,7 +116,7 @@ export default function LoginScreen({ route, navigation }: any) {
       const redirect = route.params?.redirect || 'CitySelection';
       navigation.replace(redirect);
     } else {
-      setError("That code didn't match. Check and try again.");
+      setError(res.error || otpVerification?.invalid_otp_error || '');
     }
   };
 
@@ -100,14 +131,32 @@ export default function LoginScreen({ route, navigation }: any) {
       const nextIndex = Math.min(pasted.length, 5);
       inputRefs.current[nextIndex]?.focus();
       setActiveOtpIndex(nextIndex);
+      if (error) setError('');
       return;
     }
 
-    newDigits[index] = cleanText;
+    if (!cleanText) {
+      if (otpDigits[index]) {
+        newDigits[index] = '';
+        setOtpDigits(newDigits);
+        if (error) setError('');
+        return;
+      }
+      if (index > 0) {
+        newDigits[index - 1] = '';
+        setOtpDigits(newDigits);
+        inputRefs.current[index - 1]?.focus();
+        setActiveOtpIndex(index - 1);
+        if (error) setError('');
+      }
+      return;
+    }
+
+    newDigits[index] = cleanText.slice(-1);
     setOtpDigits(newDigits);
     if (error) setError('');
 
-    if (cleanText && index < 5) {
+    if (index < 5) {
       inputRefs.current[index + 1]?.focus();
       setActiveOtpIndex(index + 1);
     }
@@ -122,55 +171,78 @@ export default function LoginScreen({ route, navigation }: any) {
 
   const handleGuest = () => navigation.navigate('CitySelection');
 
-  // Format the mobile number as "+91 98765 43210" or similar
-  const formattedMobile = mobile.length === 10 
-    ? `+91 ${mobile.slice(0, 5)} ${mobile.slice(5)}`
-    : `+91 ${mobile}`;
+  const countryCode = phoneEntry?.country_code ?? '+91';
+  const formattedMobile =
+    mobile.length === 10
+      ? `${countryCode} ${mobile.slice(0, 5)} ${mobile.slice(5)}`
+      : `${countryCode} ${mobile}`;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={keyboardBehavior}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
       >
-        <View style={styles.main}>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.main}>
           {step === 1 ? (
-            <>
-              {/* Header Row matching Figma A3 */}
-              <View style={styles.headerRow}>
-                <OnboardingBackButton onPress={() => navigation.goBack()} />
-                <TouchableOpacity onPress={handleGuest} style={styles.skipBtn}>
-                  <Text style={styles.skipText}>Skip</Text>
-                </TouchableOpacity>
+            configLoading ? (
+              <View style={styles.configLoading}>
+                <ActivityIndicator size="large" color={COLORS.green700} />
               </View>
+            ) : !phoneEntry ? (
+              <View style={styles.configError}>
+                <Text style={styles.configErrorText}>
+                  {configLoadError.message || 'Could not load login screen.'}
+                </Text>
+                <OnboardingPrimaryButton
+                  label={configLoadError.retry}
+                  onPress={loadOnboardingConfig}
+                />
+              </View>
+            ) : (
+            <>
+              <OnboardingBackButton onPress={() => navigation.goBack()} />
 
               <View style={styles.headerBlock}>
-                <Text style={styles.mainTitle}>Enter your mobile number</Text>
-                <Text style={styles.subtitle}>
-                  We'll send a one-time code to verify it's you.
-                </Text>
+                <Text style={styles.mainTitle}>{phoneEntry.title}</Text>
+                <Text style={styles.subtitle}>{phoneEntry.subtitle}</Text>
               </View>
 
-              <Text style={styles.inputLabel}>Mobile number</Text>
               <View style={[styles.phoneInputCard, error ? styles.inputError : null]}>
                 <View style={styles.prefixRow}>
-                  <Text style={styles.prefixText}>🇮🇳 +91</Text>
+                  <Text style={styles.prefixText}>
+                    {phoneEntry.country_flag} {phoneEntry.country_code}
+                  </Text>
                 </View>
                 <View style={styles.verticalDivider} />
                 <TextInput
                   style={styles.phoneInput}
-                  placeholder="98765 43210"
+                  placeholder={phoneEntry.phone_placeholder}
                   placeholderTextColor={COLORS.ink300}
                   keyboardType="phone-pad"
+                  textContentType="telephoneNumber"
+                  autoComplete={Platform.OS === 'android' ? 'tel' : 'tel'}
+                  returnKeyType="done"
                   maxLength={10}
                   value={mobile}
                   onChangeText={(val) => {
                     setMobile(val.replace(/[^\d]/g, ''));
                     if (error) setError('');
                   }}
-                  autoFocus
+                  autoFocus={Platform.OS === 'ios'}
                 />
+                {mobile.length === 10 ? (
+                  <AppIcon name="check" size={22} color={COLORS.green700} />
+                ) : null}
               </View>
 
               {error ? (
@@ -180,6 +252,11 @@ export default function LoginScreen({ route, navigation }: any) {
                 </View>
               ) : null}
             </>
+            )
+          ) : configLoading || !otpVerification ? (
+            <View style={styles.configLoading}>
+              <ActivityIndicator size="large" color={COLORS.green700} />
+            </View>
           ) : (
             <>
               <OnboardingBackButton
@@ -190,10 +267,10 @@ export default function LoginScreen({ route, navigation }: any) {
               />
 
               <View style={styles.headerBlock}>
-                <Text style={styles.mainTitle}>Verify your number</Text>
+                <Text style={styles.mainTitle}>{otpVerification.title}</Text>
                 <View style={styles.otpSubtitleRow}>
                   <Text style={styles.subtitle}>
-                    Enter the code we sent to {formattedMobile}
+                    {otpVerification.subtitle_prefix} {formattedMobile}
                   </Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -201,7 +278,7 @@ export default function LoginScreen({ route, navigation }: any) {
                       setError('');
                     }}
                   >
-                    <Text style={styles.editLink}>Edit</Text>
+                    <Text style={styles.editLink}>{otpVerification.edit_label}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -222,59 +299,65 @@ export default function LoginScreen({ route, navigation }: any) {
                     onChangeText={(text) => handleOtpChange(text, idx)}
                     onKeyPress={(e) => handleOtpKeyPress(e, idx)}
                     onFocus={() => setActiveOtpIndex(idx)}
-                    keyboardType="number-pad"
+                    keyboardType={Platform.OS === 'ios' ? 'number-pad' : 'numeric'}
+                    textContentType="oneTimeCode"
+                    autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                    importantForAutofill="yes"
+                    selectTextOnFocus
                     maxLength={1}
                     textAlign="center"
-                    autoFocus={idx === 0}
+                    autoFocus={idx === 0 && Platform.OS === 'ios'}
                   />
                 ))}
               </View>
 
-              {error ? <Text style={styles.errorTextCenter}>{error}</Text> : null}
+              {error ? (
+                <View style={styles.inlineErrorRow}>
+                  <Text style={styles.inlineErrorIcon}>!</Text>
+                  <Text style={styles.inlineErrorText}>{error}</Text>
+                </View>
+              ) : null}
 
               <View style={styles.resendRow}>
+                <AppIcon name="clock" size={16} color={COLORS.ink500} />
                 {canResend ? (
-                  <View style={styles.resendActionRow}>
-                    <Text style={styles.resendText}>Didn't get the code? </Text>
-                    <TouchableOpacity onPress={handleSendOtp}>
-                      <Text style={styles.resendActive}>Resend code</Text>
-                    </TouchableOpacity>
-                  </View>
+                  <TouchableOpacity onPress={handleSendOtp}>
+                    <Text style={styles.resendActive}>{otpVerification.resend_label}</Text>
+                  </TouchableOpacity>
                 ) : (
                   <Text style={styles.resendTimer}>
-                    Didn't get the code?  Resend in {formattedTimer}
+                    {otpVerification.resend_timer_label} {formattedTimer}
                   </Text>
                 )}
               </View>
             </>
           )}
-        </View>
+          </View>
+        </ScrollView>
 
-        <View style={styles.bottomBar}>
-          {step === 1 ? (
+        <View style={[styles.bottomBar, { paddingBottom: bottomPad }]}>
+          {step === 1 && phoneEntry ? (
             <>
-              <Text style={styles.termsText}>
-                By continuing you agree to our Terms & Privacy Policy.
-              </Text>
               <OnboardingPrimaryButton
-                label="Continue"
+                label={phoneEntry.continue_label}
                 onPress={handleSendOtp}
                 disabled={mobile.length < 10}
                 loading={loading}
               />
               <TouchableOpacity onPress={handleGuest} style={styles.guestRow}>
-                <Text style={styles.guestText}>Browse as a guest</Text>
+                <Text style={styles.guestText}>{phoneEntry.guest_label}</Text>
                 <AppIcon name="arrow-right" size={18} color={COLORS.green700} />
               </TouchableOpacity>
+              <Text style={styles.termsText}>{phoneEntry.terms_text}</Text>
             </>
-          ) : (
+          ) : step === 2 && otpVerification ? (
             <OnboardingPrimaryButton
-              label="Verify"
+              label={otpVerification.verify_label}
               onPress={handleVerifyOtp}
               disabled={otpDigits.join('').length < 6}
               loading={loading}
             />
-          )}
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -290,29 +373,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.paper,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   main: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 8,
     backgroundColor: COLORS.paper,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    height: 40,
-    marginBottom: 22,
-  },
-  skipBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  configLoading: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  skipText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 13,
-    color: COLORS.green700,
+  configError: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 16,
+  },
+  configErrorText: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
   },
   backSpacer: {
     width: 40,
@@ -320,6 +406,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   headerBlock: {
+    marginTop: 22,
     marginBottom: 22,
     gap: 8,
   },
@@ -346,12 +433,6 @@ const styles = StyleSheet.create({
     ...FONTS.muktaSemiBold,
     fontSize: 14,
     color: COLORS.green700,
-  },
-  inputLabel: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 13,
-    color: '#3D4A44',
-    marginBottom: 8,
   },
   phoneInputCard: {
     flexDirection: 'row',
@@ -389,6 +470,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.ink900,
     padding: 0,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   inlineErrorRow: {
     flexDirection: 'row',
@@ -422,7 +504,7 @@ const styles = StyleSheet.create({
   otpBox: {
     flex: 1,
     maxWidth: 50,
-    height: 58,
+    height: 66,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#EAE9E2',
@@ -430,45 +512,36 @@ const styles = StyleSheet.create({
     ...FONTS.balooSemiBold,
     fontSize: 22,
     color: COLORS.ink900,
+    ...(Platform.OS === 'android'
+      ? { textAlignVertical: 'center', includeFontPadding: false, paddingVertical: 0 }
+      : null),
   },
   otpBoxFocused: { borderColor: '#2A8B54' },
   otpBoxError: {
     borderColor: COLORS.error,
     backgroundColor: COLORS.errorBg,
   },
-  errorTextCenter: {
-    ...FONTS.muktaMedium,
-    color: COLORS.error,
-    fontSize: 12,
-    marginBottom: 12,
-  },
   resendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  resendActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  resendText: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink500,
+    gap: 5,
+    marginTop: 4,
   },
   resendTimer: {
     ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
+    lineHeight: 20,
   },
   resendActive: {
     ...FONTS.muktaSemiBold,
     fontSize: 12,
     color: COLORS.green700,
+    lineHeight: 20,
   },
   bottomBar: {
     paddingHorizontal: 24,
     paddingTop: 12,
-    paddingBottom: 28,
     gap: 14,
     backgroundColor: COLORS.paper,
   },
@@ -490,6 +563,5 @@ const styles = StyleSheet.create({
     color: COLORS.ink500,
     textAlign: 'center',
     lineHeight: 16,
-    marginBottom: 2,
   },
 });

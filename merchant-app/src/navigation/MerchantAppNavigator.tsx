@@ -7,6 +7,7 @@ import { useMerchantAuth } from '../context/MerchantAuthContext';
 import MerchantSplashScreen from '../screens/MerchantSplashScreen';
 import MerchantLoginScreen from '../screens/MerchantLoginScreen';
 import MerchantTabScreen from '../screens/MerchantTabScreen';
+import DeliverySlotsScreen from '../screens/DeliverySlotsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -25,8 +26,10 @@ export default function MerchantAppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {token && user ? (
-          // Authenticated Merchant Screens
-          <Stack.Screen name="MerchantDashboard" component={MerchantTabScreen} />
+          <>
+            <Stack.Screen name="MerchantDashboard" component={MerchantTabScreen} />
+            <Stack.Screen name="DeliverySlots" component={DeliverySlotsScreen} />
+          </>
         ) : (
           // Unauthenticated Merchant Onboarding & Login
           <>

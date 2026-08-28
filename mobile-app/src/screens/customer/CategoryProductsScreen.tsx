@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   FlatList,
   ScrollView,
-  Image,
   Dimensions,
   Modal,
   Switch,
@@ -18,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
+import BrowseProductCard from '../../components/browse/BrowseProductCard';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -26,15 +26,6 @@ const { width } = Dimensions.get('window');
 const SIDEBAR_W = 76;
 const GRID_W = width - SIDEBAR_W;
 const CARD_W = (GRID_W - 12 - 12 - 10) / 2; // 2 columns, 12px sides, 10px gap
-
-// ─── Sub-category sidebar pills ───────────────────────────────────────────────
-const PRODUCT_BG_COLORS = [
-  '#FFF3D6', '#E4F3EA', '#F6E9E1', '#FDE4E7',
-  '#EDE9FB', '#FBEEDD', '#EAF6D6', '#E1F0FB',
-];
-function productBg(index: number) {
-  return PRODUCT_BG_COLORS[index % PRODUCT_BG_COLORS.length];
-}
 
 // ─── Derive sub-categories from product list ──────────────────────────────────
 function getSubCategories(products: Product[]): string[] {
@@ -49,79 +40,6 @@ function getSubCategories(products: Product[]): string[] {
   }
   // Always add an "All" entry
   return ['All', ...subs].slice(0, 8);
-}
-
-// ─── Product card (B4 Figma: 139×hug, image 92px tall) ───────────────────────
-function ProductCard({
-  item,
-  index,
-  onPress,
-  onAdd,
-  onIncrement,
-  onDecrement,
-  quantity,
-}: {
-  item: Product;
-  index: number;
-  onPress: () => void;
-  onAdd: () => void;
-  onIncrement: () => void;
-  onDecrement: () => void;
-  quantity: number;
-}) {
-  const price = parseFloat(item.price as any) || 0;
-  const mrp = parseFloat(item.mrp as any) || price;
-  const pctOff = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
-
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      {/* Image area */}
-      <View style={[styles.cardImgWrap, { backgroundColor: productBg(index) }]}>
-        {/* % OFF badge */}
-        {pctOff > 0 && (
-          <View style={styles.offBadge}>
-            <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
-          </View>
-        )}
-
-        {/* Product image */}
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.cardImg} resizeMode="contain" />
-        ) : (
-          <AppIcon name="shopping-bag" size={36} color={COLORS.green700} />
-        )}
-
-        {/* ADD / Stepper */}
-        {quantity > 0 ? (
-          <View style={styles.cardStepper}>
-            <TouchableOpacity style={styles.cardStepBtn} onPress={onDecrement}>
-              <Text style={styles.cardStepTxt}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.cardStepQty}>{quantity}</Text>
-            <TouchableOpacity style={styles.cardStepBtn} onPress={onIncrement}>
-              <Text style={styles.cardStepTxt}>+</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.addPill} onPress={onAdd} activeOpacity={0.85}>
-            <Text style={styles.addPillTxt}>ADD</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Info */}
-      <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-      {item.unit ? <Text style={styles.cardUnit}>{item.unit}</Text> : null}
-
-      {/* Price row */}
-      <View style={styles.cardPriceRow}>
-        <Text style={styles.cardPrice}>₹{price}</Text>
-        {mrp > price && (
-          <Text style={styles.cardMrp}>₹{mrp}</Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -297,9 +215,10 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                 const cartItem = items.find((i) => i.product?.id === item.id);
                 const qty = cartItem?.quantity ?? 0;
                 return (
-                  <ProductCard
+                  <BrowseProductCard
                     item={item}
                     index={index}
+                    width={CARD_W}
                     quantity={qty}
                     onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
                     onAdd={() => addToCart(item)}
@@ -599,120 +518,6 @@ const styles = StyleSheet.create({
   gridRow: {
     gap: 10,
     marginBottom: 12,
-  },
-
-  // ── Product card (Figma: 139px wide, 8px/10px padding, 14px radius) ──────────
-  card: {
-    width: CARD_W,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 8,
-    paddingBottom: 10,
-    gap: 5,
-  },
-  cardImgWrap: {
-    width: '100%',
-    height: 92,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  offBadge: {
-    position: 'absolute',
-    top: 5,
-    left: 5,
-    backgroundColor: '#F5A524',
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 5,
-    zIndex: 2,
-  },
-  offBadgeTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 9,
-    color: '#FFFFFF',
-  },
-  cardImg: {
-    width: 54,
-    height: 54,
-  },
-  addPill: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: COLORS.green700,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    zIndex: 3,
-  },
-  addPillTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 13,
-    color: COLORS.green700,
-  },
-  cardStepper: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.green700,
-    borderRadius: 8,
-    height: 32,
-    zIndex: 3,
-  },
-  cardStepBtn: {
-    width: 28,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardStepTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 20,
-  },
-  cardStepQty: {
-    ...FONTS.muktaBold,
-    fontSize: 13,
-    color: '#FFFFFF',
-    minWidth: 16,
-    textAlign: 'center',
-  },
-  cardName: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    color: COLORS.ink900,
-    lineHeight: 20,
-    minHeight: 40,
-  },
-  cardUnit: {
-    ...FONTS.muktaBold,
-    fontSize: 11,
-    color: COLORS.ink500,
-    lineHeight: 14,
-  },
-  cardPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  cardPrice: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    color: COLORS.ink900,
-  },
-  cardMrp: {
-    ...FONTS.muktaRegular,
-    fontSize: 11,
-    color: COLORS.ink300,
-    textDecorationLine: 'line-through',
   },
 
   // Empty

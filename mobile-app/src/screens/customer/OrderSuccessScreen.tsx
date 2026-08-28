@@ -1,29 +1,180 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  StatusBar
+  StatusBar,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS, FONTS } from '../../constants/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
+import { API_BASE } from '../../config/api';
+import { COLORS, FONTS } from '../../constants/theme';
+import {
+  SuccessCheckIcon,
+  SavingsCoinIcon,
+  BasketSaveIcon,
+  TrackTruckIcon,
+} from '../../components/CheckoutFigmaIcons';
+
+const SCREEN_BG = '#FBFAF6';
+
+const formatInr = (n: number) =>
+  `₹${Math.round(n).toLocaleString('en-IN')}`;
+
+function formatOrderId(raw?: string): string {
+  if (!raw) return '#MG00000';
+  if (raw.startsWith('#')) return raw;
+  if (raw.startsWith('MG')) return `#${raw}`;
+  const compact = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (compact.length <= 8) return `#MG${compact}`;
+  return `#MG${compact.slice(-5)}`;
+}
+
+type OrderSummary = {
+  orderId: string;
+  total: number;
+  savings: number;
+  arriving: string;
+  deliverTo: string;
+  paymentMethod: string;
+  orderItems: any[];
+};
+
+function mapApiOrder(order: any): OrderSummary {
+  return {
+    orderId: order.display_id || order.id,
+    total: Number(order.total_amount) || 0,
+    savings: Number(order.total_savings) ||
+      Number(order.product_savings || 0) + Number(order.discount_amount || 0),
+    arriving: order.delivery_slot || 'Scheduled delivery',
+    deliverTo: order.deliver_to_label || order.shipping_address || 'Your delivery address',
+    paymentMethod: order.payment_method_label || order.payment_method || 'Cash on Delivery',
+    orderItems: (order.order_items || []).map((oi: any) => ({
+      id: oi.product_id || oi.id,
+      name: oi.product_name || oi.name || 'Grocery Item',
+      price: oi.unit_price || oi.price || 0,
+      qty: oi.quantity || oi.qty || 1,
+      unit: oi.unit || '1 unit',
+    })),
+  };
+}
 
 export default function OrderSuccessScreen({ route, navigation }: any) {
-  const {
-    orderId = 'MG-849201',
-    total = 2160,
-    savings = 340,
-    deliveryDay = 'Tomorrow',
-    deliveryTime = '7:00 AM - 10:00 AM',
-    address = 'Flat 402, Green Acres, Paud Road, Pune 411038',
-    paymentMethod = 'Google Pay',
-  } = route?.params || {};
+  const { token } = useAuth();
+  const params = route?.params || {};
+
+  const [loading, setLoading] = useState(Boolean(params.backendOrderId || params.orderId));
+  const [summary, setSummary] = useState<OrderSummary | null>(
+    params.orderId
+      ? {
+          orderId: params.orderId,
+          total: params.total ?? 0,
+          savings: params.savings ?? 0,
+          arriving:
+            params.arriving ||
+            (params.deliveryDay && params.deliveryTime
+              ? `${params.deliveryDay}, ${params.deliveryTime}`
+              : ''),
+          deliverTo: params.deliverTo || '',
+          paymentMethod: params.paymentMethod || 'Cash on Delivery',
+          orderItems: params.orderItems || [],
+        }
+      : null,
+  );
+
+  const [saving, setSaving] = useState(false);
+  const [basketSaved, setBasketSaved] = useState(false);
+
+  const loadOrderFromApi = useCallback(async () => {
+    const lookupId = params.backendOrderId || params.orderId;
+    if (!lookupId || !token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/orders/${lookupId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.order) {
+        setSummary(mapApiOrder(data.order));
+      }
+    } catch {
+      /* keep navigation params if fetch fails */
+    } finally {
+      setLoading(false);
+    }
+  }, [params.backendOrderId, params.orderId, token]);
+
+  useEffect(() => {
+    loadOrderFromApi();
+  }, [loadOrderFromApi]);
+
+  const handleSaveBasket = async () => {
+    if (basketSaved || !summary) return;
+    if (!summary.orderItems?.length) {
+      Alert.alert('Cannot save', 'Order items are not available to save.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const saved = await AsyncStorage.getItem('@saved_baskets');
+      const list = saved ? JSON.parse(saved) : [];
+      const month = new Date().toLocaleDateString('en-US', { month: 'long' });
+      const newBasket = {
+        id: `sb-${Date.now()}`,
+        name: `Monthly basket · ${month}`,
+        price: summary.total,
+        itemCount: summary.orderItems.length,
+        sub: `${summary.orderItems.length} items · Staples, Groceries...`,
+        iconCount: Math.min(4, summary.orderItems.length),
+        items: summary.orderItems,
+      };
+      await AsyncStorage.setItem('@saved_baskets', JSON.stringify([newBasket, ...list]));
+      setBasketSaved(true);
+      Alert.alert('Saved', 'This order is saved as your monthly basket.');
+    } catch {
+      Alert.alert('Error', 'Could not save basket. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading && !summary) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+          <Text style={styles.loadingText}>Loading order details…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.center}>
+          <Text style={styles.errorText}>Order details not found.</Text>
+          <TouchableOpacity onPress={() => navigation.replace('Shop')}>
+            <Text style={styles.continueBtnText}>Continue shopping</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const paidViaLabel = `${summary.paymentMethod} · ${formatInr(summary.total)}`;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
       <ScrollView
@@ -31,112 +182,92 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* =========================================================================
-           1. CONFIRMATION CHECK ICON (Figma spec: 130x130px circle with shadow)
-           ========================================================================= */}
         <View style={styles.badgeWrapper}>
           <View style={styles.successIconCircle}>
-            <AppIcon name="check" size={48} color="#FFFFFF" />
+            <SuccessCheckIcon size={52} />
           </View>
-          {/* Confetti floating dots elements */}
-          <View style={[styles.confettiDot, { top: 12, left: 0, backgroundColor: COLORS.marigold500, width: 10, height: 10 }]} />
-          <View style={[styles.confettiDot, { top: 22, right: 0, backgroundColor: COLORS.green600, width: 8, height: 8 }]} />
-          <View style={[styles.confettiDot, { bottom: 12, left: 10, backgroundColor: COLORS.marigold500, width: 7, height: 7 }]} />
-          <View style={[styles.confettiDot, { bottom: 18, right: 10, backgroundColor: COLORS.ink300, width: 9, height: 9 }]} />
+          <View style={[styles.confettiDot, styles.dotOrange, { top: 20, left: 6 }]} />
+          <View style={[styles.confettiDot, styles.dotGreen, { top: 30, right: 6 }]} />
+          <View style={[styles.confettiDot, styles.dotTeal, { bottom: 24, left: 16 }]} />
+          <View style={[styles.confettiDot, styles.dotGrey, { bottom: 20, right: 8 }]} />
+          <View style={[styles.confettiDot, styles.dotTeal, { top: 2, left: 60 }]} />
         </View>
 
-        {/* Title & Subtitle */}
-        <Text style={styles.successTitle}>Order Confirmed!</Text>
-        <Text style={styles.successSubtitle}>
-          Your monthly grocery basket has been placed and scheduled for delivery.
-        </Text>
+        <View style={styles.titleBlock}>
+          <Text style={styles.successTitle}>Order placed!</Text>
+          <Text style={styles.successSubtitle}>
+            Your monthly grocery is confirmed and on its way.
+          </Text>
+        </View>
 
-        {/* =========================================================================
-           2. ORDER DETAILS CARD (Figma E7 spec)
-           ========================================================================= */}
         <View style={styles.detailsCard}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Order ID</Text>
-            <Text style={styles.detailValBold}>#{orderId}</Text>
+            <Text style={styles.detailVal}>{formatOrderId(summary.orderId)}</Text>
           </View>
-
-          <View style={styles.divider} />
-
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Arriving</Text>
-            <Text style={styles.detailVal}>{deliveryDay} · {deliveryTime}</Text>
+            <Text style={styles.detailVal}>{summary.arriving}</Text>
           </View>
-
-          <View style={styles.divider} />
-
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Deliver to</Text>
-            <Text style={[styles.detailVal, { flex: 1, textAlign: 'right' }]} numberOfLines={2}>
-              {address}
-            </Text>
+            <Text style={styles.detailVal} numberOfLines={2}>{summary.deliverTo}</Text>
           </View>
-
-          <View style={styles.divider} />
-
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Payment Method</Text>
-            <Text style={styles.detailVal}>{paymentMethod} · ₹{total}</Text>
+            <Text style={styles.detailLabel}>Paid via</Text>
+            <Text style={styles.detailVal}>{paidViaLabel}</Text>
           </View>
         </View>
 
-        {/* =========================================================================
-           3. SAVINGS INDICATOR PILL (Figma spec: green/yellow pill)
-           ========================================================================= */}
-        {savings > 0 && (
+        {summary.savings > 0 && (
           <View style={styles.savingsPill}>
-            <AppIcon name="percent" size={12} color={COLORS.green700} />
-            <Text style={styles.savingsPillTxt}>You saved ₹{savings} on this order</Text>
+            <SavingsCoinIcon size={16} />
+            <Text style={styles.savingsPillTxt}>
+              You saved {formatInr(summary.savings)} on this order
+            </Text>
           </View>
         )}
 
-        {/* =========================================================================
-           4. MONTHLY REORDER QUICK LINK CARD (Figma E7 spec)
-           ========================================================================= */}
-        <View style={styles.hubLinkCard}>
-          <View style={styles.hubIconCircle}>
-            <AppIcon name="sparkles" size={15} color={COLORS.green700} />
+        <View style={styles.basketCard}>
+          <View style={styles.basketIconBox}>
+            <BasketSaveIcon size={20} />
           </View>
-          <View style={styles.hubDetails}>
-            <Text style={styles.hubTitle}>One-Click Reorder Hub</Text>
-            <Text style={styles.hubSub}>Reorder everything in one tap next month</Text>
+          <View style={styles.basketTextCol}>
+            <Text style={styles.basketTitle}>Make this your monthly basket</Text>
+            <Text style={styles.basketSub}>Reorder everything in one tap next month</Text>
           </View>
           <TouchableOpacity
-            style={styles.hubBtn}
-            onPress={() => {
-              navigation.replace('Shop');
-              navigation.navigate('MyMonthlyGroceryHub');
-            }}
+            style={[styles.saveBtn, basketSaved && styles.saveBtnDone]}
+            onPress={handleSaveBasket}
+            disabled={saving || basketSaved}
+            activeOpacity={0.85}
           >
-            <Text style={styles.hubBtnTxt}>Open</Text>
+            <Text style={[styles.saveBtnTxt, basketSaved && styles.saveBtnTxtDone]}>
+              {basketSaved ? 'Saved' : 'Save'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* =========================================================================
-         5. BOTTOM STICKED NAVIGATION BUTTONS
-         ========================================================================= */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.trackBtn}
-          onPress={() => navigation.navigate('Orders')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.trackBtnText}>Track order status</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.homeBtn}
-          onPress={() => navigation.navigate('Shop')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.homeBtnText}>Continue shopping</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={styles.trackBtn}
+            onPress={() => navigation.replace('Orders')}
+            activeOpacity={0.85}
+          >
+            <TrackTruckIcon size={18} />
+            <Text style={styles.trackBtnText}>Track order</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.continueBtn}
+            onPress={() => navigation.replace('Shop')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.continueBtnText}>Continue shopping</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </SafeAreaView>
   );
 }
@@ -144,191 +275,234 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper, // Warm Paper background
+    backgroundColor: SCREEN_BG,
+  },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    padding: 24,
+  },
+  loadingText: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.ink500,
+  },
+  errorText: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.ink700,
+    textAlign: 'center',
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 130, // Space for sticky bottom buttons
+    paddingTop: 20,
+    paddingBottom: 24,
     alignItems: 'center',
+    gap: 16,
   },
   badgeWrapper: {
-    width: 140,
-    height: 140,
+    width: 130,
+    height: 130,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: 16,
   },
   successIconCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: COLORS.green700, // Deep solid green confirm circle
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: COLORS.green700,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: COLORS.green900,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 8,
   },
   confettiDot: {
     position: 'absolute',
     borderRadius: 999,
   },
+  dotOrange: {
+    width: 10,
+    height: 10,
+    backgroundColor: COLORS.marigold500,
+  },
+  dotGreen: {
+    width: 8,
+    height: 8,
+    backgroundColor: COLORS.green600,
+  },
+  dotTeal: {
+    width: 7,
+    height: 7,
+    backgroundColor: COLORS.green500,
+  },
+  dotGrey: {
+    width: 9,
+    height: 9,
+    backgroundColor: COLORS.ink300,
+  },
+  titleBlock: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 6,
+  },
   successTitle: {
     ...FONTS.balooBold,
-    fontSize: 24,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.26,
     color: COLORS.ink900,
-    marginBottom: 6,
     textAlign: 'center',
   },
   successSubtitle: {
-    ...FONTS.muktaMedium,
-    fontSize: 13.5,
+    ...FONTS.muktaRegular,
+    fontSize: 16,
+    lineHeight: 24,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 18,
-    maxWidth: 280,
-    marginBottom: 24,
   },
   detailsCard: {
     width: '100%',
     backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
     borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 3,
+    gap: 12,
   },
   detailLabel: {
-    ...FONTS.muktaRegular,
-    fontSize: 13,
+    ...FONTS.muktaMedium,
+    fontSize: 12,
+    lineHeight: 16,
     color: COLORS.ink500,
   },
   detailVal: {
     ...FONTS.muktaMedium,
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORS.ink900,
-  },
-  detailValBold: {
-    ...FONTS.muktaBold,
-    fontSize: 13.5,
-    color: COLORS.green700,
-  },
-  divider: {
-    height: 1.5,
-    backgroundColor: COLORS.line,
-    marginVertical: 10,
+    textAlign: 'right',
+    flexShrink: 1,
   },
   savingsPill: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: COLORS.green100, // #E4F3EA green/yellow indicators E7
+    backgroundColor: COLORS.marigold100,
     borderRadius: 999,
-    marginBottom: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
   },
   savingsPillTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 12,
-    color: COLORS.green800,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.marigold700,
   },
-  hubLinkCard: {
+  basketCard: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green50, // soft green tint
-    borderWidth: 1.5,
-    borderColor: COLORS.green100,
-    borderRadius: 14,
-    padding: 12,
-    width: '100%',
-  },
-  hubIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: RADIUS.pill,
+    gap: 12,
     backgroundColor: COLORS.green100,
-    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#CDE9D6',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  basketIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
+    backgroundColor: COLORS.green700,
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
   },
-  hubDetails: {
+  basketTextCol: {
     flex: 1,
-    paddingRight: 6,
+    gap: 2,
   },
-  hubTitle: {
-    ...FONTS.muktaBold,
-    fontSize: 13,
+  basketTitle: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    lineHeight: 20,
     color: COLORS.ink900,
   },
-  hubSub: {
-    ...FONTS.muktaRegular,
-    fontSize: 11.5,
-    color: COLORS.ink500,
-    marginTop: 1,
+  basketSub: {
+    ...FONTS.muktaMedium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: COLORS.ink700,
   },
-  hubBtn: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    backgroundColor: COLORS.green700,
-    borderRadius: 8,
-  },
-  hubBtnTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 11,
-    color: '#FFFFFF',
-  },
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  saveBtn: {
+    borderWidth: 1.5,
+    borderColor: COLORS.green700,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     backgroundColor: COLORS.surface,
+  },
+  saveBtnDone: {
+    borderColor: COLORS.ink300,
+    backgroundColor: COLORS.muted,
+  },
+  saveBtnTxt: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    lineHeight: 16,
+    color: COLORS.green700,
+  },
+  saveBtnTxtDone: {
+    color: COLORS.ink500,
+  },
+  bottomSafe: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
+  },
+  bottomBar: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    height: 116,
-    gap: 8,
+    paddingVertical: 8,
+    gap: 4,
   },
   trackBtn: {
-    backgroundColor: COLORS.green700,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.green700,
+    borderRadius: 14,
+    height: 49,
   },
   trackBtnText: {
     ...FONTS.balooSemiBold,
+    fontSize: 15,
+    lineHeight: 16,
     color: '#FFFFFF',
-    fontSize: 14.5,
   },
-  homeBtn: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
+  continueBtn: {
     alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 4,
   },
-  homeBtnText: {
-    ...FONTS.balooSemiBold,
-    color: COLORS.ink700,
-    fontSize: 14.5,
+  continueBtnText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    lineHeight: 16,
+    color: COLORS.green700,
   },
 });

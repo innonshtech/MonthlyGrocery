@@ -16,9 +16,9 @@ import { COLORS, RADIUS } from '../../constants/theme';
 
 export default function MyMonthlyGroceryHub({ navigation }: any) {
   const { token, user } = useAuth();
-  const [savedBasketsCount, setSavedBasketsCount] = useState(3);
-  const [totalSavedThisMonth, setTotalSavedThisMonth] = useState(450);
-  const [lastOrderItemsCount, setLastOrderItemsCount] = useState(24);
+  const [savedBasketsCount, setSavedBasketsCount] = useState(0);
+  const [totalSavedThisMonth, setTotalSavedThisMonth] = useState(0);
+  const [lastOrderItemsCount, setLastOrderItemsCount] = useState(0);
 
   useEffect(() => {
     const fetchLiveHubMetrics = async () => {
@@ -41,7 +41,11 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             const savingsSum = orders.reduce((sum: number, o: any) => sum + (parseFloat(o.discount_amount as any) || 0), 0);
             if (savingsSum > 0) setTotalSavedThisMonth(savingsSum);
             if (orders[0].order_items?.length > 0) {
-              setLastOrderItemsCount(orders[0].order_items.length);
+              const qtySum = orders[0].order_items.reduce(
+                (sum: number, it: any) => sum + (parseInt(it.quantity, 10) || 1),
+                0,
+              );
+              setLastOrderItemsCount(qtySum);
             }
           }
         }

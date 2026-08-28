@@ -76,12 +76,19 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
     if (route.params?.onSelectCoupon) {
       route.params.onSelectCoupon(coupon);
       navigation.goBack();
-    } else {
-      Alert.alert(
-        'Coupon Applied!',
-        `Code "${coupon.code}" will be applied at checkout!`
-      );
+      return;
     }
+
+    if (route.params?.fromCheckout) {
+      navigation.navigate({
+        name: 'Checkout',
+        params: { appliedCoupon: coupon },
+        merge: true,
+      });
+      return;
+    }
+
+    Alert.alert('Coupon Applied!', `Code "${coupon.code}" will be applied at checkout!`);
   };
 
   const handleApplyManualCode = async () => {
@@ -102,6 +109,12 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
         if (route.params?.onSelectCoupon) {
           route.params.onSelectCoupon(data.coupon);
           navigation.goBack();
+        } else if (route.params?.fromCheckout) {
+          navigation.navigate({
+            name: 'Checkout',
+            params: { appliedCoupon: data.coupon },
+            merge: true,
+          });
         } else {
           Alert.alert('Coupon Applied', `Code "${data.coupon.code}" applied successfully!`);
         }

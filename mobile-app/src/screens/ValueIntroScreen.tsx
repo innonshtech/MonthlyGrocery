@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   StatusBar,
-  useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,196 +16,196 @@ import {
   OnboardingNextPill,
   OnboardingPrimaryButton,
 } from '../components/onboarding/OnboardingUI';
+import {
+  useOnboardingLayout,
+} from '../components/onboarding/onboardingLayout';
 import { COLORS, FONTS } from '../constants/theme';
+import {
+  fetchOnboardingConfig,
+  ValueIntroSlideConfig,
+  ValueIntroMetaConfig,
+} from '../services/onboardingApi';
 
-interface EmojiPlacement {
-  emoji: string;
-  size: number;
-  left: number;
-  top: number;
-}
-
-interface FloatingBadge {
-  label: string;
-  left: number;
-  top: number;
-}
-
-interface ValueSlide {
-  id: string;
-  category: string;
-  title: string;
-  subtitle: string;
-  emojis: EmojiPlacement[];
-  center?: { emoji: string; size: number };
-  badge?: FloatingBadge;
-  showSkip: boolean;
-}
-
-const SLIDES: ValueSlide[] = [
-  {
-    id: 'slide-1',
-    category: 'MONTHLY BASKET',
-    title: 'Plan your whole month in one go',
-    subtitle:
-      'No daily scrambling. Build your household’s monthly grocery once, then reorder in a single tap.',
-    center: { emoji: '🍚', size: 88 },
-    badge: { label: 'Save ₹1,340/mo', left: 250, top: 176 },
-    emojis: [
-      { emoji: '🫒', size: 70, left: 74, top: 116 },
-      { emoji: '🥬', size: 78, left: 258, top: 104 },
-      { emoji: '🫘', size: 68, left: 72, top: 244 },
-      { emoji: '🍎', size: 66, left: 286, top: 236 },
-      { emoji: '🍞', size: 72, left: 214, top: 286 },
-    ],
-    showSkip: true,
-  },
-  {
-    id: 'slide-2',
-    category: 'REORDER',
-    title: 'Copy last month in one tap',
-    subtitle:
-      'Your last basket, ready to go. Tweak what you need and check out in seconds.',
-    center: { emoji: '📋', size: 112 },
-    badge: { label: '1-tap reorder', left: 232, top: 182 },
-    emojis: [
-      { emoji: '🍚', size: 66, left: 58, top: 112 },
-      { emoji: '🫒', size: 64, left: 272, top: 116 },
-      { emoji: '🫘', size: 64, left: 66, top: 266 },
-      { emoji: '🥬', size: 68, left: 264, top: 260 },
-    ],
-    showSkip: true,
-  },
-  {
-    id: 'slide-3',
-    category: 'BEST VALUE',
-    title: 'Save more on every order',
-    subtitle:
-      'Baskets over ₹2,500 unlock the best prices - delivered in a planned 4-hour window, not a frantic 10 minutes.',
-    center: { emoji: '💰', size: 112 },
-    emojis: [
-      { emoji: '🫒', size: 64, left: 74, top: 116 },
-      { emoji: '🍚', size: 64, left: 262, top: 262 },
-    ],
-    badge: { label: '20% OFF', left: 250, top: 120 },
-    showSkip: false,
-  },
-];
-
-const GRADIENTS = [
-  { start: '#E4F3EA', end: '#C6E9D3' }, // Slide 1: Green-ish
-  { start: '#E7EEFB', end: '#D3DFF6' }, // Slide 2: Blue-ish
-  { start: '#FDEFD3', end: '#FBE7B6' }, // Slide 3: Orange-ish
-];
-
+/**
+ * A2 · Value Intro 1–3 — Redesign (Figma nodes 391:602, 392:602, 393:602)
+ * All copy, gradients, and chip layout from /api/admin/onboarding.
+ */
 export default function ValueIntroScreen({ navigation }: any) {
+  const [slides, setSlides] = useState<ValueIntroSlideConfig[]>([]);
+  const [introMeta, setIntroMeta] = useState<ValueIntroMetaConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const { width } = useWindowDimensions();
-  const scale = width / 390;
+  const { widthScale: scale, illustrationHeight, bottomPadding: footerBottomPad } =
+    useOnboardingLayout();
 
-  const slide = SLIDES[currentIndex];
-  const isLastSlide = currentIndex === SLIDES.length - 1;
+  const loadSlides = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    const config = await fetchOnboardingConfig();
+    setIntroMeta(config?.value_intro_meta ?? null);
+    const list = config?.value_intro_slides
+      ? [...config.value_intro_slides].sort((a, b) => a.order - b.order)
+      : [];
+    setSlides(list);
+    setCurrentIndex(0);
+    setLoadError(list.length === 0);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadSlides();
+  }, [loadSlides]);
+
+  const slide = slides[currentIndex];
+  const isLastSlide = slides.length > 0 && currentIndex === slides.length - 1;
+
+  const goToLogin = () => navigation.navigate('Login');
 
   const handleNext = () => {
-    if (currentIndex < SLIDES.length - 1) {
+    if (currentIndex < slides.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      navigation.navigate('Login');
+      goToLogin();
     }
   };
 
-  const handleSkip = () => navigation.navigate('Login');
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <ActivityIndicator size="large" color={COLORS.green700} />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError || !slide) {
+    return (
+      <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <Text style={styles.errorTitle}>
+          {introMeta?.load_error_title || ''}
+        </Text>
+        <Text style={styles.errorSubtitle}>
+          {introMeta?.load_error_subtitle || ''}
+        </Text>
+        <OnboardingPrimaryButton
+          label={introMeta?.retry_label || 'Retry'}
+          onPress={loadSlides}
+        />
+        <TouchableOpacity onPress={goToLogin} style={styles.skipLink}>
+          <Text style={styles.skipLinkText}>
+            {introMeta?.skip_to_login_label || ''}
+          </Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Illustration area */}
-      <View style={styles.illustrationArea}>
+      <View style={[styles.illustrationArea, { height: illustrationHeight }]}>
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
-            <LinearGradient id={`grad-${currentIndex}`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor={GRADIENTS[currentIndex].start} />
-              <Stop offset="100%" stopColor={GRADIENTS[currentIndex].end} />
+            <LinearGradient id={`grad-${slide.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <Stop offset="0%" stopColor={slide.gradient_start} />
+              <Stop offset="100%" stopColor={slide.gradient_end} />
             </LinearGradient>
           </Defs>
-          <Rect width="100%" height="100%" fill={`url(#grad-${currentIndex})`} />
+          <Rect width="100%" height="100%" fill={`url(#grad-${slide.id})`} />
         </Svg>
 
-        {slide.showSkip ? (
-          <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
+        {slide.show_skip ? (
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={goToLogin}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.skipPlaceholder} />
         )}
 
-        {slide.emojis.map((item, index) => (
+        {slide.emoji_chips.map((item, index) => (
           <OnboardingEmojiChip
-            key={index}
+            key={`${slide.id}-chip-${index}`}
             emoji={item.emoji}
             size={item.size * scale}
             style={{ left: item.left * scale, top: item.top * scale }}
           />
         ))}
 
-        {slide.center ? (
+        {slide.center_emoji && slide.center_size ? (
           <View
             style={[
               styles.centerChip,
               {
-                width: slide.center.size * scale,
-                height: slide.center.size * scale,
-                borderRadius: slide.center.size * scale * 0.5,
-                left: (195 - slide.center.size / 2) * scale,
+                width: slide.center_size * scale,
+                height: slide.center_size * scale,
+                borderRadius: slide.center_size * scale * 0.5,
+                left: (195 - slide.center_size / 2) * scale,
                 top: 150 * scale,
               },
             ]}
           >
-            <Text style={{ fontSize: slide.center.size * scale * 0.42 }}>
-              {slide.center.emoji}
+            <Text style={{ fontSize: slide.center_size * scale * 0.42 }}>
+              {slide.center_emoji}
             </Text>
           </View>
         ) : null}
 
-        {slide.badge ? (
+        {slide.badge_label && slide.badge_left != null && slide.badge_top != null ? (
           <View
             style={[
               styles.floatingBadge,
-              { left: slide.badge.left * scale, top: slide.badge.top * scale },
+              { left: slide.badge_left * scale, top: slide.badge_top * scale },
             ]}
           >
             <Text style={styles.sparkle}>✦</Text>
-            <Text style={styles.floatingBadgeText}>{slide.badge.label}</Text>
+            <Text style={styles.floatingBadgeText}>{slide.badge_label}</Text>
           </View>
         ) : null}
 
-        {currentIndex === 2 ? (
-          <View style={[styles.floatingBadge, { left: 60 * scale, top: 268 * scale }]}>
-            <Text style={styles.floatingBadgeText}>Lowest price</Text>
+        {slide.secondary_badge_label &&
+        slide.secondary_badge_left != null &&
+        slide.secondary_badge_top != null ? (
+          <View
+            style={[
+              styles.floatingBadge,
+              {
+                left: slide.secondary_badge_left * scale,
+                top: slide.secondary_badge_top * scale,
+              },
+            ]}
+          >
+            <Text style={styles.floatingBadgeText}>{slide.secondary_badge_label}</Text>
           </View>
         ) : null}
       </View>
 
-      {/* Copy block */}
       <View style={styles.copyBlock}>
         <OnboardingCategoryBadge label={slide.category} />
         <Text style={styles.title}>{slide.title}</Text>
         <Text style={styles.subtitle}>{slide.subtitle}</Text>
       </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
         {isLastSlide ? (
           <>
             <View style={styles.footerDotsCenter}>
-              <OnboardingDots total={SLIDES.length} activeIndex={currentIndex} />
+              <OnboardingDots total={slides.length} activeIndex={currentIndex} />
             </View>
-            <OnboardingPrimaryButton label="Get started" onPress={handleNext} />
+            <OnboardingPrimaryButton
+              label={introMeta?.final_cta_label || 'Continue'}
+              onPress={handleNext}
+            />
           </>
         ) : (
           <View style={styles.footerRow}>
-            <OnboardingDots total={SLIDES.length} activeIndex={currentIndex} />
+            <OnboardingDots total={slides.length} activeIndex={currentIndex} />
             <OnboardingNextPill onPress={handleNext} />
           </View>
         )}
@@ -219,8 +219,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.paper,
   },
+  centered: {
+    flex: 1,
+    backgroundColor: COLORS.paper,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  errorTitle: {
+    ...FONTS.balooBold,
+    fontSize: 20,
+    color: COLORS.ink900,
+    textAlign: 'center',
+  },
+  errorSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  skipLink: {
+    paddingVertical: 8,
+  },
+  skipLinkText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 14,
+    color: COLORS.green700,
+  },
   illustrationArea: {
-    height: 432,
     position: 'relative',
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
@@ -238,7 +267,7 @@ const styles = StyleSheet.create({
   skipText: {
     ...FONTS.muktaSemiBold,
     fontSize: 13,
-    color: COLORS.green500, // matches slide skip text color spec
+    color: COLORS.green500,
   },
   centerChip: {
     position: 'absolute',
@@ -296,7 +325,6 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: 'auto',
     paddingHorizontal: 26,
-    paddingBottom: 28,
     gap: 16,
   },
   footerRow: {

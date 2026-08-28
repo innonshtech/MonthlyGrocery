@@ -1,126 +1,253 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  StatusBar
+  StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AppIcon from '../../components/AppIcon';
-import { COLORS, RADIUS } from '../../constants/theme';
+import {
+  CheckoutBackIcon,
+  AddressRadioOnIcon,
+  AddressRadioOffIcon,
+  SlotInfoIcon,
+} from '../../components/CheckoutFigmaIcons';
+import { COLORS, FONTS } from '../../constants/theme';
+import { API_BASE } from '../../config/api';
 
-const DATE_OPTIONS = [
-  { id: 'd1', label: 'Tomorrow', sub: 'Wed, 19 Aug', isDefault: true },
-  { id: 'd2', label: 'Day After', sub: 'Thu, 20 Aug', isDefault: false },
-  { id: 'd3', label: 'Friday', sub: '21 Aug', isDefault: false },
-];
+const SCREEN_BG = '#FBFAF6';
 
-const TIME_WINDOWS = [
-  { id: 't1', title: 'Morning', time: '7:00 AM - 10:00 AM', badge: 'Most Popular' },
-  { id: 't2', title: 'Afternoon', time: '12:00 PM - 3:00 PM' },
-  { id: 't3', title: 'Evening', time: '6:00 PM - 9:00 PM' },
-];
+type BadgeType = 'available' | 'recommended' | 'filling' | 'full';
+
+type SlotWindow = {
+  id: string;
+  label: string;
+  badge: string;
+  badgeType: BadgeType;
+  disabled: boolean;
+};
+
+type DayOption = {
+  id: string;
+  date: string;
+  label: string;
+  day: string;
+  windows: SlotWindow[];
+};
 
 export default function DeliverySlotScreen({ route, navigation }: any) {
-  const currentSlot = route?.params?.selectedSlot || {};
-  const [selectedDate, setSelectedDate] = useState<string>('Tomorrow');
-  const [selectedTimeWindow, setSelectedTimeWindow] = useState<string>(
-    currentSlot.timeWindow || 'Morning 7:00 AM - 10:00 AM'
-  );
+  const currentSlot = route?.params?.selectedSlot;
+  const shopId = route?.params?.shopId;
+  const pincode = route?.params?.pincode;
+
+  const [days, setDays] = useState<DayOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDateId, setSelectedDateId] = useState('day-0');
+  const [selectedWindowId, setSelectedWindowId] = useState<string | null>(null);
+
+  const loadSlots = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ days: '4' });
+      if (shopId) params.set('shop_id', shopId);
+      if (pincode) params.set('pincode', pincode);
+
+      const res = await fetch(`${API_BASE}/delivery-slots?${params.toString()}`);
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load slots');
+      }
+
+      const loadedDays: DayOption[] = data.days || [];
+      setDays(loadedDays);
+
+      const matchDate =
+        loadedDays.find((d) => d.label === currentSlot?.dateLabel)?.id ||
+        loadedDays.find((d) => d.date === currentSlot?.date)?.id ||
+        loadedDays[0]?.id;
+      setSelectedDateId(matchDate || 'day-0');
+
+      const dayForWindow =
+        loadedDays.find((d) => d.id === matchDate) || loadedDays[0];
+      const matchWindow =
+        dayForWindow?.windows.find((w) => w.label === currentSlot?.timeWindow)?.id ||
+        dayForWindow?.windows.find((w) => !w.disabled)?.id ||
+        dayForWindow?.windows[0]?.id;
+      setSelectedWindowId(matchWindow || null);
+    } catch (err: any) {
+      Alert.alert('Could not load slots', err.message || 'Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [shopId, pincode, currentSlot?.dateLabel, currentSlot?.date, currentSlot?.timeWindow]);
+
+  useEffect(() => {
+    loadSlots();
+  }, [loadSlots]);
+
+  const selectedDate = days.find((d) => d.id === selectedDateId) || days[0];
+  const timeWindows = selectedDate?.windows || [];
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const current = timeWindows.find((w) => w.id === selectedWindowId);
+    if (!current || current.disabled) {
+      const firstOpen = timeWindows.find((w) => !w.disabled);
+      if (firstOpen) setSelectedWindowId(firstOpen.id);
+    }
+  }, [selectedDateId, days]);
+
+  const selectedWindow = timeWindows.find((w) => w.id === selectedWindowId);
 
   const handleConfirmSlot = () => {
+    if (!selectedDate || !selectedWindow || selectedWindow.disabled) {
+      Alert.alert('Select a slot', 'Please choose an available delivery window.');
+      return;
+    }
+
     const slotData = {
-      dateLabel: selectedDate,
-      timeWindow: selectedTimeWindow,
+      date: selectedDate.date,
+      dateLabel: selectedDate.label,
+      timeWindow: selectedWindow.label,
+      windowId: selectedWindow.id,
+      shopId: shopId || undefined,
     };
-    navigation.navigate('Checkout', { selectedSlot: slotData });
+
+    navigation.navigate({
+      name: 'Checkout',
+      params: { selectedSlot: slotData },
+      merge: true,
+    });
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color={COLORS.green700} />
+          <Text style={styles.loadingText}>Loading live delivery slots…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
       <View style={styles.topHeader}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <Text style={styles.backBtnText}>‹</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select delivery slot</Text>
+        <Text style={styles.headerTitle}>Choose delivery slot</Text>
       </View>
 
-      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        {/* Date Selection */}
-        <Text style={styles.sectionHeading}>SELECT DELIVERY DATE</Text>
-        <View style={styles.dateRow}>
-          {DATE_OPTIONS.map((d) => {
-            const isSelected = selectedDate === d.label;
-            return (
-              <TouchableOpacity
-                key={d.id}
-                style={[styles.dateCard, isSelected && styles.dateCardActive]}
-                onPress={() => setSelectedDate(d.label)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.dateLabel, isSelected && styles.dateLabelActive]}>
-                  {d.label}
-                </Text>
-                <Text style={[styles.dateSub, isSelected && styles.dateSubActive]}>
-                  {d.sub}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>SELECT A DAY</Text>
+          <View style={styles.dateRow}>
+            {days.map((d) => {
+              const selected = d.id === selectedDateId;
+              return (
+                <TouchableOpacity
+                  key={d.id}
+                  style={[styles.dateCard, selected && styles.dateCardSelected]}
+                  onPress={() => setSelectedDateId(d.id)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.dateCardLabel, selected && styles.dateCardLabelSelected]}>
+                    {d.label}
+                  </Text>
+                  <Text style={[styles.dateCardDay, selected && styles.dateCardDaySelected]}>
+                    {d.day}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
-        {/* Time Window Selection */}
-        <Text style={styles.sectionHeading}>SELECT TIME WINDOW</Text>
-        <View style={styles.timeList}>
-          {TIME_WINDOWS.map((t) => {
-            const isSelected = selectedTimeWindow.includes(t.title);
-            return (
-              <TouchableOpacity
-                key={t.id}
-                style={[styles.timeCard, isSelected && styles.timeCardActive]}
-                onPress={() => setSelectedTimeWindow(`${t.title} ${t.time}`)}
-                activeOpacity={0.85}
-              >
-                <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
-                  {isSelected && <View style={styles.radioDot} />}
-                </View>
-
-                <View style={styles.timeInfo}>
-                  <View style={styles.timeTitleRow}>
-                    <Text style={styles.timeTitle}>{t.title}</Text>
-                    {t.badge && (
-                      <View style={styles.popularBadge}>
-                        <Text style={styles.popularBadgeText}>{t.badge}</Text>
-                      </View>
-                    )}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>4-HOUR DELIVERY WINDOWS</Text>
+          <View style={styles.windowList}>
+            {timeWindows.map((window) => {
+              const selected = window.id === selectedWindowId;
+              const disabled = window.disabled;
+              return (
+                <TouchableOpacity
+                  key={window.id}
+                  style={[
+                    styles.windowCard,
+                    selected && styles.windowCardSelected,
+                    disabled && styles.windowCardDisabled,
+                  ]}
+                  onPress={() => !disabled && setSelectedWindowId(window.id)}
+                  activeOpacity={disabled ? 1 : 0.85}
+                  disabled={disabled}
+                >
+                  {selected ? <AddressRadioOnIcon size={22} /> : <AddressRadioOffIcon size={22} />}
+                  <Text
+                    style={[
+                      styles.windowLabel,
+                      disabled && styles.windowLabelDisabled,
+                    ]}
+                  >
+                    {window.label}
+                  </Text>
+                  <View
+                    style={[
+                      styles.badge,
+                      window.badgeType === 'available' && styles.badgeAvailable,
+                      window.badgeType === 'recommended' && styles.badgeRecommended,
+                      window.badgeType === 'filling' && styles.badgeFilling,
+                      window.badgeType === 'full' && styles.badgeFull,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.badgeText,
+                        window.badgeType === 'filling' && styles.badgeTextFilling,
+                        window.badgeType === 'full' && styles.badgeTextMuted,
+                      ]}
+                    >
+                      {window.badge}
+                    </Text>
                   </View>
-                  <Text style={styles.timeSub}>{t.time}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.infoBanner}>
+          <SlotInfoIcon size={17} />
+          <Text style={styles.infoBannerText}>
+            Your whole monthly order arrives together in this one 4-hour window.
+          </Text>
         </View>
       </ScrollView>
 
-      {/* Sticky Bottom CTA */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.confirmBtn}
-          onPress={handleConfirmSlot}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.confirmBtnText}>Confirm delivery slot</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
+        <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={[styles.confirmBtn, (selectedWindow?.disabled) && styles.confirmBtnDisabled]}
+            onPress={handleConfirmSlot}
+            activeOpacity={0.85}
+            disabled={!selectedWindow || selectedWindow.disabled}
+          >
+            <Text style={styles.confirmBtnText}>Confirm slot</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </SafeAreaView>
   );
 }
@@ -128,169 +255,196 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.paper,
+    backgroundColor: SCREEN_BG,
+  },
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    color: COLORS.ink500,
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    gap: 10,
+    paddingLeft: 16,
+    paddingRight: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
   },
   backBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  backBtnText: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: COLORS.ink900,
-    lineHeight: 32,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    ...FONTS.balooSemiBold,
+    fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
-    marginLeft: 8,
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 24,
+    gap: 16,
   },
-  sectionHeading: {
-    fontSize: 11,
-    fontWeight: '700',
+  section: {
+    gap: 10,
+  },
+  sectionLabel: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 1.44,
     color: COLORS.ink500,
-    letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 12,
   },
   dateRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 24,
+    gap: 9,
   },
   dateCard: {
     flex: 1,
     backgroundColor: COLORS.surface,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    borderColor: 'transparent',
+    paddingVertical: 11,
     alignItems: 'center',
+    gap: 2,
   },
-  dateCardActive: {
+  dateCardSelected: {
+    backgroundColor: COLORS.green700,
     borderColor: COLORS.green700,
-    backgroundColor: COLORS.green50,
   },
-  dateLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.ink900,
-    marginBottom: 2,
-  },
-  dateLabelActive: {
-    color: COLORS.green700,
-  },
-  dateSub: {
+  dateCardLabel: {
+    ...FONTS.muktaSemiBold,
     fontSize: 11,
+    lineHeight: 14,
     color: COLORS.ink500,
   },
-  dateSubActive: {
-    color: COLORS.green700,
-    fontWeight: '600',
+  dateCardLabelSelected: {
+    color: '#FFFFFF',
   },
-  timeList: {
+  dateCardDay: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.ink900,
+  },
+  dateCardDaySelected: {
+    color: '#FFFFFF',
+  },
+  windowList: {
+    gap: 10,
+  },
+  windowCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  timeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 16,
-  },
-  timeCardActive: {
+  windowCardSelected: {
+    backgroundColor: COLORS.green50,
     borderColor: COLORS.green700,
-    backgroundColor: COLORS.surface,
-  },
-  radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
     borderWidth: 1.8,
-    borderColor: COLORS.ink300,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
   },
-  radioCircleActive: {
-    borderColor: COLORS.green700,
+  windowCardDisabled: {
+    opacity: 1,
   },
-  radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.green700,
-  },
-  timeInfo: {
+  windowLabel: {
+    ...FONTS.muktaMedium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: COLORS.ink900,
     flex: 1,
   },
-  timeTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
+  windowLabelDisabled: {
+    color: COLORS.ink300,
   },
-  timeTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.ink900,
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
-  popularBadge: {
+  badgeAvailable: {
+    backgroundColor: COLORS.green100,
+  },
+  badgeRecommended: {
+    backgroundColor: COLORS.green100,
+  },
+  badgeFilling: {
     backgroundColor: COLORS.marigold100,
-    borderWidth: 1,
-    borderColor: COLORS.marigold200,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
   },
-  popularBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
+  badgeFull: {
+    backgroundColor: COLORS.muted,
+  },
+  badgeText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 11,
+    lineHeight: 14,
+    color: COLORS.green700,
+  },
+  badgeTextFilling: {
     color: COLORS.marigold700,
   },
-  timeSub: {
-    fontSize: 12.5,
+  badgeTextMuted: {
     color: COLORS.ink500,
   },
-  bottomBar: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    backgroundColor: COLORS.surface,
-    borderTopWidth: 1,
+  infoBanner: {
+    backgroundColor: COLORS.green100,
+    borderRadius: 10,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    gap: 9,
+    alignItems: 'flex-start',
+  },
+  infoBannerText: {
+    ...FONTS.muktaMedium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: COLORS.green800,
+    flex: 1,
+  },
+  bottomSafe: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderTopWidth: 1.5,
     borderTopColor: COLORS.line,
+  },
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
   },
   confirmBtn: {
     backgroundColor: COLORS.green700,
-    height: 52,
-    borderRadius: RADIUS.pill,
-    justifyContent: 'center',
+    borderRadius: 14,
+    height: 49,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnDisabled: {
+    backgroundColor: COLORS.ink300,
   },
   confirmBtnText: {
-    color: '#FFFFFF',
+    ...FONTS.balooSemiBold,
     fontSize: 15,
-    fontWeight: '800',
+    lineHeight: 16,
+    color: '#FFFFFF',
   },
 });

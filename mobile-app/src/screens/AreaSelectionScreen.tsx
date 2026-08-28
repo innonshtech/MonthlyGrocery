@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,128 +7,161 @@ import {
   FlatList,
   TextInput,
   StatusBar,
+  ActivityIndicator,
+  Platform,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE } from '../config/api';
-import AppIcon from '../components/AppIcon';
 import {
   OnboardingBackButton,
   OnboardingRadio,
   OnboardingSectionLabel,
   OnboardingPrimaryButton,
 } from '../components/onboarding/OnboardingUI';
-import { COLORS, RADIUS } from '../constants/theme';
+import {
+  OnboardingAreaPinIcon,
+  OnboardingAreaPinLargeIcon,
+  OnboardingSearchIcon,
+} from '../components/onboarding/OnboardingFigmaIcons';
+import { useOnboardingLayout } from '../components/onboarding/onboardingLayout';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
+import {
+  fetchAreasForCity,
+  submitAreaNotifyRequest,
+  CityArea,
+} from '../services/areasApi';
+import {
+  AreaSelectionConfig,
+  fetchOnboardingConfig,
+} from '../services/onboardingApi';
 
-interface AreaItem {
-  id: string;
-  name: string;
-  pincode: string;
-  serviceable: boolean;
-  subtitle: string;
+function formatUnserviceableSubtitle(
+  template: string,
+  area: string,
+  city: string,
+): string {
+  return template.replace('{area}', area).replace('{city}', city);
 }
 
-const DEFAULT_PUNE_AREAS: AreaItem[] = [
-  {
-    id: 'kothrud',
-    name: 'Kothrud',
-    pincode: '411038',
-    serviceable: true,
-    subtitle: '4-hour windows · daily',
-  },
-  {
-    id: 'baner',
-    name: 'Baner',
-    pincode: '411045',
-    serviceable: true,
-    subtitle: '4-hour windows · daily',
-  },
-  {
-    id: 'aundh',
-    name: 'Aundh',
-    pincode: '411007',
-    serviceable: true,
-    subtitle: '4-hour windows · daily',
-  },
-  {
-    id: 'viman-nagar',
-    name: 'Viman Nagar',
-    pincode: '411014',
-    serviceable: true,
-    subtitle: '4-hour windows · daily',
-  },
-  {
-    id: 'hadapsar',
-    name: 'Hadapsar',
-    pincode: '411028',
-    serviceable: false,
-    subtitle: 'Launching next month',
-  },
-];
-
+/**
+ * A6 · Area Selection — Redesign (Figma node 409:617)
+ * Areas from /api/admin/locations; copy from /api/admin/onboarding.
+ */
 export default function AreaSelectionScreen({ route, navigation }: any) {
-  const { setCityAndArea } = useAuth();
-  const { cityName } = route.params || { cityName: 'Pune' };
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAreaId, setSelectedAreaId] = useState('kothrud');
-  const [areas, setAreas] = useState<AreaItem[]>(DEFAULT_PUNE_AREAS);
+  const { setCityAndArea, user } = useAuth();
+  const cityName = route.params?.cityName?.trim() || '';
+  const { bottomPadding } = useOnboardingLayout();
 
-  useEffect(() => {
-    const fetchAreas = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/admin/locations`);
-        const data = await res.json();
-        if (res.ok && data.success && data.locations.length > 0) {
-          const matched = data.locations.filter(
-            (loc: any) => loc.city.toLowerCase() === cityName.toLowerCase()
-          );
-          if (matched.length > 0) {
-            const mapped: AreaItem[] = matched.map((loc: any) => ({
-              id: loc.id || loc.area_name.toLowerCase().replace(/\s+/g, '-'),
-              name: loc.area_name,
-              pincode: loc.pincode || '411001',
-              serviceable: loc.is_serviceable !== false,
-              subtitle: loc.is_serviceable === false
-                ? 'Launching next month'
-                : '4-hour windows · daily',
-            }));
-            setAreas(mapped);
-          }
-        }
-      } catch {
-        setAreas(DEFAULT_PUNE_AREAS);
-      }
-    };
-    fetchAreas();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [areas, setAreas] = useState<CityArea[]>([]);
+  const [config, setConfig] = useState<AreaSelectionConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [missingCity, setMissingCity] = useState(false);
+  const [notifyLoading, setNotifyLoading] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    setMissingCity(false);
+
+    const onboarding = await fetchOnboardingConfig();
+    const areaConfig = onboarding?.area_selection ?? null;
+    setConfig(areaConfig);
+
+    if (!cityName) {
+      setMissingCity(true);
+      setAreas([]);
+      setLoading(false);
+      return;
+    }
+
+    const list = await fetchAreasForCity(cityName);
+    setAreas(list);
+    setLoadError(!areaConfig || list.length === 0);
+    setLoading(false);
   }, [cityName]);
 
-  const handleAreaSelect = async (area: AreaItem) => {
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleAreaSelect = async (area: CityArea) => {
     if (!area.serviceable) return;
     setSelectedAreaId(area.id);
     await setCityAndArea(cityName, area.name);
     navigation.navigate('ProfileSetup');
   };
 
-  const handleNotifyMe = () => {
-    Alert.alert(
-      'Subscribed',
-      `We'll notify you when MonthlyGrocery starts delivering in ${searchQuery || 'your area'}.`
+  const handleNotifyMe = async () => {
+    if (!config || !searchQuery.trim()) return;
+    setNotifyLoading(true);
+    const res = await submitAreaNotifyRequest(
+      cityName,
+      searchQuery.trim(),
+      user?.mobile,
     );
-    setSearchQuery('');
+    setNotifyLoading(false);
+    if (res.success) {
+      Alert.alert('', config.notify_success_message);
+      setSearchQuery('');
+    } else {
+      Alert.alert('Error', res.error || config?.notify_error_message || '');
+    }
   };
 
   const filteredAreas = areas.filter(
     (a) =>
       a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.pincode.includes(searchQuery.trim())
+      a.pincode.includes(searchQuery.trim()),
   );
 
   const isUnserviceableSearch =
     searchQuery.trim().length > 0 && filteredAreas.length === 0;
 
+  if (missingCity) {
+    return (
+      <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <Text style={styles.errorTitle}>
+          {config?.missing_city_message || 'Please choose a city first.'}
+        </Text>
+        <OnboardingPrimaryButton
+          label={config?.choose_city_button_label || 'Choose city'}
+          onPress={() => navigation.navigate('CitySelection')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <ActivityIndicator size="large" color={COLORS.green700} />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError || !config) {
+    return (
+      <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
+        <StatusBar barStyle="dark-content" />
+        <Text style={styles.errorTitle}>
+          {config?.load_error_message || 'Could not load areas.'}
+        </Text>
+        <OnboardingPrimaryButton
+          label={config?.retry_label || 'Retry'}
+          onPress={loadData}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
       <OnboardingBackButton
@@ -141,42 +174,56 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
       {!isUnserviceableSearch ? (
         <>
           <View style={styles.headerBlock}>
-            <Text style={styles.mainTitle}>Select your area</Text>
+            <Text style={styles.mainTitle}>{config.title}</Text>
             <View style={styles.servingRow}>
-              <AppIcon name="map-pin" size={15} color={COLORS.green700} />
-              <Text style={styles.servingText}>Serving {cityName}</Text>
+              <OnboardingAreaPinIcon size={15} color={COLORS.green700} />
+              <Text style={styles.servingText}>
+                {config.serving_prefix} {cityName}
+              </Text>
               <Text style={styles.dotSep}>·</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('CitySelection')}>
-                <Text style={styles.changeLink}>Change</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('CitySelection')}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              >
+                <Text style={styles.changeLink}>{config.change_label}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={styles.searchCard}>
-            <AppIcon name="search" size={18} color={COLORS.ink300} />
+            <OnboardingSearchIcon size={18} color={COLORS.ink300} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search your area or pincode"
+              placeholder={config.search_placeholder}
               placeholderTextColor={COLORS.ink300}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              returnKeyType="search"
+              autoCorrect={false}
             />
             {searchQuery.length > 0 ? (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Text style={styles.clearSearchText}>✕</Text>
               </TouchableOpacity>
             ) : null}
           </View>
 
-          <OnboardingSectionLabel label="AREAS WE DELIVER TO" />
+          <OnboardingSectionLabel label={config.section_label} />
 
           <FlatList
             data={filteredAreas}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[styles.list, { paddingBottom: bottomPadding }]}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isSelected = selectedAreaId === item.id;
+              const subtitle = item.serviceable
+                ? config.serviceable_subtitle
+                : config.coming_soon_subtitle;
               return (
                 <TouchableOpacity
                   style={[styles.rowCard, !item.serviceable && styles.rowDisabled]}
@@ -185,7 +232,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
                   disabled={!item.serviceable}
                 >
                   <View style={styles.rowIcon}>
-                    <AppIcon name="map-pin" size={18} color={COLORS.green700} />
+                    <OnboardingAreaPinIcon size={18} color={COLORS.green700} />
                   </View>
                   <View style={styles.rowTextCol}>
                     <Text
@@ -193,13 +240,15 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
                     >
                       {item.name}
                     </Text>
-                    <Text style={styles.rowSubtitle}>{item.subtitle}</Text>
+                    <Text style={styles.rowSubtitle}>{subtitle}</Text>
                   </View>
                   {item.serviceable ? (
                     <OnboardingRadio selected={isSelected} />
                   ) : (
                     <View style={styles.comingSoonBadge}>
-                      <Text style={styles.comingSoonText}>Coming soon</Text>
+                      <Text style={styles.comingSoonText}>
+                        {config.coming_soon_badge}
+                      </Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -210,37 +259,51 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
       ) : (
         <View style={styles.unserviceableWrap}>
           <View style={styles.searchCard}>
-            <AppIcon name="search" size={18} color={COLORS.ink300} />
+            <OnboardingSearchIcon size={18} color={COLORS.ink300} />
             <TextInput
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Text style={styles.clearSearchText}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.unserviceableCenter}>
             <View style={styles.peachCircle}>
-              <AppIcon name="map-pin" size={48} color={COLORS.marigold600} />
+              <OnboardingAreaPinLargeIcon size={48} color={COLORS.marigold600} />
             </View>
-            <Text style={styles.unserviceableTitle}>
-              We're not in {searchQuery} yet
-            </Text>
+            <Text style={styles.unserviceableTitle}>{config.unserviceable_title}</Text>
             <Text style={styles.unserviceableSubtitle}>
-              MonthlyGrocery is growing fast. Get notified the moment we start
-              delivering to your area.
+              {formatUnserviceableSubtitle(
+                config.unserviceable_subtitle_template,
+                searchQuery.trim(),
+                cityName,
+              )}
             </Text>
+            <View style={styles.areaChip}>
+              <OnboardingAreaPinIcon size={14} color={COLORS.ink700} />
+              <Text style={styles.areaChipText}>
+                {searchQuery.trim()}, {cityName}
+              </Text>
+            </View>
           </View>
 
-          <View style={styles.unserviceableBottom}>
+          <View style={[styles.unserviceableBottom, { paddingBottom: bottomPadding }]}>
             <OnboardingPrimaryButton
-              label="Notify me when you arrive"
+              label={config.notify_button_label}
               onPress={handleNotifyMe}
+              loading={notifyLoading}
             />
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Text style={styles.chooseDiffText}>Choose a different area</Text>
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.chooseDiffText}>{config.choose_different_label}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -256,14 +319,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 8,
   },
+  centered: {
+    flex: 1,
+    backgroundColor: COLORS.paper,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  errorTitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 14,
+    color: COLORS.ink500,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   headerBlock: {
     marginTop: 16,
     marginBottom: 16,
     gap: 8,
   },
   mainTitle: {
+    ...FONTS.balooBold,
     fontSize: 26,
-    fontWeight: '700',
     color: COLORS.ink900,
     letterSpacing: -0.26,
     lineHeight: 32,
@@ -274,6 +352,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   servingText: {
+    ...FONTS.muktaRegular,
     fontSize: 15,
     color: COLORS.ink500,
     lineHeight: 24,
@@ -283,8 +362,8 @@ const styles = StyleSheet.create({
     color: COLORS.ink500,
   },
   changeLink: {
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
-    fontWeight: '600',
     color: COLORS.green700,
   },
   searchCard: {
@@ -301,16 +380,18 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
+    ...FONTS.muktaRegular,
     fontSize: 15,
     color: COLORS.ink900,
     padding: 0,
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
   clearSearchText: {
     fontSize: 14,
     color: COLORS.ink300,
     fontWeight: 'bold',
   },
-  list: { paddingBottom: 24 },
+  list: { gap: 0 },
   rowCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -335,13 +416,14 @@ const styles = StyleSheet.create({
   },
   rowTextCol: { flex: 1 },
   rowTitle: {
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
     color: COLORS.ink900,
     lineHeight: 20,
   },
   rowTitleSelected: { color: COLORS.green700 },
   rowSubtitle: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
     lineHeight: 16,
@@ -354,23 +436,22 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   comingSoonText: {
+    ...FONTS.muktaSemiBold,
     fontSize: 11,
-    fontWeight: '600',
     color: COLORS.ink500,
   },
   unserviceableWrap: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingBottom: 24,
   },
   unserviceableCenter: {
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   peachCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 116,
+    height: 116,
+    borderRadius: 58,
     backgroundColor: COLORS.marigold100,
     borderWidth: 1.5,
     borderColor: COLORS.marigold200,
@@ -379,26 +460,46 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   unserviceableTitle: {
-    fontSize: 24,
-    fontWeight: '800',
+    ...FONTS.balooBold,
+    fontSize: 26,
     color: COLORS.ink900,
     textAlign: 'center',
     marginBottom: 12,
+    lineHeight: 32,
   },
   unserviceableSubtitle: {
+    ...FONTS.muktaRegular,
     fontSize: 14,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 290,
+    lineHeight: 24,
+    maxWidth: 318,
+    marginBottom: 16,
+  },
+  areaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  areaChipText: {
+    ...FONTS.muktaMedium,
+    fontSize: 13,
+    color: COLORS.ink700,
   },
   unserviceableBottom: {
     gap: 16,
     alignItems: 'center',
+    paddingTop: 12,
   },
   chooseDiffText: {
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
-    fontWeight: '600',
     color: COLORS.green700,
     paddingVertical: 8,
   },

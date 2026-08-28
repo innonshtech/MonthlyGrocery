@@ -13,6 +13,7 @@ export interface Product {
   mrp: number;
   price: number;
   place?: string;
+  discount_percent?: number;
 }
 
 export interface CartItem {

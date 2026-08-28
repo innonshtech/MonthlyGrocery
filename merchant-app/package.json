@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "start": "react-native start --port 8082",
     "dev": "react-native start --port 8082",
+    "connect": "adb reverse tcp:8082 tcp:8082 && adb reverse tcp:8001 tcp:8001",
     "test": "jest"
   },
   "dependencies": {

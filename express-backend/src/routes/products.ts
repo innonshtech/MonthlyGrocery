@@ -27,8 +27,26 @@ function parseBool(val: any, defaultVal = false): boolean {
 // 1. GET /all: Consumer Catalog (with city pricing overrides)
 // 1. GET /all: Consumer Catalog (location-aware, based on city and area)
 router.get('/all', async (req, res) => {
-  const { city, area_name, category, secondary, q, limit } = req.query;
+  const { city, area_name, category, secondary, q, limit, deals } = req.query;
   const limitVal = parseInt(limit as string) || 100;
+  const dealsOnly = deals === '1' || deals === 'true';
+
+  const applyDealsFilter = (products: any[]) => {
+    if (!dealsOnly) return products;
+    return products
+      .filter(
+        (p) =>
+          (p.discount_percent && p.discount_percent > 0) ||
+          p.featured ||
+          p.todays_deal,
+      )
+      .sort((a, b) => {
+        const da = a.discount_percent || 0;
+        const db = b.discount_percent || 0;
+        return db - da;
+      })
+      .slice(0, limitVal);
+  };
 
   try {
     // If location credentials are not provided, fallback to the old PostgreSQL pricing override behaviour
@@ -116,7 +134,7 @@ router.get('/all', async (req, res) => {
           });
         }
       }
-      return res.json({ success: true, products: out });
+      return res.json({ success: true, products: applyDealsFilter(out) });
     }
 
     // Dynamic Location-Aware Merchant Mapping Flow
@@ -190,7 +208,7 @@ router.get('/all', async (req, res) => {
         image_url: p.image_url,
         mrp,
         price,
-        discount_percent: sp.discount_percentage || 0,
+        discount_percent: sp.discount_percentage ?? 0,
         stock: sp.stock || 0,
         unit: p.unit,
         is_veg: p.is_veg,
@@ -201,7 +219,7 @@ router.get('/all', async (req, res) => {
       });
     }
 
-    return res.json({ success: true, products: out });
+    return res.json({ success: true, products: applyDealsFilter(out) });
 
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });

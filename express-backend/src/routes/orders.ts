@@ -4,6 +4,18 @@ import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 
 const router = Router();
 
+function generateDisplayOrderId(): string {
+  return `MG${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
+function formatPaymentMethodLabel(method?: string): string {
+  if (!method) return 'Cash on Delivery';
+  if (method === 'COD') return 'Cash on Delivery';
+  if (method === 'UPI') return 'UPI';
+  if (method === 'CARD') return 'Card';
+  return method;
+}
+
 // 1. POST /checkout and POST /: Create a new order (Checkout Flow)
 const handleCheckout = async (req: AuthRequest, res: Response) => {
   const {
@@ -13,9 +25,13 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     shipping_address,
     delivery_address,
     delivery_slot,
+    delivery_slot_date,
+    delivery_slot_window_id,
     payment_method,
     coupon_code,
-    discount_amount
+    discount_amount,
+    deliver_to_label,
+    product_savings,
   } = req.body;
 
   const finalAddress = shipping_address || delivery_address || 'Pune, Maharashtra';
@@ -97,6 +113,15 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       targetShopId = defaultShop?.id || 'e183b9e2-463d-4d9c-80b2-d2d2b05b7591';
     }
 
+    // Validate delivery slot availability (dynamic capacity from merchant config)
+    if (delivery_slot_date && delivery_slot_window_id) {
+      const { validateSlotSelection } = require('../services/deliverySlots');
+      const slotCheck = validateSlotSelection(targetShopId, delivery_slot_date, delivery_slot_window_id);
+      if (!slotCheck.valid) {
+        return res.status(400).json({ success: false, error: slotCheck.error });
+      }
+    }
+
     // 2. Generate random 4-digit Delivery OTP (Swiggy/Zomato style)
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -136,18 +161,28 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
     if (!db.orders) db.orders = [];
 
+    const displayId = generateDisplayOrderId();
+    const validatedProductSavings = Math.max(0, parseFloat(String(product_savings)) || 0);
+
     const enrichedOrder = {
       id: order.id,
+      display_id: displayId,
       consumer_id: req.user!.id,
       consumer_name: req.user!.mobile || 'Customer',
       shop_id: targetShopId,
       total_amount: finalPayableAmount,
       discount_amount: validatedDiscount,
+      product_savings: validatedProductSavings,
+      total_savings: validatedProductSavings + validatedDiscount,
       coupon_code: coupon_code || null,
       shipping_address: finalAddress,
+      deliver_to_label: deliver_to_label || null,
       delivery_slot: delivery_slot || 'Tomorrow Morning',
+      delivery_slot_date: delivery_slot_date || null,
+      delivery_slot_window_id: delivery_slot_window_id || null,
       delivery_otp: deliveryOtp,
-      payment_method: payment_method || 'UPI',
+      payment_method: payment_method || 'COD',
+      payment_method_label: formatPaymentMethodLabel(payment_method || 'COD'),
       status: 'confirmed',
       created_at: new Date().toISOString(),
       order_items: items.map((it: any) => ({
@@ -183,6 +218,49 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
     const { readDb } = require('../config/localDb');
     const db = readDb();
     const localUserOrders = (db.orders || []).filter((o: any) => o.consumer_id === req.user!.id);
+
+    const productIds = new Set<string>();
+    for (const order of localUserOrders) {
+      for (const item of order.order_items || []) {
+        if (item.product_id) productIds.add(item.product_id);
+      }
+    }
+
+    let catalogMap = new Map<string, { name: string; image_url: string; unit: string }>();
+    if (productIds.size > 0) {
+      const { data: catalogProducts } = await supabase
+        .from('products')
+        .select('id, name, image_url, unit')
+        .in('id', Array.from(productIds));
+      for (const p of catalogProducts || []) {
+        catalogMap.set(p.id, {
+          name: p.name,
+          image_url: p.image_url || '',
+          unit: p.unit || '1 unit',
+        });
+      }
+    }
+
+    const enrichLocalOrderItems = (order: any) => {
+      order.order_items = (order.order_items || []).map((it: any) => {
+        const catalog = catalogMap.get(it.product_id);
+        if (!catalog) return it;
+        return {
+          ...it,
+          product_name:
+            !it.product_name || it.product_name === 'Grocery Item'
+              ? catalog.name
+              : it.product_name,
+          image_url: it.image_url || catalog.image_url || '',
+          unit: it.unit || catalog.unit || '1 unit',
+        };
+      });
+      return order;
+    };
+
+    for (let i = 0; i < localUserOrders.length; i++) {
+      localUserOrders[i] = enrichLocalOrderItems(localUserOrders[i]);
+    }
 
     // Also fetch from Supabase
     const { data: supaOrders } = await supabase
@@ -244,6 +322,77 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
 
 router.get('/mine', authMiddleware, handleFetchMyOrders);
 router.get('/my', authMiddleware, handleFetchMyOrders);
+
+// GET /:order_id — Single order confirmation / detail (consumer)
+router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { order_id } = req.params;
+
+  try {
+    const { readDb } = require('../config/localDb');
+    const db = readDb() as any;
+    const localOrder = (db.orders || []).find(
+      (o: any) => o.id === order_id || o.display_id === order_id
+    );
+
+    if (localOrder) {
+      if (localOrder.consumer_id !== req.user!.id) {
+        return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+      return res.json({
+        success: true,
+        order: {
+          ...localOrder,
+          payment_method_label: localOrder.payment_method_label ||
+            formatPaymentMethodLabel(localOrder.payment_method),
+          total_savings: localOrder.total_savings ??
+            ((localOrder.product_savings || 0) + (localOrder.discount_amount || 0)),
+        },
+      });
+    }
+
+    const { data: supaOrder, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        total_amount,
+        status,
+        delivery_address,
+        created_at,
+        consumer_id
+      `)
+      .eq('id', order_id)
+      .maybeSingle();
+
+    if (error || !supaOrder) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    if (supaOrder.consumer_id !== req.user!.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    return res.json({
+      success: true,
+      order: {
+        id: supaOrder.id,
+        display_id: `MG${String(supaOrder.id).replace(/-/g, '').slice(-5).toUpperCase()}`,
+        total_amount: supaOrder.total_amount,
+        shipping_address: supaOrder.delivery_address,
+        deliver_to_label: supaOrder.delivery_address,
+        delivery_slot: 'Scheduled delivery',
+        payment_method: 'COD',
+        payment_method_label: 'Cash on Delivery',
+        status: supaOrder.status,
+        created_at: supaOrder.created_at,
+        product_savings: 0,
+        discount_amount: 0,
+        total_savings: 0,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
 
 // 3. GET /merchant/all: Merchant incoming orders list
 router.get('/merchant/all', authMiddleware, async (req: AuthRequest, res) => {

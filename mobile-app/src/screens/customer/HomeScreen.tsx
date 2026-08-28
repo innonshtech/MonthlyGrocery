@@ -13,6 +13,24 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon, { IconName } from '../../components/AppIcon';
+import {
+  HomeSearchIcon,
+  HomeMicIcon,
+  HomeChevronDownIcon,
+  HomeDeliveryIcon,
+  HomeSparkleIcon,
+  HomeArrowRightIcon,
+} from '../../components/home/HomeFigmaIcons';
+import {
+  fetchHomeConfig,
+  fetchPromotionalBanners,
+  formatHomeTemplate,
+  navigateFromActionLink,
+  HomeScreenConfig,
+  PromotionalBanner,
+} from '../../services/homeApi';
+import HomeDealCard from '../../components/home/HomeDealCard';
+import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
@@ -20,8 +38,6 @@ const H_PAD = 14;
 const CONTENT_W = width - H_PAD * 2;
 const CAT_SIZE = 80;
 const CAT_GAP = 10;
-const DEAL_W = 150;
-const DEAL_H = 227;
 
 interface CategoryItem {
   id: string;
@@ -29,14 +45,6 @@ interface CategoryItem {
   icon: IconName;
   emoji: string;
   image_url?: string;
-}
-
-interface PromotionalBanner {
-  id: string;
-  title: string;
-  image_url: string;
-  action_link?: string;
-  active: boolean;
 }
 
 function getCategoryIcon(name: string): IconName {
@@ -78,27 +86,41 @@ function getCategoryIconColor(name: string): string {
   return '#1E7A46';
 }
 
-const fallbackCategories: CategoryItem[] = [
-  { id: 'atta-rice', name: 'Atta & Rice', icon: 'cat-atta-rice', emoji: '' },
-  { id: 'oils-ghee', name: 'Oils & Ghee', icon: 'cat-oils-ghee', emoji: '' },
-  { id: 'dals-pulses', name: 'Dals & Pulses', icon: 'cat-dals-pulses', emoji: '' },
-  { id: 'spices-masala', name: 'Spices & Masala', icon: 'cat-spices-masala', emoji: '' },
-  { id: 'dry-fruits', name: 'Dry Fruits', icon: 'cat-dry-fruits', emoji: '' },
-  { id: 'snacks', name: 'Snacks', icon: 'cat-snacks', emoji: '' },
-  { id: 'beverages', name: 'Beverages', icon: 'cat-beverages', emoji: '' },
-  { id: 'biscuits', name: 'Biscuits', icon: 'cat-biscuits', emoji: '' },
-  { id: 'cleaning', name: 'Cleaning', icon: 'cat-cleaning', emoji: '' },
-  { id: 'personal-care', name: 'Personal Care', icon: 'cat-personal-care', emoji: '' },
-  { id: 'home-kitchen', name: 'Home & Kitchen', icon: 'cat-home-kitchen', emoji: '' },
-  { id: 'baby-care', name: 'Baby Care', icon: 'cat-baby-care', emoji: '' },
-];
+function buildDisplayLocation(
+  home: HomeScreenConfig | null,
+  city?: string | null,
+  area?: string | null,
+): string {
+  if (!home) return '';
+  if (area && city) return `${home.location_prefix} ${area}, ${city}`;
+  if (area) return `${home.location_prefix} ${area}`;
+  if (city) return `${home.location_prefix} ${city}`;
+  return home.choose_location_label;
+}
+
+function sortBanners(banners: PromotionalBanner[]): PromotionalBanner[] {
+  return [...banners].sort((a, b) => {
+    const aPromo = a.kind === 'promo' ? 0 : 1;
+    const bPromo = b.kind === 'promo' ? 0 : 1;
+    return aPromo - bPromo;
+  });
+}
+
+function getReorderPreviewItems(lastOrder: any) {
+  const items = lastOrder?.order_items || [];
+  if (!items.length) return [];
+  const withImages = items.filter((it: any) => it.image_url);
+  const pool = withImages.length >= 3 ? withImages : items;
+  return pool.slice(0, 3);
+}
 
 export default function HomeScreen({ navigation, setActiveTab }: any) {
   const insets = useSafeAreaInsets();
   const { city, area, token, user } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
+  const [home, setHome] = useState<HomeScreenConfig | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<CategoryItem[]>(fallbackCategories);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [banners, setBanners] = useState<PromotionalBanner[]>([]);
   const [loading, setLoading] = useState(true);
   const [orderStats, setOrderStats] = useState<{
@@ -106,24 +128,21 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     lastOrder: any | null;
   }>({ orderCount: 0, lastOrder: null });
 
-  const displayLocation = area
-    ? `Home · ${area}, ${city || 'Pune'}`
-    : `Home · ${city || 'Kothrud, Pune'}`;
+  const displayLocation = buildDisplayLocation(home, city, area);
   const userInitial = (user?.name?.trim()?.[0] || 'A').toUpperCase();
+  const hasPastOrder = orderStats.orderCount > 0 && orderStats.lastOrder;
+  const lastOrderItemCount = hasPastOrder
+    ? (orderStats.lastOrder.order_items || []).reduce(
+        (sum: number, item: { quantity?: number }) => sum + (item.quantity || 1),
+        0,
+      )
+    : 0;
+  const lastOrderTotal = hasPastOrder ? Number(orderStats.lastOrder.total_amount) || 0 : 0;
+  const reorderPreviewItems = hasPastOrder ? getReorderPreviewItems(orderStats.lastOrder) : [];
 
   useEffect(() => {
-    const fetchBanners = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/admin/banners`);
-        const data = await res.json();
-        if (res.ok && data.success && Array.isArray(data.banners)) {
-          setBanners(data.banners);
-        }
-      } catch (err) {
-        console.error('Error fetching promotional banners:', err);
-      }
-    };
-    fetchBanners();
+    fetchHomeConfig().then(setHome);
+    fetchPromotionalBanners().then((list) => setBanners(sortBanners(list)));
   }, []);
 
   useEffect(() => {
@@ -142,8 +161,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           }));
           if (mapped.length > 0) {
             setCategories(mapped.slice(0, 8));
-          } else if (data.categories) {
-            const fallbackMapped: CategoryItem[] = data.categories
+          } else if (data.categories?.length) {
+            const nameMapped: CategoryItem[] = data.categories
               .slice(0, 8)
               .map((name: string, index: number) => ({
                 id: `cat-${index}-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
@@ -151,7 +170,9 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 icon: getCategoryIcon(name),
                 emoji: '',
               }));
-            setCategories(fallbackMapped);
+            setCategories(nameMapped);
+          } else {
+            setCategories([]);
           }
         }
       } catch (err) {
@@ -164,7 +185,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        let url = `${API_BASE}/products/all?limit=8`;
+        let url = `${API_BASE}/products/all?deals=true&limit=8`;
         if (city) url += `&city=${encodeURIComponent(city)}`;
         if (area) url += `&area_name=${encodeURIComponent(area)}`;
         const res = await fetch(url);
@@ -214,63 +235,41 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     else navigation.navigate('Categories');
   };
 
-  const renderDealCard = (item: Product) => {
-    const priceVal = parseFloat(item.price as any) || 0;
-    const mrpVal = parseFloat(item.mrp as any) || priceVal;
-    const pctOff = mrpVal > priceVal ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) : 0;
-    const cartItem = items.find((i) => i.product?.id === item.id);
-    const count = cartItem ? cartItem.quantity : 0;
-
-    return (
-      <TouchableOpacity
-        key={item.id}
-        style={styles.dealCard}
-        onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-        activeOpacity={0.85}
-      >
-        <View style={[styles.dealImageWrap, { backgroundColor: getCategoryBgColor(item.name) }]}>
-          {pctOff > 0 && (
-            <View style={styles.dealBadge}>
-              <Text style={styles.dealBadgeText}>{pctOff}% OFF</Text>
-            </View>
-          )}
-          {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={styles.dealImg} resizeMode="contain" />
-          ) : (
-            <AppIcon name={getCategoryIcon(item.name)} size={38} color={getCategoryIconColor(item.name)} />
-          )}
-        </View>
-        <Text style={styles.dealName} numberOfLines={2}>
-          {item.name}
-        </Text>
-        <Text style={styles.dealUnit}>{item.unit || '5 kg'}</Text>
-        <View style={styles.dealPriceRow}>
-          <View style={styles.dealPriceCol}>
-            <Text style={styles.dealPrice}>₹{priceVal}</Text>
-            {mrpVal > priceVal && <Text style={styles.dealMrp}>₹{mrpVal}</Text>}
-          </View>
-          {count > 0 ? (
-            <View style={styles.dealStepper}>
-              <TouchableOpacity onPress={() => updateQuantity(item.id, count - 1)}>
-                <Text style={styles.dealStepBtn}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.dealStepCount}>{count}</Text>
-              <TouchableOpacity onPress={() => addToCart(item)}>
-                <Text style={styles.dealStepBtn}>+</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity style={styles.dealAddBtn} onPress={() => addToCart(item)}>
-              <Text style={styles.dealAddText}>ADD</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
+  const handleBannerPress = (banner: PromotionalBanner) => {
+    navigateFromActionLink(navigation, banner.action_link);
   };
 
-  const lastOrderItems = orderStats.lastOrder?.order_items?.length || 24;
-  const lastOrderTotal = orderStats.lastOrder?.total_amount || 2880;
+  const renderPromoBanner = (banner: PromotionalBanner) => (
+    <TouchableOpacity
+      key={banner.id}
+      style={styles.bannerItem}
+      onPress={() => handleBannerPress(banner)}
+      activeOpacity={0.9}
+    >
+      {banner.image_url && banner.kind !== 'promo' ? (
+        <Image
+          source={{ uri: banner.image_url }}
+          style={styles.bannerImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.promoCardFallback}>
+          <View style={styles.promoLeft}>
+            <Text style={styles.promoLabel}>{banner.title}</Text>
+            {banner.subtitle ? (
+              <Text style={styles.promoTitle} numberOfLines={2}>{banner.subtitle}</Text>
+            ) : null}
+            {banner.body ? <Text style={styles.promoSub}>{banner.body}</Text> : null}
+            {banner.cta_text ? (
+              <View style={styles.promoBtn}>
+                <Text style={styles.promoBtnText}>{banner.cta_text}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView
@@ -287,12 +286,12 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             onPress={() => navigation.navigate('CitySelection')}
             activeOpacity={0.75}
           >
-            <Text style={styles.deliveringLabel}>DELIVERING TO</Text>
+            <Text style={styles.deliveringLabel}>{home?.delivering_label}</Text>
             <View style={styles.locationRow}>
               <Text style={styles.locationText} numberOfLines={1}>
                 {displayLocation}
               </Text>
-              <Text style={styles.locationChevron}>⌄</Text>
+              <HomeChevronDownIcon size={16} color={COLORS.green900} />
             </View>
           </TouchableOpacity>
 
@@ -302,8 +301,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         </View>
 
         <View style={styles.deliveryPill}>
-          <AppIcon name="sparkles" size={12} color="#FFFFFF" />
-          <Text style={styles.deliveryPillText}>Planned monthly delivery · 4-hour window</Text>
+          <HomeDeliveryIcon size={12} />
+          <Text style={styles.deliveryPillText}>{home?.delivery_pill_text}</Text>
         </View>
 
         <TouchableOpacity
@@ -311,9 +310,9 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           onPress={() => navigation.navigate('Search')}
           activeOpacity={0.85}
         >
-          <AppIcon name="search" size={18} color={COLORS.ink300} />
-          <Text style={styles.searchPlaceholder}>Search atta, rice, oil…</Text>
-          <AppIcon name="mic" size={18} color={COLORS.ink300} />
+          <HomeSearchIcon size={18} color={COLORS.ink300} />
+          <Text style={styles.searchPlaceholder}>{home?.search_placeholder}</Text>
+          <HomeMicIcon size={18} color={COLORS.ink300} />
         </TouchableOpacity>
 
         {banners.length > 0 ? (
@@ -324,62 +323,9 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             style={styles.bannerScrollView}
             contentContainerStyle={styles.bannerScrollContent}
           >
-            {banners.map((banner) => (
-              <TouchableOpacity
-                key={banner.id}
-                style={styles.bannerItem}
-                onPress={() => navigation.navigate('OffersCoupons')}
-                activeOpacity={0.9}
-              >
-                {banner.image_url ? (
-                  <Image
-                    source={{ uri: banner.image_url }}
-                    style={styles.bannerImage}
-                    resizeMode="cover"
-                    onError={(e) => console.warn(`Error loading banner ${banner.id}:`, e.nativeEvent.error)}
-                  />
-                ) : (
-                  <View style={styles.promoCardFallback}>
-                    <View style={styles.promoLeft}>
-                      <Text style={styles.promoLabel}>PROMOTIONAL OFFER</Text>
-                      <Text style={styles.promoTitle} numberOfLines={2}>
-                        {banner.title}
-                      </Text>
-                      <TouchableOpacity
-                        style={styles.promoBtn}
-                        onPress={() => navigation.navigate('OffersCoupons')}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.promoBtnText}>View details</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
+            {banners.map((banner) => renderPromoBanner(banner))}
           </ScrollView>
-        ) : (
-          <TouchableOpacity
-            style={styles.bannerItem}
-            onPress={() => navigation.navigate('OffersCoupons')}
-            activeOpacity={0.9}
-          >
-            <View style={styles.promoCardFallback}>
-              <View style={styles.promoLeft}>
-                <Text style={styles.promoLabel}>MONTHLY SAVINGS SALE</Text>
-                <Text style={styles.promoTitle}>Up to ₹500 off</Text>
-                <Text style={styles.promoSub}>on your full monthly basket</Text>
-                <TouchableOpacity
-                  style={styles.promoBtn}
-                  onPress={() => navigation.navigate('OffersCoupons')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.promoBtnText}>Grab deals</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
+        ) : null}
 
         <TouchableOpacity
           style={styles.mmgCard}
@@ -387,15 +333,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           activeOpacity={0.85}
         >
           <View style={styles.mmgIconWrap}>
-            <AppIcon name="sparkles" size={24} color="#FFFFFF" />
+            <HomeSparkleIcon size={24} />
           </View>
           <View style={styles.mmgTextCol}>
-            <Text style={styles.mmgLabel}>MY MONTHLY GROCERY</Text>
-            <Text style={styles.mmgTitle}>Build your month in one tap</Text>
-            <Text style={styles.mmgSub}>A smart basket from what your home buys</Text>
+            <Text style={styles.mmgLabel}>{home?.mmg_label}</Text>
+            <Text style={styles.mmgTitle}>{home?.mmg_title}</Text>
+            <Text style={styles.mmgSub}>{home?.mmg_subtitle}</Text>
           </View>
           <View style={styles.mmgArrow}>
-            <AppIcon name="arrow-right" size={18} color={COLORS.green900} />
+            <HomeArrowRightIcon size={18} color={COLORS.green900} />
           </View>
         </TouchableOpacity>
       </View>
@@ -403,19 +349,20 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       {/* ── White content sheet (Figma: content from y=470) ── */}
       <View style={styles.contentSheet}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Shop by category</Text>
+          <Text style={styles.sectionTitle}>{home?.categories_title}</Text>
           <TouchableOpacity onPress={openCategories}>
-            <Text style={styles.seeAll}>See all</Text>
+            <Text style={styles.seeAll}>{home?.categories_see_all}</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.catScrollView}
-          contentContainerStyle={styles.catScrollContent}
-        >
-          {categories.map((cat) => (
+        {categories.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.catScrollView}
+            contentContainerStyle={styles.catScrollContent}
+          >
+            {categories.map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={styles.catItem}
@@ -443,60 +390,106 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+          </ScrollView>
+        ) : null}
 
         <View style={[styles.sectionHeader, { marginTop: 6 }]}>
-          <Text style={styles.sectionTitle}>Deals of the month</Text>
+          <Text style={styles.sectionTitle}>{home?.deals_title}</Text>
           <TouchableOpacity onPress={openCategories}>
-            <Text style={styles.seeAll}>See all</Text>
+            <Text style={styles.seeAll}>{home?.deals_see_all}</Text>
           </TouchableOpacity>
         </View>
 
         {loading ? (
-          <Text style={styles.loadingText}>Loading deals…</Text>
-        ) : (
+          <Text style={styles.loadingText}>{home?.loading_deals_label}</Text>
+        ) : products.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.dealsRail}
           >
-            {products.map((item) => renderDealCard(item))}
+            {products.map((item, index) => {
+              const cartItem = items.find((i) => i.product?.id === item.id);
+              const qty = cartItem?.quantity ?? 0;
+              return (
+                <HomeDealCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  quantity={qty}
+                  onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                  onAdd={() => addToCart(item)}
+                  onIncrement={() => addToCart(item)}
+                  onDecrement={() => updateQuantity(item.id, qty - 1)}
+                />
+              );
+            })}
           </ScrollView>
+        ) : (
+          <Text style={styles.loadingText}>{home?.empty_deals_label}</Text>
         )}
 
         <TouchableOpacity
           style={styles.reorderCard}
           onPress={() =>
-            orderStats.orderCount > 0
+            hasPastOrder
               ? navigation.navigate('CopyLastMonth')
               : navigation.navigate('OneClickCart')
           }
           activeOpacity={0.85}
         >
           <View style={styles.reorderAvatars}>
-            <View style={[styles.reorderAvatar, { zIndex: 3, backgroundColor: '#FFF9E5' }]}>
-              <AppIcon name="cat-atta-rice" size={20} color="#C77E12" />
-            </View>
-            <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 2, backgroundColor: '#EAF5EE' }]}>
-              <AppIcon name="cat-oils-ghee" size={20} color="#1E7A46" />
-            </View>
-            <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 1, backgroundColor: '#FCECE9' }]}>
-              <AppIcon name="cat-dals-pulses" size={20} color="#D8453B" />
-            </View>
+            {hasPastOrder && reorderPreviewItems.length > 0 ? (
+              reorderPreviewItems.map((previewItem: any, idx: number) => (
+                <View
+                  key={`${previewItem.product_id || idx}-${idx}`}
+                  style={[
+                    styles.reorderAvatar,
+                    idx > 0 && styles.reorderAvatarOverlap,
+                    { zIndex: reorderPreviewItems.length - idx },
+                  ]}
+                >
+                  {previewItem.image_url ? (
+                    <Image
+                      source={{ uri: previewItem.image_url }}
+                      style={styles.reorderThumb}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <CheckoutFallbackEmoji index={idx} size={22} />
+                  )}
+                </View>
+              ))
+            ) : (
+              <>
+                <View style={[styles.reorderAvatar, { zIndex: 3, backgroundColor: COLORS.marigold100 }]}>
+                  <CheckoutFallbackEmoji index={0} size={22} />
+                </View>
+                <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 2, backgroundColor: COLORS.green100 }]}>
+                  <CheckoutFallbackEmoji index={1} size={22} />
+                </View>
+                <View style={[styles.reorderAvatar, styles.reorderAvatarOverlap, { zIndex: 1, backgroundColor: '#FCECE9' }]}>
+                  <CheckoutFallbackEmoji index={2} size={22} />
+                </View>
+              </>
+            )}
           </View>
           <View style={styles.reorderTextCol}>
             <Text style={styles.reorderTitle}>
-              {orderStats.orderCount > 0 ? 'Reorder last month' : 'Build your first basket'}
+              {hasPastOrder ? home?.reorder_title : home?.first_basket_title}
             </Text>
             <Text style={styles.reorderSub}>
-              {orderStats.orderCount > 0
-                ? `${lastOrderItems} items · ₹${Number(lastOrderTotal).toLocaleString('en-IN')}`
-                : 'Curated essentials for your home'}
+              {hasPastOrder
+                ? formatHomeTemplate(home?.reorder_subtitle_template || '', {
+                    count: lastOrderItemCount,
+                    total: lastOrderTotal.toLocaleString('en-IN'),
+                  })
+                : home?.first_basket_subtitle}
             </Text>
           </View>
           <View style={styles.reorderBtn}>
             <Text style={styles.reorderBtnText}>
-              {orderStats.orderCount > 0 ? 'Reorder' : 'Start'}
+              {hasPastOrder ? home?.reorder_cta_label : home?.first_basket_cta_label}
             </Text>
           </View>
         </TouchableOpacity>
@@ -786,116 +779,6 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     marginBottom: 18,
   },
-  dealCard: {
-    width: DEAL_W,
-    height: DEAL_H,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    padding: 8,
-  },
-  dealImageWrap: {
-    width: '100%',
-    height: 100,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    position: 'relative',
-  },
-  dealBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    backgroundColor: COLORS.marigold500,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    zIndex: 2,
-  },
-  dealBadgeText: {
-    ...FONTS.muktaBold,
-    fontSize: 10,
-    color: COLORS.ink900,
-  },
-  dealImg: {
-    width: 70,
-    height: 70,
-  },
-  dealName: {
-    ...FONTS.balooSemiBold,
-    fontSize: 13,
-    color: COLORS.ink900,
-    lineHeight: 16,
-    height: 38,
-    marginBottom: 2,
-  },
-  dealUnit: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink500,
-    marginBottom: 6,
-  },
-  dealPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  dealPriceCol: {
-    height: 34,
-    justifyContent: 'center',
-  },
-  dealPrice: {
-    ...FONTS.balooBold,
-    fontSize: 15,
-    color: COLORS.ink900,
-    lineHeight: 18,
-  },
-  dealMrp: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink300,
-    textDecorationLine: 'line-through',
-    lineHeight: 14,
-  },
-  dealAddBtn: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.green600,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    height: 30,
-    justifyContent: 'center',
-  },
-  dealAddText: {
-    ...FONTS.balooBold,
-    fontSize: 12,
-    color: COLORS.green700,
-    textAlign: 'center',
-  },
-  dealStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.green700,
-    borderRadius: 8,
-    paddingHorizontal: 4,
-    height: 30,
-    gap: 2,
-  },
-  dealStepBtn: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    paddingHorizontal: 6,
-  },
-  dealStepCount: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    minWidth: 16,
-    textAlign: 'center',
-  },
   reorderCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -921,6 +804,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.line,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  reorderThumb: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   reorderAvatarOverlap: {
     marginLeft: -18,

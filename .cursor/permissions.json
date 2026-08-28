@@ -1,0 +1,13 @@
+{
+  "approvalMode": "unrestricted",
+  "mcpAllowlist": [
+    "figma:*",
+    "plugin-figma-figma:*",
+    "*:*"
+  ],
+  "autoRun": {
+    "allow_instructions": [
+      "Allow all Figma MCP tools including get_screenshot, get_metadata, get_design_context, and whoami."
+    ]
+  }
+}

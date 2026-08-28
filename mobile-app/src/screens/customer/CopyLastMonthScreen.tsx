@@ -7,13 +7,15 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import AppIcon from '../../components/AppIcon';
+import { CheckoutBackIcon, CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { COLORS, RADIUS } from '../../constants/theme';
 
 export default function CopyLastMonthScreen({ navigation }: any) {
@@ -55,8 +57,12 @@ export default function CopyLastMonthScreen({ navigation }: any) {
           const merged = (prev.order_items || []).map((it: any) => {
             const liveProd = prodMap.get(it.product_id);
             const livePrice = liveProd ? parseFloat(liveProd.price as any) : it.unit_price;
-            const liveMrp = liveProd ? parseFloat(liveProd.mrp as any) : Math.round(livePrice * 1.2);
-            const available = liveProd ? ((liveProd as any).stock !== undefined ? (liveProd as any).stock > 0 : true) : true;
+            const liveMrp = liveProd
+              ? parseFloat(liveProd.mrp as any) || livePrice
+              : it.unit_price;
+            const available = liveProd
+              ? ((liveProd as any).stock !== undefined ? (liveProd as any).stock > 0 : true)
+              : false;
 
             if (livePrice !== it.unit_price) repriced++;
             if (!available) outOfStock++;
@@ -69,6 +75,8 @@ export default function CopyLastMonthScreen({ navigation }: any) {
               mrp: liveMrp,
               qty: parseInt(it.quantity) || 1,
               available,
+              image_url: it.image_url || liveProd?.image_url || '',
+              liveProduct: liveProd || null,
             };
           });
 
@@ -105,18 +113,21 @@ export default function CopyLastMonthScreen({ navigation }: any) {
 
   const handleAddToCart = () => {
     for (const it of availableItems) {
+      const product: Product = it.liveProduct
+        ? { ...it.liveProduct, price: it.price, mrp: it.mrp }
+        : {
+            id: it.id,
+            shop_id: 'unknown',
+            name: it.name,
+            brand: '',
+            primary_category: '',
+            image_url: it.image_url || '',
+            unit: it.unit,
+            mrp: it.mrp,
+            price: it.price,
+          };
       for (let i = 0; i < it.qty; i++) {
-        addToCart({
-          id: it.id,
-          name: `${it.name} (${it.unit})`,
-          price: it.price,
-          mrp: it.mrp,
-          unit: it.unit,
-          shop_id: 'shop-1',
-          brand: 'Essentials',
-          primary_category: 'Staples',
-          image_url: '',
-        } as any);
+        addToCart(product);
       }
     }
 
@@ -141,7 +152,7 @@ export default function CopyLastMonthScreen({ navigation }: any) {
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={styles.backBtnText}>‹</Text>
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Copy last month</Text>
       </View>
@@ -201,7 +212,11 @@ export default function CopyLastMonthScreen({ navigation }: any) {
                   style={[styles.itemRow, !isLast && styles.itemRowBorder]}
                 >
                   <View style={styles.bagIconBox}>
-                    <AppIcon name="shopping-bag" size={22} color={item.available ? COLORS.green700 : COLORS.ink300} />
+                    {item.image_url ? (
+                      <Image source={{ uri: item.image_url }} style={styles.itemThumb} resizeMode="contain" />
+                    ) : (
+                      <CheckoutFallbackEmoji index={idx} size={22} />
+                    )}
                   </View>
 
                   <View style={styles.itemDetails}>
@@ -371,6 +386,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  itemThumb: {
+    width: 36,
+    height: 36,
   },
   itemDetails: {
     flex: 1,

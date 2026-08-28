@@ -45,7 +45,7 @@ export default function MainTabScreen({ route, navigation }: any) {
 
   return (
     <View style={[styles.mainContainer, isHome && styles.mainContainerHome, !isHome && { paddingTop: insets.top }]}>
-      <StatusBar barStyle={isHome ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="dark-content" />
       
       {/* Active Screen Area */}
       <View style={styles.screenContainer}>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   mainContainerHome: {
-    backgroundColor: COLORS.green800,
+    backgroundColor: '#F5A524',
   },
   screenContainer: {
     flex: 1,

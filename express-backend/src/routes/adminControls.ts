@@ -1,9 +1,35 @@
 import { Router } from 'express';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
-import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct } from '../config/localDb';
+import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct, AreaNotifyRequest } from '../config/localDb';
 import { supabase } from '../config/supabase';
 
 const router = Router();
+
+// GET /onboarding: Public onboarding copy & slide config (Figma redesign flow)
+router.get('/onboarding', async (_req, res) => {
+  try {
+    const db = readDb();
+    if (!db.onboarding) {
+      return res.status(503).json({ success: false, error: 'Onboarding content not configured' });
+    }
+    return res.json({ success: true, onboarding: db.onboarding });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /home: Public home screen copy (B1 Blinkit-style redesign)
+router.get('/home', async (_req, res) => {
+  try {
+    const db = readDb();
+    if (!db.home_screen) {
+      return res.status(503).json({ success: false, error: 'Home screen content not configured' });
+    }
+    return res.json({ success: true, home: db.home_screen });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // ==========================================
 // 1. Serviceable Locations (Geographical Zones)
@@ -97,30 +123,49 @@ router.get('/banners/all', authMiddleware, requireRole(['super_admin']), async (
 
 // POST /banners: Add or Update a banner (Super Admin only)
 router.post('/banners', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { id, title, image_url, action_link, active } = req.body;
+  const {
+    id,
+    title,
+    image_url,
+    action_link,
+    active,
+    kind,
+    subtitle,
+    body,
+    cta_text,
+  } = req.body;
 
-  if (!title || !image_url) {
-    return res.status(400).json({ success: false, error: 'Title and Image URL are required' });
+  const bannerKind = kind === 'promo' ? 'promo' : 'image';
+
+  if (!title) {
+    return res.status(400).json({ success: false, error: 'Title is required' });
+  }
+
+  if (bannerKind === 'image' && !image_url) {
+    return res.status(400).json({ success: false, error: 'Image URL is required for image banners' });
   }
 
   try {
     const db = readDb();
 
+    const payload: PromotionalBanner = {
+      id: id || `banner-${Date.now()}`,
+      title,
+      image_url: image_url || '',
+      action_link: action_link || '',
+      active: active !== false,
+      kind: bannerKind,
+      subtitle: subtitle || undefined,
+      body: body || undefined,
+      cta_text: cta_text || undefined,
+    };
+
     if (id) {
-      // Update
-      db.promotional_banners = db.promotional_banners.map(b => 
-        b.id === id ? { ...b, title, image_url, action_link: action_link || '', active: active !== false } : b
+      db.promotional_banners = db.promotional_banners.map((b) =>
+        b.id === id ? { ...b, ...payload, id } : b
       );
     } else {
-      // Add new
-      const newBanner: PromotionalBanner = {
-        id: `banner-${Date.now()}`,
-        title,
-        image_url,
-        action_link: action_link || '',
-        active: active !== false
-      };
-      db.promotional_banners.push(newBanner);
+      db.promotional_banners.push(payload);
     }
 
     writeDb(db);
@@ -186,6 +231,32 @@ router.post('/franchise', async (req, res) => {
   }
 });
 
+// POST /area-notify: Request notification when area becomes serviceable (Public)
+router.post('/area-notify', async (req, res) => {
+  const { city, area_name, phone } = req.body;
+
+  if (!city?.trim() || !area_name?.trim()) {
+    return res.status(400).json({ success: false, error: 'City and area name are required' });
+  }
+
+  try {
+    const db = readDb();
+    if (!db.area_notify_requests) db.area_notify_requests = [];
+    const newReq: AreaNotifyRequest = {
+      id: `area-notify-${Date.now()}`,
+      city: city.trim(),
+      area_name: area_name.trim(),
+      phone: phone?.trim() || undefined,
+      created_at: new Date().toISOString(),
+    };
+    db.area_notify_requests.push(newReq);
+    writeDb(db);
+    return res.json({ success: true, message: 'Notification request saved' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ==========================================
 // 4. Master Cities & Areas Manager
 // ==========================================
@@ -202,7 +273,7 @@ router.get('/cities', async (req, res) => {
 
 // POST /cities: Add a new city (Super Admin only)
 router.post('/cities', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { name } = req.body;
+  const { name, region } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, error: 'City name is required' });
   }
@@ -217,7 +288,8 @@ router.post('/cities', authMiddleware, requireRole(['super_admin']), async (req:
 
     const newCity = {
       id: `city-${Date.now()}`,
-      name: name.trim()
+      name: name.trim(),
+      region: region?.trim() || undefined,
     };
     db.cities.push(newCity);
     writeDb(db);
@@ -232,9 +304,16 @@ router.delete('/cities/:id', authMiddleware, requireRole(['super_admin']), async
   const { id } = req.params;
   try {
     const db = readDb();
+    const city = db.cities.find(c => c.id === id);
     db.cities = db.cities.filter(c => c.id !== id);
     // Cascade delete areas belonging to this city
     db.areas = db.areas.filter(a => a.city_id !== id);
+    if (city) {
+      const cityKey = city.name.trim().toLowerCase();
+      db.serviceable_locations = db.serviceable_locations.filter(
+        (loc) => loc.city.trim().toLowerCase() !== cityKey,
+      );
+    }
     writeDb(db);
     return res.json({ success: true, cities: db.cities });
   } catch (err: any) {
@@ -254,16 +333,15 @@ router.get('/areas', async (req, res) => {
 
 // POST /areas: Add a new area/locality under a city (Super Admin only)
 router.post('/areas', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { city_id, name } = req.body;
+  const { city_id, name, pincode, is_serviceable } = req.body;
   if (!city_id || !name || !name.trim()) {
     return res.status(400).json({ success: false, error: 'City ID and Area name are required' });
   }
 
   try {
     const db = readDb();
-    // Verify city exists
-    const cityExists = db.cities.some(c => c.id === city_id);
-    if (!cityExists) {
+    const city = db.cities.find(c => c.id === city_id);
+    if (!city) {
       return res.status(400).json({ success: false, error: 'Invalid City ID' });
     }
 
@@ -279,8 +357,30 @@ router.post('/areas', authMiddleware, requireRole(['super_admin']), async (req: 
       name: name.trim()
     };
     db.areas.push(newArea);
+
+    const areaKey = name.trim().toLowerCase();
+    const cityKey = city.name.trim().toLowerCase();
+    const existingLoc = db.serviceable_locations.find(
+      (loc) =>
+        loc.city.trim().toLowerCase() === cityKey &&
+        loc.area_name.trim().toLowerCase() === areaKey,
+    );
+    if (!existingLoc) {
+      db.serviceable_locations.push({
+        id: `loc-${Date.now()}`,
+        city: city.name,
+        area_name: name.trim(),
+        pincode: pincode?.trim() || '000000',
+        is_serviceable: is_serviceable !== false,
+        shop_id: null,
+      });
+    } else {
+      existingLoc.is_serviceable = is_serviceable !== false;
+      if (pincode?.trim()) existingLoc.pincode = pincode.trim();
+    }
+
     writeDb(db);
-    return res.json({ success: true, areas: db.areas });
+    return res.json({ success: true, areas: db.areas, locations: db.serviceable_locations });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -291,9 +391,20 @@ router.delete('/areas/:id', authMiddleware, requireRole(['super_admin']), async 
   const { id } = req.params;
   try {
     const db = readDb();
+    const area = db.areas.find(a => a.id === id);
+    const city = area ? db.cities.find(c => c.id === area.city_id) : undefined;
     db.areas = db.areas.filter(a => a.id !== id);
+    if (area && city) {
+      const cityKey = city.name.trim().toLowerCase();
+      const areaKey = area.name.trim().toLowerCase();
+      db.serviceable_locations = db.serviceable_locations.filter(
+        (loc) =>
+          loc.city.trim().toLowerCase() !== cityKey ||
+          loc.area_name.trim().toLowerCase() !== areaKey,
+      );
+    }
     writeDb(db);
-    return res.json({ success: true, areas: db.areas });
+    return res.json({ success: true, areas: db.areas, locations: db.serviceable_locations });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
