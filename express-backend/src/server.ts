@@ -200,8 +200,12 @@ async function seedDatabase() {
   }
 }
 
-// Start Server
-app.listen(PORT, async () => {
-  console.log(`Node.js Express Server listening on http://localhost:${PORT}`);
-  await seedDatabase();
-});
+// Start Server (Only when not running as Vercel serverless function)
+if (!process.env.VERCEL) {
+  app.listen(PORT, async () => {
+    console.log(`Node.js Express Server listening on http://localhost:${PORT}`);
+    await seedDatabase();
+  });
+}
+
+export default app;
