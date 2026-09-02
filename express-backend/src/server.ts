@@ -126,6 +126,7 @@ async function seedDatabase() {
     const { data: shop, error: shopError } = await supabase
       .from('shops')
       .select('*')
+      .limit(1)
       .maybeSingle();
 
     if (shopError) {

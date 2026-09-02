@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from './HomeScreen';
@@ -18,6 +18,12 @@ export default function MainTabScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const initialTab = route?.params?.initialTab || 'Home';
   const [activeTab, setActiveTab] = useState<'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account'>(initialTab);
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
   const { items } = useCart();
 
   const totalCartCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -29,7 +35,7 @@ export default function MainTabScreen({ route, navigation }: any) {
       case 'Categories':
         return <CategoriesScreen navigation={navigation} />;
       case 'Cart':
-        return <CartScreen navigation={navigation} />;
+        return <CartScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Orders':
         return <OrdersScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Account':

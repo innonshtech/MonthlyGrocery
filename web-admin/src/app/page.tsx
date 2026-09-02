@@ -371,7 +371,7 @@ export default function DashboardPage() {
     setError('');
     try {
       if (activeTab === 'shops' || activeTab === 'locations') {
-        const res = await fetch('http://localhost:8001/api/shops/all', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/shops/all', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -380,7 +380,7 @@ export default function DashboardPage() {
         }
 
         // Fetch master catalogue to populate modal dropdown
-        const masterRes = await fetch('http://localhost:8001/api/products/master', {
+        const masterRes = await fetch('https://monthly-grocery-rust.vercel.app/api/products/master', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const masterData = await masterRes.json();
@@ -390,13 +390,13 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'locations' || activeTab === 'cities-areas') {
-        const resCities = await fetch('http://localhost:8001/api/admin/cities');
+        const resCities = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/cities');
         const dataCities = await resCities.json();
         if (resCities.ok && dataCities.success) {
           setCities(dataCities.cities);
         }
 
-        const resAreas = await fetch('http://localhost:8001/api/admin/areas');
+        const resAreas = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/areas');
         const dataAreas = await resAreas.json();
         if (resAreas.ok && dataAreas.success) {
           setAreas(dataAreas.areas);
@@ -404,7 +404,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'locations') {
-        const res = await fetch('http://localhost:8001/api/admin/locations');
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/locations');
         const data = await res.json();
         if (res.ok && data.success) {
           setLocations(data.locations);
@@ -412,7 +412,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'banners') {
-        const res = await fetch('http://localhost:8001/api/admin/banners/all', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/banners/all', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -422,37 +422,37 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'home-screen') {
-        const res = await fetch('http://localhost:8001/api/admin/home');
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/home');
         const data = await res.json();
         if (res.ok && data.success && data.home) {
           setHomeScreenDraft(data.home);
         }
-        const searchRes = await fetch('http://localhost:8001/api/admin/search-screen');
+        const searchRes = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/search-screen');
         const searchData = await searchRes.json();
         if (searchRes.ok && searchData.success && searchData.search) {
           setSearchScreenDraft(searchData.search);
         }
-        const categoriesRes = await fetch('http://localhost:8001/api/admin/categories-screen');
+        const categoriesRes = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories-screen');
         const categoriesData = await categoriesRes.json();
         if (categoriesRes.ok && categoriesData.success && categoriesData.categories) {
           setCategoriesScreenDraft(categoriesData.categories);
         }
-        const categoryProductsRes = await fetch('http://localhost:8001/api/admin/category-products-screen');
+        const categoryProductsRes = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/category-products-screen');
         const categoryProductsData = await categoryProductsRes.json();
         if (categoryProductsRes.ok && categoryProductsData.success && categoryProductsData.category_products) {
           setCategoryProductsDraft(categoryProductsData.category_products);
         }
-        const productDetailRes = await fetch('http://localhost:8001/api/admin/product-detail-screen');
+        const productDetailRes = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/product-detail-screen');
         const productDetailData = await productDetailRes.json();
         if (productDetailRes.ok && productDetailData.success && productDetailData.product_detail) {
           setProductDetailDraft(productDetailData.product_detail);
         }
-        const cartScreenRes = await fetch('http://localhost:8001/api/admin/cart-screen');
+        const cartScreenRes = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/cart-screen');
         const cartScreenData = await cartScreenRes.json();
         if (cartScreenRes.ok && cartScreenData.success && cartScreenData.cart) {
           setCartScreenDraft(cartScreenData.cart);
         }
-        const offersCouponsRes = await fetch('http://localhost:8001/api/admin/offers-coupons-screen');
+        const offersCouponsRes = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/offers-coupons-screen');
         const offersCouponsData = await offersCouponsRes.json();
         if (offersCouponsRes.ok && offersCouponsData.success && offersCouponsData.offers_coupons) {
           setOffersCouponsDraft(offersCouponsData.offers_coupons);
@@ -460,7 +460,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'franchise') {
-        const res = await fetch('http://localhost:8001/api/admin/franchise', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/franchise', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -470,7 +470,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'analytics') {
-        const res = await fetch('http://localhost:8001/api/orders/platform/all', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/orders/platform/all', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -480,7 +480,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'sku-requests') {
-        const res = await fetch('http://localhost:8001/api/admin/sku-requests', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/sku-requests', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -490,7 +490,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'categories-admin') {
-        const res = await fetch('http://localhost:8001/api/admin/categories', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -500,7 +500,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'master-catalog') {
-        const res = await fetch('http://localhost:8001/api/products/master', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/products/master', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -508,7 +508,7 @@ export default function DashboardPage() {
           setMasterProductsList(data.products || []);
         }
 
-        const resCat = await fetch('http://localhost:8001/api/admin/categories', {
+        const resCat = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const dataCat = await resCat.json();
@@ -518,7 +518,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'coupons-admin') {
-        const res = await fetch('http://localhost:8001/api/admin/coupons', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/coupons', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -528,7 +528,7 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'orders-admin') {
-        const res = await fetch('http://localhost:8001/api/admin/orders/all', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/orders/all', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
@@ -554,7 +554,7 @@ export default function DashboardPage() {
   const handleUpdateShopStatus = async (shopId: string, status: 'approved' | 'rejected') => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/shops/${shopId}/status`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/shops/${shopId}/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -580,7 +580,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8001/api/admin/locations', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/locations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -614,7 +614,7 @@ export default function DashboardPage() {
     if (!token) return;
     if (!confirm('Are you sure you want to delete this delivery zone?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/locations/${locId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/locations/${locId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -635,7 +635,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8001/api/admin/cities', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/cities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -660,14 +660,14 @@ export default function DashboardPage() {
     if (!token) return;
     if (!confirm('Are you sure you want to delete this city? This will also delete all registered areas under it.')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/cities/${cityId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/cities/${cityId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setCities(data.cities);
-        const resAreas = await fetch('http://localhost:8001/api/admin/areas');
+        const resAreas = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/areas');
         const dataAreas = await resAreas.json();
         if (resAreas.ok && dataAreas.success) {
           setAreas(dataAreas.areas);
@@ -686,7 +686,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8001/api/admin/areas', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/areas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -711,7 +711,7 @@ export default function DashboardPage() {
     if (!token) return;
     if (!confirm('Are you sure you want to delete this area?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/areas/${areaId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/areas/${areaId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -728,7 +728,7 @@ export default function DashboardPage() {
   const handleUpdateSkuRequestStatus = async (requestId: string, status: 'approved' | 'rejected') => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/sku-requests/${requestId}/status`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/sku-requests/${requestId}/status`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -758,7 +758,7 @@ export default function DashboardPage() {
         setNewCategoryImageUploading(true);
         const formData = new FormData();
         formData.append('image', newCategoryImageFile);
-        const uploadRes = await fetch('http://localhost:8001/api/products/upload-image', {
+        const uploadRes = await fetch('https://monthly-grocery-rust.vercel.app/api/products/upload-image', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: formData,
@@ -772,7 +772,7 @@ export default function DashboardPage() {
         imageUrl = uploadData.image_url;
       }
 
-      const res = await fetch('http://localhost:8001/api/admin/categories', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -802,7 +802,7 @@ export default function DashboardPage() {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      const uploadRes = await fetch('http://localhost:8001/api/products/upload-image', {
+      const uploadRes = await fetch('https://monthly-grocery-rust.vercel.app/api/products/upload-image', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
@@ -813,7 +813,7 @@ export default function DashboardPage() {
         return;
       }
 
-      const res = await fetch(`http://localhost:8001/api/admin/categories/${catId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/categories/${catId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -838,7 +838,7 @@ export default function DashboardPage() {
   const handleDeleteCategory = async (catId: string) => {
     if (!confirm('Are you sure you want to delete this category?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/categories/${catId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/categories/${catId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -877,7 +877,7 @@ export default function DashboardPage() {
         const formData = new FormData();
         formData.append('image', newProdImageFile);
         const freshToken = token || localStorage.getItem('@admin_token');
-        const uploadRes = await fetch('http://localhost:8001/api/products/upload-image', {
+        const uploadRes = await fetch('https://monthly-grocery-rust.vercel.app/api/products/upload-image', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${freshToken}` },
           body: formData
@@ -895,7 +895,7 @@ export default function DashboardPage() {
       const createPromises = validVariants.map(async (v) => {
         const pack = packUnitPayloadFromInput(v.quantityValue, v.quantityUnit);
         const variantName = `${newProdName.trim()} ${pack.unit}`.trim();
-        const res = await fetch('http://localhost:8001/api/products/create', {
+        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/products/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -946,7 +946,7 @@ export default function DashboardPage() {
   // Update Product Category Handler (Super Admin)
   const handleUpdateProductCategory = async (productId: string, newCategory: string) => {
     try {
-      const res = await fetch(`http://localhost:8001/api/products/master/${productId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/products/master/${productId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -998,7 +998,7 @@ export default function DashboardPage() {
       const baseName = String(packEditProduct.name || '')
         .replace(/\s+\d+(?:\.\d+)?\s*(kg|g|ml|l|L|pcs|pack|dozen)\s*$/i, '')
         .trim();
-      const res = await fetch(`http://localhost:8001/api/products/master/${packEditProduct.id}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/products/master/${packEditProduct.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1029,7 +1029,7 @@ export default function DashboardPage() {
   const handleDeleteProduct = async (productId: string) => {
     if (!confirm('Are you sure you want to delete this product from the master catalog?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/products/master/${productId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/products/master/${productId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1049,7 +1049,7 @@ export default function DashboardPage() {
   // Fetch Shop Inventory Handler
   const fetchShopInventory = async (shopId: string) => {
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/shop-inventory/${shopId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/shop-inventory/${shopId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -1066,7 +1066,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!selectedShopForInventory || !assignProdId || !assignProdPrice) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1099,7 +1099,7 @@ export default function DashboardPage() {
   const handleUnassignShopProduct = async (mappingId: string) => {
     if (!confirm('Are you sure you want to unassign this product from this shop?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/shop-inventory/${mappingId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/shop-inventory/${mappingId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1124,7 +1124,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8001/api/admin/coupons', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/coupons', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1165,7 +1165,7 @@ export default function DashboardPage() {
   const handleDeleteCoupon = async (couponId: string) => {
     if (!confirm('Are you sure you want to delete this coupon?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/coupons/${couponId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/coupons/${couponId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1183,7 +1183,7 @@ export default function DashboardPage() {
   // Update Order Status Handler
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/orders/${orderId}/status`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -1210,7 +1210,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8001/api/shops/register', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/shops/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1249,7 +1249,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('http://localhost:8001/api/admin/banners', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/banners', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1289,7 +1289,7 @@ export default function DashboardPage() {
     if (!token || !homeScreenDraft) return;
     setHomeScreenSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/home', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/home', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1321,7 +1321,7 @@ export default function DashboardPage() {
     if (!token || !searchScreenDraft) return;
     setSearchScreenSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/search-screen', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/search-screen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1353,7 +1353,7 @@ export default function DashboardPage() {
     if (!token || !categoriesScreenDraft) return;
     setCategoriesScreenSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/categories-screen', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories-screen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1385,7 +1385,7 @@ export default function DashboardPage() {
     if (!token || !categoryProductsDraft) return;
     setCategoryProductsSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/category-products-screen', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/category-products-screen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1417,7 +1417,7 @@ export default function DashboardPage() {
     if (!token || !productDetailDraft) return;
     setProductDetailSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/product-detail-screen', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/product-detail-screen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1449,7 +1449,7 @@ export default function DashboardPage() {
     if (!token || !cartScreenDraft) return;
     setCartScreenSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/cart-screen', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/cart-screen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1481,7 +1481,7 @@ export default function DashboardPage() {
     if (!token || !offersCouponsDraft) return;
     setOffersCouponsSaving(true);
     try {
-      const res = await fetch('http://localhost:8001/api/admin/offers-coupons-screen', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/offers-coupons-screen', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1513,7 +1513,7 @@ export default function DashboardPage() {
     if (!token) return;
     if (!confirm('Are you sure you want to remove this promo campaign banner?')) return;
     try {
-      const res = await fetch(`http://localhost:8001/api/admin/banners/${bannerId}`, {
+      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/banners/${bannerId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -1530,7 +1530,7 @@ export default function DashboardPage() {
   const handleDownloadTemplate = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:8001/api/products/excel-template', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/products/excel-template', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Download template failed');
@@ -1560,7 +1560,7 @@ export default function DashboardPage() {
     formData.append('file', excelFile);
 
     try {
-      const res = await fetch('http://localhost:8001/api/products/import-excel', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/products/import-excel', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -3861,3 +3861,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

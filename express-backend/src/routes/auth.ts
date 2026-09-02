@@ -278,4 +278,68 @@ router.delete('/account', authMiddleware, async (req: AuthRequest, res: Response
   }
 });
 
+// 5. Upload profile avatar to Supabase Storage bucket 'avatars'
+router.post('/upload-avatar', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { base64Image, mimeType } = req.body;
+  if (!base64Image) {
+    return res.status(400).json({ success: false, error: 'base64Image is required' });
+  }
+
+  try {
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const fileName = `avatar_${req.user.id}_${Date.now()}.jpg`;
+
+    // Ensure 'avatars' storage bucket exists in Supabase
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      if (!buckets?.find((b) => b.name === 'avatars')) {
+        await supabase.storage.createBucket('avatars', { public: true });
+      }
+    } catch (bErr) {
+      console.warn('Bucket check warning:', bErr);
+    }
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, buffer, {
+        contentType: mimeType || 'image/jpeg',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError.message);
+      return res.status(500).json({ success: false, error: uploadError.message });
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    const avatarUrl = publicUrlData.publicUrl;
+
+    // Update avatar_url in profiles table
+    try {
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', req.user.id);
+    } catch (pErr) {
+      console.warn('Profile avatar_url update warning:', pErr);
+    }
+
+    return res.json({
+      success: true,
+      avatar_url: avatarUrl,
+    });
+  } catch (error: any) {
+    console.error('Avatar upload exception:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

@@ -180,9 +180,8 @@ export default function OrdersScreen({
             onPress={() => {
               if (setActiveTab) {
                 setActiveTab('Home');
-              } else {
-                navigation.navigate('Shop', { initialTab: 'Home' });
               }
+              navigation.navigate('Shop', { initialTab: 'Home' });
             }}
             activeOpacity={0.85}
           >

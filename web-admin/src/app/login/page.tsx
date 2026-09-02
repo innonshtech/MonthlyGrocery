@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8001/api/auth/send-otp', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mobile: mobile.trim(), role: 'super_admin' })
@@ -50,7 +50,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8001/api/auth/verify-otp', {
+      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -190,3 +190,4 @@ export default function LoginPage() {
     </main>
   );
 }
+

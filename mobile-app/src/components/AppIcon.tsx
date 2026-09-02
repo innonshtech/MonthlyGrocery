@@ -726,35 +726,26 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // Trending down
-  if (name === 'trending-down') {
+  // Repeat / Refresh / Reorder Icon (Clockwise Circle Arrow matching Figma design)
+  if (name === 'repeat' || name === 'reorder' || name === 'trending-down') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
-        <View style={{ width: size * 0.72, height: size * 0.72, justifyContent: 'center' }}>
-          <View
-            style={{
-              width: size * 0.55,
-              height: stroke,
-              backgroundColor: color,
-              borderRadius: 1,
-              transform: [{ rotate: '35deg' }],
-              alignSelf: 'flex-start',
-            }}
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M21 12a9 9 0 1 1-2.64-6.36L21 8"
+            stroke={color}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <View
-            style={{
-              width: size * 0.22,
-              height: size * 0.22,
-              borderRightWidth: stroke,
-              borderBottomWidth: stroke,
-              borderColor: color,
-              transform: [{ rotate: '45deg' }],
-              position: 'absolute',
-              right: size * 0.08,
-              bottom: size * 0.18,
-            }}
+          <Path
+            d="M21 3v5h-5"
+            stroke={color}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-        </View>
+        </Svg>
       </View>
     );
   }

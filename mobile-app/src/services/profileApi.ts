@@ -92,4 +92,31 @@ export async function updateProfile(
   }
 }
 
+export async function uploadAvatar(
+  token: string,
+  base64Image: string,
+  mimeType?: string,
+): Promise<{ success: boolean; avatar_url?: string; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/upload-avatar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        base64Image,
+        mimeType: mimeType || 'image/jpeg',
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || 'Failed to upload photo' };
+    }
+    return { success: true, avatar_url: data.avatar_url };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Network error' };
+  }
+}
+
 export { formatDisplayPhone };

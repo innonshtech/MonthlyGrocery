@@ -258,7 +258,7 @@ export default function AccountScreen({ navigation }: any) {
               onPress={() => setShowLogoutModal(true)}
               activeOpacity={0.85}
             >
-              <AccountLogoutIcon size={18} />
+              <AccountLogoutIcon size={20} color="#D9383A" />
               <Text style={styles.logoutText}>{screenConfig.logout_label}</Text>
             </TouchableOpacity>
           </>
@@ -551,14 +551,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    height: 48,
+    gap: 10,
+    height: 52,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EAE9E2',
+    borderRadius: RADIUS.pill,
+    marginTop: 12,
+    marginBottom: 24,
   },
   logoutText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    ...FONTS.muktaBold,
+    fontSize: 15,
+    color: '#D9383A',
   },
   guestCard: {
     backgroundColor: COLORS.surface,

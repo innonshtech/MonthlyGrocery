@@ -17,6 +17,7 @@ import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
+import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { homeDealBg } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
 import {
@@ -49,7 +50,15 @@ function Stepper({
   );
 }
 
-export default function CartScreen({ route, navigation }: any) {
+export default function CartScreen({
+  route,
+  navigation,
+  setActiveTab,
+}: {
+  route?: any;
+  navigation: any;
+  setActiveTab?: (tab: 'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account') => void;
+}) {
   const { token } = useAuth();
   const insets = useSafeAreaInsets();
   const { items, minOrderLimit, updateQuantity, addToCart, appliedCoupon, setAppliedCoupon } = useCart();
@@ -180,17 +189,13 @@ export default function CartScreen({ route, navigation }: any) {
               <AppIcon name="cart" size={48} color={COLORS.green700} />
             </View>
 
-            {emptyPreviewImages[0] ? (
-              <View style={[styles.floatingBadge, styles.floatingBadgeTopLeft]}>
-                <Image source={{ uri: emptyPreviewImages[0] }} style={styles.badgeImg} resizeMode="contain" />
-              </View>
-            ) : null}
+            <View style={[styles.floatingBadge, styles.floatingBadgeTopLeft]}>
+              <CheckoutFallbackEmoji index={0} size={24} />
+            </View>
 
-            {emptyPreviewImages[1] ? (
-              <View style={[styles.floatingBadge, styles.floatingBadgeBottomRight]}>
-                <Image source={{ uri: emptyPreviewImages[1] }} style={styles.badgeImg} resizeMode="contain" />
-              </View>
-            ) : null}
+            <View style={[styles.floatingBadge, styles.floatingBadgeBottomRight]}>
+              <CheckoutFallbackEmoji index={2} size={24} />
+            </View>
           </View>
 
           <Text style={styles.emptyTitle}>{screenConfig?.empty_title}</Text>
@@ -198,7 +203,12 @@ export default function CartScreen({ route, navigation }: any) {
 
           <TouchableOpacity
             style={styles.startBtn}
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => {
+              if (setActiveTab) {
+                setActiveTab('Home');
+              }
+              navigation.navigate('Shop', { initialTab: 'Home' });
+            }}
             activeOpacity={0.85}
           >
             <Text style={styles.startBtnTxt}>{screenConfig?.start_shopping_label}</Text>
@@ -210,7 +220,7 @@ export default function CartScreen({ route, navigation }: any) {
             activeOpacity={0.7}
           >
             <View style={styles.reorderLinkInner}>
-              <AppIcon name="trending-down" size={16} color={COLORS.green700} />
+              <AppIcon name="repeat" size={18} color={COLORS.green700} />
               <Text style={styles.reorderLinkTxt}>{screenConfig?.reorder_last_month_label}</Text>
             </View>
           </TouchableOpacity>
