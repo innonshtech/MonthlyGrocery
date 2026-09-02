@@ -30,7 +30,13 @@ import {
 
 const SCREEN_BG = '#FBFAF6';
 
-export default function OrdersScreen({ navigation }: any) {
+export default function OrdersScreen({
+  navigation,
+  setActiveTab,
+}: {
+  navigation: any;
+  setActiveTab?: (tab: 'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account') => void;
+}) {
   const { token } = useAuth();
   const { addToCart } = useCart();
 
@@ -171,7 +177,13 @@ export default function OrdersScreen({ navigation }: any) {
           <Text style={styles.emptySub}>{screenConfig.empty_message}</Text>
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => navigation.navigate('Shop')}
+            onPress={() => {
+              if (setActiveTab) {
+                setActiveTab('Home');
+              } else {
+                navigation.navigate('Shop', { initialTab: 'Home' });
+              }
+            }}
             activeOpacity={0.85}
           >
             <Text style={styles.primaryBtnTxt}>{screenConfig.empty_cta_label}</Text>

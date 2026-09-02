@@ -83,7 +83,7 @@ export default function AppNavigator() {
           <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
           <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
-          <Stack.Screen name="MyCoupons" component={MyCouponsScreen} />
+          <Stack.Screen name="MyCoupons" component={OffersCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />

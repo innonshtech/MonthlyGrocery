@@ -31,7 +31,7 @@ export default function MainTabScreen({ route, navigation }: any) {
       case 'Cart':
         return <CartScreen navigation={navigation} />;
       case 'Orders':
-        return <OrdersScreen navigation={navigation} />;
+        return <OrdersScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Account':
         return <AccountScreen navigation={navigation} />;
       default:
