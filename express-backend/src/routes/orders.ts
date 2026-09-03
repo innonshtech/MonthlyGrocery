@@ -7,6 +7,9 @@ import {
   canConsumerCancelOrder,
   buildDefaultRefundMessage,
   sanitizeOrderAddress,
+  normalizeMerchantOrderStatus,
+  resolveMerchantOrderStatus,
+  MERCHANT_ORDER_STATUSES,
 } from '../utils/orderEnrichment';
 
 const router = Router();
@@ -69,10 +72,63 @@ async function enrichOrderFromSupabaseItems(order: any) {
   return enrichOrderItems(order, catalogMap);
 }
 
+function mapOrderItemsForMerchant(items: any[] = []) {
+  return items.map((it: any) => {
+    const name = it.products?.name || it.product_name || it.name || 'Item';
+    const unit = it.products?.unit || it.unit || '1 unit';
+    const imageUrl = it.products?.image_url || it.image_url || '';
+    return {
+      ...it,
+      product_name: name,
+      name,
+      unit,
+      image_url: imageUrl,
+      products: it.products || { name, unit, image_url: imageUrl },
+    };
+  });
+}
+
+function resolveConsumerProfile(order: any, profile?: { name?: string; phone?: string; mobile?: string } | null) {
+  const rawName = String(order.consumer_name || '').trim();
+  const looksLikePhone = /^\d{10,15}$/.test(rawName.replace(/[^\d]/g, ''));
+
+  if (profile) {
+    return {
+      name: profile.name || (looksLikePhone ? 'Customer' : rawName) || 'Customer',
+      phone: profile.phone || profile.mobile || (looksLikePhone ? rawName : null),
+    };
+  }
+
+  return {
+    name: looksLikePhone ? 'Customer' : rawName || 'Customer',
+    phone: looksLikePhone ? rawName : null,
+  };
+}
+
+async function enrichMerchantOrder(order: any, profileMap: Map<string, any>) {
+  const profile = profileMap.get(order.consumer_id);
+  const normalizedStatus = normalizeMerchantOrderStatus(order.status);
+  const deliveryAddress = sanitizeOrderAddress(
+    order.delivery_address || order.shipping_address || order.deliver_to_label,
+  );
+
+  return enrichConsumerOrder({
+    ...order,
+    status: normalizedStatus,
+    delivery_address: deliveryAddress,
+    shipping_address: deliveryAddress,
+    profiles: resolveConsumerProfile(order, profile),
+    order_items: mapOrderItemsForMerchant(order.order_items),
+  });
+}
+
 // 1. POST /checkout and POST /: Create a new order (Checkout Flow)
 const handleCheckout = async (req: AuthRequest, res: Response) => {
   const {
     shop_id,
+    city,
+    area_name,
+    pincode,
     items,
     total_amount,
     shipping_address,
@@ -169,11 +225,51 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       finalPayableAmount = Math.max(0, originalAmount - validatedDiscount);
     }
 
-    // 1. Resolve Shop ID (fallback to first active shop if not specified)
-    let targetShopId = shop_id;
+    const { resolveShopIdForLocation } = require('../services/shopResolution');
+    const itemShopIds = items
+      .map((it: any) => it.shop_id)
+      .filter(Boolean);
+    const cartShopId = itemShopIds[0] || shop_id || null;
+
+    const targetShopId = resolveShopIdForLocation({
+      shopId: cartShopId,
+      city,
+      areaName: area_name,
+      pincode,
+    });
+
     if (!targetShopId) {
-      const { data: defaultShop } = await supabase.from('shops').select('id').limit(1).maybeSingle();
-      targetShopId = defaultShop?.id || 'e183b9e2-463d-4d9c-80b2-d2d2b05b7591';
+      return res.status(400).json({
+        success: false,
+        error: 'No store is assigned to serve this delivery area. Please choose a different area or contact support.',
+      });
+    }
+
+    const uniqueItemShops = new Set(itemShopIds);
+    if (uniqueItemShops.size > 1) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cart items must belong to a single store',
+      });
+    }
+    if (uniqueItemShops.size === 1 && !uniqueItemShops.has(targetShopId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Selected products are not available from the store serving your area',
+      });
+    }
+
+    const { data: targetShop, error: targetShopError } = await supabase
+      .from('shops')
+      .select('id, status')
+      .eq('id', targetShopId)
+      .maybeSingle();
+
+    if (targetShopError || !targetShop) {
+      return res.status(400).json({ success: false, error: 'Assigned store is not available' });
+    }
+    if (targetShop.status && targetShop.status !== 'approved') {
+      return res.status(400).json({ success: false, error: 'Assigned store is not accepting orders' });
     }
 
     // Validate delivery slot availability (dynamic capacity from merchant config)
@@ -196,7 +292,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
         shop_id: targetShopId,
         total_amount: finalPayableAmount,
         delivery_address: finalAddress,
-        status: 'confirmed',
+        status: 'pending',
       })
       .select()
       .single();
@@ -268,8 +364,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       delivery_otp: deliveryOtp,
       payment_method: payment_method || 'COD',
       payment_method_label: formatPaymentMethodLabel(payment_method || 'COD'),
-      status: 'confirmed',
-      confirmed_at: new Date().toISOString(),
+      status: 'pending',
       created_at: new Date().toISOString(),
       order_items: mappedOrderItems,
     };
@@ -669,42 +764,179 @@ router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response)
   }
 });
 
-// 3. GET /merchant/all: Merchant incoming orders list
-router.get('/merchant/all', authMiddleware, async (req: AuthRequest, res) => {
+// 3. GET /merchant/all: Merchant incoming orders list (scoped to merchant shop)
+router.get('/merchant/all', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
+    const { data: shop, error: shopError } = await supabase
+      .from('shops')
+      .select('id, shop_name')
+      .eq('owner_id', req.user!.id)
+      .maybeSingle();
+
+    if (shopError || !shop) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+
     const { readDb } = require('../config/localDb');
     const db = readDb();
-    const orders = db.orders || [];
-    return res.json({ success: true, orders });
+    const localOrders = (db.orders || []).filter((o: any) => o.shop_id === shop.id);
+
+    const mergedMap = new Map<string, any>();
+    for (const o of localOrders) {
+      mergedMap.set(o.id, o);
+    }
+
+    const { data: supaData, error: supaError } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        consumer_id,
+        shop_id,
+        total_amount,
+        status,
+        delivery_address,
+        created_at,
+        order_items (
+          id,
+          product_id,
+          quantity,
+          unit_price,
+          products (
+            name,
+            image_url,
+            unit
+          )
+        )
+      `)
+      .eq('shop_id', shop.id)
+      .order('created_at', { ascending: false });
+
+    if (supaError) {
+      return res.status(500).json({ success: false, error: supaError.message });
+    }
+
+    for (const so of supaData || []) {
+      if (mergedMap.has(so.id)) continue;
+
+      const mappedItems = (so.order_items || []).map((oi: any) => ({
+        product_id: oi.product_id,
+        product_name: oi.products?.name || '',
+        name: oi.products?.name || '',
+        quantity: oi.quantity,
+        unit_price: oi.unit_price,
+        unit: oi.products?.unit || '1 unit',
+        image_url: oi.products?.image_url || '',
+        products: oi.products || null,
+      }));
+
+      mergedMap.set(so.id, {
+        id: so.id,
+        consumer_id: so.consumer_id,
+        shop_id: so.shop_id,
+        status: so.status,
+        total_amount: so.total_amount,
+        delivery_address: so.delivery_address,
+        shipping_address: so.delivery_address,
+        created_at: so.created_at,
+        order_items: mappedItems,
+      });
+    }
+
+    const consumerIds = Array.from(
+      new Set(
+        Array.from(mergedMap.values())
+          .map((o: any) => o.consumer_id)
+          .filter(Boolean),
+      ),
+    );
+
+    const productIds = Array.from(
+      new Set(
+        Array.from(mergedMap.values()).flatMap((o: any) =>
+          (o.order_items || []).map((it: any) => it.product_id).filter(Boolean),
+        ),
+      ),
+    );
+    const catalogMap = await fetchCatalogMap(productIds);
+
+    for (const [orderId, order] of mergedMap.entries()) {
+      mergedMap.set(orderId, enrichOrderItems(order, catalogMap));
+    }
+
+    const profileMap = new Map<string, any>();
+    if (consumerIds.length) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, phone, mobile')
+        .in('id', consumerIds);
+
+      for (const profile of profiles || []) {
+        profileMap.set(profile.id, profile);
+      }
+    }
+
+    const finalOrders = await Promise.all(
+      Array.from(mergedMap.values())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .map((order) => enrichMerchantOrder(order, profileMap)),
+    );
+
+    return res.json({ success: true, shop_name: shop.shop_name, orders: finalOrders });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
 });
 
 // 4. POST /:order_id/status: Merchant update order status (Swiggy/Zomato Operational Pipeline)
-router.post('/:order_id/status', authMiddleware, async (req: AuthRequest, res) => {
+router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { order_id } = req.params;
   const { status, delivery_partner_name, refund_message } = req.body;
 
-  const validStatuses = ['pending', 'confirmed', 'packed', 'out_for_delivery', 'delivered', 'cancelled'];
-  if (!status || !validStatuses.includes(status)) {
-    return res.status(400).json({ success: false, error: 'Invalid order status value' });
+  const normalizedStatus = resolveMerchantOrderStatus(status);
+  if (!normalizedStatus) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid order status. Allowed values: ${MERCHANT_ORDER_STATUSES.join(', ')}`,
+    });
   }
 
   try {
-    // 1. Update in localDb
+    const { data: shop, error: shopError } = await supabase
+      .from('shops')
+      .select('id')
+      .eq('owner_id', req.user!.id)
+      .maybeSingle();
+
+    if (shopError || !shop) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb();
     if (!db.orders) db.orders = [];
 
     const orderIdx = db.orders.findIndex((o: any) => o.id === order_id);
+    if (orderIdx !== -1 && db.orders[orderIdx].shop_id !== shop.id) {
+      return res.status(403).json({ success: false, error: 'You can only update orders for your shop' });
+    }
+
+    const { data: supaOrder } = await supabase
+      .from('orders')
+      .select('id, shop_id')
+      .eq('id', order_id)
+      .maybeSingle();
+
+    if (supaOrder && supaOrder.shop_id !== shop.id) {
+      return res.status(403).json({ success: false, error: 'You can only update orders for your shop' });
+    }
+
     if (orderIdx !== -1) {
-      db.orders[orderIdx].status = status;
-      applyStatusTimestamps(db.orders[orderIdx], status);
+      db.orders[orderIdx].status = normalizedStatus;
+      applyStatusTimestamps(db.orders[orderIdx], normalizedStatus);
       if (delivery_partner_name) {
         db.orders[orderIdx].delivery_partner_name = delivery_partner_name;
       }
-      if (status === 'cancelled') {
+      if (normalizedStatus === 'cancelled') {
         if (!db.orders[orderIdx].cancelled_by) {
           db.orders[orderIdx].cancelled_by = 'support';
         }
@@ -715,16 +947,15 @@ router.post('/:order_id/status', authMiddleware, async (req: AuthRequest, res) =
       writeDb(db);
     }
 
-    // 2. Update in Supabase
     await supabase
       .from('orders')
-      .update({ status })
+      .update({ status: normalizedStatus })
       .eq('id', order_id);
 
     return res.json({
       success: true,
-      message: `Order status updated to ${status}`,
-      order: orderIdx !== -1 ? enrichConsumerOrder(db.orders[orderIdx]) : { id: order_id, status },
+      message: `Order status updated to ${normalizedStatus}`,
+      order: orderIdx !== -1 ? enrichConsumerOrder(db.orders[orderIdx]) : { id: order_id, status: normalizedStatus },
     });
 
   } catch (error: any) {

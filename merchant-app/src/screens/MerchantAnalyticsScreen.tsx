@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,57 +6,169 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  StatusBar
+  StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
 
+interface MerchantOrder {
+  id: string;
+  status?: string;
+  total_amount?: number | string;
+  created_at?: string;
+  order_items?: Array<{
+    product_id?: string;
+    product_name?: string;
+    name?: string;
+    quantity?: number;
+  }>;
+}
+
+const STATUS_ROWS = [
+  { keys: ['delivered'], label: 'Delivered & Completed', color: '#16A34A' },
+  { keys: ['out_for_delivery'], label: 'Out for Delivery', color: '#DB2777' },
+  { keys: ['packed', 'packing', 'dispatched'], label: 'Packed & Preparing', color: '#4F46E5' },
+  { keys: ['confirmed'], label: 'Confirmed', color: '#2563EB' },
+  { keys: ['pending'], label: 'Pending Approval', color: '#D97706' },
+  { keys: ['cancelled'], label: 'Cancelled', color: '#DC2626' },
+];
+
+function normalizeStatus(status?: string): string {
+  return (status || '').toLowerCase();
+}
+
+function countOrdersByKeys(orders: MerchantOrder[], keys: string[]): number {
+  return orders.filter((o) => keys.includes(normalizeStatus(o.status))).length;
+}
+
+function formatInr(value: number): string {
+  return `₹${Math.round(value).toLocaleString('en-IN')}`;
+}
+
+function buildTopSellerInsight(orders: MerchantOrder[]): string | null {
+  const totals = new Map<string, { name: string; qty: number }>();
+
+  for (const order of orders) {
+    if (normalizeStatus(order.status) === 'cancelled') continue;
+    for (const item of order.order_items || []) {
+      const name = (item.product_name || item.name || '').trim();
+      if (!name) continue;
+      const key = item.product_id || name;
+      const existing = totals.get(key) || { name, qty: 0 };
+      existing.qty += Number(item.quantity) || 0;
+      totals.set(key, existing);
+    }
+  }
+
+  if (totals.size === 0) return null;
+
+  const top = Array.from(totals.values()).sort((a, b) => b.qty - a.qty)[0];
+  return `Top seller: ${top.name} (${top.qty} units ordered)`;
+}
+
 export default function MerchantAnalyticsScreen() {
   const { token } = useMerchantAuth();
   const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [shopName, setShopName] = useState('');
+  const [orders, setOrders] = useState<MerchantOrder[]>([]);
 
-  const fetchOrderStats = async () => {
-    setLoading(true);
+  const fetchOrderStats = useCallback(async (isRefresh = false) => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError('');
+
     try {
       const res = await fetch(`${API_BASE}/orders/merchant/all`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setOrders(data.orders || []);
+        setShopName(data.shop_name || '');
+      } else {
+        setOrders([]);
+        setError(data.error || 'Failed to load store analytics');
       }
     } catch (err) {
-      console.error('Failed to fetch analytics orders:', err);
+      setOrders([]);
+      setError('Connection error. Is the backend running on port 8001?');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchOrderStats();
-  }, []);
+  }, [fetchOrderStats]);
 
-  const totalSales = orders
-    .filter(o => o.status !== 'cancelled')
-    .reduce((sum, o) => sum + (parseFloat(o.total_amount) || 0), 0);
+  const stats = useMemo(() => {
+    const nonCancelled = orders.filter((o) => normalizeStatus(o.status) !== 'cancelled');
+    const totalSales = nonCancelled.reduce(
+      (sum, o) => sum + (parseFloat(String(o.total_amount)) || 0),
+      0,
+    );
+    const completedOrdersCount = orders.filter((o) => normalizeStatus(o.status) === 'delivered').length;
+    const cancelledOrdersCount = orders.filter((o) => normalizeStatus(o.status) === 'cancelled').length;
+    const activeOrdersCount = orders.filter((o) => {
+      const status = normalizeStatus(o.status);
+      return status !== 'delivered' && status !== 'cancelled';
+    }).length;
+    const avgOrderValue = nonCancelled.length > 0 ? totalSales / nonCancelled.length : 0;
 
-  const completedOrdersCount = orders.filter(o => o.status === 'delivered').length;
-  const activeOrdersCount = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
-  const cancelledOrdersCount = orders.filter(o => o.status === 'cancelled').length;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisMonthOrders = nonCancelled.filter((o) => {
+      if (!o.created_at) return false;
+      return new Date(o.created_at) >= monthStart;
+    });
+    const thisMonthRevenue = thisMonthOrders.reduce(
+      (sum, o) => sum + (parseFloat(String(o.total_amount)) || 0),
+      0,
+    );
 
-  const avgOrderValue = orders.length > 0 ? (totalSales / (orders.length - cancelledOrdersCount || 1)) : 0;
+    const fulfillmentRate =
+      nonCancelled.length > 0
+        ? Math.round((completedOrdersCount / nonCancelled.length) * 100)
+        : 0;
+
+    return {
+      totalSales,
+      completedOrdersCount,
+      cancelledOrdersCount,
+      activeOrdersCount,
+      avgOrderValue,
+      thisMonthRevenue,
+      thisMonthOrderCount: thisMonthOrders.length,
+      fulfillmentRate,
+      topSellerInsight: buildTopSellerInsight(orders),
+    };
+  }, [orders]);
 
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Store Analytics</Text>
-          <Text style={styles.headerSubtitle}>Sales performance, fulfillment rates & revenue insights</Text>
+          <Text style={styles.headerSubtitle}>
+            {shopName
+              ? `${shopName} · ${orders.length} order${orders.length === 1 ? '' : 's'}`
+              : 'Live sales & fulfillment metrics'}
+          </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchOrderStats}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchOrderStats(true)}>
           <Text style={styles.refreshText}>🔄</Text>
         </TouchableOpacity>
       </View>
@@ -64,84 +176,96 @@ export default function MerchantAnalyticsScreen() {
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#22C55E" />
-          <Text style={styles.loadingText}>Computing store KPIs...</Text>
+          <Text style={styles.loadingText}>Loading store analytics...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchOrderStats()}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : orders.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Text style={{ fontSize: 44, marginBottom: 10 }}>📊</Text>
+          <Text style={styles.emptyTitle}>No orders yet</Text>
+          <Text style={styles.emptySub}>
+            Analytics will appear here once customers place orders at your store.
+          </Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Main Revenue Card */}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchOrderStats(true)}
+              colors={['#22C55E']}
+            />
+          }
+        >
           <View style={styles.mainRevenueCard}>
             <Text style={styles.revenueLabel}>TOTAL STORE REVENUE</Text>
-            <Text style={styles.revenueValue}>₹{totalSales.toLocaleString('en-IN')}</Text>
+            <Text style={styles.revenueValue}>{formatInr(stats.totalSales)}</Text>
             <View style={styles.revenueFooter}>
-              <Text style={styles.revenueSub}>Across {orders.length} total customer orders</Text>
+              <Text style={styles.revenueSub}>
+                {formatInr(stats.thisMonthRevenue)} this month · {stats.thisMonthOrderCount} order
+                {stats.thisMonthOrderCount === 1 ? '' : 's'}
+              </Text>
             </View>
           </View>
 
-          {/* KPI Grid */}
           <View style={styles.kpiGrid}>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiIcon}>📦</Text>
-              <Text style={styles.kpiValue}>{activeOrdersCount}</Text>
+              <Text style={styles.kpiValue}>{stats.activeOrdersCount}</Text>
               <Text style={styles.kpiLabel}>Active Orders</Text>
             </View>
 
             <View style={styles.kpiCard}>
               <Text style={styles.kpiIcon}>✓</Text>
-              <Text style={[styles.kpiValue, { color: '#16A34A' }]}>{completedOrdersCount}</Text>
+              <Text style={[styles.kpiValue, { color: '#16A34A' }]}>{stats.completedOrdersCount}</Text>
               <Text style={styles.kpiLabel}>Fulfilled Orders</Text>
             </View>
 
             <View style={styles.kpiCard}>
               <Text style={styles.kpiIcon}>💰</Text>
-              <Text style={styles.kpiValue}>₹{Math.round(avgOrderValue)}</Text>
+              <Text style={styles.kpiValue}>{formatInr(stats.avgOrderValue)}</Text>
               <Text style={styles.kpiLabel}>Avg Order Value</Text>
             </View>
 
             <View style={styles.kpiCard}>
               <Text style={styles.kpiIcon}>✕</Text>
-              <Text style={[styles.kpiValue, { color: '#DC2626' }]}>{cancelledOrdersCount}</Text>
+              <Text style={[styles.kpiValue, { color: '#DC2626' }]}>{stats.cancelledOrdersCount}</Text>
               <Text style={styles.kpiLabel}>Cancelled</Text>
             </View>
           </View>
 
-          {/* Fulfillment Status Breakdown */}
           <View style={styles.breakdownCard}>
             <Text style={styles.breakdownTitle}>ORDER FULFILLMENT BREAKDOWN</Text>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Delivered & Completed</Text>
-              <Text style={[styles.statusCount, { color: '#16A34A' }]}>{completedOrdersCount}</Text>
-            </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Out for Delivery / In Transit</Text>
-              <Text style={[styles.statusCount, { color: '#DB2777' }]}>
-                {orders.filter(o => o.status === 'out_for_delivery').length}
-              </Text>
-            </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Packing & Preparing</Text>
-              <Text style={[styles.statusCount, { color: '#4F46E5' }]}>
-                {orders.filter(o => o.status === 'packing').length}
-              </Text>
-            </View>
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>Pending Approval</Text>
-              <Text style={[styles.statusCount, { color: '#D97706' }]}>
-                {orders.filter(o => o.status === 'pending').length}
-              </Text>
+            {STATUS_ROWS.map((row) => {
+              const count = countOrdersByKeys(orders, row.keys);
+              if (count === 0) return null;
+              return (
+                <View key={row.label} style={styles.statusRow}>
+                  <Text style={styles.statusLabel}>{row.label}</Text>
+                  <Text style={[styles.statusCount, { color: row.color }]}>{count}</Text>
+                </View>
+              );
+            })}
+            <View style={[styles.statusRow, { borderBottomWidth: 0, marginTop: 4 }]}>
+              <Text style={styles.statusLabel}>Fulfillment rate</Text>
+              <Text style={[styles.statusCount, { color: '#16A34A' }]}>{stats.fulfillmentRate}%</Text>
             </View>
           </View>
 
-          {/* Tips Card */}
-          <View style={styles.tipsCard}>
-            <Text style={styles.tipsTitle}>💡 Merchant Pro-Tip</Text>
-            <Text style={styles.tipsText}>
-              Keep popular monthly staples (Atta 10kg, Cooking Oil 5L, Rice 10kg, Sugar & Pulses) in-stock at competitive prices to boost repeat customer orders.
-            </Text>
-          </View>
+          {stats.topSellerInsight ? (
+            <View style={styles.insightCard}>
+              <Text style={styles.insightTitle}>Store insight</Text>
+              <Text style={styles.insightText}>{stats.topSellerInsight}</Text>
+            </View>
+          ) : null}
         </ScrollView>
       )}
     </View>
@@ -196,6 +320,35 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 13,
     color: '#64748B',
+  },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  retryBtn: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  emptySub: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
   },
   mainRevenueCard: {
     backgroundColor: '#0F172A',
@@ -290,19 +443,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  tipsCard: {
+  insightCard: {
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#BFDBFE',
     borderRadius: 16,
     padding: 16,
   },
-  tipsTitle: {
+  insightTitle: {
     fontSize: 13,
     fontWeight: 'bold',
     color: '#1E40AF',
   },
-  tipsText: {
+  insightText: {
     fontSize: 12,
     color: '#1E3A8A',
     marginTop: 4,

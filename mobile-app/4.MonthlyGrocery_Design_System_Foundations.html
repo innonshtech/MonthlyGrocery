@@ -1,0 +1,550 @@
+<!-- MonthlyGrocery — Design System Foundations (Phase 1) -->
+<!-- A living style guide: tokens + core components, rendered. Values are labelled for Figma rebuild. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MonthlyGrocery — Design System Foundations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Mukta:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  /* ---- Brand color ---- */
+  --green-900:#0F3D28;
+  --green-800:#155A38;
+  --green-700:#1E7A46;   /* PRIMARY */
+  --green-600:#2A8B54;
+  --green-500:#33A862;   /* bright / success accent */
+  --green-100:#E4F3EA;
+  --green-50:#F2F9F5;
+
+  --marigold-700:#8A5200; /* savings text on light */
+  --marigold-600:#C77E12;
+  --marigold-500:#F5A524; /* SECONDARY — savings & offers only */
+  --marigold-200:#FBE0AE;
+  --marigold-100:#FDEFD3;
+
+  /* ---- Ink / text ---- */
+  --ink-900:#17251E;  /* primary text */
+  --ink-700:#3D4A44;  /* secondary text */
+  --ink-500:#6B7772;  /* muted / captions */
+  --ink-300:#A7B0AB;  /* placeholder / disabled */
+
+  /* ---- Surfaces ---- */
+  --paper:#FAF9F5;    /* app background (warm) */
+  --surface:#FFFFFF;  /* cards */
+  --muted:#F4F3EE;    /* subtle fills */
+  --line:#EAE9E2;     /* warm borders */
+
+  /* ---- Semantic ---- */
+  --success:#2A8B54;
+  --warning:#F5A524;
+  --error:#D8453B;
+  --error-bg:#FBE9E7;
+
+  /* ---- Radius ---- */
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-pill:999px;
+
+  /* ---- Elevation ---- */
+  --e1:0 1px 2px rgba(16,61,40,.06), 0 1px 3px rgba(16,61,40,.04);
+  --e2:0 2px 10px rgba(16,61,40,.07);
+  --e3:0 10px 30px rgba(16,61,40,.14);
+  --focus:0 0 0 3px rgba(51,168,98,.38);
+
+  /* ---- Type ---- */
+  --display:'Baloo 2', system-ui, sans-serif;
+  --body:'Mukta', system-ui, sans-serif;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink-900);
+  font-family:var(--body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--display); font-weight:700; margin:0; letter-spacing:-.01em; line-height:1.15}
+p{margin:0}
+a{color:var(--green-700)}
+:focus-visible{outline:none; box-shadow:var(--focus); border-radius:var(--r-sm)}
+
+/* ---------- Page scaffold ---------- */
+.wrap{max-width:1080px; margin:0 auto; padding:0 20px}
+.masthead{
+  background:
+    radial-gradient(120% 140% at 100% 0, rgba(245,165,36,.18), transparent 42%),
+    linear-gradient(180deg, var(--green-800), var(--green-700));
+  color:#fff; padding:56px 0 48px; margin-bottom:8px;
+}
+.masthead .wrap{position:relative}
+.eyebrow{
+  font-family:var(--body); font-weight:700; font-size:12px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--marigold-500);
+}
+.masthead h1{font-size:44px; margin:10px 0 12px; color:#fff}
+.masthead p{max-width:56ch; color:#DCEFE3; font-size:16px}
+.masthead .tag{
+  display:inline-block; margin-top:20px; font-family:var(--display); font-weight:600;
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.22);
+  padding:8px 16px; border-radius:var(--r-pill); font-size:14px;
+}
+
+section.block{padding:44px 0; border-bottom:1px solid var(--line)}
+.sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:22px}
+.sec-head .n{font-family:var(--display); font-weight:700; color:var(--marigold-500); font-size:15px}
+.sec-head h2{font-size:26px}
+.sec-head .sub{color:var(--ink-500); font-size:14px; margin-left:auto; max-width:42ch; text-align:right}
+.note{color:var(--ink-500); font-size:13px; margin-top:14px}
+.grid{display:grid; gap:16px}
+
+/* ---------- Color ---------- */
+.swatches{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.sw{border-radius:var(--r-md); overflow:hidden; border:1px solid var(--line); background:var(--surface)}
+.sw .chip{height:78px}
+.sw .meta{padding:10px 12px}
+.sw .name{font-weight:600; font-size:13px}
+.sw .hex{font-size:12px; color:var(--ink-500); font-variant-numeric:tabular-nums; text-transform:uppercase}
+.sw .role{font-size:11px; color:var(--ink-500); margin-top:2px}
+
+/* ---------- Type specimen ---------- */
+.type-row{display:flex; align-items:baseline; gap:18px; padding:12px 0; border-bottom:1px dashed var(--line); flex-wrap:wrap}
+.type-row .spec{margin-left:auto; font-size:12px; color:var(--ink-500); font-variant-numeric:tabular-nums; white-space:nowrap}
+.d-display{font-family:var(--display); font-weight:700; font-size:32px}
+.d-h1{font-family:var(--display); font-weight:700; font-size:26px}
+.d-h2{font-family:var(--display); font-weight:600; font-size:22px}
+.d-h3{font-family:var(--display); font-weight:600; font-size:18px}
+.d-bodylg{font-family:var(--body); font-weight:400; font-size:16px}
+.d-body{font-family:var(--body); font-weight:400; font-size:14px}
+.d-cap{font-family:var(--body); font-weight:500; font-size:12px}
+.hinglish{color:var(--ink-700); margin-top:6px}
+
+/* ---------- Spacing / radius ---------- */
+.spaces{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+.space-item{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); padding:12px; text-align:center}
+.space-bar{background:var(--green-100); border:1px solid var(--green-500); height:16px; margin:0 auto 10px; border-radius:3px}
+.space-item .lab{font-size:12px; color:var(--ink-500)} .space-item .v{font-weight:600; font-size:13px}
+.radii{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+.radius-item{text-align:center}
+.radius-box{height:64px; background:var(--green-100); border:2px solid var(--green-500); margin-bottom:8px}
+
+/* ---------- Component canvas ---------- */
+.canvas{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg); padding:24px; box-shadow:var(--e1)}
+.canvas + .canvas{margin-top:16px}
+.row{display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+.stack{display:flex; flex-direction:column; gap:8px}
+.cap-label{font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-500); font-weight:700; margin-bottom:14px}
+
+/* ---------- Buttons ---------- */
+.btn{
+  font-family:var(--display); font-weight:600; font-size:15px; line-height:1;
+  border:0; cursor:pointer; border-radius:var(--r-pill);
+  min-height:48px; padding:0 22px; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  transition:background .15s, transform .05s, box-shadow .15s;
+}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--green-700); color:#fff}
+.btn-primary:hover{background:var(--green-800)}
+.btn-secondary{background:#fff; color:var(--green-700); box-shadow:inset 0 0 0 1.5px var(--green-700)}
+.btn-secondary:hover{background:var(--green-50)}
+.btn-text{background:transparent; color:var(--green-700); padding:0 8px; min-height:40px}
+.btn-text:hover{color:var(--green-800)}
+.btn:disabled{background:var(--muted); color:var(--ink-300); cursor:not-allowed; box-shadow:none}
+.btn-block{display:flex; width:100%}
+.btn-gate{
+  background:var(--muted); color:var(--ink-500); cursor:not-allowed; width:100%;
+  flex-direction:column; gap:2px; min-height:56px; font-family:var(--body); font-weight:600;
+}
+.btn-gate small{font-family:var(--body); font-weight:500; font-size:12px; color:var(--ink-500)}
+
+/* ---------- Quantity stepper ---------- */
+.add-btn{
+  font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:.02em;
+  color:var(--green-700); background:var(--green-50);
+  box-shadow:inset 0 0 0 1.5px var(--green-600); border:0;
+  border-radius:var(--r-sm); min-width:74px; min-height:36px; cursor:pointer;
+}
+.add-btn:hover{background:var(--green-100)}
+.stepper{display:none; align-items:center; background:var(--green-700); border-radius:var(--r-sm); min-height:36px; overflow:hidden}
+.stepper.on{display:inline-flex}
+.stepper button{background:transparent; border:0; color:#fff; width:34px; height:36px; font-size:20px; cursor:pointer; font-family:var(--body); line-height:1}
+.stepper .q{color:#fff; font-family:var(--display); font-weight:700; min-width:26px; text-align:center; font-size:15px}
+
+/* ---------- Chips ---------- */
+.chip-f{
+  font-family:var(--body); font-weight:600; font-size:13px; color:var(--ink-700);
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-pill);
+  padding:8px 14px; cursor:pointer; display:inline-flex; gap:6px; align-items:center;
+}
+.chip-f.sel{background:var(--green-700); color:#fff; border-color:var(--green-700)}
+.chip-f.sel .dot{color:#fff}
+
+/* ---------- Savings pill (SIGNATURE) ---------- */
+.save-pill{
+  display:inline-flex; align-items:center; gap:5px; font-family:var(--display); font-weight:700;
+  font-size:12px; color:var(--marigold-700); background:var(--marigold-100);
+  border:1px solid var(--marigold-200); padding:4px 9px; border-radius:var(--r-pill);
+}
+.save-pill.solid{background:var(--marigold-500); color:var(--ink-900); border-color:transparent}
+.save-pill svg{width:12px; height:12px}
+
+/* ---------- Input ---------- */
+.field{max-width:320px}
+.field label{display:block; font-weight:600; font-size:13px; margin-bottom:6px; color:var(--ink-700)}
+.field input{
+  width:100%; font-family:var(--body); font-size:15px; color:var(--ink-900);
+  background:var(--surface); border:1.5px solid var(--line); border-radius:var(--r-md);
+  padding:13px 14px; min-height:48px; transition:border-color .15s, box-shadow .15s;
+}
+.field input::placeholder{color:var(--ink-300)}
+.field input:focus{outline:none; border-color:var(--green-600); box-shadow:var(--focus)}
+.field.err input{border-color:var(--error); background:var(--error-bg)}
+.field .msg{font-size:12px; margin-top:6px; color:var(--error); font-weight:500}
+
+/* ---------- Product card (workhorse) ---------- */
+.pcard{
+  width:180px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r-md); overflow:hidden; box-shadow:var(--e1); position:relative;
+}
+.pcard .thumb{
+  height:120px; background:
+    radial-gradient(circle at 30% 30%, var(--green-100), var(--green-50));
+  display:flex; align-items:center; justify-content:center; position:relative;
+}
+.pcard .thumb svg{width:52px; height:52px; color:var(--green-600); opacity:.8}
+.pcard .save-abs{position:absolute; top:8px; left:8px}
+.pcard .body{padding:10px 12px 14px}
+.pcard .pk{font-size:11px; color:var(--ink-500); font-weight:600}
+.pcard .nm{font-family:var(--display); font-weight:600; font-size:14px; line-height:1.2; margin:3px 0 8px}
+.pcard .price-row{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.pcard .price .now{font-family:var(--display); font-weight:700; font-size:16px}
+.pcard .price .mrp{font-size:12px; color:var(--ink-300); text-decoration:line-through; margin-left:5px}
+
+/* ---------- Category tile ---------- */
+.cat{width:96px; text-align:center}
+.cat .ic{
+  height:76px; border-radius:var(--r-md); background:var(--green-50);
+  border:1px solid var(--green-100); display:flex; align-items:center; justify-content:center; margin-bottom:7px;
+}
+.cat .ic svg{width:34px; height:34px; color:var(--green-700)}
+.cat .lb{font-size:12px; font-weight:600; color:var(--ink-700); line-height:1.2}
+
+/* ---------- Monthly-savings hero (SIGNATURE showpiece) ---------- */
+.hero-card{
+  max-width:380px; border-radius:var(--r-lg); padding:20px; color:#fff; position:relative; overflow:hidden;
+  background:radial-gradient(130% 120% at 100% 0, rgba(245,165,36,.28), transparent 45%), linear-gradient(160deg,var(--green-700),var(--green-800));
+  box-shadow:var(--e2);
+}
+.hero-card .k{font-family:var(--body); font-weight:600; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:#BFE4CD}
+.hero-card h3{color:#fff; font-size:20px; margin:6px 0 16px}
+.hero-compare{display:flex; align-items:flex-end; gap:18px; margin-bottom:18px}
+.hero-compare .col .lab{font-size:11px; color:#BFE4CD; margin-bottom:2px}
+.hero-compare .col .amt{font-family:var(--display); font-weight:700; font-size:22px}
+.hero-compare .col .amt.old{color:#9FCBB1; text-decoration:line-through; font-size:16px; font-weight:600}
+.hero-compare .arrow{color:var(--marigold-500); font-size:20px; padding-bottom:3px}
+.hero-card .savedchip{
+  position:absolute; top:18px; right:18px; background:var(--marigold-500); color:var(--ink-900);
+  font-family:var(--display); font-weight:700; font-size:13px; padding:6px 12px; border-radius:var(--r-pill);
+}
+.hero-card .cta{width:100%; background:#fff; color:var(--green-800)}
+.hero-card .cta:hover{background:var(--green-50)}
+
+/* ---------- Bottom nav ---------- */
+.phone{max-width:390px; margin-top:8px}
+.bnav{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--e2); padding:10px 8px 12px; display:flex; justify-content:space-between; align-items:flex-end; position:relative;
+}
+.bnav .tab{flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--ink-500); font-size:10.5px; font-weight:600}
+.bnav .tab svg{width:23px; height:23px}
+.bnav .tab.active{color:var(--green-700)}
+.bnav .fab-slot{flex:1; display:flex; justify-content:center}
+.bnav .fab{
+  transform:translateY(-22px); width:60px; height:60px; border-radius:var(--r-pill);
+  background:var(--marigold-500); box-shadow:var(--e2), 0 0 0 5px var(--paper);
+  display:flex; align-items:center; justify-content:center; color:var(--ink-900);
+}
+.bnav .fab svg{width:26px; height:26px}
+.bnav .fab-lb{position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:10px; font-weight:700; color:var(--green-800); white-space:nowrap}
+
+/* ---------- Voice ---------- */
+.voice{grid-template-columns:1fr 1fr; gap:16px}
+.voice .vc{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-md); padding:16px}
+.voice .yes{color:var(--success); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase}
+.voice .no{color:var(--error); font-weight:700; font-size:12px; letter-spacing:.06em; text-transform:uppercase}
+.voice .ex{font-family:var(--display); font-weight:600; font-size:15px; margin:6px 0 2px}
+.voice .why{font-size:13px; color:var(--ink-500)}
+
+footer{padding:32px 0 60px; color:var(--ink-500); font-size:13px}
+
+@media (max-width:560px){
+  .masthead h1{font-size:34px}
+  .sec-head{flex-wrap:wrap} .sec-head .sub{text-align:left; margin-left:0}
+  .voice{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Design System · Phase 1 Foundations</div>
+    <h1>MonthlyGrocery</h1>
+    <p>The calm, planned alternative to quick-commerce. This is the foundation layer — color, type, spacing and the core components every screen is built from. Values are labelled so the system rebuilds cleanly in Figma.</p>
+    <span class="tag">Plan once · Order monthly · Save more</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- DIRECTION -->
+  <section class="block">
+    <div class="sec-head"><span class="n">00</span><h2>Direction</h2>
+      <span class="sub">Why the system looks the way it does.</span></div>
+    <div class="canvas">
+      <p class="d-bodylg" style="max-width:70ch">Where quick-commerce apps shout urgency, MonthlyGrocery is built to feel <strong>planned, warm and trustworthy</strong> — the reassurance of a well-stocked pantry. Two devices carry that idea everywhere: a grounded grocery <strong style="color:var(--green-700)">green</strong> as the primary, and a warm <strong style="color:var(--marigold-600)">marigold</strong> reserved <em>only</em> for savings and offers, so every rupee saved glows the same colour. That savings-glow is the system's signature.</p>
+    </div>
+  </section>
+
+  <!-- COLOR -->
+  <section class="block">
+    <div class="sec-head"><span class="n">01</span><h2>Colour</h2>
+      <span class="sub">Green leads. Marigold is savings-only. Ink and warm paper keep it calm.</span></div>
+
+    <p class="cap-label">Brand — Green</p>
+    <div class="grid swatches">
+      <div class="sw"><div class="chip" style="background:var(--green-900)"></div><div class="meta"><div class="name">Green 900</div><div class="hex">#0F3D28</div><div class="role">Deep headings / on-light</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--green-800)"></div><div class="meta"><div class="name">Green 800</div><div class="hex">#155A38</div><div class="role">Hover / gradients</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--green-700)"></div><div class="meta"><div class="name">Green 700</div><div class="hex">#1E7A46</div><div class="role">Primary</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--green-500)"></div><div class="meta"><div class="name">Green 500</div><div class="hex">#33A862</div><div class="role">Success / accents</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--green-100)"></div><div class="meta"><div class="name">Green 100</div><div class="hex">#E4F3EA</div><div class="role">Tints / fills</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--green-50); border-bottom:1px solid var(--line)"></div><div class="meta"><div class="name">Green 50</div><div class="hex">#F2F9F5</div><div class="role">Subtle backgrounds</div></div></div>
+    </div>
+
+    <p class="cap-label" style="margin-top:26px">Savings — Marigold <span style="text-transform:none; letter-spacing:0; font-weight:500; color:var(--ink-500)">(offers & savings only — never decorative)</span></p>
+    <div class="grid swatches">
+      <div class="sw"><div class="chip" style="background:var(--marigold-500)"></div><div class="meta"><div class="name">Marigold 500</div><div class="hex">#F5A524</div><div class="role">Savings accent</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--marigold-100); border-bottom:1px solid var(--line)"></div><div class="meta"><div class="name">Marigold 100</div><div class="hex">#FDEFD3</div><div class="role">Savings pill bg</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--marigold-700)"></div><div class="meta"><div class="name">Marigold 700</div><div class="hex">#8A5200</div><div class="role">Savings text on light</div></div></div>
+    </div>
+
+    <p class="cap-label" style="margin-top:26px">Ink & Surface</p>
+    <div class="grid swatches">
+      <div class="sw"><div class="chip" style="background:var(--ink-900)"></div><div class="meta"><div class="name">Ink 900</div><div class="hex">#17251E</div><div class="role">Primary text</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink-700)"></div><div class="meta"><div class="name">Ink 700</div><div class="hex">#3D4A44</div><div class="role">Secondary text</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--ink-500)"></div><div class="meta"><div class="name">Ink 500</div><div class="hex">#6B7772</div><div class="role">Muted / captions</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--paper); border-bottom:1px solid var(--line)"></div><div class="meta"><div class="name">Paper</div><div class="hex">#FAF9F5</div><div class="role">App background</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--surface); border-bottom:1px solid var(--line)"></div><div class="meta"><div class="name">Surface</div><div class="hex">#FFFFFF</div><div class="role">Cards</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--line)"></div><div class="meta"><div class="name">Line</div><div class="hex">#EAE9E2</div><div class="role">Borders</div></div></div>
+    </div>
+
+    <p class="cap-label" style="margin-top:26px">Semantic</p>
+    <div class="grid swatches">
+      <div class="sw"><div class="chip" style="background:var(--success)"></div><div class="meta"><div class="name">Success</div><div class="hex">#2A8B54</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--warning)"></div><div class="meta"><div class="name">Warning</div><div class="hex">#F5A524</div></div></div>
+      <div class="sw"><div class="chip" style="background:var(--error)"></div><div class="meta"><div class="name">Error</div><div class="hex">#D8453B</div></div></div>
+    </div>
+  </section>
+
+  <!-- TYPE -->
+  <section class="block">
+    <div class="sec-head"><span class="n">02</span><h2>Typography</h2>
+      <span class="sub">Baloo 2 for warmth, Mukta for clarity. Both carry Devanagari — Hinglish renders natively.</span></div>
+    <div class="canvas">
+      <div class="type-row"><span class="d-display">Ghar ka poora mahina</span><span class="spec">Baloo 2 · 700 · 32/38</span></div>
+      <div class="type-row"><span class="d-h1">Your monthly grocery</span><span class="spec">Baloo 2 · 700 · 26/32 · H1</span></div>
+      <div class="type-row"><span class="d-h2">Recreate last month</span><span class="spec">Baloo 2 · 600 · 22/28 · H2</span></div>
+      <div class="type-row"><span class="d-h3">Fortune Sunflower Oil</span><span class="spec">Baloo 2 · 600 · 18/24 · H3</span></div>
+      <div class="type-row"><span class="d-bodylg">Add ₹340 more to unlock checkout — you're almost at your monthly basket.</span><span class="spec">Mukta · 400 · 16/24 · Body L</span></div>
+      <div class="type-row"><span class="d-body">Free delivery on orders above ₹2,500. Delivered within 4 hours.</span><span class="spec">Mukta · 400 · 14/20 · Body</span></div>
+      <div class="type-row"><span class="d-cap">PACK OF 5 · 5 KG</span><span class="spec">Mukta · 500 · 12/16 · Caption</span></div>
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--line)">
+        <p class="cap-label">Hinglish / Devanagari check</p>
+        <p class="d-h3 hinglish">मुझे 10 किलो चावल और 2 लीटर तेल चाहिए</p>
+        <p class="d-body hinglish">तेल · आटा · चीनी · दालें — sab kuch ek hi basket mein.</p>
+      </div>
+    </div>
+    <p class="note">Scale ratio is tuned by hand for mobile, not a strict modular scale — headings stay tight, body stays roomy for long grocery names.</p>
+  </section>
+
+  <!-- SPACING + RADIUS -->
+  <section class="block">
+    <div class="sec-head"><span class="n">03</span><h2>Spacing & Radius</h2>
+      <span class="sub">8-point grid. 16px screen gutter. 48px minimum touch target.</span></div>
+    <p class="cap-label">Spacing scale (px)</p>
+    <div class="grid spaces">
+      <div class="space-item"><div class="space-bar" style="width:4px"></div><div class="v">4</div><div class="lab">xs</div></div>
+      <div class="space-item"><div class="space-bar" style="width:8px"></div><div class="v">8</div><div class="lab">sm</div></div>
+      <div class="space-item"><div class="space-bar" style="width:12px"></div><div class="v">12</div><div class="lab">md</div></div>
+      <div class="space-item"><div class="space-bar" style="width:16px"></div><div class="v">16</div><div class="lab">base · gutter</div></div>
+      <div class="space-item"><div class="space-bar" style="width:24px"></div><div class="v">24</div><div class="lab">xl</div></div>
+      <div class="space-item"><div class="space-bar" style="width:32px"></div><div class="v">32</div><div class="lab">2xl</div></div>
+      <div class="space-item"><div class="space-bar" style="width:48px"></div><div class="v">48</div><div class="lab">3xl</div></div>
+    </div>
+    <p class="cap-label" style="margin-top:26px">Radius</p>
+    <div class="grid radii">
+      <div class="radius-item"><div class="radius-box" style="border-radius:6px"></div><div class="v">6 · xs</div></div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:8px"></div><div class="v">8 · sm</div></div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:12px"></div><div class="v">12 · md · cards</div></div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:16px"></div><div class="v">16 · lg</div></div>
+      <div class="radius-item"><div class="radius-box" style="border-radius:999px; height:40px; margin-top:24px"></div><div class="v">pill · buttons</div></div>
+    </div>
+  </section>
+
+  <!-- COMPONENTS -->
+  <section class="block">
+    <div class="sec-head"><span class="n">04</span><h2>Core components</h2>
+      <span class="sub">The starter set every Phase 1 screen reuses.</span></div>
+
+    <!-- Buttons -->
+    <div class="canvas">
+      <p class="cap-label">Buttons</p>
+      <div class="row">
+        <button class="btn btn-primary">Proceed to checkout</button>
+        <button class="btn btn-secondary">View basket</button>
+        <button class="btn btn-text">Skip for now</button>
+        <button class="btn btn-primary" disabled>Disabled</button>
+      </div>
+      <div class="row" style="margin-top:16px; max-width:340px">
+        <button class="btn btn-gate">Add ₹340 more to checkout<small>Minimum order ₹2,500</small></button>
+      </div>
+      <p class="note">Primary is Baloo 2 for a friendly, confident CTA. The gate state replaces a dead-end error — it always tells the user the exact gap to ₹2,500.</p>
+    </div>
+
+    <!-- Add / stepper -->
+    <div class="canvas">
+      <p class="cap-label">Add control & quantity stepper</p>
+      <div class="row">
+        <button class="add-btn" onclick="this.style.display='none';this.nextElementSibling.classList.add('on')">ADD</button>
+        <span class="stepper"><button aria-label="decrease" onclick="step(this,-1)">−</button><span class="q">1</span><button aria-label="increase" onclick="step(this,1)">+</button></span>
+        <span style="color:var(--ink-500); font-size:13px">← tap ADD to see the stepper</span>
+      </div>
+      <p class="note">The workhorse micro-interaction — borrowed craft from quick-commerce, calmer styling. Appears on every product card and list row.</p>
+    </div>
+
+    <!-- Savings pill -->
+    <div class="canvas">
+      <p class="cap-label">Savings pill — the signature</p>
+      <div class="row">
+        <span class="save-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>SAVE ₹58</span>
+        <span class="save-pill">12% OFF</span>
+        <span class="save-pill solid">You save ₹340</span>
+      </div>
+      <p class="note">Marigold appears here and nowhere else. Consistency is what makes savings instantly recognisable across the app.</p>
+    </div>
+
+    <!-- Chips -->
+    <div class="canvas">
+      <p class="cap-label">Filter & sort chips</p>
+      <div class="row">
+        <span class="chip-f sel"><span class="dot">✓</span> Offers</span>
+        <span class="chip-f">Brand</span>
+        <span class="chip-f">Price: Low to High</span>
+        <span class="chip-f">Pack size</span>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="canvas">
+      <p class="cap-label">Text input</p>
+      <div class="row" style="align-items:flex-start">
+        <div class="field">
+          <label for="a1">Delivery pincode</label>
+          <input id="a1" placeholder="e.g. 411001">
+        </div>
+        <div class="field err">
+          <label for="a2">OTP</label>
+          <input id="a2" value="1234">
+          <div class="msg">That code didn't match. Check and try again.</div>
+        </div>
+      </div>
+      <p class="note">Errors give direction, not apology — they say what happened and what to do.</p>
+    </div>
+
+    <!-- Product card + category -->
+    <div class="canvas">
+      <p class="cap-label">Product card & category tile</p>
+      <div class="row" style="align-items:flex-start; gap:22px">
+        <div class="pcard">
+          <div class="thumb">
+            <span class="save-abs"><span class="save-pill solid">SAVE ₹58</span></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 8h14l-1 11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+          </div>
+          <div class="body">
+            <div class="pk">5 kg</div>
+            <div class="nm">Fortune Everyday Basmati Rice</div>
+            <div class="price-row">
+              <div class="price"><span class="now">₹432</span><span class="mrp">₹490</span></div>
+              <button class="add-btn" onclick="this.style.display='none';this.nextElementSibling.classList.add('on')">ADD</button>
+              <span class="stepper"><button aria-label="decrease" onclick="step(this,-1)">−</button><span class="q">1</span><button aria-label="increase" onclick="step(this,1)">+</button></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="row" style="gap:14px">
+          <div class="cat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h16M4 8l1.5 11h13L20 8M4 8l2-4h12l2 4"/></svg></div><div class="lb">Atta, Rice & Dal</div></div>
+          <div class="cat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3v6a6 6 0 0 0 12 0V3M12 15v6"/></svg></div><div class="lb">Oil & Ghee</div></div>
+          <div class="cat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg></div><div class="lb">Spices</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIGNATURE -->
+  <section class="block">
+    <div class="sec-head"><span class="n">05</span><h2>Signature moments</h2>
+      <span class="sub">The two things this app is remembered by.</span></div>
+    <div class="row" style="align-items:flex-start; gap:22px">
+      <!-- Monthly savings hero -->
+      <div class="hero-card">
+        <div class="savedchip">Saved ₹340</div>
+        <div class="k">Your monthly grocery</div>
+        <h3>Pick up where you left off</h3>
+        <div class="hero-compare">
+          <div class="col"><div class="lab">Last month</div><div class="amt old">₹4,860</div></div>
+          <div class="arrow">→</div>
+          <div class="col"><div class="lab">This month</div><div class="amt">₹4,520</div></div>
+        </div>
+        <button class="btn btn-primary cta btn-block">Recreate last month's cart</button>
+      </div>
+
+      <!-- Bottom nav -->
+      <div class="phone" style="flex:1; min-width:300px">
+        <p class="cap-label">Bottom navigation</p>
+        <nav class="bnav">
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5"/></svg>Home</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Categories</div>
+          <div class="fab-slot">
+            <div class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 8h14l-1 11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 12h6"/></svg></div>
+            <span class="fab-lb">Monthly</span>
+          </div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6h15l-1.5 9h-12L6 6ZM6 6 5 3H3"/><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/></svg>Cart</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2ZM9 8h6M9 12h6"/></svg>Orders</div>
+        </nav>
+        <p class="note">Five tabs, with <strong>My Monthly Grocery</strong> raised in the centre as the standout CTA — the one action the whole product is built around, in the brand's savings colour.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VOICE -->
+  <section class="block">
+    <div class="sec-head"><span class="n">06</span><h2>Voice & tone</h2>
+      <span class="sub">Plain, warm, Hinglish-friendly. Active verbs. Specific over clever.</span></div>
+    <div class="grid voice">
+      <div class="vc"><div class="yes">Say this</div><div class="ex">Add ₹340 more to checkout</div><div class="why">Tells the user exactly what to do next.</div></div>
+      <div class="vc"><div class="no">Not this</div><div class="ex">Minimum order value not met</div><div class="why">System-speak; blames, doesn't guide.</div></div>
+      <div class="vc"><div class="yes">Say this</div><div class="ex">No orders yet — build your first monthly basket</div><div class="why">An empty screen is an invitation to act.</div></div>
+      <div class="vc"><div class="no">Not this</div><div class="ex">You have no orders.</div><div class="why">A dead end with no way forward.</div></div>
+    </div>
+  </section>
+
+  <footer>
+    MonthlyGrocery — Design System Foundations · Phase 1 · This is the starter layer (tokens + core components). Component library expands in the next pass, ahead of high-fidelity screens.
+  </footer>
+</div>
+
+<script>
+function step(btn, d){
+  var q = btn.parentElement.querySelector('.q');
+  var n = Math.max(1, parseInt(q.textContent,10) + d);
+  q.textContent = n;
+}
+</script>

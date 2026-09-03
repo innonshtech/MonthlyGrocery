@@ -153,47 +153,6 @@ async function seedDatabase() {
       console.log(`Using active shop: ${shop.shop_name} (${shop.id})`);
     }
 
-    // 3. Ensure all existing PostgreSQL products are registered in local shop_products for the default shop (backward compatibility)
-    const { data: finalShop } = await supabase
-      .from('shops')
-      .select('*')
-      .maybeSingle();
-
-    if (finalShop) {
-      console.log('Ensuring master products are mapped in local db...');
-      const { data: products } = await supabase
-        .from('products')
-        .select('id, mrp, price, available');
-
-      if (products && products.length > 0) {
-        const { readDb, writeDb } = require('./config/localDb');
-        const db = readDb();
-        let dbChanged = false;
-
-        for (const p of products) {
-          const exists = db.shop_products.some((sp: any) => sp.shop_id === finalShop.id && sp.product_id === p.id);
-          if (!exists) {
-            db.shop_products.push({
-              id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-              shop_id: finalShop.id,
-              product_id: p.id,
-              selling_price: parseFloat(p.price) || 0,
-              discount_percentage: Math.max(0, Math.round(((parseFloat(p.mrp) - parseFloat(p.price)) / parseFloat(p.mrp)) * 100)) || 0,
-              stock: 100,
-              available: p.available ?? true,
-              status: 'approved'
-            });
-            dbChanged = true;
-          }
-        }
-
-        if (dbChanged) {
-          writeDb(db);
-          console.log('Local shop products list updated with seeded PostgreSQL records.');
-        }
-      }
-    }
-
     console.log('Database startup checks complete.');
 
   } catch (err: any) {

@@ -37,7 +37,7 @@ try {
 const SCREEN_BG = '#FAF9F5';
 
 export default function EditProfileScreen({ navigation }: any) {
-  const { token, userProfile, refreshProfile } = useAuth();
+  const { token, user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
   const bottomPadding = insets.bottom > 0 ? insets.bottom + 8 : 16;
 
@@ -52,16 +52,23 @@ export default function EditProfileScreen({ navigation }: any) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const handleAssetSelect = async (asset: any) => {
-    if (!asset?.uri) return;
+  const processImagePickerResult = async (res: any) => {
+    if (!res || res.didCancel) return;
+    if (res.errorMessage) {
+      Alert.alert('Image Error', res.errorMessage);
+      return;
+    }
+    const asset = res.assets && res.assets[0];
+    if (!asset || !asset.uri) return;
+
+    // Show local preview immediately
     setAvatarUri(asset.uri);
 
+    // If base64 is available and token exists, upload to Supabase Storage bucket 'avatars'
     if (token && asset.base64) {
-      setProfileLoading(true);
-      const res = await uploadAvatar(token, asset.base64, asset.type || 'image/jpeg');
-      setProfileLoading(false);
-      if (res.success && res.avatar_url) {
-        setAvatarUri(res.avatar_url);
+      const uploadRes = await uploadAvatar(token, asset.base64);
+      if (uploadRes.success && uploadRes.avatar_url) {
+        setAvatarUri(uploadRes.avatar_url);
       }
     }
   };
@@ -84,14 +91,7 @@ export default function EditProfileScreen({ navigation }: any) {
                   includeBase64: true,
                   saveToPhotos: true,
                 });
-                if (res.didCancel) return;
-                if (res.errorMessage) {
-                  Alert.alert('Camera Error', res.errorMessage);
-                  return;
-                }
-                if (res.assets && res.assets[0]) {
-                  await handleAssetSelect(res.assets[0]);
-                }
+                await processImagePickerResult(res);
               } catch (err: any) {
                 Alert.alert('Camera Error', err?.message || 'Could not launch camera');
               }
@@ -113,14 +113,7 @@ export default function EditProfileScreen({ navigation }: any) {
                   includeBase64: true,
                   selectionLimit: 1,
                 });
-                if (res.didCancel) return;
-                if (res.errorMessage) {
-                  Alert.alert('Gallery Error', res.errorMessage);
-                  return;
-                }
-                if (res.assets && res.assets[0]) {
-                  await handleAssetSelect(res.assets[0]);
-                }
+                await processImagePickerResult(res);
               } catch (err: any) {
                 Alert.alert('Gallery Error', err?.message || 'Could not launch photo library');
               }
@@ -163,13 +156,17 @@ export default function EditProfileScreen({ navigation }: any) {
       setName('');
       setEmail('');
       setPhone('');
+      setAvatarUri(null);
       return;
     }
 
-    if (userProfile) {
-      setName(userProfile.name || '');
-      setEmail(userProfile.email || '');
-      setPhone(userProfile.phone || userProfile.mobile || '');
+    if (user) {
+      setName(user.name || '');
+      setEmail(user.email || '');
+      setPhone(user.mobile || '');
+      if (user.avatar_url) {
+        setAvatarUri(user.avatar_url);
+      }
     }
 
     setProfileLoading(true);
@@ -180,8 +177,11 @@ export default function EditProfileScreen({ navigation }: any) {
       setName(profile.name || '');
       setEmail(profile.email || '');
       setPhone(profile.mobile || '');
+      if (profile.avatar_url) {
+        setAvatarUri(profile.avatar_url);
+      }
     }
-  }, [token, userProfile]);
+  }, [token, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -201,14 +201,18 @@ export default function EditProfileScreen({ navigation }: any) {
     }
 
     setSaving(true);
-    const result = await updateProfile(token, name.trim(), email.trim());
+    const result = await updateProfile(token, name.trim(), email.trim(), avatarUri);
     setSaving(false);
 
-    if (result.success) {
-      await refreshProfile();
+    if (result.success && result.user) {
+      await updateUser({
+        name: result.user.name,
+        email: result.user.email,
+        avatar_url: result.user.avatar_url,
+      });
       Alert.alert(
-        screenConfig.save_success_title,
-        screenConfig.save_success_message,
+        screenConfig.save_success_title || 'Profile Updated',
+        screenConfig.save_success_message || 'Your changes have been saved successfully.',
         [
           {
             text: 'OK',
@@ -219,7 +223,7 @@ export default function EditProfileScreen({ navigation }: any) {
     } else {
       Alert.alert(
         'Error',
-        result.error || screenConfig.save_error_message,
+        result.error || screenConfig.save_error_message || 'Failed to save changes.',
       );
     }
   };
@@ -573,7 +577,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnText: {
-    ...FONTS.balooSemiBold,
+    ...FONTS.balooBold,
     fontSize: 16,
     lineHeight: 22,
     color: '#FFFFFF',

@@ -653,35 +653,6 @@ async function seed() {
     }
   }
 
-  // 5. Sync merchant shop_products in local db.json (real merchant pricing path)
-  const db = readDb();
-
-  const discountTiers = [6, 10, 12, 14, 16, 18, 20, 22, 25];
-
-  db.shop_products = [
-    ...db.shop_products.filter((sp) => sp.shop_id !== shopId),
-    ...insertedProducts.map((p, index) => {
-    const discountPct = p.todays_deal
-      ? 18 + (index % 8)
-      : discountTiers[index % discountTiers.length];
-    const sellingPrice = Math.round(p.mrp * (1 - discountPct / 100));
-
-    return {
-      id: `sp-seed-${index}-${Math.random().toString(36).substring(2, 8)}`,
-      shop_id: shopId,
-      product_id: p.id,
-      selling_price: sellingPrice,
-      discount_percentage: discountPct,
-      stock: 100,
-      available: true,
-      status: 'approved' as const,
-    };
-    }),
-  ];
-
-  writeDb(db);
-  console.log(`Synced ${db.shop_products.length} shop_products to local db for shop ${shopId}`);
-
   console.log("Product database seeding completed successfully!");
   process.exit(0);
 }

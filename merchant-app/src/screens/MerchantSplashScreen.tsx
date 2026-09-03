@@ -11,9 +11,7 @@ export default function MerchantSplashScreen({ navigation }: any) {
     if (loading) return;
 
     const timer = setTimeout(() => {
-      if (token && user) {
-        navigation.replace('MerchantDashboard');
-      } else {
+      if (!token || !user) {
         navigation.replace('MerchantLogin');
       }
     }, 1200);

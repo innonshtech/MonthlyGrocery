@@ -132,6 +132,28 @@ router.post('/verify-otp', async (req, res) => {
       }
     }
 
+    // Merchant login: upgrade consumer accounts that own an approved shop
+    if (role === 'admin' && profile.role === 'consumer') {
+      const { data: ownedShop } = await supabase
+        .from('shops')
+        .select('id, status')
+        .eq('owner_id', profile.id)
+        .maybeSingle();
+
+      if (ownedShop?.status === 'approved') {
+        const { data: upgradedProfile, error: upgradeError } = await supabase
+          .from('profiles')
+          .update({ role: 'admin', ...(name ? { name: String(name).trim() } : {}) })
+          .eq('id', profile.id)
+          .select()
+          .single();
+
+        if (!upgradeError && upgradedProfile) {
+          profile = upgradedProfile;
+        }
+      }
+    }
+
     // Generate JWT payload
     const token = jwt.sign(
       { id: profile.id, mobile: profile.phone, role: profile.role },
@@ -173,9 +195,13 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
     }
 
     let email = '';
+    let avatar_url = profile.avatar_url || '';
     const { data: authUser } = await supabase.auth.admin.getUserById(req.user.id);
     if (authUser?.user?.user_metadata?.email) {
       email = String(authUser.user.user_metadata.email).trim();
+    }
+    if (authUser?.user?.user_metadata?.avatar_url) {
+      avatar_url = String(authUser.user.user_metadata.avatar_url).trim();
     }
 
     return res.json({
@@ -186,6 +212,7 @@ router.get('/me', authMiddleware, async (req: AuthRequest, res) => {
         name: profile.name,
         role: profile.role,
         email,
+        avatar_url,
       }
     });
   } catch (error: any) {
@@ -203,41 +230,67 @@ router.get('/account-summary', authMiddleware, async (req: AuthRequest, res: Res
   }
 });
 
-// 4. Update consumer profile (name + optional email metadata)
+// 4. Update consumer profile (name + optional email metadata + avatar_url)
 router.patch('/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
-  const { name, email } = req.body;
+  const { name, email, avatar_url } = req.body;
   if (!name || !String(name).trim()) {
     return res.status(400).json({ success: false, error: 'Name is required' });
   }
 
   try {
-    const { data: profile, error } = await supabase
+    const updateData: any = { name: String(name).trim() };
+    if (avatar_url !== undefined) {
+      updateData.avatar_url = avatar_url;
+    }
+
+    // Try updating profiles table
+    let { data: profile, error } = await supabase
       .from('profiles')
-      .update({ name: String(name).trim() })
+      .update(updateData)
       .eq('id', req.user.id)
       .select()
       .single();
 
-    if (error || !profile) {
-      return res.status(500).json({ success: false, error: error?.message || 'Failed to update profile' });
+    if (error) {
+      // If avatar_url column doesn't exist yet in profiles table, fall back to updating name only
+      const { data: fallbackProfile, error: fallbackError } = await supabase
+        .from('profiles')
+        .update({ name: String(name).trim() })
+        .eq('id', req.user.id)
+        .select()
+        .single();
+      
+      if (fallbackError || !fallbackProfile) {
+        return res.status(500).json({ success: false, error: fallbackError?.message || 'Failed to update profile' });
+      }
+      profile = fallbackProfile;
     }
 
     let savedEmail = '';
+    const userMetadata: any = {};
     if (email && String(email).trim()) {
       savedEmail = String(email).trim();
-      await supabase.auth.admin.updateUserById(req.user.id, {
-        user_metadata: { email: savedEmail },
-      });
-    } else {
-      const { data: authUser } = await supabase.auth.admin.getUserById(req.user.id);
-      if (authUser?.user?.user_metadata?.email) {
-        savedEmail = String(authUser.user.user_metadata.email).trim();
-      }
+      userMetadata.email = savedEmail;
     }
+    if (avatar_url !== undefined) {
+      userMetadata.avatar_url = avatar_url;
+    }
+
+    if (Object.keys(userMetadata).length > 0) {
+      await supabase.auth.admin.updateUserById(req.user.id, {
+        user_metadata: userMetadata,
+      });
+    }
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(req.user.id);
+    if (!savedEmail && authUser?.user?.user_metadata?.email) {
+      savedEmail = String(authUser.user.user_metadata.email).trim();
+    }
+    const finalAvatarUrl = avatar_url ?? authUser?.user?.user_metadata?.avatar_url ?? profile?.avatar_url ?? '';
 
     return res.json({
       success: true,
@@ -247,10 +300,68 @@ router.patch('/profile', authMiddleware, async (req: AuthRequest, res: Response)
         name: profile.name,
         role: profile.role,
         email: savedEmail,
+        avatar_url: finalAvatarUrl,
       },
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 5. Upload avatar photo to Supabase Storage Bucket 'avatars'
+router.post('/avatar', authMiddleware, async (req: AuthRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const { imageBase64, mimeType = 'image/jpeg' } = req.body;
+  if (!imageBase64) {
+    return res.status(400).json({ success: false, error: 'Image data is required' });
+  }
+
+  try {
+    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+    const filename = `${req.user.id}-${Date.now()}.jpg`;
+
+    // Try uploading to Supabase Storage bucket 'avatars'
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filename, buffer, {
+        contentType: mimeType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      // Create bucket if it doesn't exist
+      await supabase.storage.createBucket('avatars', { public: true });
+      const { data: retryData, error: retryError } = await supabase.storage
+        .from('avatars')
+        .upload(filename, buffer, {
+          contentType: mimeType,
+          upsert: true,
+        });
+
+      if (retryError) {
+        // Fallback to data URI if storage bucket creation fails
+        const dataUrl = `data:${mimeType};base64,${cleanBase64}`;
+        return res.json({ success: true, avatar_url: dataUrl });
+      }
+    }
+
+    // Get public URL of uploaded photo in Supabase Storage
+    const { data: publicUrlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filename);
+
+    const avatarUrl = publicUrlData.publicUrl;
+
+    return res.json({
+      success: true,
+      avatar_url: avatarUrl,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Failed to upload avatar' });
   }
 });
 
@@ -275,70 +386,6 @@ router.delete('/account', authMiddleware, async (req: AuthRequest, res: Response
     return res.json({ success: true });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
-  }
-});
-
-// 5. Upload profile avatar to Supabase Storage bucket 'avatars'
-router.post('/upload-avatar', authMiddleware, async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const { base64Image, mimeType } = req.body;
-  if (!base64Image) {
-    return res.status(400).json({ success: false, error: 'base64Image is required' });
-  }
-
-  try {
-    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-    const buffer = Buffer.from(base64Data, 'base64');
-    const fileName = `avatar_${req.user.id}_${Date.now()}.jpg`;
-
-    // Ensure 'avatars' storage bucket exists in Supabase
-    try {
-      const { data: buckets } = await supabase.storage.listBuckets();
-      if (!buckets?.find((b) => b.name === 'avatars')) {
-        await supabase.storage.createBucket('avatars', { public: true });
-      }
-    } catch (bErr) {
-      console.warn('Bucket check warning:', bErr);
-    }
-
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, buffer, {
-        contentType: mimeType || 'image/jpeg',
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error('Storage upload error:', uploadError.message);
-      return res.status(500).json({ success: false, error: uploadError.message });
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(fileName);
-
-    const avatarUrl = publicUrlData.publicUrl;
-
-    // Update avatar_url in profiles table
-    try {
-      await supabase
-        .from('profiles')
-        .update({ avatar_url: avatarUrl })
-        .eq('id', req.user.id);
-    } catch (pErr) {
-      console.warn('Profile avatar_url update warning:', pErr);
-    }
-
-    return res.json({
-      success: true,
-      avatar_url: avatarUrl,
-    });
-  } catch (error: any) {
-    console.error('Avatar upload exception:', error.message);
-    return res.status(500).json({ success: false, error: error.message });
   }
 });
 

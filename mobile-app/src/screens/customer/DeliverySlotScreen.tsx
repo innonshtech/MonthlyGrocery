@@ -44,6 +44,10 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
   const currentSlot = route?.params?.selectedSlot;
   const shopId = route?.params?.shopId;
   const pincode = route?.params?.pincode;
+  const city = route?.params?.city;
+  const area = route?.params?.area;
+
+  const [resolvedShopId, setResolvedShopId] = useState<string | undefined>(shopId);
 
   const [days, setDays] = useState<DayOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,12 +60,18 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
       const params = new URLSearchParams({ days: '4' });
       if (shopId) params.set('shop_id', shopId);
       if (pincode) params.set('pincode', pincode);
+      if (city) params.set('city', city);
+      if (area) params.set('area', area);
 
       const res = await fetch(`${API_BASE}/delivery-slots?${params.toString()}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to load slots');
+      }
+
+      if (data.shop_id) {
+        setResolvedShopId(data.shop_id);
       }
 
       const loadedDays: DayOption[] = data.days || [];
@@ -85,7 +95,7 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, [shopId, pincode, currentSlot?.dateLabel, currentSlot?.date, currentSlot?.timeWindow]);
+  }, [shopId, pincode, city, area, currentSlot?.dateLabel, currentSlot?.date, currentSlot?.timeWindow]);
 
   useEffect(() => {
     loadSlots();
@@ -116,7 +126,7 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
       dateLabel: selectedDate.label,
       timeWindow: selectedWindow.label,
       windowId: selectedWindow.id,
-      shopId: shopId || undefined,
+      shopId: resolvedShopId || shopId || undefined,
     };
 
     navigation.navigate({

@@ -4,10 +4,40 @@ const STATUS_RANK: Record<string, number> = {
   packed: 2,
   packing: 2,
   dispatched: 2,
-  out_for_delivery: 2,
-  delivered: 3,
+  out_for_delivery: 3,
+  delivered: 4,
   cancelled: -1,
 };
+
+export const MERCHANT_ORDER_STATUSES = [
+  'pending',
+  'confirmed',
+  'packed',
+  'out_for_delivery',
+  'delivered',
+  'cancelled',
+] as const;
+
+export function normalizeMerchantOrderStatus(status?: string): string {
+  const value = (status || 'pending').toLowerCase();
+  if (value === 'packing' || value === 'dispatched') return 'packed';
+  return value;
+}
+
+export function resolveMerchantOrderStatus(status?: string): string | null {
+  const normalized = normalizeMerchantOrderStatus(status);
+  return (MERCHANT_ORDER_STATUSES as readonly string[]).includes(normalized) ? normalized : null;
+}
+
+export function getNextMerchantOrderStatus(current?: string): string | null {
+  const flow: Record<string, string> = {
+    pending: 'confirmed',
+    confirmed: 'packed',
+    packed: 'out_for_delivery',
+    out_for_delivery: 'delivered',
+  };
+  return flow[normalizeMerchantOrderStatus(current)] || null;
+}
 
 const CANCELLABLE_STATUSES = new Set(['pending', 'confirmed']);
 
@@ -116,7 +146,8 @@ export function buildStatusTimeline(order: Record<string, any>) {
   const steps = [
     { key: 'confirmed', at: order.confirmed_at || order.created_at, minRank: 1 },
     { key: 'packed', at: order.packed_at, minRank: 2 },
-    { key: 'delivered', at: order.delivered_at, minRank: 3 },
+    { key: 'out_for_delivery', at: order.out_for_delivery_at || order.dispatched_at, minRank: 3 },
+    { key: 'delivered', at: order.delivered_at, minRank: 4 },
   ];
 
   return steps.map((step) => ({
@@ -128,7 +159,8 @@ export function buildStatusTimeline(order: Record<string, any>) {
       rank >= step.minRank &&
       (step.key === 'confirmed' && rank === 1 ||
         step.key === 'packed' && rank === 2 ||
-        step.key === 'delivered' && rank === 3),
+        step.key === 'out_for_delivery' && rank === 3 ||
+        step.key === 'delivered' && rank === 4),
   }));
 }
 
@@ -152,7 +184,7 @@ export function enrichConsumerOrder(order: Record<string, any>) {
     deliver_to_label: resolveDeliverToLabel(order),
     item_count: itemCount,
     status_timeline: buildStatusTimeline(order),
-    is_active: rank >= 1 && rank < 3,
+    is_active: rank >= 1 && rank < 4,
     is_cancelled: order.status === 'cancelled',
     is_delivered: order.status === 'delivered',
     can_cancel: canConsumerCancelOrder(order.status),

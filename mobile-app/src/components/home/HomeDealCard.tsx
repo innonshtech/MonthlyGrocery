@@ -15,7 +15,9 @@ import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 /** Figma B1 Home deals rail — node 542:852 (150×227) */
 export const HOME_DEAL_CARD_WIDTH = 150;
 export const HOME_DEAL_CARD_HEIGHT = 227;
-const INNER_PAD = 8;
+const INNER_PAD_H = 8;
+const INNER_PAD_TOP = 8;
+const INNER_PAD_BOTTOM = 10;
 const IMG_HEIGHT = 96;
 
 type HomeDealCardProps = {
@@ -91,16 +93,18 @@ const styles = StyleSheet.create({
     width: HOME_DEAL_CARD_WIDTH,
     height: HOME_DEAL_CARD_HEIGHT,
     backgroundColor: COLORS.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: COLORS.line,
-    padding: INNER_PAD,
+    paddingTop: INNER_PAD_TOP,
+    paddingHorizontal: INNER_PAD_H,
+    paddingBottom: INNER_PAD_BOTTOM,
     flexDirection: 'column',
   },
   imgWrap: {
-    width: HOME_DEAL_CARD_WIDTH - INNER_PAD * 2,
+    width: HOME_DEAL_CARD_WIDTH - INNER_PAD_H * 2,
     height: IMG_HEIGHT,
-    borderRadius: 8,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -111,7 +115,7 @@ const styles = StyleSheet.create({
     top: 6,
     left: 6,
     backgroundColor: COLORS.marigold500,
-    borderRadius: 5,
+    borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 3,
     minHeight: 20,
@@ -119,8 +123,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   offBadgeTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 10,
+    ...FONTS.muktaSemiBold,
+    fontSize: 11,
     color: '#FFFFFF',
     lineHeight: 14,
   },
@@ -129,15 +133,15 @@ const styles = StyleSheet.create({
     height: 60,
   },
   name: {
-    ...FONTS.balooSemiBold,
-    fontSize: 13,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
-    lineHeight: 16,
+    lineHeight: 20,
     height: 40,
     marginTop: 7,
   },
   unit: {
-    ...FONTS.muktaBold,
+    ...FONTS.muktaMedium,
     fontSize: 12,
     color: COLORS.ink500,
     lineHeight: 16,
@@ -155,31 +159,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   price: {
-    ...FONTS.balooBold,
-    fontSize: 15,
+    ...FONTS.muktaMedium,
+    fontSize: 14,
     color: COLORS.ink900,
     lineHeight: 20,
   },
   mrp: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
+    ...FONTS.muktaSemiBold,
+    fontSize: 11,
     color: COLORS.ink300,
     lineHeight: 14,
     textDecorationLine: 'line-through',
   },
   addBtn: {
-    width: 57,
+    paddingHorizontal: 16,
     height: 32,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.green700,
+    backgroundColor: COLORS.green100,
     borderRadius: RADIUS.pill,
     justifyContent: 'center',
     alignItems: 'center',
   },
   addTxt: {
-    ...FONTS.balooBold,
-    fontSize: 12,
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
     color: COLORS.green700,
     lineHeight: 16,
   },

@@ -48,41 +48,43 @@ export const RADIUS = {
 export const FONTS = {
   // Baloo 2 variants
   balooExtraBold: Platform.select({
-    ios: { fontFamily: 'Baloo 2', fontWeight: '800' as const },
-    android: { fontFamily: 'Baloo 2', fontWeight: 'bold' as const },
+    ios: { fontFamily: 'Baloo2-ExtraBold', fontWeight: '800' as const },
+    android: { fontFamily: 'Baloo2-ExtraBold', fontWeight: 'normal' as const },
   }),
   balooBold: Platform.select({
-    ios: { fontFamily: 'Baloo 2', fontWeight: '700' as const },
-    android: { fontFamily: 'Baloo 2', fontWeight: 'bold' as const },
+    ios: { fontFamily: 'Baloo2-Bold', fontWeight: '700' as const },
+    android: { fontFamily: 'Baloo2-Bold', fontWeight: 'normal' as const },
   }),
   balooSemiBold: Platform.select({
-    ios: { fontFamily: 'Baloo 2', fontWeight: '600' as const },
-    android: { fontFamily: 'Baloo 2', fontWeight: 'bold' as const },
+    ios: { fontFamily: 'Baloo2-SemiBold', fontWeight: '600' as const },
+    android: { fontFamily: 'Baloo2-SemiBold', fontWeight: 'normal' as const },
   }),
   balooMedium: Platform.select({
-    ios: { fontFamily: 'Baloo 2', fontWeight: '500' as const },
-    android: { fontFamily: 'Baloo 2', fontWeight: 'normal' as const },
+    ios: { fontFamily: 'Baloo2-Medium', fontWeight: '500' as const },
+    android: { fontFamily: 'Baloo2-Medium', fontWeight: 'normal' as const },
   }),
   balooRegular: Platform.select({
-    ios: { fontFamily: 'Baloo 2', fontWeight: '400' as const },
-    android: { fontFamily: 'Baloo 2', fontWeight: 'normal' as const },
+    ios: { fontFamily: 'Baloo2-Regular', fontWeight: '400' as const },
+    android: { fontFamily: 'Baloo2-Regular', fontWeight: 'normal' as const },
   }),
 
   // Mukta variants
   muktaBold: Platform.select({
-    ios: { fontFamily: 'Mukta', fontWeight: '700' as const },
-    android: { fontFamily: 'Mukta', fontWeight: 'bold' as const },
+    ios: { fontFamily: 'Mukta-Bold', fontWeight: '700' as const },
+    android: { fontFamily: 'Mukta-Bold', fontWeight: 'normal' as const },
   }),
   muktaSemiBold: Platform.select({
-    ios: { fontFamily: 'Mukta', fontWeight: '600' as const },
-    android: { fontFamily: 'Mukta', fontWeight: 'bold' as const },
+    ios: { fontFamily: 'Mukta-SemiBold', fontWeight: '600' as const },
+    android: { fontFamily: 'Mukta-SemiBold', fontWeight: 'normal' as const },
   }),
   muktaMedium: Platform.select({
-    ios: { fontFamily: 'Mukta', fontWeight: '500' as const },
-    android: { fontFamily: 'Mukta', fontWeight: 'normal' as const },
+    ios: { fontFamily: 'Mukta-Medium', fontWeight: '500' as const },
+    android: { fontFamily: 'Mukta-Medium', fontWeight: 'normal' as const },
   }),
   muktaRegular: Platform.select({
-    ios: { fontFamily: 'Mukta', fontWeight: '400' as const },
-    android: { fontFamily: 'Mukta', fontWeight: 'normal' as const },
+    ios: { fontFamily: 'Mukta-Regular', fontWeight: '400' as const },
+    android: { fontFamily: 'Mukta-Regular', fontWeight: 'normal' as const },
   }),
 };
+
+

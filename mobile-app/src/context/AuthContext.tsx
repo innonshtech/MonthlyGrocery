@@ -8,6 +8,7 @@ export interface User {
   name: string;
   role: 'consumer' | 'admin' | 'super_admin';
   email?: string;
+  avatar_url?: string;
 }
 
 interface AuthContextType {

@@ -5,30 +5,9 @@ import {
   buildSlotsForShop,
   upsertSlotConfig,
 } from '../services/deliverySlots';
-import { readDb } from '../config/localDb';
+import { resolveShopIdForLocation } from '../services/shopResolution';
 
 const router = Router();
-
-async function resolveShopId(
-  shopIdParam?: string,
-  pincode?: string,
-  areaName?: string
-): Promise<string | null> {
-  if (shopIdParam) return shopIdParam;
-
-  const db = readDb();
-  if (pincode || areaName) {
-    const loc = db.serviceable_locations.find((l) => {
-      if (pincode && l.pincode === pincode) return true;
-      if (areaName && l.area_name.toLowerCase() === areaName.toLowerCase()) return true;
-      return false;
-    });
-    if (loc?.shop_id) return loc.shop_id;
-  }
-
-  const { data: shop } = await supabase.from('shops').select('id').limit(1).maybeSingle();
-  return shop?.id || null;
-}
 
 async function getMerchantShopId(userId: string): Promise<string | null> {
   const { data } = await supabase
@@ -43,11 +22,12 @@ async function getMerchantShopId(userId: string): Promise<string | null> {
 router.get('/', async (req, res) => {
   try {
     const days = Math.min(parseInt(String(req.query.days || '4'), 10) || 4, 14);
-    const shopId = await resolveShopId(
-      req.query.shop_id as string | undefined,
-      req.query.pincode as string | undefined,
-      req.query.area as string | undefined
-    );
+    const shopId = resolveShopIdForLocation({
+      shopId: req.query.shop_id as string | undefined,
+      city: req.query.city as string | undefined,
+      areaName: req.query.area as string | undefined,
+      pincode: req.query.pincode as string | undefined,
+    });
 
     if (!shopId) {
       return res.status(404).json({ success: false, error: 'No active store found for delivery slots' });

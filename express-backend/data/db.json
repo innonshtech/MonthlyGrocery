@@ -127,10 +127,6 @@
     {
       "id": "city-1786686694575",
       "name": "Noida"
-    },
-    {
-      "id": "city-1787551037588",
-      "name": "jharkhand"
     }
   ],
   "areas": [
@@ -183,380 +179,9 @@
       "id": "area-10",
       "city_id": "city-4",
       "name": "Connaught Place"
-    },
-    {
-      "id": "area-11",
-      "city_id": "city-4",
-      "name": "Noida Sec-62"
-    },
-    {
-      "id": "area-1787551059992",
-      "city_id": "city-1787551037588",
-      "name": "ranchi"
     }
   ],
-  "shop_products": [
-    {
-      "id": "sp-seed-0-aeygs",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
-      "selling_price": 150,
-      "discount_percentage": 6,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-1-fw9bs",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "6214394d-03aa-4f2f-a5ed-69fe78fdd565",
-      "selling_price": 255,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-2-4j1skh",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "943618f5-4522-4a10-bfbc-913627988776",
-      "selling_price": 430,
-      "discount_percentage": 17,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-3-pjyzdg",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "3061311c-7c64-459a-ba3f-3ca0ee1659cf",
-      "selling_price": 310,
-      "discount_percentage": 15,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-4-rzanaj",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "cc74fc2e-0eec-4cf3-bbdc-edfbd2cccfea",
-      "selling_price": 265,
-      "discount_percentage": 13,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-5-ochyyp",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "991bd21d-9243-495e-aa11-97ce428680a8",
-      "selling_price": 525,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-6-gn58j8",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "fb290170-c4b1-4e23-976f-59f118fec2e6",
-      "selling_price": 142,
-      "discount_percentage": 21,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-7-lu9w79",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "bda00c37-0a31-49d3-99c8-9a2e1e2e02a9",
-      "selling_price": 135,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-8-v1fdha",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "1f8e9c93-f209-4d74-8991-2323ce029dcc",
-      "selling_price": 649,
-      "discount_percentage": 7,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-9-dzhbcp",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "be825984-4f54-4ba7-9f49-d658cff36fc5",
-      "selling_price": 78,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-10-0u8z33",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "a5e65441-af6e-40eb-a9ef-90bfcd1cfca2",
-      "selling_price": 105,
-      "discount_percentage": 19,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-11-y75w99",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "0f6937c9-4c78-4c9f-bb6c-0c331401931a",
-      "selling_price": 285,
-      "discount_percentage": 16,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-12-c6rk3g",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "64e9e3ec-a77b-46f3-a2e7-17543be1d8c9",
-      "selling_price": 120,
-      "discount_percentage": 20,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-13-usu6a",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "63f4ca5e-3bde-434d-8c1f-4c24a2f2adaa",
-      "selling_price": 380,
-      "discount_percentage": 17,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-14-hg18f",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "ab3121ee-3be3-4c04-aa68-5f6d6f36089d",
-      "selling_price": 245,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-15-dsj70bh",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "e0bc8ff3-7135-427f-bcec-b2fea6c6ec5e",
-      "selling_price": 385,
-      "discount_percentage": 14,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-16-2o25l4",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "4b91550f-bc4a-4706-9f9b-b9ad31d71a35",
-      "selling_price": 180,
-      "discount_percentage": 16,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-17-mvxs6i",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "7e3041cf-e364-44cb-a98c-5b093bc37b9e",
-      "selling_price": 899,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-0-0cee79",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "c36f4620-bb90-4297-8db6-9f7f5ee62123",
-      "selling_price": 409,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-1-2fidsr",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "1d180a34-9b08-4863-9293-889caa1569e3",
-      "selling_price": 809,
-      "discount_percentage": 10,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-2-6vyfvf",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "a86acacf-4d9a-4649-9f07-2cfea6ff6952",
-      "selling_price": 25,
-      "discount_percentage": 12,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-3-emssp2",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "51ba3924-06e0-4a27-b577-91d5cb10ba7e",
-      "selling_price": 553,
-      "discount_percentage": 21,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-4-mkkfch",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "2052e9e6-e111-4aef-b5e3-10106a7c70a2",
-      "selling_price": 420,
-      "discount_percentage": 16,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-5-5aniva",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "0b3392a8-61ff-471d-9bc8-c5b4a7e2140e",
-      "selling_price": 231,
-      "discount_percentage": 23,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-6-wb57vl",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "36c6a9a0-439f-4523-b29c-4245fd2de65c",
-      "selling_price": 248,
-      "discount_percentage": 20,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-7-4dz7w9",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "a1267479-c34f-4f94-827e-41628940f65b",
-      "selling_price": 390,
-      "discount_percentage": 25,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-8-sit4jx",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "87b93b6c-6c7f-486a-91a2-08ee5a6037e5",
-      "selling_price": 405,
-      "discount_percentage": 25,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-9-iowcnp",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "8135a325-532c-4d09-8f5c-407da3372a30",
-      "selling_price": 146,
-      "discount_percentage": 19,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-10-krtw3i",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "ef1bfa61-0f8d-4308-8047-9579df3803be",
-      "selling_price": 612,
-      "discount_percentage": 10,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-11-gljm4h",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "ef2cf9f1-5cc6-445e-9214-0aaa6cca9d9e",
-      "selling_price": 370,
-      "discount_percentage": 12,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-12-tzzrp1",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "9028a9c1-0c21-44d7-84aa-460d5681d174",
-      "selling_price": 206,
-      "discount_percentage": 14,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-13-rtutis",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "78a171d1-447e-4e32-9861-691f2108337d",
-      "selling_price": 116,
-      "discount_percentage": 23,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-14-zs7dzq",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "6d1ae73b-4f9e-43ab-9bf1-8f3716883fa8",
-      "selling_price": 262,
-      "discount_percentage": 18,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-15-k68dwa",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "6bb490e9-1edb-46e2-be3e-eff75d5e9cb1",
-      "selling_price": 96,
-      "discount_percentage": 20,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-16-x3vrj1",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "889511d3-1ae9-404b-a17c-559d82ec2864",
-      "selling_price": 125,
-      "discount_percentage": 22,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-seed-17-i4yp8g",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "product_id": "1ffad00f-7b46-4054-9a0e-338caed0718c",
-      "selling_price": 165,
-      "discount_percentage": 25,
-      "stock": 100,
-      "available": true,
-      "status": "approved"
-    }
-  ],
+  "shop_products": [],
   "categories": [
     {
       "id": "cat-1",
@@ -652,7 +277,7 @@
       "delivery_slot_window_id": "w1",
       "delivery_otp": "9961",
       "payment_method": "COD",
-      "status": "confirmed",
+      "status": "delivered",
       "created_at": "2026-08-27T08:28:25.683Z",
       "order_items": [
         {
@@ -663,7 +288,12 @@
           "unit": "1 unit",
           "image_url": ""
         }
-      ]
+      ],
+      "packed_at": "2026-09-03T09:40:20.419Z",
+      "confirmed_at": "2026-08-27T08:28:25.683Z",
+      "out_for_delivery_at": "2026-09-03T09:40:20.519Z",
+      "dispatched_at": "2026-09-03T09:40:20.519Z",
+      "delivered_at": "2026-09-03T09:40:20.583Z"
     },
     {
       "id": "18ebd1c0-1e5f-45ce-acc9-29fa871ad5fa",
@@ -677,7 +307,7 @@
       "delivery_slot": "Tomorrow, Morning 7:00 AM - 10:00 AM",
       "delivery_otp": "5989",
       "payment_method": "UPI",
-      "status": "confirmed",
+      "status": "out_for_delivery",
       "created_at": "2026-08-24T11:29:07.610Z",
       "order_items": [
         {
@@ -688,7 +318,11 @@
           "unit": "1 unit",
           "image_url": ""
         }
-      ]
+      ],
+      "confirmed_at": "2026-09-03T09:42:24.258Z",
+      "packed_at": "2026-09-03T09:42:24.456Z",
+      "out_for_delivery_at": "2026-09-03T09:42:24.574Z",
+      "dispatched_at": "2026-09-03T09:42:24.574Z"
     },
     {
       "id": "a2536e3f-5329-4415-9979-b43e8c128b1b",
@@ -716,7 +350,34 @@
       ]
     }
   ],
-  "new_product_requests": [],
+  "new_product_requests": [
+    {
+      "id": "req-1788432756599-ebetc3d",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "name": "Kaju",
+      "category": "Dry Fruits",
+      "brand": "Tata",
+      "unit": "1 kg",
+      "quantity_value": 1,
+      "quantity_unit": "kg",
+      "mrp": 250,
+      "status": "pending",
+      "created_at": "2026-09-03T10:52:36.599Z"
+    },
+    {
+      "id": "req-1788433256528-82iqfot",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "name": "Test Almond",
+      "category": "Dry Fruits",
+      "brand": "Local",
+      "unit": "500 g",
+      "quantity_value": 500,
+      "quantity_unit": "g",
+      "mrp": 120,
+      "status": "pending",
+      "created_at": "2026-09-03T11:00:56.528Z"
+    }
+  ],
   "delivery_slot_configs": [
     {
       "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
@@ -1552,5 +1213,61 @@
     },
     "load_error_message": "Could not load system state screen. Please try again.",
     "retry_label": "Retry"
-  }
+  },
+  "states": [
+    {
+      "id": "state-mh",
+      "name": "Maharashtra"
+    },
+    {
+      "id": "state-dl",
+      "name": "Delhi NCR"
+    },
+    {
+      "id": "state-1788431720300",
+      "name": "Gujrat"
+    }
+  ],
+  "districts": [
+    {
+      "id": "dist-pune",
+      "state_id": "state-mh",
+      "name": "Pune"
+    },
+    {
+      "id": "dist-mumbai",
+      "state_id": "state-mh",
+      "name": "Mumbai"
+    },
+    {
+      "id": "dist-thane",
+      "state_id": "state-mh",
+      "name": "Thane"
+    },
+    {
+      "id": "dist-nashik",
+      "state_id": "state-mh",
+      "name": "Nashik"
+    },
+    {
+      "id": "dist-new-delhi",
+      "state_id": "state-dl",
+      "name": "New Delhi"
+    },
+    {
+      "id": "dist-gb-nagar",
+      "state_id": "state-dl",
+      "name": "Gautam Buddh Nagar"
+    }
+  ],
+  "shop_territories": [
+    {
+      "shop_id": "e343ff09-2683-42cf-9d40-f0570c6b695e",
+      "state_id": "state-mh",
+      "state_name": "Maharashtra",
+      "district_id": "dist-pune",
+      "district_name": "Pune",
+      "city": "Ravet"
+    }
+  ]
 }

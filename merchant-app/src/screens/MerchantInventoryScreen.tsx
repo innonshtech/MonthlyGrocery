@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,7 +14,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StatusBar
+  StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
@@ -24,9 +25,11 @@ export default function MerchantInventoryScreen() {
   const [products, setProducts] = useState<any[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [shopName, setShopName] = useState('');
 
   // Edit Modal States
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -40,45 +43,58 @@ export default function MerchantInventoryScreen() {
 
   const [categories, setCategories] = useState<string[]>(['All']);
 
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/products/categories`);
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setCategories(['All', ...(data.categories || [])]);
-      }
-    } catch (err) {
-      console.error('Failed to fetch categories:', err);
+  const fetchInventory = useCallback(async (isRefresh = false) => {
+    if (!token) {
+      setLoading(false);
+      return;
     }
-  };
 
-  const fetchInventory = async () => {
-    setLoading(true);
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError('');
     try {
       const res = await fetch(`${API_BASE}/admin/shop-products`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        const approvedProducts = (data.shop_products || []).filter((sp: any) => sp.status === 'approved');
+        const approvedProducts = (data.shop_products || []).filter(
+          (sp: any) => sp.status === 'approved',
+        );
         setProducts(approvedProducts);
+        setShopName(data.shop_name || '');
       } else {
+        setProducts([]);
         setError(data.error || 'Failed to fetch inventory');
       }
     } catch (err) {
+      setProducts([]);
       setError('Connection error. Is the server running on port 8001?');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchInventory();
-    fetchCategories();
-  }, []);
+  }, [fetchInventory]);
+
+  useEffect(() => {
+    const productCategories = Array.from(
+      new Set(products.map((p) => p.primary_category).filter(Boolean)),
+    ).sort();
+    const nextCategories = ['All', ...productCategories];
+    setCategories(nextCategories);
+    if (activeCategory !== 'All' && !productCategories.includes(activeCategory)) {
+      setActiveCategory('All');
+    }
+  }, [products, activeCategory]);
 
   useEffect(() => {
     let out = [...products];
@@ -116,9 +132,9 @@ export default function MerchantInventoryScreen() {
         },
         body: JSON.stringify({
           product_id: productId,
-          selling_price: targetProd ? targetProd.selling_price : 0,
-          discount_percentage: targetProd ? targetProd.discount_percentage : 0,
-          stock: targetProd ? targetProd.stock : 100,
+          selling_price: targetProd?.selling_price ?? 0,
+          discount_percentage: targetProd?.discount_percentage ?? 0,
+          stock: targetProd?.stock ?? 0,
           available: nextAvailable
         })
       });
@@ -306,11 +322,15 @@ export default function MerchantInventoryScreen() {
       <StatusBar barStyle="dark-content" />
       {/* Header */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Store Inventory</Text>
-          <Text style={styles.headerSubtitle}>Manage item prices, available stock & visibility</Text>
+          <Text style={styles.headerSubtitle}>
+            {shopName
+              ? `${shopName} · ${products.length} SKU${products.length === 1 ? '' : 's'}`
+              : 'Manage item prices, stock & visibility'}
+          </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchInventory}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchInventory(true)}>
           <Text style={styles.refreshText}>🔄</Text>
         </TouchableOpacity>
       </View>
@@ -326,25 +346,27 @@ export default function MerchantInventoryScreen() {
         />
       </View>
 
-      {/* Categories Filter Tabs */}
-      <View style={styles.categoriesWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
-          {categories.map((cat) => {
-            const isSelected = activeCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.catChip, isSelected && styles.catChipSelected]}
-                onPress={() => setActiveCategory(cat)}
-              >
-                <Text style={[styles.catChipText, isSelected && styles.catChipTextSelected]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {/* Categories Filter Tabs — only categories present in this store's inventory */}
+      {categories.length > 1 ? (
+        <View style={styles.categoriesWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            {categories.map((cat) => {
+              const isSelected = activeCategory === cat;
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.catChip, isSelected && styles.catChipSelected]}
+                  onPress={() => setActiveCategory(cat)}
+                >
+                  <Text style={[styles.catChipText, isSelected && styles.catChipTextSelected]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {/* Product List */}
       {loading ? (
@@ -355,25 +377,32 @@ export default function MerchantInventoryScreen() {
       ) : error ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchInventory}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchInventory()}>
             <Text style={styles.retryBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : filteredProducts.length === 0 ? (
         <View style={styles.centerContainer}>
           <Text style={{ fontSize: 44, marginBottom: 10 }}>📦</Text>
-          <Text style={styles.emptyTitle}>No SKUs Available</Text>
+          <Text style={styles.emptyTitle}>
+            {search.trim() ? 'No matching SKUs' : 'No inventory yet'}
+          </Text>
           <Text style={styles.emptySub}>
-            {search.trim() ? 'No products match your search query.' : 'Browse the Master Catalog tab to add SKUs to your shop.'}
+            {search.trim()
+              ? 'No products match your search query.'
+              : 'Go to the Catalog tab and add SKUs to your store. Only products you add will appear here.'}
           </Text>
         </View>
       ) : (
         <FlatList
           data={filteredProducts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => item.id || item.product_id || `inv-${index}`}
           renderItem={renderInventoryItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchInventory(true)} colors={['#22C55E']} />
+          }
         />
       )}
 

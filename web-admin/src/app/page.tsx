@@ -27,16 +27,31 @@ import {
   Home
 } from 'lucide-react';
 import { PACK_UNIT_OPTIONS, resolvePackUnitLabel, packUnitPayloadFromInput } from '../lib/packUnits';
+import { apiFetch, clearAdminSession } from '../utils/api';
 
 interface Shop {
   id: string;
   shop_name: string;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
+  state_name?: string | null;
+  district_name?: string | null;
+  city?: string | null;
   profiles: {
     name: string;
     phone: string;
   };
+}
+
+interface AdminState {
+  id: string;
+  name: string;
+}
+
+interface AdminDistrict {
+  id: string;
+  state_id: string;
+  name: string;
 }
 
 interface ServiceableLocation {
@@ -297,6 +312,15 @@ export default function DashboardPage() {
   const [regShopName, setRegShopName] = useState('');
   const [regOwnerName, setRegOwnerName] = useState('');
   const [regOwnerMobile, setRegOwnerMobile] = useState('');
+  const [regStateId, setRegStateId] = useState('');
+  const [regDistrictId, setRegDistrictId] = useState('');
+  const [regCity, setRegCity] = useState('');
+  const [adminStates, setAdminStates] = useState<AdminState[]>([]);
+  const [adminDistricts, setAdminDistricts] = useState<AdminDistrict[]>([]);
+  const [regDistrictOptions, setRegDistrictOptions] = useState<AdminDistrict[]>([]);
+  const [newStateName, setNewStateName] = useState('');
+  const [newDistrictName, setNewDistrictName] = useState('');
+  const [selectedStateForDistrict, setSelectedStateForDistrict] = useState('');
 
   // Super Admin Coupons States
   const [couponsList, setCouponsList] = useState<any[]>([]);
@@ -352,7 +376,7 @@ export default function DashboardPage() {
   const [offersCouponsDraft, setOffersCouponsDraft] = useState<OffersCouponsScreenConfig | null>(null);
   const [offersCouponsSaving, setOffersCouponsSaving] = useState(false);
 
-  // 1. Guard check on mount
+  // 1. Guard check on mount — validate token against local backend
   useEffect(() => {
     const savedToken = localStorage.getItem('@admin_token');
     const savedUserStr = localStorage.getItem('@admin_user');
@@ -360,9 +384,32 @@ export default function DashboardPage() {
       router.replace('/login');
       return;
     }
-    setToken(savedToken);
-    setUser(JSON.parse(savedUserStr));
+
+    apiFetch('/auth/me')
+      .then((data) => {
+        if (data.user?.role !== 'super_admin') {
+          clearAdminSession();
+          router.replace('/login');
+          return;
+        }
+        setToken(savedToken);
+        setUser(data.user || JSON.parse(savedUserStr));
+      })
+      .catch(() => {
+        clearAdminSession();
+        router.replace('/login');
+      });
   }, [router]);
+
+  useEffect(() => {
+    if (!regStateId) {
+      setRegDistrictOptions([]);
+      setRegDistrictId('');
+      return;
+    }
+    setRegDistrictOptions(adminDistricts.filter((d) => d.state_id === regStateId));
+    setRegDistrictId('');
+  }, [regStateId, adminDistricts]);
 
   // Fetch data depending on active tab
   const fetchData = async () => {
@@ -371,44 +418,32 @@ export default function DashboardPage() {
     setError('');
     try {
       if (activeTab === 'shops' || activeTab === 'locations') {
-        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/shops/all', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setShops(data.shops);
-        }
+        const data = await apiFetch('/shops/all');
+        setShops(data.shops);
 
-        // Fetch master catalogue to populate modal dropdown
-        const masterRes = await fetch('https://monthly-grocery-rust.vercel.app/api/products/master', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const masterData = await masterRes.json();
-        if (masterRes.ok && masterData.success) {
-          setMasterProductsList(masterData.products || []);
-        }
+        const masterData = await apiFetch('/products/master');
+        setMasterProductsList(masterData.products || []);
+      }
+
+      if (activeTab === 'shops' || activeTab === 'locations' || activeTab === 'cities-areas') {
+        const statesData = await apiFetch('/admin/states');
+        setAdminStates(statesData.states || []);
+
+        const districtsData = await apiFetch('/admin/districts');
+        setAdminDistricts(districtsData.districts || []);
       }
 
       if (activeTab === 'locations' || activeTab === 'cities-areas') {
-        const resCities = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/cities');
-        const dataCities = await resCities.json();
-        if (resCities.ok && dataCities.success) {
-          setCities(dataCities.cities);
-        }
+        const dataCities = await apiFetch('/admin/cities');
+        setCities(dataCities.cities || []);
 
-        const resAreas = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/areas');
-        const dataAreas = await resAreas.json();
-        if (resAreas.ok && dataAreas.success) {
-          setAreas(dataAreas.areas);
-        }
+        const dataAreas = await apiFetch('/admin/areas');
+        setAreas(dataAreas.areas || []);
       }
 
       if (activeTab === 'locations') {
-        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/locations');
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setLocations(data.locations);
-        }
+        const data = await apiFetch('/admin/locations');
+        setLocations(data.locations || []);
       }
 
       if (activeTab === 'banners') {
@@ -480,13 +515,8 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'sku-requests') {
-        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/sku-requests', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setSkuRequests(data.requests);
-        }
+        const data = await apiFetch('/admin/sku-requests');
+        setSkuRequests(data.requests || []);
       }
 
       if (activeTab === 'categories-admin') {
@@ -554,18 +584,10 @@ export default function DashboardPage() {
   const handleUpdateShopStatus = async (shopId: string, status: 'approved' | 'rejected') => {
     if (!token) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/shops/${shopId}/status`, {
+      await apiFetch(`/shops/${shopId}/status`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to update status');
-      }
       fetchData();
     } catch (err: any) {
       alert(err.message || 'Error updating status');
@@ -580,32 +602,23 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/locations', {
+      const data = await apiFetch('/admin/locations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           city: locCity.trim(),
           area_name: locArea.trim(),
           pincode: locPin.trim(),
-          shop_id: locShop || null
-        })
+          shop_id: locShop || null,
+        }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setLocations(data.locations);
-        setLocCity('');
-        setLocArea('');
-        setLocPin('');
-        setLocShop('');
-        alert('Location zone saved successfully!');
-      } else {
-        alert(data.error || 'Failed to save location');
-      }
-    } catch (err) {
-      alert('Error creating location');
+      setLocations(data.locations || []);
+      setLocCity('');
+      setLocArea('');
+      setLocPin('');
+      setLocShop('');
+      alert('Location zone saved successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Error creating location');
     }
   };
 
@@ -614,16 +627,10 @@ export default function DashboardPage() {
     if (!token) return;
     if (!confirm('Are you sure you want to delete this delivery zone?')) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/locations/${locId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setLocations(data.locations);
-      }
-    } catch (err) {
-      alert('Failed to delete locality');
+      const data = await apiFetch(`/admin/locations/${locId}`, { method: 'DELETE' });
+      setLocations(data.locations || []);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete locality');
     }
   };
 
@@ -635,46 +642,29 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/cities', {
+      const data = await apiFetch('/admin/cities', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name: newCityName.trim() })
+        body: JSON.stringify({ name: newCityName.trim() }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setCities(data.cities);
-        setNewCityName('');
-        alert('City registered successfully!');
-      } else {
-        alert(data.error || 'Failed to register city');
-      }
-    } catch (err) {
-      alert('Error creating city');
+      setCities(data.cities || []);
+      setNewCityName('');
+      alert('City registered successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Error creating city');
     }
   };
 
   const handleDeleteCity = async (cityId: string) => {
-    if (!token) return;
     if (!confirm('Are you sure you want to delete this city? This will also delete all registered areas under it.')) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/cities/${cityId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setCities(data.cities);
-        const resAreas = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/areas');
-        const dataAreas = await resAreas.json();
-        if (resAreas.ok && dataAreas.success) {
-          setAreas(dataAreas.areas);
-        }
+      const data = await apiFetch(`/admin/cities/${cityId}`, { method: 'DELETE' });
+      setCities(data.cities || []);
+      setAreas(data.areas || []);
+      if (selectedCityId === cityId) {
+        setSelectedCityId('');
       }
-    } catch (err) {
-      alert('Failed to delete city');
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete city');
     }
   };
 
@@ -686,41 +676,25 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/areas', {
+      const data = await apiFetch('/admin/areas', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ city_id: selectedCityId, name: newAreaName.trim() })
+        body: JSON.stringify({ city_id: selectedCityId, name: newAreaName.trim() }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setAreas(data.areas);
-        setNewAreaName('');
-        alert('Area/locality registered successfully!');
-      } else {
-        alert(data.error || 'Failed to register area');
-      }
-    } catch (err) {
-      alert('Error creating area');
+      setAreas(data.areas || []);
+      setNewAreaName('');
+      alert('Area/locality registered successfully!');
+    } catch (err: any) {
+      alert(err.message || 'Error creating area');
     }
   };
 
   const handleDeleteArea = async (areaId: string) => {
-    if (!token) return;
     if (!confirm('Are you sure you want to delete this area?')) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/areas/${areaId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setAreas(data.areas);
-      }
-    } catch (err) {
-      alert('Failed to delete area');
+      const data = await apiFetch(`/admin/areas/${areaId}`, { method: 'DELETE' });
+      setAreas(data.areas || []);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete area');
     }
   };
 
@@ -728,23 +702,14 @@ export default function DashboardPage() {
   const handleUpdateSkuRequestStatus = async (requestId: string, status: 'approved' | 'rejected') => {
     if (!token) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/sku-requests/${requestId}/status`, {
+      const data = await apiFetch(`/admin/sku-requests/${requestId}/status`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert(`SKU request ${status} successfully!`);
-        fetchData();
-      } else {
-        alert(data.error || 'Failed to update request status');
-      }
-    } catch (err) {
-      alert('Error updating SKU status');
+      alert(data.message || `SKU request ${status} successfully!`);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update SKU request status');
     }
   };
 
@@ -1049,13 +1014,8 @@ export default function DashboardPage() {
   // Fetch Shop Inventory Handler
   const fetchShopInventory = async (shopId: string) => {
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/shop-inventory/${shopId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setShopInventoryList(data.shop_products || []);
-      }
+      const data = await apiFetch(`/admin/shop-inventory/${shopId}`);
+      setShopInventoryList(data.shop_products || []);
     } catch (err) {
       console.error('Failed to fetch shop inventory:', err);
     }
@@ -1066,21 +1026,16 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!selectedShopForInventory || !assignProdId || !assignProdPrice) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
+      const data = await apiFetch(`/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           product_id: assignProdId,
           selling_price: assignProdPrice,
           discount_percentage: assignProdDiscount || 0,
-          stock: assignProdStock || 100
-        })
+          stock: assignProdStock || 100,
+        }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         alert('Product assigned directly to shop!');
         setAssignProdId('');
         setAssignProdPrice('');
@@ -1099,20 +1054,12 @@ export default function DashboardPage() {
   const handleUnassignShopProduct = async (mappingId: string) => {
     if (!confirm('Are you sure you want to unassign this product from this shop?')) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/shop-inventory/${mappingId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        if (selectedShopForInventory) {
-          fetchShopInventory(selectedShopForInventory.id);
-        }
-      } else {
-        alert(data.error || 'Failed to unassign product');
+      await apiFetch(`/admin/shop-inventory/${mappingId}`, { method: 'DELETE' });
+      if (selectedShopForInventory) {
+        fetchShopInventory(selectedShopForInventory.id);
       }
-    } catch (err) {
-      alert('Error unassigning product');
+    } catch (err: any) {
+      alert(err.message || 'Error unassigning product');
     }
   };
 
@@ -1202,38 +1149,111 @@ export default function DashboardPage() {
     }
   };
 
+  const handleAddState = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !newStateName.trim()) {
+      alert('Please enter a state name');
+      return;
+    }
+    try {
+      const data = await apiFetch('/admin/states', {
+        method: 'POST',
+        body: JSON.stringify({ name: newStateName.trim() }),
+      });
+      setAdminStates(data.states || []);
+      setNewStateName('');
+      alert('State added successfully');
+    } catch (err: any) {
+      alert(err.message || 'Failed to add state');
+    }
+  };
+
+  const handleDeleteState = async (stateId: string) => {
+    if (!confirm('Delete this state and all its districts?')) return;
+    try {
+      const data = await apiFetch(`/admin/states/${stateId}`, { method: 'DELETE' });
+      setAdminStates(data.states || []);
+      setAdminDistricts(data.districts || []);
+      if (regStateId === stateId) {
+        setRegStateId('');
+        setRegDistrictId('');
+      }
+      if (selectedStateForDistrict === stateId) {
+        setSelectedStateForDistrict('');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete state');
+    }
+  };
+
+  const handleAddDistrict = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !selectedStateForDistrict || !newDistrictName.trim()) {
+      alert('Please select a state and enter a district name');
+      return;
+    }
+    try {
+      const data = await apiFetch('/admin/districts', {
+        method: 'POST',
+        body: JSON.stringify({
+          state_id: selectedStateForDistrict,
+          name: newDistrictName.trim(),
+        }),
+      });
+      setAdminDistricts(data.districts || []);
+      setNewDistrictName('');
+      alert('District added successfully');
+    } catch (err: any) {
+      alert(err.message || 'Failed to add district');
+    }
+  };
+
+  const handleDeleteDistrict = async (districtId: string) => {
+    if (!confirm('Delete this district?')) return;
+    try {
+      const data = await apiFetch(`/admin/districts/${districtId}`, { method: 'DELETE' });
+      setAdminDistricts(data.districts || []);
+      if (regDistrictId === districtId) {
+        setRegDistrictId('');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete district');
+    }
+  };
+
   // Store registration handler
   const handleRegisterShop = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !regShopName.trim() || !regOwnerName.trim() || !regOwnerMobile.trim()) {
-      alert('Please fill out all fields');
+      alert('Please fill out all store and owner fields');
+      return;
+    }
+    if (!regStateId || !regDistrictId || !regCity.trim()) {
+      alert('Please select state, district, and enter the city for merchant access');
       return;
     }
     try {
-      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/shops/register', {
+      const data = await apiFetch('/shops/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           shop_name: regShopName.trim(),
           owner_name: regOwnerName.trim(),
-          owner_mobile: regOwnerMobile.trim()
-        })
+          owner_mobile: regOwnerMobile.trim(),
+          state_id: regStateId,
+          district_id: regDistrictId,
+          city: regCity.trim(),
+        }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert('Store and owner profile registered successfully!');
-        setRegShopName('');
-        setRegOwnerName('');
-        setRegOwnerMobile('');
-        fetchData();
-      } else {
-        alert(data.error || 'Failed to register store');
-      }
-    } catch (err) {
-      alert('Error creating store');
+      alert('Store and owner profile registered successfully!');
+      setRegShopName('');
+      setRegOwnerName('');
+      setRegOwnerMobile('');
+      setRegStateId('');
+      setRegDistrictId('');
+      setRegCity('');
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to register store');
     }
   };
 
@@ -1580,8 +1600,7 @@ export default function DashboardPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('@admin_token');
-    localStorage.removeItem('@admin_user');
+    clearAdminSession();
     router.replace('/login');
   };
 
@@ -1833,6 +1852,7 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
                       <th className="pb-3">Store Name</th>
+                      <th className="pb-3">Territory</th>
                       <th className="pb-3">Owner Contact</th>
                       <th className="pb-3">Status</th>
                       <th className="pb-3 text-right">Actions</th>
@@ -1842,6 +1862,16 @@ export default function DashboardPage() {
                     {shops.map((shop) => (
                       <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
                         <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
+                        <td className="py-4 pr-3">
+                          {shop.state_name ? (
+                            <>
+                              <p className="text-slate-200 text-sm">{shop.state_name}</p>
+                              <p className="text-xs text-slate-500">{shop.district_name} · {shop.city || '—'}</p>
+                            </>
+                          ) : (
+                            <span className="text-slate-500 italic text-xs">Not assigned</span>
+                          )}
+                        </td>
                         <td className="py-4 pr-3">
                           <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
                           <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
@@ -1894,6 +1924,13 @@ export default function DashboardPage() {
                         </td>
                       </tr>
                     ))}
+                    {shops.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-slate-500 italic">
+                          No stores registered yet. Use the form on the right to add a merchant.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1924,6 +1961,47 @@ export default function DashboardPage() {
                     value={regOwnerName}
                     onChange={(e) => setRegOwnerName(e.target.value)}
                   />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">State</label>
+                  <select
+                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regStateId}
+                    onChange={(e) => setRegStateId(e.target.value)}
+                  >
+                    <option value="">Select state...</option>
+                    {adminStates.map((state) => (
+                      <option key={state.id} value={state.id}>{state.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">District</label>
+                  <select
+                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none disabled:opacity-50"
+                    value={regDistrictId}
+                    onChange={(e) => setRegDistrictId(e.target.value)}
+                    disabled={!regStateId}
+                  >
+                    <option value="">{regStateId ? 'Select district...' : 'Choose state first'}</option>
+                    {regDistrictOptions.map((district) => (
+                      <option key={district.id} value={district.id}>{district.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">City (type manually)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Pimpri, Wakad, Ranchi City"
+                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={regCity}
+                    onChange={(e) => setRegCity(e.target.value)}
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">You decide which city this merchant serves inside the selected district.</p>
                 </div>
 
                 <div>
@@ -1996,6 +2074,13 @@ export default function DashboardPage() {
                         </tr>
                       );
                     })}
+                    {locations.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-slate-500 italic">
+                          No delivery zones mapped yet. Register cities and areas first, then add a zone here.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -2758,7 +2843,123 @@ export default function DashboardPage() {
 
         {/* 7. CITIES & LOCALITIES TAB */}
         {activeTab === 'cities-areas' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl">
+          <div className="space-y-8 max-w-6xl">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-emerald-400" /> Register State
+                </h2>
+
+                <form onSubmit={handleAddState} className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="e.g. Maharashtra"
+                    className="flex-1 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                    value={newStateName}
+                    onChange={(e) => setNewStateName(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className="h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Add
+                  </button>
+                </form>
+
+                <div className="border-t border-slate-850 pt-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Registered States</h3>
+                  <div className="divide-y divide-slate-800/30 max-h-64 overflow-y-auto pr-1">
+                    {adminStates.map((state) => (
+                      <div key={state.id} className="flex justify-between items-center py-3">
+                        <span className="text-sm font-semibold text-slate-200">{state.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteState(state.id)}
+                          className="text-red-400 hover:text-red-500 transition-colors cursor-pointer p-2 -mr-2"
+                          aria-label={`Delete ${state.name}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {adminStates.length === 0 && (
+                      <p className="text-xs text-slate-500 py-4 italic text-center">No states registered yet.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-emerald-400" /> Register District
+                </h2>
+
+                <form onSubmit={handleAddDistrict} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Select State</label>
+                    <select
+                      className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                      value={selectedStateForDistrict}
+                      onChange={(e) => setSelectedStateForDistrict(e.target.value)}
+                    >
+                      <option value="">Choose state...</option>
+                      {adminStates.map((state) => (
+                        <option key={state.id} value={state.id}>{state.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">District Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Pune, Ranchi"
+                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
+                        value={newDistrictName}
+                        onChange={(e) => setNewDistrictName(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" /> Add
+                    </button>
+                  </div>
+                </form>
+
+                <div className="border-t border-slate-850 pt-4">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Registered Districts</h3>
+                  <div className="divide-y divide-slate-800/30 max-h-64 overflow-y-auto pr-1">
+                    {adminDistricts.map((district) => {
+                      const matchedState = adminStates.find((s) => s.id === district.state_id);
+                      return (
+                        <div key={district.id} className="flex justify-between items-center py-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-200">{district.name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{matchedState?.name || 'Unknown State'}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDistrict(district.id)}
+                            className="text-red-400 hover:text-red-500 transition-colors cursor-pointer p-2 -mr-2"
+                            aria-label={`Delete ${district.name}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {adminDistricts.length === 0 && (
+                      <p className="text-xs text-slate-500 py-4 italic text-center">No districts registered yet.</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left: Manage Cities */}
             <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -2788,8 +2989,10 @@ export default function DashboardPage() {
                     <div key={city.id} className="flex justify-between items-center py-3">
                       <span className="text-sm font-semibold text-slate-200">{city.name}</span>
                       <button
+                        type="button"
                         onClick={() => handleDeleteCity(city.id)}
-                        className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
+                        className="text-red-400 hover:text-red-500 transition-colors cursor-pointer p-2 -mr-2"
+                        aria-label={`Delete ${city.name}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -2855,8 +3058,10 @@ export default function DashboardPage() {
                           <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{matchedCity?.name || 'Unknown City'}</p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => handleDeleteArea(area.id)}
-                          className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
+                          className="text-red-400 hover:text-red-500 transition-colors cursor-pointer p-2 -mr-2"
+                          aria-label={`Delete ${area.name}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -2869,6 +3074,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </section>
+          </div>
           </div>
         )}
 
@@ -2909,12 +3115,14 @@ export default function DashboardPage() {
                       </td>
                       <td className="py-4 text-right space-x-2">
                         <button
+                          type="button"
                           onClick={() => handleUpdateSkuRequestStatus(req.id, 'approved')}
                           className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
                         >
                           Approve
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleUpdateSkuRequestStatus(req.id, 'rejected')}
                           className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
                         >

@@ -38,7 +38,7 @@ const formatInr = (n: number) =>
 
 export default function CheckoutScreen({ route, navigation }: any) {
   const { items, minOrderLimit = 2500, appliedCoupon, setAppliedCoupon } = useCart();
-  const { token } = useAuth();
+  const { token, city, area } = useAuth();
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
@@ -136,6 +136,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
       fromCheckout: true,
       shopId,
       pincode: selectedAddress?.pincode,
+      city,
+      area,
     });
   };
 

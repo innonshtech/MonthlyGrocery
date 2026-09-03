@@ -73,7 +73,7 @@ function mapOrderItemsForBasket(orderItems: any[]) {
 }
 
 export default function PaymentMethodScreen({ route, navigation }: any) {
-  const { token } = useAuth();
+  const { token, city, area } = useAuth();
   const { items, clearCart } = useCart();
   const cartSubtotal = items.reduce(
     (sum, i) => sum + (Number(i.product.price) || 0) * (i.quantity || 1),
@@ -122,6 +122,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
       const orderPayload = {
         items: items.map((i) => ({
           product_id: i.product.id,
+          shop_id: i.product.shop_id,
           quantity: i.quantity,
           price: i.product.price,
           name: i.product.name,
@@ -135,6 +136,9 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
         delivery_slot_date: selectedSlot?.date || null,
         delivery_slot_window_id: selectedSlot?.windowId || null,
         shop_id: selectedSlot?.shopId || items[0]?.product?.shop_id || null,
+        city: city || null,
+        area_name: area || null,
+        pincode: selectedAddress?.pincode || null,
         payment_method: 'COD',
         coupon_code: appliedCoupon?.code || null,
         discount_amount: couponDiscount,

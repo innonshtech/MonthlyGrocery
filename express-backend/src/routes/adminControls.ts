@@ -1176,7 +1176,119 @@ router.post('/area-notify', async (req, res) => {
 });
 
 // ==========================================
-// 4. Master Cities & Areas Manager
+// 4. Master States & Districts Manager
+// ==========================================
+
+router.get('/states', async (_req, res) => {
+  try {
+    const db = readDb();
+    const states = (db.states || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    return res.json({ success: true, states });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/districts', async (req, res) => {
+  try {
+    const db = readDb();
+    const stateId = String(req.query.state_id || '').trim();
+    let districts = db.districts || [];
+    if (stateId) {
+      districts = districts.filter((d) => d.state_id === stateId);
+    }
+    districts = districts.slice().sort((a, b) => a.name.localeCompare(b.name));
+    return res.json({ success: true, districts });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/states', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) {
+    return res.status(400).json({ success: false, error: 'State name is required' });
+  }
+
+  try {
+    const db = readDb();
+    if (!db.states) db.states = [];
+    const exists = db.states.some((s) => s.name.toLowerCase() === name.trim().toLowerCase());
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'State is already registered' });
+    }
+
+    db.states.push({
+      id: `state-${Date.now()}`,
+      name: name.trim(),
+    });
+    writeDb(db);
+    return res.json({ success: true, states: db.states });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/districts', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { state_id, name } = req.body;
+  if (!state_id || !name?.trim()) {
+    return res.status(400).json({ success: false, error: 'State and district name are required' });
+  }
+
+  try {
+    const db = readDb();
+    const state = (db.states || []).find((s) => s.id === state_id);
+    if (!state) {
+      return res.status(400).json({ success: false, error: 'Invalid state selected' });
+    }
+
+    if (!db.districts) db.districts = [];
+    const exists = db.districts.some(
+      (d) => d.state_id === state_id && d.name.toLowerCase() === name.trim().toLowerCase(),
+    );
+    if (exists) {
+      return res.status(400).json({ success: false, error: 'District is already registered under this state' });
+    }
+
+    db.districts.push({
+      id: `dist-${Date.now()}`,
+      state_id,
+      name: name.trim(),
+    });
+    writeDb(db);
+    return res.json({ success: true, districts: db.districts });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/states/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  try {
+    const db = readDb();
+    db.states = (db.states || []).filter((s) => s.id !== id);
+    db.districts = (db.districts || []).filter((d) => d.state_id !== id);
+    writeDb(db);
+    return res.json({ success: true, states: db.states, districts: db.districts });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.delete('/districts/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  try {
+    const db = readDb();
+    db.districts = (db.districts || []).filter((d) => d.id !== id);
+    writeDb(db);
+    return res.json({ success: true, districts: db.districts });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// 5. Master Cities & Areas Manager
 // ==========================================
 
 // GET /cities: Get all registered cities (Public)
@@ -1233,7 +1345,7 @@ router.delete('/cities/:id', authMiddleware, requireRole(['super_admin']), async
       );
     }
     writeDb(db);
-    return res.json({ success: true, cities: db.cities });
+    return res.json({ success: true, cities: db.cities, areas: db.areas });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -1361,7 +1473,7 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
     const productIds = shopProds.map(sp => sp.product_id);
     const { data: products, error } = await supabase
       .from('products')
-      .select('id, name, sku, brand, primary_category, image_url, mrp, unit, quantity_value, quantity_unit, short_description, description')
+      .select('id, name, sku, brand, primary_category, image_url, mrp, unit, short_description, description')
       .in('id', productIds);
 
     if (error) {
@@ -1379,14 +1491,22 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
         image_url: p?.image_url || '',
         mrp: p?.mrp || 0,
         unit: resolvePackUnitLabel(p || {}) || p?.unit || '',
-        quantity_value: p?.quantity_value,
-        quantity_unit: p?.quantity_unit,
         short_description: p?.short_description || '',
         description: p?.description || '',
       };
     });
 
-    return res.json({ success: true, shop_products: joined });
+    const { data: shop } = await supabase
+      .from('shops')
+      .select('shop_name')
+      .eq('id', shopId)
+      .maybeSingle();
+
+    return res.json({
+      success: true,
+      shop_name: shop?.shop_name || '',
+      shop_products: joined,
+    });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

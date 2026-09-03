@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import AppIcon from '../components/AppIcon';
 
-export default function MerchantLoginScreen({ navigation }: any) {
+export default function MerchantLoginScreen({ navigation: _navigation }: any) {
   const [mobile, setMobile] = useState('');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -72,9 +72,7 @@ export default function MerchantLoginScreen({ navigation }: any) {
     setLoading(true);
     const res = await verifyOtp(mobile, code, name);
     setLoading(false);
-    if (res.success) {
-      navigation.replace('MerchantDashboard');
-    } else {
+    if (!res.success) {
       setError(res.error || 'Invalid OTP code. Please enter 123456 in dev mode.');
     }
   };

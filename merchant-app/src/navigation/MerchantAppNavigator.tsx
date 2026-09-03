@@ -13,6 +13,7 @@ const Stack = createNativeStackNavigator();
 
 export default function MerchantAppNavigator() {
   const { token, user, loading } = useMerchantAuth();
+  const isAuthenticated = !!(token && user);
 
   if (loading) {
     return (
@@ -23,15 +24,14 @@ export default function MerchantAppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={isAuthenticated ? 'merchant-auth' : 'merchant-guest'}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {token && user ? (
+        {isAuthenticated ? (
           <>
             <Stack.Screen name="MerchantDashboard" component={MerchantTabScreen} />
             <Stack.Screen name="DeliverySlots" component={DeliverySlotsScreen} />
           </>
         ) : (
-          // Unauthenticated Merchant Onboarding & Login
           <>
             <Stack.Screen name="MerchantSplash" component={MerchantSplashScreen} />
             <Stack.Screen name="MerchantLogin" component={MerchantLoginScreen} />

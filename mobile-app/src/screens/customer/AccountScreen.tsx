@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Pressable,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -170,7 +171,9 @@ export default function AccountScreen({ navigation }: any) {
           <>
             <View style={styles.profileCard}>
               <View style={styles.avatarCircle}>
-                {initialLetter ? (
+                {user?.avatar_url ? (
+                  <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
+                ) : initialLetter ? (
                   <Text style={styles.avatarLetter}>{initialLetter}</Text>
                 ) : null}
               </View>
@@ -395,6 +398,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 13,
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
   },
   avatarLetter: {
     ...FONTS.balooBold,

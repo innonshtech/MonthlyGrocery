@@ -304,7 +304,8 @@ router.get('/master', async (req, res) => {
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
-      .order('created_at', { ascending: false });
+      .eq('available', true)
+      .order('name', { ascending: true });
 
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
@@ -319,16 +320,25 @@ router.get('/master', async (req, res) => {
   }
 });
 
-// 1.8 GET /categories: Retrieve unique active product categories configured by Super Admin
+// 1.8 GET /categories: Distinct categories from live master catalogue
 router.get('/categories', async (req, res) => {
   try {
-    const { readDb } = require('../config/localDb');
-    const db = readDb();
-    const categoryNames = (db.categories || []).map((c: any) => c.name);
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('primary_category')
+      .eq('available', true);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    const categoryNames = Array.from(
+      new Set((products || []).map((p: any) => String(p.primary_category || '').trim()).filter(Boolean)),
+    ).sort((a, b) => a.localeCompare(b));
+
     return res.json({
       success: true,
       categories: categoryNames,
-      categoriesFull: db.categories || []
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });

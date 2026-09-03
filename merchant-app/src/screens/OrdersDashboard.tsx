@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,7 +10,8 @@ import {
   Image,
   ScrollView,
   Linking,
-  StatusBar
+  StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
@@ -19,32 +20,90 @@ const STATUS_FILTERS = [
   { key: 'all', label: 'All Orders' },
   { key: 'pending', label: 'Pending' },
   { key: 'confirmed', label: 'Confirmed' },
-  { key: 'packing', label: 'Packing' },
+  { key: 'packed', label: 'Packing' },
   { key: 'out_for_delivery', label: 'Out for Delivery' },
   { key: 'delivered', label: 'Delivered' },
 ];
 
+function normalizeOrderStatus(status?: string): string {
+  const value = (status || 'pending').toLowerCase();
+  if (value === 'packing' || value === 'dispatched') return 'packed';
+  return value;
+}
+
+function matchesStatusFilter(orderStatus: string | undefined, filterKey: string): boolean {
+  if (filterKey === 'all') return true;
+  return normalizeOrderStatus(orderStatus) === filterKey;
+}
+
+function getStatusBadgeStyle(status: string) {
+  switch (normalizeOrderStatus(status)) {
+    case 'pending': return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A', label: 'Pending Approval' };
+    case 'confirmed': return { bg: '#DBEAFE', text: '#2563EB', border: '#BFDBFE', label: 'Order Confirmed' };
+    case 'packed': return { bg: '#E0E7FF', text: '#4F46E5', border: '#C7D2FE', label: 'Packing Items' };
+    case 'out_for_delivery': return { bg: '#FCE7F3', text: '#DB2777', border: '#FBCFE8', label: 'Out for Delivery' };
+    case 'delivered': return { bg: '#DCFCE7', text: '#16A34A', border: '#BBF7D0', label: 'Delivered' };
+    case 'cancelled': return { bg: '#FEE2E2', text: '#DC2626', border: '#FECACA', label: 'Cancelled' };
+    default: return { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB', label: status };
+  }
+}
+
+function resolveCustomerName(order: any): string {
+  return order.profiles?.name || order.consumer_name || 'Customer';
+}
+
+function resolveCustomerPhone(order: any): string | null {
+  const phone = order.profiles?.phone || order.profiles?.mobile || order.consumer_name;
+  if (!phone) return null;
+  const digits = String(phone).replace(/[^\d]/g, '');
+  return digits.length >= 10 ? digits : null;
+}
+
+function resolveDeliveryAddress(order: any): string {
+  return order.delivery_address || order.shipping_address || order.deliver_to_label || 'Address not provided';
+}
+
+function resolveItemName(item: any): string {
+  return item.products?.name || item.product_name || item.name || 'Item';
+}
+
+function resolveItemUnit(item: any): string {
+  return item.products?.unit || item.unit || 'unit';
+}
+
+function resolveItemImage(item: any): string {
+  return item.products?.image_url || item.image_url || '';
+}
+
 export default function OrdersDashboard() {
   const { token } = useMerchantAuth();
   const [orders, setOrders] = useState<any[]>([]);
+  const [shopName, setShopName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = useCallback(async (isRefresh = false) => {
+    if (!token) return;
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError('');
     try {
       const res = await fetch(`${API_BASE}/orders/merchant/all`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setOrders(data.orders || []);
+        setShopName(data.shop_name || '');
       } else {
         setError(data.error || 'Failed to fetch incoming orders');
       }
@@ -52,12 +111,13 @@ export default function OrdersDashboard() {
       setError('Connection error. Is the Express server running on port 8001?');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
     setUpdatingId(orderId);
@@ -66,13 +126,16 @@ export default function OrdersDashboard() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: nextStatus })
+        body: JSON.stringify({ status: nextStatus }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+        const updatedStatus = normalizeOrderStatus(data.order?.status || nextStatus);
+        setOrders((prev) =>
+          prev.map((o) => (o.id === orderId ? { ...o, status: updatedStatus } : o)),
+        );
       } else {
         Alert.alert('Error', data.error || 'Failed to update order status');
       }
@@ -105,29 +168,18 @@ export default function OrdersDashboard() {
     });
   };
 
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'pending': return { bg: '#FEF3C7', text: '#D97706', border: '#FDE68A', label: 'Pending Approval' };
-      case 'confirmed': return { bg: '#DBEAFE', text: '#2563EB', border: '#BFDBFE', label: 'Order Confirmed' };
-      case 'packing': return { bg: '#E0E7FF', text: '#4F46E5', border: '#C7D2FE', label: 'Packing Items' };
-      case 'out_for_delivery': return { bg: '#FCE7F3', text: '#DB2777', border: '#FBCFE8', label: 'Out for Delivery' };
-      case 'delivered': return { bg: '#DCFCE7', text: '#16A34A', border: '#BBF7D0', label: 'Delivered' };
-      case 'cancelled': return { bg: '#FEE2E2', text: '#DC2626', border: '#FECACA', label: 'Cancelled' };
-      default: return { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB', label: status };
-    }
-  };
-
-  const filteredOrders = orders.filter(o => {
-    if (selectedStatusFilter === 'all') return true;
-    return o.status === selectedStatusFilter;
-  });
+  const filteredOrders = orders.filter((o) => matchesStatusFilter(o.status, selectedStatusFilter));
 
   const renderOrderItem = ({ item }: { item: any }) => {
     const isExpanded = expandedOrderId === item.id;
     const badge = getStatusBadgeStyle(item.status);
     const isUpdating = updatingId === item.id;
+    const orderStatus = normalizeOrderStatus(item.status);
+    const customerName = resolveCustomerName(item);
+    const customerPhone = resolveCustomerPhone(item);
+    const deliveryAddress = resolveDeliveryAddress(item);
     const formattedDate = new Date(item.created_at).toLocaleString('en-IN', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
     });
 
     return (
@@ -146,13 +198,15 @@ export default function OrdersDashboard() {
         {/* Customer info card */}
         <View style={styles.customerBox}>
           <View style={styles.customerLeft}>
-            <Text style={styles.customerName}>👤 {item.profiles?.name || 'Customer'}</Text>
-            <Text style={styles.customerPhone}>📞 +91 {item.profiles?.phone ? item.profiles.phone.slice(-10) : 'N/A'}</Text>
+            <Text style={styles.customerName}>👤 {customerName}</Text>
+            <Text style={styles.customerPhone}>
+              📞 {customerPhone ? `+91 ${customerPhone.slice(-10)}` : 'N/A'}
+            </Text>
           </View>
-          {item.profiles?.phone && (
-            <TouchableOpacity 
-              style={styles.callBtn} 
-              onPress={() => handleCallCustomer(item.profiles?.phone)}
+          {customerPhone && (
+            <TouchableOpacity
+              style={styles.callBtn}
+              onPress={() => handleCallCustomer(customerPhone)}
             >
               <Text style={styles.callBtnText}>Call Customer</Text>
             </TouchableOpacity>
@@ -162,7 +216,7 @@ export default function OrdersDashboard() {
         {/* Delivery Address */}
         <View style={styles.addressBox}>
           <Text style={styles.addressLabel}>DELIVERY DESTINATION:</Text>
-          <Text style={styles.addressText}>📍 {item.delivery_address || 'Address not provided'}</Text>
+          <Text style={styles.addressText}>📍 {deliveryAddress}</Text>
         </View>
 
         {/* Order Items List preview / toggle */}
@@ -178,20 +232,24 @@ export default function OrdersDashboard() {
 
         {isExpanded && (
           <View style={styles.expandedItemsList}>
-            {item.order_items?.map((it: any, idx: number) => (
+            {item.order_items?.map((it: any, idx: number) => {
+              const itemName = resolveItemName(it);
+              const itemUnit = resolveItemUnit(it);
+              const itemImage = resolveItemImage(it);
+              return (
               <View key={idx} style={styles.itemRow}>
-                {it.products?.image_url ? (
-                  <Image source={{ uri: it.products.image_url }} style={styles.itemThumb} resizeMode="contain" />
+                {itemImage ? (
+                  <Image source={{ uri: itemImage }} style={styles.itemThumb} resizeMode="contain" />
                 ) : (
                   <View style={styles.itemThumbPlaceholder}><Text>🛒</Text></View>
                 )}
                 <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle} numberOfLines={1}>{it.products?.name || 'Item'}</Text>
-                  <Text style={styles.itemUnitQty}>{it.products?.unit || 'unit'} × {it.quantity}</Text>
+                  <Text style={styles.itemTitle} numberOfLines={1}>{itemName}</Text>
+                  <Text style={styles.itemUnitQty}>{itemUnit} × {it.quantity}</Text>
                 </View>
                 <Text style={styles.itemPrice}>₹{(it.unit_price * it.quantity).toFixed(2)}</Text>
               </View>
-            ))}
+            );})}
           </View>
         )}
 
@@ -201,7 +259,7 @@ export default function OrdersDashboard() {
             <ActivityIndicator size="small" color="#22C55E" style={{ padding: 10 }} />
           ) : (
             <View style={styles.actionBtnRow}>
-              {item.status === 'pending' && (
+              {orderStatus === 'pending' && (
                 <>
                   <TouchableOpacity 
                     style={[styles.btnAction, styles.btnCancel]} 
@@ -218,16 +276,16 @@ export default function OrdersDashboard() {
                 </>
               )}
 
-              {item.status === 'confirmed' && (
+              {orderStatus === 'confirmed' && (
                 <TouchableOpacity 
                   style={[styles.btnAction, styles.btnPacking]} 
-                  onPress={() => handleUpdateStatus(item.id, 'packing')}
+                  onPress={() => handleUpdateStatus(item.id, 'packed')}
                 >
                   <Text style={styles.btnPackingText}>Start Packing ➔</Text>
                 </TouchableOpacity>
               )}
 
-              {item.status === 'packing' && (
+              {orderStatus === 'packed' && (
                 <TouchableOpacity 
                   style={[styles.btnAction, styles.btnDispatch]} 
                   onPress={() => handleUpdateStatus(item.id, 'out_for_delivery')}
@@ -236,7 +294,7 @@ export default function OrdersDashboard() {
                 </TouchableOpacity>
               )}
 
-              {item.status === 'out_for_delivery' && (
+              {orderStatus === 'out_for_delivery' && (
                 <TouchableOpacity 
                   style={[styles.btnAction, styles.btnDelivered]} 
                   onPress={() => handleUpdateStatus(item.id, 'delivered')}
@@ -245,11 +303,11 @@ export default function OrdersDashboard() {
                 </TouchableOpacity>
               )}
 
-              {item.status === 'delivered' && (
+              {orderStatus === 'delivered' && (
                 <Text style={styles.completedNotice}>✓ Order Fulfilled & Closed</Text>
               )}
 
-              {item.status === 'cancelled' && (
+              {orderStatus === 'cancelled' && (
                 <Text style={styles.cancelledNotice}>✕ Order Cancelled</Text>
               )}
             </View>
@@ -266,9 +324,11 @@ export default function OrdersDashboard() {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Live Store Orders</Text>
-          <Text style={styles.headerSubtitle}>Manage incoming customer orders & status updates</Text>
+          <Text style={styles.headerSubtitle}>
+            {shopName ? `${shopName} · ` : ''}Manage incoming customer orders & status updates
+          </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={fetchOrders}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchOrders(true)}>
           <Text style={styles.refreshText}>🔄 Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -277,9 +337,9 @@ export default function OrdersDashboard() {
       <View style={styles.filtersWrapper}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
           {STATUS_FILTERS.map(f => {
-            const count = f.key === 'all' 
-              ? orders.length 
-              : orders.filter(o => o.status === f.key).length;
+            const count = f.key === 'all'
+              ? orders.length
+              : orders.filter((o) => matchesStatusFilter(o.status, f.key)).length;
             const isSelected = selectedStatusFilter === f.key;
             return (
               <TouchableOpacity
@@ -305,7 +365,7 @@ export default function OrdersDashboard() {
       ) : error ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchOrders}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchOrders()}>
             <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -316,7 +376,7 @@ export default function OrdersDashboard() {
           <Text style={styles.emptySub}>
             {selectedStatusFilter === 'all'
               ? 'New orders placed by customers in your serviceable area will appear here live.'
-              : `No orders currently matching "${selectedStatusFilter}" status.`}
+              : `No orders currently matching "${STATUS_FILTERS.find((f) => f.key === selectedStatusFilter)?.label || selectedStatusFilter}" status.`}
           </Text>
         </View>
       ) : (
@@ -326,6 +386,9 @@ export default function OrdersDashboard() {
           renderItem={renderOrderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchOrders(true)} colors={['#22C55E']} />
+          }
         />
       )}
     </View>

@@ -25,7 +25,21 @@ router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: Aut
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    return res.json({ success: true, shops: shops || [] });
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const territoryMap = new Map((db.shop_territories || []).map((t: any) => [t.shop_id, t]));
+
+    const enrichedShops = (shops || []).map((shop: any) => {
+      const territory = territoryMap.get(shop.id);
+      return {
+        ...shop,
+        state_name: territory?.state_name || null,
+        district_name: territory?.district_name || null,
+        city: territory?.city || null,
+      };
+    });
+
+    return res.json({ success: true, shops: enrichedShops });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -78,10 +92,14 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
 
 // 3. POST /register: Create/Register a new shop and owner profile (Super Admin only)
 router.post('/register', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { shop_name, owner_name, owner_mobile } = req.body;
+  const { shop_name, owner_name, owner_mobile, state_id, district_id, city } = req.body;
 
   if (!shop_name || !shop_name.trim() || !owner_name || !owner_name.trim() || !owner_mobile) {
     return res.status(400).json({ success: false, error: 'Shop name, owner name, and owner mobile number are required' });
+  }
+
+  if (!state_id || !district_id || !city?.trim()) {
+    return res.status(400).json({ success: false, error: 'State, district, and city are required for merchant access' });
   }
 
   // Normalize phone (pure digits, 10 digit check)
@@ -91,6 +109,19 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
   }
 
   try {
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb();
+    const state = (db.states || []).find((s: any) => s.id === state_id);
+    const district = (db.districts || []).find((d: any) => d.id === district_id);
+
+    if (!state) {
+      return res.status(400).json({ success: false, error: 'Selected state is invalid' });
+    }
+    if (!district || district.state_id !== state_id) {
+      return res.status(400).json({ success: false, error: 'Selected district is invalid for this state' });
+    }
+
+    const cityName = city.trim();
     // 1. Check if the owner profile already exists in public.profiles (case of returning consumer upgraded to merchant)
     let { data: existingProfile, error: profileError } = await supabase
       .from('profiles')
@@ -152,24 +183,58 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
     }
 
     // 3. Create the new shop
-    const { data: newShop, error: createShopError } = await supabase
+    const shopPayload: Record<string, any> = {
+      owner_id: ownerId,
+      shop_name: shop_name.trim(),
+      status: 'approved',
+    };
+
+    let newShop: any = null;
+    let createShopError: any = null;
+
+    const primaryInsert = await supabase
       .from('shops')
-      .insert({
-        owner_id: ownerId,
-        shop_name: shop_name.trim(),
-        status: 'approved' // Direct Super Admin registration is auto-approved
-      })
+      .insert({ ...shopPayload, city: cityName })
       .select()
       .single();
+
+    if (primaryInsert.error) {
+      const fallbackInsert = await supabase
+        .from('shops')
+        .insert(shopPayload)
+        .select()
+        .single();
+      newShop = fallbackInsert.data;
+      createShopError = fallbackInsert.error;
+    } else {
+      newShop = primaryInsert.data;
+    }
 
     if (createShopError || !newShop) {
       return res.status(500).json({ success: false, error: createShopError?.message || 'Failed to create shop' });
     }
 
+    if (!db.shop_territories) db.shop_territories = [];
+    db.shop_territories = db.shop_territories.filter((t: any) => t.shop_id !== newShop.id);
+    db.shop_territories.push({
+      shop_id: newShop.id,
+      state_id: state.id,
+      state_name: state.name,
+      district_id: district.id,
+      district_name: district.name,
+      city: cityName,
+    });
+    writeDb(db);
+
     return res.json({
       success: true,
       message: 'Store registered successfully',
-      shop: newShop
+      shop: {
+        ...newShop,
+        state_name: state.name,
+        district_name: district.name,
+        city: cityName,
+      },
     });
 
   } catch (error: any) {

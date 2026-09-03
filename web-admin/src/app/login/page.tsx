@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, Shield, ArrowRight, Loader2 } from 'lucide-react';
+import { apiFetch } from '../../utils/api';
 
 export default function LoginPage() {
   const [mobile, setMobile] = useState('');
@@ -11,7 +12,16 @@ export default function LoginPage() {
   const [step, setStep] = useState<1 | 2>(1); // 1: mobile, 2: OTP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    const savedNotice = sessionStorage.getItem('@admin_login_notice');
+    if (savedNotice) {
+      setNotice(savedNotice);
+      sessionStorage.removeItem('@admin_login_notice');
+    }
+  }, []);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,13 +33,11 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/auth/send-otp', {
+      const data = await apiFetch('/auth/send-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile: mobile.trim(), role: 'super_admin' })
+        body: JSON.stringify({ mobile: mobile.trim(), role: 'super_admin' }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || 'Failed to send OTP');
       }
       setStep(2);
@@ -50,19 +58,17 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('https://monthly-grocery-rust.vercel.app/api/auth/verify-otp', {
+      const data = await apiFetch('/auth/verify-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mobile: mobile.trim(),
           code: code.trim(),
           name: name.trim(),
-          role: 'super_admin'
-        })
+          role: 'super_admin',
+        }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      if (!data.success) {
         throw new Error(data.error || 'Verification failed');
       }
 
@@ -94,6 +100,12 @@ export default function LoginPage() {
             <p className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">Super Admin Portal</p>
           </div>
         </div>
+
+        {notice && (
+          <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 rounded-xl">
+            {notice}
+          </div>
+        )}
 
         {step === 1 ? (
           <form onSubmit={handleSendOtp} className="space-y-5">

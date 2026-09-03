@@ -604,6 +604,26 @@ export interface Area {
   name: string;
 }
 
+export interface AdminState {
+  id: string;
+  name: string;
+}
+
+export interface AdminDistrict {
+  id: string;
+  state_id: string;
+  name: string;
+}
+
+export interface ShopTerritory {
+  shop_id: string;
+  state_id: string;
+  state_name: string;
+  district_id: string;
+  district_name: string;
+  city: string;
+}
+
 export interface ShopProduct {
   id: string;
   shop_id: string;
@@ -810,6 +830,9 @@ interface LocalDbSchema {
   area_notify_requests?: AreaNotifyRequest[];
   cities: City[];
   areas: Area[];
+  states: AdminState[];
+  districts: AdminDistrict[];
+  shop_territories: ShopTerritory[];
   shop_products: ShopProduct[];
   categories: Category[];
   coupons: Coupon[];
@@ -911,6 +934,28 @@ const defaultDb: LocalDbSchema = {
     { id: 'area-11', city_id: 'city-4', name: 'Noida Sec-62' },
     { id: 'area-12', city_id: 'city-5', name: 'Gachibowli' },
   ],
+  states: [
+    { id: 'state-mh', name: 'Maharashtra' },
+    { id: 'state-ka', name: 'Karnataka' },
+    { id: 'state-jh', name: 'Jharkhand' },
+    { id: 'state-dl', name: 'Delhi NCR' },
+    { id: 'state-gj', name: 'Gujarat' },
+  ],
+  districts: [
+    { id: 'dist-pune', state_id: 'state-mh', name: 'Pune' },
+    { id: 'dist-mumbai', state_id: 'state-mh', name: 'Mumbai' },
+    { id: 'dist-thane', state_id: 'state-mh', name: 'Thane' },
+    { id: 'dist-nashik', state_id: 'state-mh', name: 'Nashik' },
+    { id: 'dist-bengaluru', state_id: 'state-ka', name: 'Bengaluru Urban' },
+    { id: 'dist-mysuru', state_id: 'state-ka', name: 'Mysuru' },
+    { id: 'dist-ranchi', state_id: 'state-jh', name: 'Ranchi' },
+    { id: 'dist-dhanbad', state_id: 'state-jh', name: 'Dhanbad' },
+    { id: 'dist-new-delhi', state_id: 'state-dl', name: 'New Delhi' },
+    { id: 'dist-gb-nagar', state_id: 'state-dl', name: 'Gautam Buddh Nagar' },
+    { id: 'dist-ahmedabad', state_id: 'state-gj', name: 'Ahmedabad' },
+    { id: 'dist-surat', state_id: 'state-gj', name: 'Surat' },
+  ],
+  shop_territories: [],
   shop_products: [],
   categories: [
     {
@@ -1753,6 +1798,9 @@ export function readDb(): LocalDbSchema {
     // Backward compatibility auto backfill
     if (!db.cities) db.cities = defaultDb.cities;
     if (!db.areas) db.areas = defaultDb.areas;
+    if (!db.states) db.states = defaultDb.states;
+    if (!db.districts) db.districts = defaultDb.districts;
+    if (!db.shop_territories) db.shop_territories = [];
     if (!db.shop_products) db.shop_products = defaultDb.shop_products;
     if (!db.categories) db.categories = defaultDb.categories;
     if (!db.new_product_requests) db.new_product_requests = [];

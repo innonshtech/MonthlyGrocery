@@ -69,7 +69,11 @@ export const MerchantAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Connection error. Please check server status.' };
+      return {
+        success: false,
+        error:
+          'Cannot reach server. Ensure express-backend is running, phone and PC are on the same Wi‑Fi, and DEV_MACHINE_IP in merchant-app/src/config/api.ts matches your PC IP (ipconfig).',
+      };
     }
   };
 
@@ -99,7 +103,11 @@ export const MerchantAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setUser(data.user);
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message || 'Connection error during verification' };
+      return {
+        success: false,
+        error:
+          'Cannot reach server. Ensure express-backend is running and DEV_MACHINE_IP in merchant-app/src/config/api.ts matches your PC IP.',
+      };
     }
   };
 

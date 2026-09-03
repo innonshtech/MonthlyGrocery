@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   Alert,
   Image,
   ScrollView,
-  StatusBar
+  StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
@@ -47,26 +48,11 @@ export default function MerchantCatalogScreen() {
   const [masterProducts, setMasterProducts] = useState<MasterProduct[]>([]);
   const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  
   const [activeCategory, setActiveCategory] = useState('All');
   const [categories, setCategories] = useState<string[]>(['All']);
-
-  const fetchCategories = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/products/categories`);
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setCategories(['All', ...(data.categories || [])]);
-      }
-    } catch (err) {
-      console.error('Failed to fetch categories:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
   
   // Modal states for configuration
   const [selectedProduct, setSelectedProduct] = useState<MasterProduct | null>(null);
@@ -93,35 +79,72 @@ export default function MerchantCatalogScreen() {
 
   const { token } = useMerchantAuth();
 
-  const fetchData = async () => {
-    setLoading(true);
+  const syncCategories = useCallback((products: MasterProduct[]) => {
+    const liveCategories = Array.from(
+      new Set(products.map((p) => p.primary_category).filter(Boolean)),
+    ).sort();
+    setCategories(['All', ...liveCategories]);
+    if (activeCategory !== 'All' && !liveCategories.includes(activeCategory)) {
+      setActiveCategory('All');
+    }
+  }, [activeCategory]);
+
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError('');
+
     try {
-      // 1. Fetch master catalogue
-      const masterRes = await fetch(`${API_BASE}/products/master`);
+      const [masterRes, shopRes] = await Promise.all([
+        fetch(`${API_BASE}/products/master`),
+        fetch(`${API_BASE}/admin/shop-products`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
       const masterData = await masterRes.json();
-      
-      // 2. Fetch merchant shop mappings
-      const shopRes = await fetch(`${API_BASE}/admin/shop-products`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
       const shopData = await shopRes.json();
 
-      if (masterRes.ok && shopRes.ok && masterData.success && shopData.success) {
-        setMasterProducts(masterData.products || []);
-        setShopProducts(shopData.shop_products || []);
-      } else {
-        Alert.alert('Error', 'Failed to retrieve catalog lists.');
+      if (!masterRes.ok || !masterData.success) {
+        setMasterProducts([]);
+        setShopProducts([]);
+        setError(masterData.error || 'Failed to load master catalog');
+        return;
       }
+
+      if (!shopRes.ok || !shopData.success) {
+        setMasterProducts(masterData.products || []);
+        syncCategories(masterData.products || []);
+        setShopProducts([]);
+        setError(shopData.error || 'Failed to load your store mappings');
+        return;
+      }
+
+      const products = masterData.products || [];
+      setMasterProducts(products);
+      setShopProducts(shopData.shop_products || []);
+      syncCategories(products);
     } catch (err) {
-      Alert.alert('Connection Error', 'Unable to fetch catalogue from database.');
+      setMasterProducts([]);
+      setShopProducts([]);
+      setError('Connection error. Is the backend running on port 8001?');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, [token, syncCategories]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const handleRequestSKU = async (productId: string) => {
     try {
@@ -135,8 +158,8 @@ export default function MerchantCatalogScreen() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        Alert.alert('Requested', 'SKU request submitted! Awaiting Super Admin approval.');
-        fetchData();
+        Alert.alert('Added', 'SKU added to your store. Configure price and stock in Inventory.');
+        fetchData(true);
       } else {
         Alert.alert('Request Failed', data.error || 'Unable to request product.');
       }
@@ -256,7 +279,7 @@ export default function MerchantCatalogScreen() {
       if (res.ok && data.success) {
         Alert.alert('Success', 'SKU configuration updated successfully!');
         setConfigModalVisible(false);
-        fetchData();
+        fetchData(true);
       } else {
         Alert.alert('Error', data.error || 'Failed to update SKU configuration.');
       }
@@ -384,13 +407,15 @@ export default function MerchantCatalogScreen() {
       <View style={styles.topBar}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Master Catalog</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>Configure inventory or suggest new SKU</Text>
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {loading ? 'Loading live catalog…' : `${masterProducts.length} SKUs · ${shopProducts.length} in your store`}
+          </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity style={styles.suggestBtn} onPress={() => setSuggestModalVisible(true)}>
             <Text style={styles.suggestBtnText}>+ Suggest SKU</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.refreshBtn} onPress={fetchData}>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchData(true)}>
             <Text style={styles.refreshText}>🔄</Text>
           </TouchableOpacity>
         </View>
@@ -407,22 +432,24 @@ export default function MerchantCatalogScreen() {
         />
       </View>
 
-      {/* Category Pills */}
-      <View style={styles.categoryScrollContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContent}>
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.categoryPill, activeCategory === cat && styles.activeCategoryPill]}
-              onPress={() => setActiveCategory(cat)}
-            >
-              <Text style={[styles.categoryPillText, activeCategory === cat && styles.activeCategoryPillText]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Category Pills — only categories that exist in the live master catalog */}
+      {categories.length > 1 ? (
+        <View style={styles.categoryScrollContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContent}>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.categoryPill, activeCategory === cat && styles.activeCategoryPill]}
+                onPress={() => setActiveCategory(cat)}
+              >
+                <Text style={[styles.categoryPillText, activeCategory === cat && styles.activeCategoryPillText]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {/* Product List */}
       {loading ? (
@@ -430,16 +457,30 @@ export default function MerchantCatalogScreen() {
           <ActivityIndicator size="large" color="#22C55E" />
           <Text style={styles.loadingText}>Loading master products...</Text>
         </View>
+      ) : error ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchData()}>
+            <Text style={styles.retryBtnText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={filteredMasterProducts}
           keyExtractor={(item) => item.id}
           renderItem={renderProductItem}
           contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} colors={['#22C55E']} />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>No SKUs found</Text>
-              <Text style={styles.emptySubtitle}>Try changing your search query or category filter</Text>
+              <Text style={styles.emptySubtitle}>
+                {search.trim() || activeCategory !== 'All'
+                  ? 'Try changing your search or category filter.'
+                  : 'The master catalog is empty. Ask Super Admin to add products, or suggest a new SKU.'}
+              </Text>
             </View>
           }
         />
@@ -539,7 +580,8 @@ export default function MerchantCatalogScreen() {
       {/* Suggest SKU Modal */}
       <Modal visible={suggestModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, styles.suggestModalCard]}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={styles.modalTitle}>Suggest New SKU</Text>
             <Text style={{ fontSize: 12, color: '#64748B', marginBottom: 16 }}>Request adding product to Master Catalogue</Text>
 
@@ -552,11 +594,29 @@ export default function MerchantCatalogScreen() {
             />
 
             <Text style={styles.inputLabel}>Category</Text>
+            {categories.length > 1 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {categories.filter((c) => c !== 'All').map((cat) => {
+                    const active = newSkuCategory === cat;
+                    return (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[styles.unitPill, active && styles.unitPillActive]}
+                        onPress={() => setNewSkuCategory(cat)}
+                      >
+                        <Text style={[styles.unitPillText, active && styles.unitPillTextActive]}>{cat}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            ) : null}
             <TextInput
               style={styles.modalInput}
               value={newSkuCategory}
               onChangeText={setNewSkuCategory}
-              placeholder="e.g. Packaged Foods"
+              placeholder="e.g. Atta & Rice"
             />
 
             <Text style={styles.inputLabel}>Brand</Text>
@@ -650,6 +710,7 @@ export default function MerchantCatalogScreen() {
                 )}
               </TouchableOpacity>
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -880,6 +941,24 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 13,
   },
+  errorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 24,
+  },
+  retryBtn: {
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 40,
@@ -905,6 +984,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     elevation: 5,
+  },
+  suggestModalCard: {
+    maxHeight: '88%',
   },
   modalTitle: {
     fontSize: 18,

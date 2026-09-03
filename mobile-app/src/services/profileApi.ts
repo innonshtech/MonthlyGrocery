@@ -29,6 +29,7 @@ export interface ProfileUser {
   name: string;
   role: string;
   email?: string;
+  avatar_url?: string;
 }
 
 export interface UpdateProfileResult {
@@ -65,10 +66,34 @@ export async function fetchProfile(token: string): Promise<ProfileUser | null> {
   }
 }
 
+export async function uploadAvatar(
+  token: string,
+  imageBase64: string,
+): Promise<{ success: boolean; avatar_url?: string; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/auth/avatar`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ imageBase64 }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      return { success: false, error: data.error || 'Failed to upload photo' };
+    }
+    return { success: true, avatar_url: data.avatar_url };
+  } catch {
+    return { success: false, error: 'Network error uploading avatar' };
+  }
+}
+
 export async function updateProfile(
   token: string,
   name: string,
   email?: string,
+  avatar_url?: string | null,
 ): Promise<UpdateProfileResult> {
   try {
     const res = await fetch(`${API_BASE}/auth/profile`, {
@@ -80,6 +105,7 @@ export async function updateProfile(
       body: JSON.stringify({
         name: name.trim(),
         email: email?.trim() || undefined,
+        avatar_url: avatar_url !== undefined ? avatar_url : undefined,
       }),
     });
     const data = await res.json();
@@ -89,33 +115,6 @@ export async function updateProfile(
     return { success: true, user: data.user };
   } catch {
     return { success: false, error: 'Network error' };
-  }
-}
-
-export async function uploadAvatar(
-  token: string,
-  base64Image: string,
-  mimeType?: string,
-): Promise<{ success: boolean; avatar_url?: string; error?: string }> {
-  try {
-    const res = await fetch(`${API_BASE}/auth/upload-avatar`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        base64Image,
-        mimeType: mimeType || 'image/jpeg',
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      return { success: false, error: data.error || 'Failed to upload photo' };
-    }
-    return { success: true, avatar_url: data.avatar_url };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Network error' };
   }
 }
 
