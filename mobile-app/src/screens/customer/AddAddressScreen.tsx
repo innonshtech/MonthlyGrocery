@@ -30,6 +30,11 @@ import {
   saveUserAddress,
   cacheAddressesLocally,
 } from '../../services/addressApi';
+import {
+  isValidIndianPincode,
+  normalizePincode,
+  validateAddressPincode,
+} from '../../utils/locationParams';
 
 const SCREEN_BG = '#FBFAF6';
 const MAP_BG = '#E8F0EA';
@@ -48,7 +53,7 @@ function defaultPhoneFromUser(mobile?: string): string {
 }
 
 export default function AddAddressScreen({ navigation, route }: any) {
-  const { token, user } = useAuth();
+  const { token, user, pincode: areaPincode } = useAuth();
   const editingAddress = route?.params?.editingAddress as AddressItem | undefined;
   const fromCheckout = route?.params?.fromCheckout;
 
@@ -88,6 +93,13 @@ export default function AddAddressScreen({ navigation, route }: any) {
     setTag(initialTag);
   }, [screenConfig, editingAddress?.tag]);
 
+  useEffect(() => {
+    if (editingAddress?.pincode || pincode.trim()) return;
+    if (areaPincode) {
+      setPincode(areaPincode);
+    }
+  }, [areaPincode, editingAddress?.pincode, pincode]);
+
   const tagOptions = useMemo(() => {
     if (!screenConfig) return [];
     return [
@@ -125,6 +137,18 @@ export default function AddAddressScreen({ navigation, route }: any) {
       return;
     }
 
+    const normalizedPin = normalizePincode(pincode);
+    if (!isValidIndianPincode(normalizedPin)) {
+      Alert.alert(screenConfig.incomplete_title, 'Please enter a valid 6-digit pincode.');
+      return;
+    }
+
+    const pinCheck = validateAddressPincode(normalizedPin, areaPincode);
+    if (!pinCheck.valid) {
+      Alert.alert(screenConfig.incomplete_title, pinCheck.message || 'Invalid pincode.');
+      return;
+    }
+
     setSaving(true);
     try {
       const { address: savedAddr, addresses } = await saveUserAddress(token, {
@@ -133,7 +157,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
         flat: flat.trim(),
         street: street.trim(),
         landmark: landmark.trim(),
-        pincode: pincode.trim(),
+        pincode: normalizedPin,
         phone: phone.trim(),
         isDefault: editingAddress?.isDefault,
       });
@@ -244,7 +268,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
             <TextInput
               style={styles.input}
               value={pincode}
-              onChangeText={setPincode}
+              onChangeText={(text) => setPincode(normalizePincode(text))}
               placeholder={screenConfig.pincode_placeholder}
               keyboardType="number-pad"
               maxLength={6}

@@ -1,5 +1,6 @@
 import { API_BASE } from '../config/api';
 import type { Product } from '../context/CartContext';
+import { appendLocationParams } from '../utils/locationParams';
 
 export interface ProductDetailScreenConfig {
   delivery_window_label: string;
@@ -87,11 +88,14 @@ export async function fetchProductDetail(params: {
   productId: string;
   city?: string;
   area?: string;
+  pincode?: string;
 }): Promise<ProductDetailFetchResult> {
   try {
-    let url = `${API_BASE}/products/all?limit=100`;
-    if (params.city) url += `&city=${encodeURIComponent(params.city)}`;
-    if (params.area) url += `&area_name=${encodeURIComponent(params.area)}`;
+    const url = appendLocationParams(`${API_BASE}/products/all?limit=100`, {
+      city: params.city,
+      area: params.area,
+      pincode: params.pincode,
+    });
 
     const res = await fetch(url);
     const data = await res.json();

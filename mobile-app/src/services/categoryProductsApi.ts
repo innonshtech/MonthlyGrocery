@@ -1,4 +1,5 @@
 import { API_BASE } from '../config/api';
+import { appendLocationParams } from '../utils/locationParams';
 import type { Product } from '../context/CartContext';
 
 export interface CategoryProductsScreenConfig {
@@ -58,6 +59,7 @@ export type FetchCategoryProductsParams = {
   categoryId?: string;
   city?: string;
   area?: string;
+  pincode?: string;
 };
 
 export type CategoryProductsFetchResult = {
@@ -71,15 +73,33 @@ export interface SidebarTab {
   image_url?: string;
 }
 
-/** Left rail: "All" + unique secondary_category from merchant catalog (Figma B4). */
+export interface AdminSubcategory {
+  id: string;
+  name: string;
+  image_url?: string;
+}
+
+/** Left rail: "All" + admin subcategories, or fallback to product secondary_category values. */
 export function buildSidebarTabs(
   products: Product[],
   allLabel: string,
   parentImageUrl?: string,
+  adminSubcategories?: AdminSubcategory[],
 ): SidebarTab[] {
   const tabs: SidebarTab[] = [
     { key: allLabel, label: allLabel, image_url: parentImageUrl },
   ];
+
+  if (adminSubcategories && adminSubcategories.length > 0) {
+    for (const sub of adminSubcategories) {
+      tabs.push({
+        key: sub.name,
+        label: sub.name,
+        image_url: sub.image_url,
+      });
+    }
+    return tabs;
+  }
 
   const seen = new Set<string>();
   for (const p of products) {
@@ -118,6 +138,27 @@ export async function fetchBrowseCategoryImage(
   }
 }
 
+export async function fetchSubcategoriesForCategory(
+  categoryId?: string,
+  categoryName?: string,
+): Promise<AdminSubcategory[]> {
+  try {
+    const res = await fetch(`${API_BASE}/products/categories`);
+    const data = await res.json();
+    if (!res.ok || !data.success) return [];
+
+    const full = data.categoriesFull || [];
+    const match = full.find(
+      (c: { id: string; name: string; subcategories?: AdminSubcategory[] }) =>
+        (categoryId && c.id === categoryId) ||
+        (categoryName && c.name.toLowerCase() === categoryName.toLowerCase()),
+    );
+    return match?.subcategories || [];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchCategoryProducts(
   params: FetchCategoryProductsParams,
 ): Promise<CategoryProductsFetchResult> {
@@ -129,8 +170,11 @@ export async function fetchCategoryProducts(
       const q = params.categoryName || params.categoryId;
       if (q && q !== 'all') url += `&category=${encodeURIComponent(q)}`;
     }
-    if (params.city) url += `&city=${encodeURIComponent(params.city)}`;
-    if (params.area) url += `&area_name=${encodeURIComponent(params.area)}`;
+    url = appendLocationParams(url, {
+      city: params.city,
+      area: params.area,
+      pincode: params.pincode,
+    });
 
     const res = await fetch(url);
     const data = await res.json();

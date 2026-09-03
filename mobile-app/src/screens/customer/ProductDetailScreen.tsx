@@ -28,7 +28,7 @@ import {
 export default function ProductDetailScreen({ route, navigation }: any) {
   const { productId } = route.params || {};
   const { items, addToCart, updateQuantity } = useCart();
-  const { city, area } = useAuth();
+  const { city, area, pincode } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [screenConfig, setScreenConfig] = useState<ProductDetailScreenConfig | null>(null);
@@ -67,6 +67,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       productId,
       city: city ?? undefined,
       area: area ?? undefined,
+      pincode: pincode ?? undefined,
     });
 
     if (result.error) {
@@ -82,7 +83,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       setVariants(result.variants);
     }
     setLoading(false);
-  }, [productId, hasDeliveryArea, city, area]);
+  }, [productId, hasDeliveryArea, city, area, pincode]);
 
   const loadAll = useCallback(async () => {
     await loadConfig();

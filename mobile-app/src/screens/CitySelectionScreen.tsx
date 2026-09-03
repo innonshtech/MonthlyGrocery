@@ -70,7 +70,7 @@ export default function CitySelectionScreen({ navigation }: any) {
   const handleCitySelect = async (cityName: string) => {
     setSelectedCity(cityName);
     setDetectMessage('');
-    await setCityAndArea(cityName, null);
+    await setCityAndArea(cityName, null, null);
     navigation.navigate('AreaSelection', { cityName });
   };
 

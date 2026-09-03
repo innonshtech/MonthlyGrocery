@@ -24,6 +24,7 @@ import {
   buildDeliverToLabel,
   buildShippingAddress,
 } from '../../services/addressApi';
+import { normalizePincode, validateAddressPincode } from '../../utils/locationParams';
 
 /** Figma E5 Payment canvas background */
 const SCREEN_BG = '#FBFAF6';
@@ -73,7 +74,7 @@ function mapOrderItemsForBasket(orderItems: any[]) {
 }
 
 export default function PaymentMethodScreen({ route, navigation }: any) {
-  const { token, city, area } = useAuth();
+  const { token, city, area, pincode: areaPincode } = useAuth();
   const { items, clearCart } = useCart();
   const cartSubtotal = items.reduce(
     (sum, i) => sum + (Number(i.product.price) || 0) * (i.quantity || 1),
@@ -114,6 +115,13 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
       return;
     }
 
+    const addressPin = normalizePincode(selectedAddress.pincode);
+    const pinCheck = validateAddressPincode(addressPin, areaPincode);
+    if (!pinCheck.valid) {
+      Alert.alert('Invalid pincode', pinCheck.message || 'Please check your delivery pincode.');
+      return;
+    }
+
     const slotLabel = `${selectedSlot.dateLabel}, ${selectedSlot.timeWindow}`;
 
     setProcessing(true);
@@ -138,7 +146,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
         shop_id: selectedSlot?.shopId || items[0]?.product?.shop_id || null,
         city: city || null,
         area_name: area || null,
-        pincode: selectedAddress?.pincode || null,
+        pincode: addressPin || areaPincode || null,
         payment_method: 'COD',
         coupon_code: appliedCoupon?.code || null,
         discount_amount: couponDiscount,

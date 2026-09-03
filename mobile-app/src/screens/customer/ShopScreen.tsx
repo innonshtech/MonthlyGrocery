@@ -14,6 +14,7 @@ import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
+import { appendLocationParams } from '../../utils/locationParams';
 import { COLORS, FONTS } from '../../constants/theme';
 
 
@@ -26,14 +27,14 @@ export default function ShopScreen({ navigation }: any) {
   const [categories, setCategories] = useState<string[]>(['All']);
   const [error, setError] = useState('');
 
-  const { token, logout, city, area } = useAuth();
+  const { token, logout, city, area, pincode } = useAuth();
   const { items, addToCart, updateQuantity } = useCart();
 
   const fetchCategories = async () => {
     try {
       let url = `${API_BASE}/products/categories`;
       if (city && area) {
-        url += `?city=${encodeURIComponent(city)}&area_name=${encodeURIComponent(area)}`;
+        url = appendLocationParams(url, { city, area, pincode });
       }
       const res = await fetch(url);
       const data = await res.json();
@@ -47,7 +48,7 @@ export default function ShopScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchCategories();
-  }, [city, area]);
+  }, [city, area, pincode]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -60,12 +61,7 @@ export default function ShopScreen({ navigation }: any) {
       if (search) {
         url += `&q=${encodeURIComponent(search)}`;
       }
-      if (city) {
-        url += `&city=${encodeURIComponent(city)}`;
-      }
-      if (area) {
-        url += `&area_name=${encodeURIComponent(area)}`;
-      }
+      url = appendLocationParams(url, { city, area, pincode });
       
       const res = await fetch(url);
       const data = await res.json();
@@ -83,7 +79,7 @@ export default function ShopScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchProducts();
-  }, [category, search, city, area]);
+  }, [category, search, city, area, pincode]);
 
   const getCartQuantity = (productId: string) => {
     const item = items.find((it) => it.product.id === productId);

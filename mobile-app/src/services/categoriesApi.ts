@@ -33,7 +33,7 @@ export async function fetchCategoriesConfigWithStatus(): Promise<CategoriesConfi
 export interface CategoryItem {
   id: string;
   name: string;
-  image_url?: string;
+  image_url: string;
 }
 
 export type CategoriesListResult = {
@@ -52,21 +52,13 @@ export async function fetchCategoryList(): Promise<CategoriesListResult> {
     const full = data.categoriesFull || [];
     if (full.length > 0) {
       return {
-        items: full.map((item: { id: string; name: string; image_url?: string }) => ({
-          id: item.id,
-          name: item.name,
-          image_url: item.image_url,
-        })),
-        error: false,
-      };
-    }
-
-    if (Array.isArray(data.categories) && data.categories.length > 0) {
-      return {
-        items: (data.categories as string[]).map((name, i) => ({
-          id: `cat-${i}`,
-          name,
-        })),
+        items: full
+          .filter((item: { image_url?: string }) => Boolean(item.image_url?.trim()))
+          .map((item: { id: string; name: string; image_url?: string }) => ({
+            id: item.id,
+            name: item.name,
+            image_url: item.image_url!.trim(),
+          })),
         error: false,
       };
     }

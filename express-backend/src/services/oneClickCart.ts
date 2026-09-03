@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase';
 import { enrichConsumerOrder } from '../utils/orderEnrichment';
-import { enrichProductPackFields } from '../utils/packUnit';
+import { fetchProductsForLocation } from './shopCatalog';
 
 export interface OneClickCartItem {
   product_id: string;
@@ -48,62 +48,23 @@ export function formatPackLabel(product: Record<string, any>): string {
   return (product.unit || '').trim();
 }
 
-export async function fetchLocationCatalogMap(city?: string, area?: string): Promise<Map<string, any>> {
+export async function fetchLocationCatalogMap(
+  city?: string,
+  area?: string,
+  pincode?: string,
+): Promise<Map<string, any>> {
   const map = new Map<string, any>();
   if (!city?.trim() || !area?.trim()) return map;
 
-  const { readDb } = require('../config/localDb');
-  const db = readDb();
+  const catalog = await fetchProductsForLocation({
+    city: city.trim(),
+    areaName: area.trim(),
+    pincode: pincode?.trim(),
+    limit: 500,
+  });
 
-  const loc = (db.serviceable_locations || []).find(
-    (l: any) =>
-      l.city?.toLowerCase() === city.trim().toLowerCase() &&
-      l.area_name?.toLowerCase() === area.trim().toLowerCase(),
-  );
-
-  const shopId = loc?.shop_id;
-  if (!shopId) return map;
-
-  const activeShopProds =
-    (db.shop_products || []).filter(
-      (sp: any) => sp.shop_id === shopId && sp.status === 'approved' && sp.available === true,
-    ) || [];
-
-  if (!activeShopProds.length) return map;
-
-  const productIds = activeShopProds.map((sp: any) => sp.product_id);
-  const { data: masterProducts } = await supabase.from('products').select('*').in('id', productIds);
-
-  for (const sp of activeShopProds) {
-    const p = (masterProducts || []).find((prod: any) => prod.id === sp.product_id);
-    if (!p) continue;
-
-    const mrp = parseFloat(p.mrp) || 0;
-    const price = parseFloat(sp.selling_price) || 0;
-    const stock = sp.stock != null ? Number(sp.stock) : null;
-
-    map.set(p.id, enrichProductPackFields({
-      id: p.id,
-      shop_id: shopId,
-      name: p.name,
-      brand: p.brand || '',
-      primary_category: p.primary_category || 'Essentials',
-      secondary_category: p.secondary_category,
-      description: p.description,
-      short_description: p.short_description,
-      image_url: p.image_url || '',
-      quantity_value: p.quantity_value,
-      quantity_unit: p.quantity_unit,
-      unit: p.unit,
-      mrp,
-      price,
-      stock,
-      is_veg: p.is_veg,
-      featured: p.featured,
-      todays_deal: p.todays_deal,
-      best_seller: p.best_seller,
-      discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
-    }));
+  for (const product of catalog.products) {
+    map.set(product.id, product);
   }
 
   return map;
@@ -162,6 +123,7 @@ export async function buildOneClickCart(
   area?: string,
   sectionOverrides: SectionOverrides = {},
   sourceMonths = 3,
+  pincode?: string,
 ): Promise<OneClickCartResult> {
   const since = new Date();
   since.setMonth(since.getMonth() - sourceMonths);
@@ -202,7 +164,7 @@ export async function buildOneClickCart(
   }
 
   const monthsCount = Math.max(1, monthKeys.size);
-  const catalogMap = await fetchLocationCatalogMap(city, area);
+  const catalogMap = await fetchLocationCatalogMap(city, area, pincode);
 
   const lastNames = new Map<string, string>();
   for (const order of orders) {

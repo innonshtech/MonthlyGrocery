@@ -1,4 +1,27 @@
 import { API_BASE } from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const VALUE_INTRO_SEEN_KEY = '@value_intro_seen';
+
+export async function hasSeenValueIntro(): Promise<boolean> {
+  return (await AsyncStorage.getItem(VALUE_INTRO_SEEN_KEY)) === 'true';
+}
+
+export async function markValueIntroSeen(): Promise<void> {
+  await AsyncStorage.setItem(VALUE_INTRO_SEEN_KEY, 'true');
+}
+
+/** In-memory flag so intro is not shown twice in the same JS session (e.g. fast refresh). */
+let valueIntroCompletedThisSession = false;
+
+export function hasCompletedValueIntroThisSession(): boolean {
+  return valueIntroCompletedThisSession;
+}
+
+export async function markValueIntroCompletedThisSession(): Promise<void> {
+  valueIntroCompletedThisSession = true;
+  await markValueIntroSeen();
+}
 
 export interface OnboardingEmojiChip {
   emoji: string;

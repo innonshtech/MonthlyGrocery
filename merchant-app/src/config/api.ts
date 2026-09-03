@@ -1,18 +1,29 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 /**
- * Local dev API host for physical Android phones (same Wi‑Fi as your PC).
- * Run `ipconfig` on Windows and set this to your PC's IPv4 address.
- *
- * Alternatives:
- * - Android emulator: use `10.0.2.2`
- * - USB debugging with port reverse: use `localhost` after `npm run connect`
+ * Your PC's Wi‑Fi IPv4 — run `ipconfig` on Windows and update when network changes.
+ * Phone and PC must be on the same Wi‑Fi (e.g. both 192.168.0.x).
  */
-const DEV_MACHINE_IP = '192.168.1.15';
+const DEV_MACHINE_IP = '192.168.0.118';
+
+function isAndroidEmulator(): boolean {
+  if (Platform.OS !== 'android') return false;
+  const c = NativeModules.PlatformConstants || {};
+  const model = String(c.Model || '').toLowerCase();
+  const fingerprint = String(c.Fingerprint || '').toLowerCase();
+  const brand = String(c.Brand || '').toLowerCase();
+  return (
+    fingerprint.includes('generic') ||
+    fingerprint.includes('emulator') ||
+    model.includes('emulator') ||
+    model.includes('sdk') ||
+    brand.includes('generic')
+  );
+}
 
 function resolveDevApiHost(): string {
   if (Platform.OS === 'android') {
-    return DEV_MACHINE_IP;
+    return isAndroidEmulator() ? '10.0.2.2' : DEV_MACHINE_IP;
   }
   return 'localhost';
 }

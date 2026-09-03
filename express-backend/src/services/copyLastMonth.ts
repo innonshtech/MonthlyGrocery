@@ -69,6 +69,7 @@ export async function buildCopyLastMonth(
   city?: string,
   area?: string,
   messages?: CopyLastMonthScreenMessages,
+  pincode?: string,
 ): Promise<CopyLastMonthResult> {
   const empty: CopyLastMonthResult = {
     has_order: false,
@@ -95,7 +96,7 @@ export async function buildCopyLastMonth(
     month: 'long',
   });
 
-  const catalogMap = await fetchLocationCatalogMap(city, area);
+  const catalogMap = await fetchLocationCatalogMap(city, area, pincode);
 
   let repricedCount = 0;
   let unavailableCount = 0;

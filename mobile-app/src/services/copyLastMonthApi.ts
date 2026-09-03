@@ -1,4 +1,5 @@
 import { API_BASE } from '../config/api';
+import { appendLocationSearchParams } from '../utils/locationParams';
 
 export interface CopyLastMonthScreenConfig {
   title: string;
@@ -82,11 +83,11 @@ export async function fetchCopyLastMonthBasket(
   token: string,
   city?: string,
   area?: string,
+  pincode?: string,
 ): Promise<{ basket: CopyLastMonthBasket | null; error: boolean }> {
   try {
     const params = new URLSearchParams();
-    if (city) params.set('city', city);
-    if (area) params.set('area_name', area);
+    appendLocationSearchParams(params, { city, area, pincode });
     const qs = params.toString();
     const res = await fetch(`${API_BASE}/orders/copy-last-month${qs ? `?${qs}` : ''}`, {
       headers: { Authorization: `Bearer ${token}` },

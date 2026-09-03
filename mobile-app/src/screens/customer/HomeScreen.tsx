@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,10 +11,12 @@ import {
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
-import AppIcon, { IconName } from '../../components/AppIcon';
+import { appendLocationParams } from '../../utils/locationParams';
+import AppIcon from '../../components/AppIcon';
 import {
   HomeSearchIcon,
   HomeMicIcon,
@@ -32,6 +34,7 @@ import {
   HomeScreenConfig,
   PromotionalBanner,
 } from '../../services/homeApi';
+import { fetchCategoryList } from '../../services/categoriesApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
 import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
@@ -46,57 +49,20 @@ const CAT_GAP = 10;
 interface CategoryItem {
   id: string;
   name: string;
-  icon: IconName;
-  emoji: string;
-  image_url?: string;
-}
-
-function getCategoryIcon(name: string): IconName {
-  const norm = name.toLowerCase().trim();
-  if (norm.includes('atta') || norm.includes('rice')) return 'cat-atta-rice';
-  if (norm.includes('oil') || norm.includes('ghee')) return 'cat-oils-ghee';
-  if (norm.includes('dal') || norm.includes('pulse')) return 'cat-dals-pulses';
-  if (norm.includes('spice') || norm.includes('masala')) return 'cat-spices-masala';
-  if (norm.includes('snack')) return 'cat-snacks';
-  if (norm.includes('beverage') || norm.includes('drink') || norm.includes('tea')) return 'cat-beverages';
-  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return 'cat-baby-care';
-  if (norm.includes('clean') || norm.includes('home')) return 'cat-cleaning';
-  return 'shopping-bag';
-}
-
-function getCategoryBgColor(name: string): string {
-  const norm = name.toLowerCase().trim();
-  if (norm.includes('atta') || norm.includes('rice')) return '#FFF3D6'; // Figma Atta & Rice (Yellow)
-  if (norm.includes('oil') || norm.includes('ghee')) return '#E4F3EA'; // Figma Oils & Ghee (Green)
-  if (norm.includes('dal') || norm.includes('pulse')) return '#F6E9E1'; // Figma Dals & Pulses (Peach)
-  if (norm.includes('spice') || norm.includes('masala')) return '#FDE7E7'; // Figma Masala (Red)
-  if (norm.includes('snack')) return '#FBEEDD'; // Figma Snacks (Orange)
-  if (norm.includes('beverage') || norm.includes('drink')) return '#E1F0FB'; // Figma Beverages (Blue)
-  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return '#EDE9FB'; // Figma Dairy (Purple)
-  if (norm.includes('clean') || norm.includes('home')) return '#EAF6D6'; // Figma Cleaning (Lime)
-  return '#FFF3D6';
-}
-
-function getCategoryIconColor(name: string): string {
-  const norm = name.toLowerCase().trim();
-  if (norm.includes('atta') || norm.includes('rice')) return '#C77E12'; // Marigold 600
-  if (norm.includes('oil') || norm.includes('ghee')) return '#1E7A46'; // Green 700
-  if (norm.includes('dal') || norm.includes('pulse')) return '#D8453B'; // Red
-  if (norm.includes('spice') || norm.includes('masala')) return '#3D4A44'; // Ink 700
-  if (norm.includes('snack')) return '#8A5200';
-  if (norm.includes('beverage') || norm.includes('drink')) return '#C77E12';
-  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return '#1E7A46';
-  if (norm.includes('clean') || norm.includes('home')) return '#6B7772';
-  return '#1E7A46';
+  image_url: string;
 }
 
 function buildDisplayLocation(
   home: HomeScreenConfig | null,
   city?: string | null,
   area?: string | null,
+  pincode?: string | null,
 ): string {
   if (!home) return '';
-  if (area && city) return `${home.location_prefix} ${area}, ${city}`;
+  if (area && city) {
+    const base = `${home.location_prefix} ${area}, ${city}`;
+    return pincode ? `${base} · ${pincode}` : base;
+  }
   if (area) return `${home.location_prefix} ${area}`;
   if (city) return `${home.location_prefix} ${city}`;
   return home.choose_location_label;
@@ -120,7 +86,7 @@ function getReorderPreviewItems(lastOrder: any) {
 
 export default function HomeScreen({ navigation, setActiveTab }: any) {
   const insets = useSafeAreaInsets();
-  const { city, area, token, user } = useAuth();
+  const { city, area, pincode, token, user } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
   const [home, setHome] = useState<HomeScreenConfig | null>(null);
   const [homeLoadError, setHomeLoadError] = useState(false);
@@ -133,7 +99,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     lastOrder: any | null;
   }>({ orderCount: 0, lastOrder: null });
 
-  const displayLocation = buildDisplayLocation(home, city, area);
+  const displayLocation = buildDisplayLocation(home, city, area, pincode);
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
   const userInitial = user?.name?.trim()?.[0]?.toUpperCase();
   const hasPastOrder = orderStats.orderCount > 0 && orderStats.lastOrder;
@@ -152,43 +118,34 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     setHomeLoadError(result.error);
   };
 
-  useEffect(() => {
-    loadHomeConfig();
-    fetchPromotionalBanners().then((list) => setBanners(sortBanners(list)));
+  const loadBanners = useCallback(async () => {
+    const list = await fetchPromotionalBanners();
+    setBanners(sortBanners(list));
   }, []);
 
   useEffect(() => {
+    loadHomeConfig();
+    loadBanners();
+  }, [loadBanners]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBanners();
+    }, [loadBanners]),
+  );
+
+  useEffect(() => {
     const loadCategories = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/products/categories`);
-        const data = await res.json();
-        if (res.ok && data.success) {
-          const list = data.categoriesFull || [];
-          const mapped: CategoryItem[] = list.map((item: any) => ({
+      const result = await fetchCategoryList();
+      if (!result.error) {
+        const withTiles = result.items
+          .filter((item) => Boolean(item.image_url?.trim()))
+          .map((item) => ({
             id: item.id,
             name: item.name,
-            icon: getCategoryIcon(item.name),
-            image_url: item.image_url,
-            emoji: '',
+            image_url: item.image_url!.trim(),
           }));
-          if (mapped.length > 0) {
-            setCategories(mapped.slice(0, 8));
-          } else if (data.categories?.length) {
-            const nameMapped: CategoryItem[] = data.categories
-              .slice(0, 8)
-              .map((name: string, index: number) => ({
-                id: `cat-${index}-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-                name,
-                icon: getCategoryIcon(name),
-                emoji: '',
-              }));
-            setCategories(nameMapped);
-          } else {
-            setCategories([]);
-          }
-        }
-      } catch (err) {
-        console.error('Error loading categories:', err);
+        setCategories(withTiles);
       }
     };
     loadCategories();
@@ -203,9 +160,11 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       }
       setLoading(true);
       try {
-        let url = `${API_BASE}/products/all?deals=true&limit=8`;
-        url += `&city=${encodeURIComponent(city!)}`;
-        url += `&area_name=${encodeURIComponent(area!)}`;
+        const url = appendLocationParams(`${API_BASE}/products/all?deals=true&limit=8`, {
+          city,
+          area,
+          pincode,
+        });
         const res = await fetch(url);
         const data = await res.json();
         if (res.ok && data.success && data.products) {
@@ -221,7 +180,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       }
     };
     fetchFeatured();
-  }, [city, area, hasDeliveryArea]);
+  }, [city, area, pincode, hasDeliveryArea]);
 
   useEffect(() => {
     const fetchUserStats = async () => {
@@ -397,20 +356,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 >
                   {banners.map((banner) => renderPromoBanner(banner))}
                 </ScrollView>
-              ) : (
-                <View style={styles.bannerScrollView}>
-                  {renderPromoBanner({
-                    id: 'default-promo',
-                    title: 'MONTHLY SAVINGS SALE',
-                    subtitle: 'Up to ₹500 off',
-                    body: 'on your full monthly basket',
-                    cta_text: 'Grab deals',
-                    kind: 'promo',
-                    active: true,
-                    image_url: '',
-                  })}
-                </View>
-              )}
+              ) : null}
 
               <TouchableOpacity
                 style={styles.mmgCard}
@@ -459,11 +405,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               </View>
 
               {categories.length > 0 ? (
-                <View style={styles.catGrid}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.catRail}
+                >
                   {categories.map((cat) => (
                     <TouchableOpacity
                       key={cat.id}
-                      style={styles.catGridItem}
+                      style={styles.catRailItem}
                       onPress={() =>
                         navigation.navigate('CategoryProducts', {
                           categoryId: cat.id,
@@ -472,23 +422,19 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                       }
                       activeOpacity={0.75}
                     >
-                      <View style={[styles.catTile, { backgroundColor: getCategoryBgColor(cat.name) }]}>
-                        {cat.image_url ? (
-                          <Image
-                            source={{ uri: cat.image_url }}
-                            style={styles.categoryPng}
-                            resizeMode="contain"
-                          />
-                        ) : (
-                          <AppIcon name={cat.icon} size={28} color={getCategoryIconColor(cat.name)} />
-                        )}
+                      <View style={styles.catTile}>
+                        <Image
+                          source={{ uri: cat.image_url }}
+                          style={styles.categoryPng}
+                          resizeMode="contain"
+                        />
                       </View>
                       <Text style={styles.catName} numberOfLines={2}>
                         {cat.name}
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               ) : null}
 
         <View style={[styles.sectionHeader, { marginTop: 6 }]}>
@@ -894,25 +840,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E7A46',
   },
-  catGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 14,
+  catRail: {
+    gap: CAT_GAP,
+    paddingBottom: 4,
     marginBottom: 20,
   },
-  catGridItem: {
-    width: (CONTENT_W - 30) / 4,
+  catRailItem: {
+    width: CAT_SIZE,
     alignItems: 'center',
   },
   catTile: {
-    width: (CONTENT_W - 30) / 4,
+    width: CAT_SIZE,
     height: 72,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
     overflow: 'hidden',
+    backgroundColor: '#F4F3EE',
   },
   categoryPng: {
     width: 46,

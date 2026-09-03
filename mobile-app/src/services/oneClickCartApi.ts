@@ -1,4 +1,5 @@
 import { API_BASE } from '../config/api';
+import { appendLocationSearchParams } from '../utils/locationParams';
 
 export interface OneClickCartScreenConfig {
   title: string;
@@ -76,11 +77,11 @@ export async function fetchOneClickCartBasket(
   token: string,
   city?: string,
   area?: string,
+  pincode?: string,
 ): Promise<{ basket: OneClickCartBasket | null; error: boolean }> {
   try {
     const params = new URLSearchParams();
-    if (city) params.set('city', city);
-    if (area) params.set('area_name', area);
+    appendLocationSearchParams(params, { city, area, pincode });
     const qs = params.toString();
     const res = await fetch(`${API_BASE}/orders/one-click-cart${qs ? `?${qs}` : ''}`, {
       headers: { Authorization: `Bearer ${token}` },

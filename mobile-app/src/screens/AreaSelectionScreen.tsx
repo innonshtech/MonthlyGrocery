@@ -92,7 +92,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const handleAreaSelect = async (area: CityArea) => {
     if (!area.serviceable) return;
     setSelectedAreaId(area.id);
-    await setCityAndArea(cityName, area.name);
+    await setCityAndArea(cityName, area.name, area.pincode || null);
     navigation.navigate('ProfileSetup');
   };
 
@@ -223,7 +223,9 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
             renderItem={({ item }) => {
               const isSelected = selectedAreaId === item.id;
               const subtitle = item.serviceable
-                ? config.serviceable_subtitle
+                ? item.pincode
+                  ? `${config.serviceable_subtitle} · PIN ${item.pincode}`
+                  : config.serviceable_subtitle
                 : config.coming_soon_subtitle;
               return (
                 <TouchableOpacity

@@ -25,13 +25,16 @@ import {
   fetchOnboardingConfig,
   ValueIntroSlideConfig,
   ValueIntroMetaConfig,
+  markValueIntroCompletedThisSession,
 } from '../services/onboardingApi';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * A2 · Value Intro 1–3 — Redesign (Figma nodes 391:602, 392:602, 393:602)
  * All copy, gradients, and chip layout from /api/admin/onboarding.
  */
 export default function ValueIntroScreen({ navigation }: any) {
+  const { token, user } = useAuth();
   const [slides, setSlides] = useState<ValueIntroSlideConfig[]>([]);
   const [introMeta, setIntroMeta] = useState<ValueIntroMetaConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +64,16 @@ export default function ValueIntroScreen({ navigation }: any) {
   const slide = slides[currentIndex];
   const isLastSlide = slides.length > 0 && currentIndex === slides.length - 1;
 
-  const goToLogin = () => navigation.navigate('Login');
+  const goToLogin = async (markCompleted = true) => {
+    if (markCompleted) {
+      await markValueIntroCompletedThisSession();
+    }
+    if (token && user?.role === 'consumer') {
+      navigation.replace('Shop');
+      return;
+    }
+    navigation.replace('Login');
+  };
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
@@ -94,7 +106,7 @@ export default function ValueIntroScreen({ navigation }: any) {
           label={introMeta?.retry_label || 'Retry'}
           onPress={loadSlides}
         />
-        <TouchableOpacity onPress={goToLogin} style={styles.skipLink}>
+        <TouchableOpacity onPress={() => goToLogin(false)} style={styles.skipLink}>
           <Text style={styles.skipLinkText}>
             {introMeta?.skip_to_login_label || ''}
           </Text>

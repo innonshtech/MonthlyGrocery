@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct, AreaNotifyRequest } from '../config/localDb';
 import { supabase } from '../config/supabase';
-import { packUnitPayloadFromInput, resolvePackUnitLabel } from '../utils/packUnit';
+import { packUnitPayloadFromInput, resolvePackUnitLabel, toSupabaseProductRow } from '../utils/packUnit';
 
 const router = Router();
 
@@ -971,6 +971,13 @@ router.post('/locations', authMiddleware, requireRole(['super_admin']), async (r
     return res.status(400).json({ success: false, error: 'City, Area name, and PIN code are required' });
   }
 
+  if (!shop_id && !id) {
+    return res.status(400).json({
+      success: false,
+      error: 'Assigning a merchant shop is required — orders are routed to the shop mapped to this area.',
+    });
+  }
+
   try {
     const db = readDb();
     
@@ -1351,11 +1358,29 @@ router.delete('/cities/:id', authMiddleware, requireRole(['super_admin']), async
   }
 });
 
-// GET /areas: Get all areas (Public)
+// GET /areas: Get all areas with locality pincode mapping (Public)
 router.get('/areas', async (req, res) => {
   try {
     const db = readDb();
-    return res.json({ success: true, areas: db.areas || [] });
+    const enriched = (db.areas || []).map((area) => {
+      const city = db.cities.find((c) => c.id === area.city_id);
+      const loc = city
+        ? (db.serviceable_locations || []).find(
+            (l) =>
+              String(l.city || '').trim().toLowerCase() === city.name.trim().toLowerCase() &&
+              String(l.area_name || '').trim().toLowerCase() === area.name.trim().toLowerCase(),
+          )
+        : null;
+      return {
+        ...area,
+        city_name: city?.name || null,
+        pincode: loc?.pincode || null,
+        shop_id: loc?.shop_id || null,
+        is_serviceable: loc ? loc.is_serviceable !== false : null,
+        has_locality_mapping: Boolean(loc),
+      };
+    });
+    return res.json({ success: true, areas: enriched });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -1551,7 +1576,7 @@ router.post('/shop-products/request', authMiddleware, requireRole(['admin', 'sup
       selling_price: parseFloat(masterProduct.price) || 0,
       discount_percentage: Math.max(0, Math.round(((parseFloat(masterProduct.mrp) - parseFloat(masterProduct.price)) / parseFloat(masterProduct.mrp)) * 100)) || 0,
       stock: 0,
-      available: false,
+      available: true,
       status: 'approved'
     };
 
@@ -1758,7 +1783,7 @@ router.get('/sku-requests', authMiddleware, requireRole(['super_admin']), async 
 // POST /sku-requests/:id/status: Super Admin Approves / Rejects a pending SKU request (Super Admin only)
 router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, image_url } = req.body;
   if (!status || !['approved', 'rejected'].includes(status)) {
     return res.status(400).json({ success: false, error: 'Invalid status value' });
   }
@@ -1772,9 +1797,17 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
     }
 
     const request = db.new_product_requests[reqIndex];
-    request.status = status;
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ success: false, error: 'This SKU request has already been processed' });
+    }
 
     if (status === 'approved') {
+      const imageUrl = String(image_url || '').trim();
+      if (!imageUrl) {
+        return res.status(400).json({ success: false, error: 'Product image (PNG) is required to approve a SKU request' });
+      }
+
       // 1. Insert product into Supabase Master Catalogue products table
       const skuCode = `SUGGEST-${Date.now().toString().slice(-6)}`;
       const displayUnit = resolvePackUnitLabel({
@@ -1785,7 +1818,7 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
 
       const { data: product, error: insertError } = await supabase
         .from('products')
-        .insert({
+        .insert(toSupabaseProductRow({
           shop_id: request.shop_id,
           name: `${request.name.trim()} ${displayUnit}`.trim(),
           sku: skuCode,
@@ -1798,9 +1831,10 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
           unit: displayUnit,
           short_description: request.short_description || null,
           description: request.description || null,
+          image_url: imageUrl,
           available: true,
-          is_veg: true
-        })
+          is_veg: true,
+        }))
         .select()
         .single();
 
@@ -1808,7 +1842,7 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
         return res.status(500).json({ success: false, error: `Failed to insert product: ${insertError.message}` });
       }
 
-      // 2. Map this approved product to the merchant shop directly with approved status so they can configure it
+      // 2. Map only to the requesting merchant shop
       db.shop_products.push({
         id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         shop_id: request.shop_id,
@@ -1816,9 +1850,13 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
         selling_price: request.mrp,
         discount_percentage: 0,
         stock: 0,
-        available: false,
+        available: true,
         status: 'approved'
       });
+
+      request.status = 'approved';
+    } else {
+      request.status = 'rejected';
     }
 
     writeDb(db);
@@ -1934,9 +1972,149 @@ router.delete('/categories/:id', authMiddleware, requireRole(['super_admin']), a
     }
 
     db.categories = db.categories.filter(c => c.id !== id);
+    db.subcategories = (db.subcategories || []).filter((s) => s.category_id !== id);
     writeDb(db);
 
     return res.json({ success: true, message: 'Category deleted successfully', categories: db.categories });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==========================================
+// 6b. Subcategory Management CRUD Endpoints
+// ==========================================
+
+function listSubcategories(db: ReturnType<typeof readDb>, categoryId?: string) {
+  let items = (db.subcategories || []).filter((s) => s.active !== false);
+  if (categoryId) {
+    items = items.filter((s) => s.category_id === categoryId);
+  }
+  return items.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
+}
+
+// GET /subcategories: List subcategories (optional category_id filter)
+router.get('/subcategories', async (req, res) => {
+  try {
+    const db = readDb();
+    const categoryId = req.query.category_id ? String(req.query.category_id) : undefined;
+    return res.json({ success: true, subcategories: listSubcategories(db, categoryId) });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /subcategories: Create subcategory (Super Admin only)
+router.post('/subcategories', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { category_id, name, image_url, sort_order, active } = req.body;
+  if (!category_id || !name?.trim()) {
+    return res.status(400).json({ success: false, error: 'Category and subcategory name are required' });
+  }
+
+  try {
+    const db = readDb();
+    const parent = db.categories.find((c) => c.id === category_id);
+    if (!parent) {
+      return res.status(404).json({ success: false, error: 'Parent category not found' });
+    }
+
+    const normalized = String(name).trim();
+    const duplicate = (db.subcategories || []).some(
+      (s) => s.category_id === category_id && s.name.toLowerCase() === normalized.toLowerCase(),
+    );
+    if (duplicate) {
+      return res.status(400).json({ success: false, error: 'Subcategory already exists under this category' });
+    }
+
+    const siblings = (db.subcategories || []).filter((s) => s.category_id === category_id);
+    const newSub = {
+      id: `sub-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      category_id,
+      name: normalized,
+      sort_order: sort_order != null ? Number(sort_order) : siblings.length + 1,
+      active: active !== false,
+      ...(image_url && String(image_url).trim() ? { image_url: String(image_url).trim() } : {}),
+    };
+
+    if (!db.subcategories) db.subcategories = [];
+    db.subcategories.push(newSub);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Subcategory added successfully', subcategory: newSub });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /subcategories/:id: Update subcategory (Super Admin only)
+router.put('/subcategories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+  const { name, image_url, sort_order, active } = req.body;
+
+  try {
+    const db = readDb();
+    const idx = (db.subcategories || []).findIndex((s) => s.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Subcategory not found' });
+    }
+
+    const current = db.subcategories![idx];
+
+    if (name !== undefined && name !== null) {
+      const normalized = String(name).trim();
+      if (!normalized) {
+        return res.status(400).json({ success: false, error: 'Subcategory name cannot be empty' });
+      }
+      const duplicate = db.subcategories!.some(
+        (s) =>
+          s.id !== id &&
+          s.category_id === current.category_id &&
+          s.name.toLowerCase() === normalized.toLowerCase(),
+      );
+      if (duplicate) {
+        return res.status(400).json({ success: false, error: 'Another subcategory with this name already exists' });
+      }
+      current.name = normalized;
+    }
+
+    if (image_url !== undefined && image_url !== null) {
+      const url = String(image_url).trim();
+      if (url) current.image_url = url;
+      else delete current.image_url;
+    }
+
+    if (sort_order !== undefined && sort_order !== null) {
+      current.sort_order = Number(sort_order) || 0;
+    }
+
+    if (active !== undefined) {
+      current.active = !!active;
+    }
+
+    db.subcategories![idx] = current;
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Subcategory updated successfully', subcategory: current });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /subcategories/:id: Delete subcategory (Super Admin only)
+router.delete('/subcategories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = readDb();
+    const exists = (db.subcategories || []).some((s) => s.id === id);
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Subcategory not found' });
+    }
+
+    db.subcategories = (db.subcategories || []).filter((s) => s.id !== id);
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Subcategory deleted successfully' });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

@@ -112,3 +112,11 @@ export function enrichProductPackFields<T extends Record<string, unknown>>(produ
     unit: label || String(product.unit || ''),
   };
 }
+
+/** Supabase `products` rows only support pack size via `unit` — not separate quantity columns. */
+export function toSupabaseProductRow<T extends Record<string, unknown>>(
+  row: T,
+): Omit<T, 'quantity_value' | 'quantity_unit'> {
+  const { quantity_value: _qv, quantity_unit: _qu, ...safe } = row;
+  return safe as Omit<T, 'quantity_value' | 'quantity_unit'>;
+}

@@ -27,7 +27,7 @@ import {
   Home
 } from 'lucide-react';
 import { PACK_UNIT_OPTIONS, resolvePackUnitLabel, packUnitPayloadFromInput } from '../lib/packUnits';
-import { apiFetch, clearAdminSession } from '../utils/api';
+import { apiFetch, clearAdminSession, API_BASE } from '../utils/api';
 
 interface Shop {
   id: string;
@@ -270,11 +270,22 @@ export default function DashboardPage() {
   const [cities, setCities] = useState<City[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [skuRequests, setSkuRequests] = useState<any[]>([]);
+  const [skuApproveRequest, setSkuApproveRequest] = useState<any | null>(null);
+  const [skuApproveImageFile, setSkuApproveImageFile] = useState<File | null>(null);
+  const [skuApproveImagePreview, setSkuApproveImagePreview] = useState('');
+  const [skuApproveSaving, setSkuApproveSaving] = useState(false);
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryImageFile, setNewCategoryImageFile] = useState<File | null>(null);
   const [newCategoryImageUploading, setNewCategoryImageUploading] = useState(false);
   const [categoryImageUploadingId, setCategoryImageUploadingId] = useState<string | null>(null);
+  const [subcategoriesList, setSubcategoriesList] = useState<any[]>([]);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [newSubcategoryCategoryId, setNewSubcategoryCategoryId] = useState('');
+  const [newSubcategoryImageFile, setNewSubcategoryImageFile] = useState<File | null>(null);
+  const [newSubcategorySaving, setNewSubcategorySaving] = useState(false);
+  const [subcategoryImageUploadingId, setSubcategoryImageUploadingId] = useState<string | null>(null);
   
   // Master Catalog States
   const [masterProductsList, setMasterProductsList] = useState<any[]>([]);
@@ -282,6 +293,7 @@ export default function DashboardPage() {
   const [newProdBrand, setNewProdBrand] = useState('');
   const [newProdCompany, setNewProdCompany] = useState('');
   const [newProdCategory, setNewProdCategory] = useState('');
+  const [newProdSubcategory, setNewProdSubcategory] = useState('');
   const [newProdDescription, setNewProdDescription] = useState('');
   const [newProdShortDescription, setNewProdShortDescription] = useState('');
   const [newProdImageFile, setNewProdImageFile] = useState<File | null>(null);
@@ -306,6 +318,7 @@ export default function DashboardPage() {
   // Forms for City / Area registration
   const [newCityName, setNewCityName] = useState('');
   const [newAreaName, setNewAreaName] = useState('');
+  const [newAreaPincode, setNewAreaPincode] = useState('');
   const [selectedCityId, setSelectedCityId] = useState('');
 
   // Forms for Store registration
@@ -520,31 +533,20 @@ export default function DashboardPage() {
       }
 
       if (activeTab === 'categories-admin') {
-        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setCategoriesList(data.categories || []);
-        }
+        const data = await apiFetch('/admin/categories');
+        setCategoriesList(data.categories || []);
+        const subData = await apiFetch('/admin/subcategories');
+        setSubcategoriesList(subData.subcategories || []);
       }
 
       if (activeTab === 'master-catalog') {
-        const res = await fetch('https://monthly-grocery-rust.vercel.app/api/products/master', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setMasterProductsList(data.products || []);
-        }
+        const data = await apiFetch('/products/master');
+        setMasterProductsList(data.products || []);
 
-        const resCat = await fetch('https://monthly-grocery-rust.vercel.app/api/admin/categories', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const dataCat = await resCat.json();
-        if (resCat.ok && dataCat.success) {
-          setCategoriesList(dataCat.categories || []);
-        }
+        const dataCat = await apiFetch('/admin/categories');
+        setCategoriesList(dataCat.categories || []);
+        const subData = await apiFetch('/admin/subcategories');
+        setSubcategoriesList(subData.subcategories || []);
       }
 
       if (activeTab === 'coupons-admin') {
@@ -601,6 +603,10 @@ export default function DashboardPage() {
       alert('Please fill out all location fields (including City name)');
       return;
     }
+    if (!locShop) {
+      alert('Please assign a merchant shop — orders from this area will go to that shopkeeper.');
+      return;
+    }
     try {
       const data = await apiFetch('/admin/locations', {
         method: 'POST',
@@ -608,7 +614,7 @@ export default function DashboardPage() {
           city: locCity.trim(),
           area_name: locArea.trim(),
           pincode: locPin.trim(),
-          shop_id: locShop || null,
+          shop_id: locShop,
         }),
       });
       setLocations(data.locations || []);
@@ -619,6 +625,28 @@ export default function DashboardPage() {
       alert('Location zone saved successfully!');
     } catch (err: any) {
       alert(err.message || 'Error creating location');
+    }
+  };
+
+  const handleUpdateLocationShop = async (locId: string, shopId: string) => {
+    if (!token || !shopId) return;
+    const loc = locations.find((l) => l.id === locId);
+    if (!loc) return;
+    try {
+      const data = await apiFetch('/admin/locations', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: locId,
+          city: loc.city,
+          area_name: loc.area_name,
+          pincode: loc.pincode,
+          is_serviceable: loc.is_serviceable !== false,
+          shop_id: shopId,
+        }),
+      });
+      setLocations(data.locations || []);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update shop assignment');
     }
   };
 
@@ -675,13 +703,24 @@ export default function DashboardPage() {
       alert('Please select a city and enter area name');
       return;
     }
+    const pin = newAreaPincode.replace(/\D/g, '').slice(0, 6);
+    if (pin && pin.length !== 6) {
+      alert('Please enter a valid 6-digit pincode, or leave it blank to set later in Localities.');
+      return;
+    }
     try {
       const data = await apiFetch('/admin/areas', {
         method: 'POST',
-        body: JSON.stringify({ city_id: selectedCityId, name: newAreaName.trim() }),
+        body: JSON.stringify({
+          city_id: selectedCityId,
+          name: newAreaName.trim(),
+          pincode: pin || undefined,
+        }),
       });
-      setAreas(data.areas || []);
+      const refreshed = await apiFetch('/admin/areas');
+      setAreas(refreshed.areas || data.areas || []);
       setNewAreaName('');
+      setNewAreaPincode('');
       alert('Area/locality registered successfully!');
     } catch (err: any) {
       alert(err.message || 'Error creating area');
@@ -699,8 +738,45 @@ export default function DashboardPage() {
   };
 
   // SKU request approvals
+  const openSkuApproveModal = (req: any) => {
+    setSkuApproveRequest(req);
+    setSkuApproveImageFile(null);
+    setSkuApproveImagePreview('');
+  };
+
+  const closeSkuApproveModal = () => {
+    setSkuApproveRequest(null);
+    setSkuApproveImageFile(null);
+    setSkuApproveImagePreview('');
+  };
+
+  const handleConfirmSkuApprove = async () => {
+    if (!token || !skuApproveRequest) return;
+    if (!skuApproveImageFile) {
+      alert('Please upload a product PNG before approving.');
+      return;
+    }
+
+    setSkuApproveSaving(true);
+    try {
+      const imageUrl = await uploadAdminImage(skuApproveImageFile);
+      const data = await apiFetch(`/admin/sku-requests/${skuApproveRequest.id}/status`, {
+        method: 'POST',
+        body: JSON.stringify({ status: 'approved', image_url: imageUrl }),
+      });
+      alert(data.message || 'SKU request approved successfully!');
+      closeSkuApproveModal();
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve SKU request');
+    } finally {
+      setSkuApproveSaving(false);
+    }
+  };
+
   const handleUpdateSkuRequestStatus = async (requestId: string, status: 'approved' | 'rejected') => {
     if (!token) return;
+    if (status === 'approved') return;
     try {
       const data = await apiFetch(`/admin/sku-requests/${requestId}/status`, {
         method: 'POST',
@@ -711,6 +787,32 @@ export default function DashboardPage() {
     } catch (err: any) {
       alert(err.message || 'Failed to update SKU request status');
     }
+  };
+
+  const uploadAdminImage = async (file: File): Promise<string> => {
+    const freshToken = token || localStorage.getItem('@admin_token');
+    const formData = new FormData();
+    formData.append('image', file);
+    const uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${freshToken}` },
+      body: formData,
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || !uploadData.image_url) {
+      throw new Error(uploadData.error || 'Image upload failed');
+    }
+    return uploadData.image_url;
+  };
+
+  const getSubcategoriesForCategory = (categoryId: string) =>
+    subcategoriesList
+      .filter((sub) => sub.category_id === categoryId)
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
+
+  const getSubcategoriesForCategoryName = (categoryName: string) => {
+    const cat = categoriesList.find((c) => c.name === categoryName);
+    return cat ? getSubcategoriesForCategory(cat.id) : [];
   };
 
   // Create Category Handler
@@ -801,22 +903,66 @@ export default function DashboardPage() {
 
   // Delete Category Handler
   const handleDeleteCategory = async (catId: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+    if (!confirm('Are you sure you want to delete this category? Its subcategories will also be removed.')) return;
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/admin/categories/${catId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        fetchData();
-      } else {
-        alert(data.error || 'Failed to delete category');
+      await apiFetch(`/admin/categories/${catId}`, { method: 'DELETE' });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Error deleting category');
+    }
+  };
+
+  const handleCreateSubcategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubcategoryCategoryId || !newSubcategoryName.trim()) return;
+    setNewSubcategorySaving(true);
+    try {
+      let imageUrl = '';
+      if (newSubcategoryImageFile) {
+        imageUrl = await uploadAdminImage(newSubcategoryImageFile);
       }
-    } catch (err) {
-      alert('Error deleting category');
+      await apiFetch('/admin/subcategories', {
+        method: 'POST',
+        body: JSON.stringify({
+          category_id: newSubcategoryCategoryId,
+          name: newSubcategoryName.trim(),
+          ...(imageUrl ? { image_url: imageUrl } : {}),
+        }),
+      });
+      setNewSubcategoryName('');
+      setNewSubcategoryImageFile(null);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to add subcategory');
+    } finally {
+      setNewSubcategorySaving(false);
+    }
+  };
+
+  const handleSubcategoryImageChange = async (subId: string, file: File) => {
+    if (!file) return;
+    setSubcategoryImageUploadingId(subId);
+    try {
+      const imageUrl = await uploadAdminImage(file);
+      await apiFetch(`/admin/subcategories/${subId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ image_url: imageUrl }),
+      });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Error updating subcategory image');
+    } finally {
+      setSubcategoryImageUploadingId(null);
+    }
+  };
+
+  const handleDeleteSubcategory = async (subId: string) => {
+    if (!confirm('Delete this subcategory?')) return;
+    try {
+      await apiFetch(`/admin/subcategories/${subId}`, { method: 'DELETE' });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Error deleting subcategory');
     }
   };
 
@@ -876,6 +1022,7 @@ export default function DashboardPage() {
             mrp: parseFloat(v.mrp),
             price: parseFloat(v.price),
             primary_category: newProdCategory,
+            secondary_category: newProdSubcategory || null,
             image_url: uploadedImageUrl,
             quantity_value: pack.quantity_value,
             quantity_unit: pack.quantity_unit,
@@ -896,6 +1043,7 @@ export default function DashboardPage() {
         setNewProdBrand('');
         setNewProdCompany('');
         setNewProdCategory('');
+        setNewProdSubcategory('');
         setNewProdDescription('');
         setNewProdShortDescription('');
         setNewProdImageFile(null);
@@ -908,25 +1056,27 @@ export default function DashboardPage() {
     }
   };
 
-  // Update Product Category Handler (Super Admin)
   const handleUpdateProductCategory = async (productId: string, newCategory: string) => {
     try {
-      const res = await fetch(`https://monthly-grocery-rust.vercel.app/api/products/master/${productId}`, {
+      await apiFetch(`/products/master/${productId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ primary_category: newCategory })
+        body: JSON.stringify({ primary_category: newCategory, secondary_category: null }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        fetchData();
-      } else {
-        alert(data.error || 'Failed to update category');
-      }
-    } catch (err) {
-      alert('Error updating category');
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update category');
+    }
+  };
+
+  const handleUpdateProductSubcategory = async (productId: string, subcategory: string) => {
+    try {
+      await apiFetch(`/products/master/${productId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ secondary_category: subcategory || null }),
+      });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update subcategory');
     }
   };
 
@@ -2030,6 +2180,10 @@ export default function DashboardPage() {
         {/* 2. LOCALITIES MAPPING TAB */}
         {activeTab === 'locations' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
+            <div className="lg:col-span-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+              <strong className="text-amber-300">Order routing:</strong> Each locality must be mapped to exactly one approved merchant shop.
+              Customer orders from that area go only to the assigned shopkeeper, and they only see products that shop has listed as available.
+            </div>
             {/* Left Column: List of Mapped Zones */}
             <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
               <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
@@ -2057,10 +2211,18 @@ export default function DashboardPage() {
                           </td>
                           <td className="py-4 pr-3 text-slate-300 font-mono font-bold">{loc.pincode}</td>
                           <td className="py-4 pr-3">
-                            {matchedShop ? (
-                              <span className="text-emerald-400 font-semibold">{matchedShop.shop_name}</span>
-                            ) : (
-                              <span className="text-slate-500 italic">No Shop Assigned</span>
+                            <select
+                              className="w-full max-w-xs h-9 px-2 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-lg text-sm outline-none"
+                              value={loc.shop_id || ''}
+                              onChange={(e) => handleUpdateLocationShop(loc.id, e.target.value)}
+                            >
+                              <option value="">Select shop…</option>
+                              {shops.filter(s => s.status === 'approved').map(s => (
+                                <option key={s.id} value={s.id}>{s.shop_name}</option>
+                              ))}
+                            </select>
+                            {!matchedShop && loc.shop_id && (
+                              <span className="text-xs text-red-400 block mt-1">Shop not found</span>
                             )}
                           </td>
                           <td className="py-4 text-right">
@@ -2141,17 +2303,19 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Assign Shop</label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Assign Shop *</label>
                   <select
+                    required
                     className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
                     value={locShop}
                     onChange={(e) => setLocShop(e.target.value)}
                   >
-                    <option value="">Unassigned</option>
+                    <option value="">Select merchant shop…</option>
                     {shops.filter(s => s.status === 'approved').map(s => (
                       <option key={s.id} value={s.id}>{s.shop_name}</option>
                     ))}
                   </select>
+                  <p className="text-[10px] text-slate-500 mt-1">Required — orders from this area route to this shop.</p>
                 </div>
 
                 <button
@@ -2844,6 +3008,10 @@ export default function DashboardPage() {
         {/* 7. CITIES & LOCALITIES TAB */}
         {activeTab === 'cities-areas' && (
           <div className="space-y-8 max-w-6xl">
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-100">
+              <strong className="text-emerald-300">Pincode sync:</strong> Add the 6-digit PIN when registering a locality.
+              Then assign the merchant shop in the <button type="button" onClick={() => setActiveTab('locations')} className="underline text-emerald-200">Localities</button> tab so customer orders route correctly.
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
@@ -3037,6 +3205,18 @@ export default function DashboardPage() {
                       onChange={(e) => setNewAreaName(e.target.value)}
                     />
                   </div>
+                  <div className="w-36">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">PIN Code</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="411045"
+                      className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none font-mono"
+                      value={newAreaPincode}
+                      onChange={(e) => setNewAreaPincode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
+                    />
+                  </div>
                   <button
                     type="submit"
                     className="h-11 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-1 cursor-pointer"
@@ -3051,11 +3231,17 @@ export default function DashboardPage() {
                 <div className="divide-y divide-slate-800/30 max-h-80 overflow-y-auto pr-1">
                   {areas.map((area) => {
                     const matchedCity = cities.find(c => c.id === area.city_id);
+                    const pin = (area as any).pincode as string | null | undefined;
+                    const mapped = (area as any).has_locality_mapping;
                     return (
                       <div key={area.id} className="flex justify-between items-center py-3">
                         <div>
                           <p className="text-sm font-semibold text-slate-200">{area.name}</p>
-                          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{matchedCity?.name || 'Unknown City'}</p>
+                          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                            {matchedCity?.name || 'Unknown City'}
+                            {pin ? ` · PIN ${pin}` : ' · No PIN'}
+                            {mapped === false ? ' · Map shop in Localities' : ''}
+                          </p>
                         </div>
                         <button
                           type="button"
@@ -3081,12 +3267,15 @@ export default function DashboardPage() {
         {/* 8. SKU REQUESTS TAB */}
         {activeTab === 'sku-requests' && (
           <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-400" /> Merchant SKU Requests
               </h2>
               <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
             </div>
+            <p className="text-sm text-slate-500 mb-6">
+              Upload a product PNG to approve. The SKU is added only to the requesting shop&apos;s inventory.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -3116,7 +3305,7 @@ export default function DashboardPage() {
                       <td className="py-4 text-right space-x-2">
                         <button
                           type="button"
-                          onClick={() => handleUpdateSkuRequestStatus(req.id, 'approved')}
+                          onClick={() => openSkuApproveModal(req)}
                           className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
                         >
                           Approve
@@ -3144,114 +3333,217 @@ export default function DashboardPage() {
 
         {/* 9. CATEGORIES MANAGEMENT TAB */}
         {activeTab === 'categories-admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-5xl">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
             <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-emerald-400" /> Platform Categories
+                  <Tag className="w-5 h-5 text-emerald-400" /> Platform Categories & Subcategories
                 </h2>
                 <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
               </div>
               <p className="text-sm text-slate-500 mb-6">
-                Tile PNGs shown on Home and All Categories in the customer app. Upload a new image to replace any category icon.
+                Primary category tiles appear on Home and Categories tab. Subcategories power the left sidebar when customers browse a category.
               </p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3 pr-3">Tile</th>
-                      <th className="pb-3">Category Name</th>
-                      <th className="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/30 text-sm">
-                    {categoriesList.map((cat) => (
-                      <tr key={cat.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-4 pr-3">
-                          <div className="w-14 h-14 rounded-xl bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden">
-                            {cat.image_url ? (
-                              <img src={cat.image_url} alt={cat.name} className="w-full h-full object-contain p-1" />
-                            ) : (
-                              <span className="text-[10px] text-slate-500 font-bold uppercase">No PNG</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 pr-3">
+              <div className="space-y-4">
+                {categoriesList.map((cat) => {
+                  const catSubs = getSubcategoriesForCategory(cat.id);
+                  const expanded = expandedCategoryId === cat.id;
+                  return (
+                    <div key={cat.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/30 overflow-hidden">
+                      <div className="flex items-center gap-4 p-4">
+                        <div className="w-14 h-14 rounded-xl bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                          {cat.image_url ? (
+                            <img src={cat.image_url} alt={cat.name} className="w-full h-full object-contain p-1" />
+                          ) : (
+                            <span className="text-[10px] text-slate-500 font-bold uppercase">No PNG</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
                           <div className="font-bold text-white">{cat.name}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">{cat.id}</div>
-                        </td>
-                        <td className="py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <label
-                              className={`text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 text-emerald-400 hover:bg-emerald-500/10 transition-all cursor-pointer ${
-                                categoryImageUploadingId === cat.id ? 'opacity-60 pointer-events-none' : ''
-                              }`}
-                            >
-                              {categoryImageUploadingId === cat.id ? 'Uploading…' : 'Change PNG'}
-                              <input
-                                type="file"
-                                accept="image/png,image/jpeg,image/webp"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleCategoryImageChange(cat.id, file);
-                                  e.target.value = '';
-                                }}
-                              />
-                            </label>
-                            <button
-                              onClick={() => handleDeleteCategory(cat.id)}
-                              className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {categoriesList.length === 0 && (
-                      <tr>
-                        <td colSpan={3} className="py-6 text-center text-slate-500 italic">No categories found in database.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                          <div className="text-xs text-slate-500 mt-0.5">{catSubs.length} subcategories</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedCategoryId(expanded ? null : cat.id)}
+                            className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
+                          >
+                            {expanded ? 'Hide' : 'Manage'}
+                          </button>
+                          <label
+                            className={`text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 text-emerald-400 hover:bg-emerald-500/10 transition-all cursor-pointer ${
+                              categoryImageUploadingId === cat.id ? 'opacity-60 pointer-events-none' : ''
+                            }`}
+                          >
+                            {categoryImageUploadingId === cat.id ? 'Uploading…' : 'PNG'}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleCategoryImageChange(cat.id, file);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {expanded && (
+                        <div className="border-t border-slate-800/80 bg-slate-900/40 p-4">
+                          {catSubs.length === 0 ? (
+                            <p className="text-sm text-slate-500 italic mb-3">No subcategories yet. Add one using the form on the right.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                              {catSubs.map((sub) => (
+                                <div key={sub.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+                                    {sub.image_url ? (
+                                      <img src={sub.image_url} alt={sub.name} className="w-full h-full object-contain p-0.5" />
+                                    ) : (
+                                      <span className="text-[9px] text-slate-500 font-bold">ICON</span>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-semibold text-white truncate">{sub.name}</div>
+                                  </div>
+                                  <label
+                                    className={`text-[10px] font-bold px-2 py-1.5 rounded-lg border border-slate-700 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer ${
+                                      subcategoryImageUploadingId === sub.id ? 'opacity-60 pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    {subcategoryImageUploadingId === sub.id ? '…' : 'PNG'}
+                                    <input
+                                      type="file"
+                                      accept="image/png,image/jpeg,image/webp"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleSubcategoryImageChange(sub.id, file);
+                                        e.target.value = '';
+                                      }}
+                                    />
+                                  </label>
+                                  <button
+                                    onClick={() => handleDeleteSubcategory(sub.id)}
+                                    className="text-red-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setNewSubcategoryCategoryId(cat.id)}
+                            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                          >
+                            + Add subcategory to {cat.name}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {categoriesList.length === 0 && (
+                  <p className="py-6 text-center text-slate-500 italic">No categories found in database.</p>
+                )}
               </div>
             </section>
 
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
-              <h2 className="text-lg font-bold text-white mb-2">Create New Category</h2>
-              <p className="text-sm text-slate-500 mb-6">Optional tile PNG — same flow as master catalog image upload.</p>
-              <form onSubmit={handleCreateCategory} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Dry Fruits, Gourmet Oils"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tile PNG (optional)</label>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={(e) => setNewCategoryImageFile(e.target.files?.[0] ?? null)}
-                    className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={newCategoryImageUploading}
-                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> {newCategoryImageUploading ? 'Uploading…' : 'Add Category'}
-                </button>
-              </form>
-            </section>
+            <div className="space-y-6">
+              <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
+                <h2 className="text-lg font-bold text-white mb-2">Create New Category</h2>
+                <p className="text-sm text-slate-500 mb-6">Optional tile PNG — same flow as master catalog image upload.</p>
+                <form onSubmit={handleCreateCategory} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Dry Fruits, Gourmet Oils"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tile PNG (optional)</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(e) => setNewCategoryImageFile(e.target.files?.[0] ?? null)}
+                      className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={newCategoryImageUploading}
+                    className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> {newCategoryImageUploading ? 'Uploading…' : 'Add Category'}
+                  </button>
+                </form>
+              </section>
+
+              <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
+                <h2 className="text-lg font-bold text-white mb-2">Add Subcategory</h2>
+                <p className="text-sm text-slate-500 mb-6">
+                  Shown in the customer app left sidebar when browsing that category.
+                </p>
+                <form onSubmit={handleCreateSubcategory} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parent Category *</label>
+                    <select
+                      required
+                      value={newSubcategoryCategoryId}
+                      onChange={(e) => setNewSubcategoryCategoryId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="">-- Choose Category --</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Subcategory Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Atta, Rice, Mustard Oil"
+                      value={newSubcategoryName}
+                      onChange={(e) => setNewSubcategoryName(e.target.value)}
+                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sidebar Icon PNG (optional)</label>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={(e) => setNewSubcategoryImageFile(e.target.files?.[0] ?? null)}
+                      className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={newSubcategorySaving}
+                    className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" /> {newSubcategorySaving ? 'Saving…' : 'Add Subcategory'}
+                  </button>
+                </form>
+              </section>
+            </div>
           </div>
         )}
 
@@ -3275,7 +3567,8 @@ export default function DashboardPage() {
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">SKU</th>
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Brand</th>
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">MRP (Master)</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Category Assignment</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Category</th>
+                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Subcategory</th>
                       <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -3320,6 +3613,18 @@ export default function DashboardPage() {
                             ))}
                           </select>
                         </td>
+                        <td className="py-4 pr-3">
+                          <select
+                            value={prod.secondary_category || ''}
+                            onChange={(e) => handleUpdateProductSubcategory(prod.id, e.target.value)}
+                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[140px]"
+                          >
+                            <option value="">-- None --</option>
+                            {getSubcategoriesForCategoryName(prod.primary_category || '').map((sub) => (
+                              <option key={sub.id} value={sub.name}>{sub.name}</option>
+                            ))}
+                          </select>
+                        </td>
                         <td className="py-4 text-right">
                           <button
                             onClick={() => handleDeleteProduct(prod.id)}
@@ -3332,7 +3637,7 @@ export default function DashboardPage() {
                     ))}
                     {masterProductsList.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="py-6 text-center text-slate-500 italic">No products found in catalogue. Use Bulk Excel Loader or create one on the right.</td>
+                        <td colSpan={8} className="py-6 text-center text-slate-500 italic">No products found in catalogue. Use Bulk Excel Loader or create one on the right.</td>
                       </tr>
                     )}
                   </tbody>
@@ -3382,12 +3687,29 @@ export default function DashboardPage() {
                   <select
                     required
                     value={newProdCategory}
-                    onChange={(e) => setNewProdCategory(e.target.value)}
+                    onChange={(e) => {
+                      setNewProdCategory(e.target.value);
+                      setNewProdSubcategory('');
+                    }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
                     <option value="">-- Choose Category --</option>
                     {categoriesList.map((cat) => (
                       <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Subcategory</label>
+                  <select
+                    value={newProdSubcategory}
+                    onChange={(e) => setNewProdSubcategory(e.target.value)}
+                    disabled={!newProdCategory}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50"
+                  >
+                    <option value="">-- Optional --</option>
+                    {getSubcategoriesForCategoryName(newProdCategory).map((sub) => (
+                      <option key={sub.id} value={sub.name}>{sub.name}</option>
                     ))}
                   </select>
                 </div>
@@ -3588,6 +3910,76 @@ export default function DashboardPage() {
                 </button>
               </form>
             </section>
+          </div>
+        )}
+
+        {skuApproveRequest && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
+            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-white mb-1">Approve SKU request</h3>
+              <p className="text-xs text-slate-400 mb-4">
+                Product will be added to <span className="text-emerald-300 font-semibold">{skuApproveRequest.shop_name}</span> only.
+              </p>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 mb-4 space-y-2 text-sm">
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-500">Product</span>
+                  <span className="text-white font-semibold text-right">{skuApproveRequest.product_name}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-500">Category</span>
+                  <span className="text-slate-200 text-right">{skuApproveRequest.category}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-500">Pack</span>
+                  <span className="text-slate-200 text-right">{skuApproveRequest.unit || '—'}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-slate-500">MRP</span>
+                  <span className="text-slate-200 text-right">₹{skuApproveRequest.mrp}</span>
+                </div>
+              </div>
+
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                Product PNG *
+              </label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={skuApproveSaving}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setSkuApproveImageFile(file);
+                  setSkuApproveImagePreview(file ? URL.createObjectURL(file) : '');
+                }}
+                className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer mb-4"
+              />
+
+              {skuApproveImagePreview ? (
+                <div className="w-28 h-28 rounded-xl border border-slate-800 bg-white/5 flex items-center justify-center overflow-hidden mb-5">
+                  <img src={skuApproveImagePreview} alt="Preview" className="w-full h-full object-contain p-1" />
+                </div>
+              ) : null}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={closeSkuApproveModal}
+                  disabled={skuApproveSaving}
+                  className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white disabled:opacity-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={skuApproveSaving || !skuApproveImageFile}
+                  onClick={handleConfirmSkuApprove}
+                  className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 cursor-pointer"
+                >
+                  {skuApproveSaving ? 'Uploading…' : 'Approve with PNG'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

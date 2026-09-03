@@ -8,6 +8,7 @@ import {
   enrichProductPackFields,
   packUnitPayloadFromInput,
   resolvePackUnitLabel,
+  toSupabaseProductRow,
 } from '../utils/packUnit';
 
 const router = Router();
@@ -33,7 +34,7 @@ function parseBool(val: any, defaultVal = false): boolean {
 // 1. GET /all: Consumer Catalog (with city pricing overrides)
 // 1. GET /all: Consumer Catalog (location-aware, based on city and area)
 router.get('/all', async (req, res) => {
-  const { city, area_name, category, secondary, q, limit, deals } = req.query;
+  const { city, area_name, category, secondary, q, limit, deals, pincode } = req.query;
   const limitVal = parseInt(limit as string) || 100;
   const dealsOnly = deals === '1' || deals === 'true';
 
@@ -44,7 +45,9 @@ router.get('/all', async (req, res) => {
         (p) =>
           (p.discount_percent && p.discount_percent > 0) ||
           p.featured ||
-          p.todays_deal,
+          p.todays_deal ||
+          p.best_seller ||
+          (parseFloat(p.mrp) > parseFloat(p.price)),
       )
       .sort((a, b) => {
         const da = a.discount_percent || 0;
@@ -144,107 +147,55 @@ router.get('/all', async (req, res) => {
       return res.json({ success: true, products: applyDealsFilter(out) });
     }
 
-    // Dynamic Location-Aware Merchant Mapping Flow
-    const { readDb } = require('../config/localDb');
-    const db = readDb();
+    const { fetchProductsForLocation } = require('../services/shopCatalog');
+    const catalog = await fetchProductsForLocation({
+      city: String(city),
+      areaName: String(area_name),
+      pincode: pincode ? String(pincode) : undefined,
+      category: category as string | undefined,
+      secondary: secondary as string | undefined,
+      q: q as string | undefined,
+      limit: limitVal,
+    });
 
-    // 1. Resolve local shop serving this city & area
-    const loc = db.serviceable_locations?.find(
-      (l: any) => l.city.toLowerCase() === String(city).trim().toLowerCase() &&
-                  l.area_name.toLowerCase() === String(area_name).trim().toLowerCase()
-    );
-
-    const shopId = loc?.shop_id;
-
-    // 2. Fetch approved and available shop products from local db if shopId exists
-    const activeShopProds = shopId
-      ? db.shop_products?.filter(
-          (sp: any) => sp.shop_id === shopId && sp.status === 'approved' && sp.available === true
-        ) || []
-      : [];
-
-    if (!shopId || activeShopProds.length === 0) {
-      return res.json({ success: true, products: [] });
-    }
-
-    const productIds = activeShopProds.map((sp: any) => sp.product_id);
-
-    // 3. Query matching master products from Supabase
-    let query = supabase
-      .from('products')
-      .select('*')
-      .in('id', productIds);
-
-    if (category) {
-      query = query.eq('primary_category', category);
-    }
-    if (secondary) {
-      query = query.eq('secondary_category', secondary);
-    }
-    if (q) {
-      query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
-    }
-
-    const { data: masterProducts, error } = await query.limit(limitVal);
-
-    if (error) {
-      return res.status(500).json({ success: false, error: error.message });
-    }
-
-    // 4. Merge master product details with local merchant pricing and stock configurations
-    const out: any[] = [];
-    for (const sp of activeShopProds) {
-      const p = masterProducts?.find((prod: any) => prod.id === sp.product_id);
-      if (!p) continue;
-
-      const mrp = parseFloat(p.mrp) || 0;
-      const price = parseFloat(sp.selling_price) || 0;
-
-      out.push(enrichProductPackFields({
-        id: p.id,
-        shop_id: shopId,
-        name: p.name,
-        sku: p.sku,
-        brand: p.brand,
-        company: p.company,
-        primary_category: p.primary_category,
-        secondary_category: p.secondary_category,
-        description: p.description,
-        short_description: p.short_description,
-        place: p.place,
-        image_url: p.image_url,
-        quantity_value: p.quantity_value,
-        quantity_unit: p.quantity_unit,
-        unit: p.unit,
-        mrp,
-        price,
-        discount_percent: sp.discount_percentage ?? 0,
-        stock: sp.stock || 0,
-        is_veg: p.is_veg,
-        featured: p.featured,
-        todays_deal: p.todays_deal,
-        best_seller: p.best_seller,
-        you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-      }));
-    }
-
-    return res.json({ success: true, products: applyDealsFilter(out) });
+    return res.json({
+      success: true,
+      products: applyDealsFilter(catalog.products),
+      shop_id: catalog.shopId,
+      shop_name: catalog.shopName,
+    });
 
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
 });
 
-// 1.2 GET /search: Search Consumer Catalog
+// 1.2 GET /search: Search Consumer Catalog (location-aware when city + area provided)
 router.get('/search', async (req, res) => {
-  const { q, category, limit } = req.query;
+  const { q, category, limit, city, area_name, pincode } = req.query;
   const limitVal = parseInt(limit as string) || 50;
 
   try {
-    let query = supabase
-      .from('products')
-      .select('*')
-      .eq('available', true);
+    if (city && area_name) {
+      const { fetchProductsForLocation } = require('../services/shopCatalog');
+      const catalog = await fetchProductsForLocation({
+        city: String(city),
+        areaName: String(area_name),
+        pincode: pincode ? String(pincode) : undefined,
+        category: category as string | undefined,
+        q: q as string | undefined,
+        limit: limitVal,
+      });
+
+      return res.json({
+        success: true,
+        products: catalog.products,
+        shop_id: catalog.shopId,
+        shop_name: catalog.shopName,
+      });
+    }
+
+    let query = supabase.from('products').select('*').eq('available', true);
 
     if (q) {
       query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
@@ -261,9 +212,9 @@ router.get('/search', async (req, res) => {
     const out = (products || []).map((p: any) => {
       const mrp = parseFloat(p.mrp) || 0;
       const price = parseFloat(p.price) || 0;
-      return {
+      return enrichProductPackFields({
         id: p.id,
-        shop_id: p.shop_id || 'hub-default',
+        shop_id: p.shop_id || null,
         name: p.name,
         sku: p.sku,
         brand: p.brand,
@@ -284,7 +235,7 @@ router.get('/search', async (req, res) => {
         todays_deal: p.todays_deal,
         best_seller: p.best_seller,
         you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-      };
+      });
     });
 
     return res.json({ success: true, products: out });
@@ -320,9 +271,13 @@ router.get('/master', async (req, res) => {
   }
 });
 
-// 1.8 GET /categories: Distinct categories from live master catalogue
+// 1.8 GET /categories: Admin-configured category tiles + product category names
 router.get('/categories', async (req, res) => {
   try {
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const adminCategories = db.categories || [];
+
     const { data: products, error } = await supabase
       .from('products')
       .select('primary_category')
@@ -332,13 +287,37 @@ router.get('/categories', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    const categoryNames = Array.from(
+    const productCategoryNames = Array.from(
       new Set((products || []).map((p: any) => String(p.primary_category || '').trim()).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
 
+    const categoriesFull = adminCategories.map((c: { id: string; name: string; image_url?: string }) => {
+      const subcategories = (db.subcategories || [])
+        .filter((s) => s.category_id === c.id && s.active !== false)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name))
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          image_url: s.image_url || undefined,
+        }));
+
+      return {
+        id: c.id,
+        name: c.name,
+        image_url: c.image_url || undefined,
+        subcategories,
+      };
+    });
+
+    const categories =
+      categoriesFull.length > 0
+        ? categoriesFull.map((c) => c.name)
+        : productCategoryNames;
+
     return res.json({
       success: true,
-      categories: categoryNames,
+      categories,
+      categoriesFull,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
@@ -462,7 +441,7 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           // Update product info
           const { data: updatedProduct, error: updateError } = await supabase
             .from('products')
-            .update(productData)
+            .update(toSupabaseProductRow(productData))
             .eq('id', product.id)
             .select()
             .single();
@@ -474,7 +453,7 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           // Insert new product
           const { data: newProduct, error: insertError } = await supabase
             .from('products')
-            .insert(productData)
+            .insert(toSupabaseProductRow(productData))
             .select()
             .single();
 
@@ -560,7 +539,7 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
 
     const { data: product, error } = await supabase
       .from('products')
-      .insert(newProduct)
+      .insert(toSupabaseProductRow(newProduct))
       .select()
       .single();
 
@@ -620,7 +599,7 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
 
     const { data: product, error } = await supabase
       .from('products')
-      .insert(newProduct)
+      .insert(toSupabaseProductRow(newProduct))
       .select()
       .single();
 
@@ -717,7 +696,7 @@ router.put('/:product_id', authMiddleware, requireRole(['admin', 'super_admin'])
 
     const { data: updatedProduct, error: updateError } = await supabase
       .from('products')
-      .update(updatedData)
+      .update(toSupabaseProductRow(updatedData))
       .eq('id', product_id)
       .select()
       .single();
@@ -774,6 +753,7 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       mrp: data.mrp !== undefined ? parseFloat(data.mrp) : product.mrp,
       price: data.price !== undefined ? parseFloat(data.price) : product.price,
       primary_category: data.primary_category !== undefined ? data.primary_category : product.primary_category,
+      secondary_category: data.secondary_category !== undefined ? data.secondary_category : product.secondary_category,
       image_url: data.image_url !== undefined ? data.image_url : product.image_url,
       quantity_value,
       quantity_unit,
@@ -784,7 +764,7 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
 
     const { data: updatedProduct, error: updateError } = await supabase
       .from('products')
-      .update(updatedData)
+      .update(toSupabaseProductRow(updatedData))
       .eq('id', product_id)
       .select()
       .single();

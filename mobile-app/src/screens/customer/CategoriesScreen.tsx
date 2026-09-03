@@ -11,7 +11,6 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import AppIcon, { IconName } from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import {
@@ -28,79 +27,7 @@ const TILE_SIZE = 78;
 const TILE_ICON_HEIGHT = 74;
 const tileGap = Math.max(4, (width - H_PADDING * 2 - TILE_SIZE * 4) / 3);
 
-interface CategoryTile extends CategoryItem {
-  icon: IconName;
-}
-
-// ─── Pastel background per category (from Figma) ──────────────────────────────
-const CATEGORY_BG: Record<string, string> = {
-  atta: '#FFF3D6',
-  rice: '#FFF3D6',
-  oil: '#E4F3EA',
-  ghee: '#E4F3EA',
-  dal: '#F6E9E1',
-  pulse: '#F6E9E1',
-  spice: '#FDE7E7',
-  masala: '#FDE7E7',
-  dairy: '#EDE9FB',
-  egg: '#EDE9FB',
-  milk: '#EDE9FB',
-  bakery: '#FBEEDD',
-  bread: '#FBEEDD',
-  fruit: '#EAF6D6',
-  veg: '#EAF6D6',
-  dry: '#E1F0FB',
-  snack: '#FBEEDD',
-  namkeen: '#FBEEDD',
-  drink: '#E1F0FB',
-  cold: '#E1F0FB',
-  beverage: '#E1F0FB',
-  biscuit: '#FDEFD3',
-  cookie: '#FDEFD3',
-  tea: '#F6E9E1',
-  coffee: '#F6E9E1',
-  clean: '#EAF6D6',
-  detergent: '#E4F3EA',
-  personal: '#FDE7E7',
-  care: '#FDE7E7',
-  soap: '#FDE7E7',
-  shampoo: '#FDE7E7',
-  baby: '#EDE9FB',
-  diaper: '#EDE9FB',
-  home: '#E4F3EA',
-  kitchen: '#E4F3EA',
-};
-
-function getCategoryBg(name: string): string {
-  const norm = name.toLowerCase();
-  for (const key of Object.keys(CATEGORY_BG)) {
-    if (norm.includes(key)) return CATEGORY_BG[key];
-  }
-  return '#F4F3EE';
-}
-
-function getCategoryIcon(name: string): IconName {
-  const norm = name.toLowerCase().trim();
-  if (norm.includes('atta') || norm.includes('rice')) return 'cat-atta-rice';
-  if (norm.includes('oil') || norm.includes('ghee')) return 'cat-oils-ghee';
-  if (norm.includes('dal') || norm.includes('pulse')) return 'cat-dals-pulses';
-  if (norm.includes('spice') || norm.includes('masala')) return 'cat-spices-masala';
-  if (norm.includes('dry') || norm.includes('fruit')) return 'cat-dry-fruits';
-  if (norm.includes('snack') || norm.includes('namkeen')) return 'cat-snacks';
-  if (norm.includes('beverage') || norm.includes('drink') || norm.includes('tea') || norm.includes('coffee')) {
-    return 'cat-beverages';
-  }
-  if (norm.includes('biscuit') || norm.includes('cookie') || norm.includes('bakery')) return 'cat-biscuits';
-  if (norm.includes('clean') || norm.includes('detergent')) return 'cat-cleaning';
-  if (norm.includes('personal') || norm.includes('care') || norm.includes('soap') || norm.includes('shampoo')) {
-    return 'cat-personal-care';
-  }
-  if (norm.includes('home') || norm.includes('kitchen')) return 'cat-home-kitchen';
-  if (norm.includes('baby') || norm.includes('diaper')) return 'cat-baby-care';
-  if (norm.includes('dairy') || norm.includes('milk') || norm.includes('egg')) return 'cat-baby-care';
-  if (norm.includes('veg') || norm.includes('fruit')) return 'cat-dry-fruits';
-  return 'shopping-bag';
-}
+interface CategoryTile extends CategoryItem {}
 
 const SECTION_KEYWORDS = {
   grocery: [
@@ -138,15 +65,10 @@ function CategoryTileItem({
   item: CategoryTile;
   onPress: () => void;
 }) {
-  const bg = getCategoryBg(item.name);
   return (
     <TouchableOpacity style={styles.tile} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.tileIconBox, { backgroundColor: bg }]}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="contain" />
-        ) : (
-          <AppIcon name={item.icon} size={26} color={COLORS.green700} />
-        )}
+      <View style={styles.tileIconBox}>
+        <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="contain" />
       </View>
       <Text style={styles.tileLabel} numberOfLines={2}>
         {item.name}
@@ -168,7 +90,7 @@ function TileRow({
 }) {
   const slots = [...tiles];
   while (slots.length < 4) {
-    slots.push({ id: `__empty_${slots.length}`, name: '', icon: 'shopping-bag' });
+    slots.push({ id: `__empty_${slots.length}`, name: '', image_url: '' });
   }
 
   return (
@@ -216,12 +138,7 @@ export default function CategoriesScreen({ navigation }: any) {
       setCategoriesError(true);
       setCategories([]);
     } else {
-      setCategories(
-        result.items.map((item) => ({
-          ...item,
-          icon: getCategoryIcon(item.name),
-        })),
-      );
+      setCategories(result.items);
     }
     setCategoriesLoading(false);
   }, []);
@@ -428,6 +345,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
+    backgroundColor: '#F4F3EE',
   },
   tilePng: {
     width: 44,

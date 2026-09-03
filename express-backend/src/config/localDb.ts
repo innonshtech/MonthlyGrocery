@@ -641,6 +641,15 @@ export interface Category {
   image_url?: string;
 }
 
+export interface Subcategory {
+  id: string;
+  category_id: string;
+  name: string;
+  image_url?: string;
+  sort_order?: number;
+  active?: boolean;
+}
+
 export interface Coupon {
   id: string;
   code: string;
@@ -835,6 +844,7 @@ interface LocalDbSchema {
   shop_territories: ShopTerritory[];
   shop_products: ShopProduct[];
   categories: Category[];
+  subcategories: Subcategory[];
   coupons: Coupon[];
   new_product_requests: NewProductRequest[];
   delivery_slot_configs?: DeliverySlotConfig[];
@@ -1018,6 +1028,25 @@ const defaultDb: LocalDbSchema = {
       name: 'Baby Care',
       image_url: 'https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/cadbury_bournvita_1kg.png',
     },
+  ],
+  subcategories: [
+    { id: 'sub-1', category_id: 'cat-1', name: 'Atta', sort_order: 1, active: true },
+    { id: 'sub-2', category_id: 'cat-1', name: 'Rice', sort_order: 2, active: true },
+    { id: 'sub-3', category_id: 'cat-2', name: 'Mustard Oil', sort_order: 1, active: true },
+    { id: 'sub-4', category_id: 'cat-2', name: 'Sunflower Oil', sort_order: 2, active: true },
+    { id: 'sub-5', category_id: 'cat-2', name: 'Soya Oil', sort_order: 3, active: true },
+    { id: 'sub-6', category_id: 'cat-2', name: 'Ghee', sort_order: 4, active: true },
+    { id: 'sub-7', category_id: 'cat-3', name: 'Toor Dal', sort_order: 1, active: true },
+    { id: 'sub-8', category_id: 'cat-3', name: 'Chana', sort_order: 2, active: true },
+    { id: 'sub-9', category_id: 'cat-3', name: 'Dal', sort_order: 3, active: true },
+    { id: 'sub-10', category_id: 'cat-4', name: 'Garam Masala', sort_order: 1, active: true },
+    { id: 'sub-11', category_id: 'cat-4', name: 'Turmeric', sort_order: 2, active: true },
+    { id: 'sub-12', category_id: 'cat-4', name: 'Chilli', sort_order: 3, active: true },
+    { id: 'sub-13', category_id: 'cat-6', name: 'Noodles', sort_order: 1, active: true },
+    { id: 'sub-14', category_id: 'cat-7', name: 'Tea', sort_order: 1, active: true },
+    { id: 'sub-15', category_id: 'cat-8', name: 'Biscuits', sort_order: 1, active: true },
+    { id: 'sub-16', category_id: 'cat-9', name: 'Detergents', sort_order: 1, active: true },
+    { id: 'sub-17', category_id: 'cat-10', name: 'Handwash', sort_order: 1, active: true },
   ],
   coupons: [
     { id: 'cp-1', code: 'GROCERY10', discount_type: 'percentage', value: 10, min_order: 500, active: true },
@@ -1803,6 +1832,10 @@ export function readDb(): LocalDbSchema {
     if (!db.shop_territories) db.shop_territories = [];
     if (!db.shop_products) db.shop_products = defaultDb.shop_products;
     if (!db.categories) db.categories = defaultDb.categories;
+    if (!db.subcategories) {
+      db.subcategories = defaultDb.subcategories;
+      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+    }
     if (!db.new_product_requests) db.new_product_requests = [];
     if (!db.delivery_slot_configs) db.delivery_slot_configs = [];
     if (!db.user_addresses) db.user_addresses = [];

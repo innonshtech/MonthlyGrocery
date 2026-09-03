@@ -11,6 +11,7 @@ import {
   resolveMerchantOrderStatus,
   MERCHANT_ORDER_STATUSES,
 } from '../utils/orderEnrichment';
+import { resolveShopIdForLocation } from '../services/shopResolution';
 
 const router = Router();
 
@@ -225,7 +226,6 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       finalPayableAmount = Math.max(0, originalAmount - validatedDiscount);
     }
 
-    const { resolveShopIdForLocation } = require('../services/shopResolution');
     const itemShopIds = items
       .map((it: any) => it.shop_id)
       .filter(Boolean);
@@ -239,9 +239,11 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     });
 
     if (!targetShopId) {
+      const areaLabel = [area_name, city].filter(Boolean).join(', ') || 'your area';
       return res.status(400).json({
         success: false,
-        error: 'No store is assigned to serve this delivery area. Please choose a different area or contact support.',
+        error: `No store is assigned to serve ${areaLabel}. Please choose a different delivery area or contact support.`,
+        code: 'NO_SHOP_FOR_AREA',
       });
     }
 
@@ -249,27 +251,38 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     if (uniqueItemShops.size > 1) {
       return res.status(400).json({
         success: false,
-        error: 'Cart items must belong to a single store',
+        error: 'Cart items must belong to a single store. Please clear your cart and add products again.',
+        code: 'MULTI_SHOP_CART',
       });
     }
     if (uniqueItemShops.size === 1 && !uniqueItemShops.has(targetShopId)) {
       return res.status(400).json({
         success: false,
-        error: 'Selected products are not available from the store serving your area',
+        error:
+          'Some items in your cart are not sold by the store serving your delivery area. Remove them or change your delivery area.',
+        code: 'CART_SHOP_MISMATCH',
       });
     }
 
     const { data: targetShop, error: targetShopError } = await supabase
       .from('shops')
-      .select('id, status')
+      .select('id, shop_name, status')
       .eq('id', targetShopId)
       .maybeSingle();
 
     if (targetShopError || !targetShop) {
-      return res.status(400).json({ success: false, error: 'Assigned store is not available' });
+      return res.status(400).json({
+        success: false,
+        error: 'The store assigned to your area is not available right now.',
+        code: 'SHOP_NOT_FOUND',
+      });
     }
     if (targetShop.status && targetShop.status !== 'approved') {
-      return res.status(400).json({ success: false, error: 'Assigned store is not accepting orders' });
+      return res.status(400).json({
+        success: false,
+        error: `${targetShop.shop_name || 'Your area store'} is not accepting orders at the moment.`,
+        code: 'SHOP_NOT_APPROVED',
+      });
     }
 
     // Validate delivery slot availability (dynamic capacity from merchant config)
@@ -351,6 +364,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       consumer_id: req.user!.id,
       consumer_name: req.user!.mobile || 'Customer',
       shop_id: targetShopId,
+      shop_name: targetShop.shop_name || null,
       total_amount: finalPayableAmount,
       discount_amount: validatedDiscount,
       product_savings: validatedProductSavings,
@@ -374,8 +388,10 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
     return res.json({
       success: true,
-      message: 'Order placed successfully',
+      message: `Order placed successfully with ${targetShop.shop_name || 'your area store'}`,
       order: enrichConsumerOrder(enrichedOrder),
+      shop_id: targetShopId,
+      shop_name: targetShop.shop_name || null,
     });
 
   } catch (error: any) {
@@ -623,6 +639,7 @@ router.get('/copy-last-month', authMiddleware, async (req: AuthRequest, res: Res
     const screen = db.copy_last_month_screen || {};
     const city = String(req.query.city || '').trim();
     const area = String(req.query.area_name || req.query.area || '').trim();
+    const pincode = String(req.query.pincode || '').trim();
 
     const basket = await buildCopyLastMonth(
       req.user!.id,
@@ -634,6 +651,7 @@ router.get('/copy-last-month', authMiddleware, async (req: AuthRequest, res: Res
         changes_repriced_only_template: screen.changes_repriced_only_template || '',
         changes_unavailable_only_template: screen.changes_unavailable_only_template || '',
       },
+      pincode || undefined,
     );
 
     return res.json({ success: true, basket });
@@ -651,6 +669,7 @@ router.get('/one-click-cart', authMiddleware, async (req: AuthRequest, res: Resp
     const screen = db.one_click_cart_screen || {};
     const city = String(req.query.city || '').trim();
     const area = String(req.query.area_name || req.query.area || '').trim();
+    const pincode = String(req.query.pincode || '').trim();
 
     const basket = await buildOneClickCart(
       req.user!.id,
@@ -658,6 +677,7 @@ router.get('/one-click-cart', authMiddleware, async (req: AuthRequest, res: Resp
       area || undefined,
       screen.section_label_overrides || {},
       Number(screen.source_months) || 3,
+      pincode || undefined,
     );
 
     return res.json({ success: true, basket });

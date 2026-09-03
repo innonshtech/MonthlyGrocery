@@ -1,6 +1,8 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../config/api';
+import { normalizePincode } from '../utils/locationParams';
+import { fetchAreasForCity } from '../services/areasApi';
 
 export interface User {
   id: string;
@@ -17,7 +19,12 @@ interface AuthContextType {
   loading: boolean;
   city: string | null;
   area: string | null;
-  setCityAndArea: (city: string | null, area: string | null) => Promise<void>;
+  pincode: string | null;
+  setCityAndArea: (
+    city: string | null,
+    area: string | null,
+    pincode?: string | null,
+  ) => Promise<void>;
   sendOtp: (mobile: string, role: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (mobile: string, code: string, name?: string, role?: string) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updatedFields: Partial<User>) => Promise<void>;
@@ -31,32 +38,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [city, setCityState] = useState<string | null>(null);
   const [area, setAreaState] = useState<string | null>(null);
+  const [pincode, setPincodeState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // 1. Check for persisted session and location on launch
   useEffect(() => {
     const loadSession = async () => {
       try {
         const savedToken = await AsyncStorage.getItem('@auth_token');
         const savedCity = await AsyncStorage.getItem('@user_city');
         const savedArea = await AsyncStorage.getItem('@user_area');
-        
+        const savedPincode = await AsyncStorage.getItem('@user_pincode');
+
         if (savedCity) setCityState(savedCity);
         if (savedArea) setAreaState(savedArea);
+        if (savedPincode) {
+          setPincodeState(savedPincode);
+        } else if (savedCity && savedArea) {
+          const list = await fetchAreasForCity(savedCity);
+          const match = list.find(
+            (a) => a.name.trim().toLowerCase() === savedArea.trim().toLowerCase(),
+          );
+          if (match?.pincode) {
+            setPincodeState(match.pincode);
+            await AsyncStorage.setItem('@user_pincode', match.pincode);
+          }
+        }
 
         if (savedToken) {
-          // Verify token and fetch profile
           const res = await fetch(`${API_BASE}/auth/me`, {
             headers: {
-              'Authorization': `Bearer ${savedToken}`
-            }
+              Authorization: `Bearer ${savedToken}`,
+            },
           });
           const data = await res.json();
           if (res.ok && data.success) {
             setToken(savedToken);
             setUser(data.user);
           } else {
-            // Token expired or invalid -> clear
             await AsyncStorage.removeItem('@auth_token');
           }
         }
@@ -69,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadSession();
   }, []);
 
-  // 2. Request OTP
   const sendOtp = async (mobile: string, role: string) => {
     try {
       const res = await fetch(`${API_BASE}/auth/send-otp`, {
@@ -82,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Failed to send OTP' };
       }
       return { success: true };
-    } catch (err: any) {
+    } catch {
       return {
         success: false,
         error:
@@ -91,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 3. Verify OTP and login
   const verifyOtp = async (mobile: string, code: string, name?: string, role?: string) => {
     try {
       const res = await fetch(`${API_BASE}/auth/verify-otp`, {
@@ -104,12 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: data.error || 'Verification failed' };
       }
 
-      // Save token in memory and local storage
       await AsyncStorage.setItem('@auth_token', data.token);
       setToken(data.token);
       setUser(data.user);
       return { success: true };
-    } catch (err: any) {
+    } catch {
       return {
         success: false,
         error:
@@ -118,8 +133,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 4. Set Location
-  const setCityAndArea = async (newCity: string | null, newArea: string | null) => {
+  const setCityAndArea = async (
+    newCity: string | null,
+    newArea: string | null,
+    newPincode?: string | null,
+  ) => {
     try {
       if (newCity) {
         await AsyncStorage.setItem('@user_city', newCity);
@@ -131,6 +149,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         await AsyncStorage.removeItem('@user_area');
       }
+
+      const normalizedPin = newPincode != null ? normalizePincode(newPincode) : '';
+      if (normalizedPin) {
+        await AsyncStorage.setItem('@user_pincode', normalizedPin);
+        setPincodeState(normalizedPin);
+      } else {
+        await AsyncStorage.removeItem('@user_pincode');
+        setPincodeState(null);
+      }
+
       setCityState(newCity);
       setAreaState(newArea);
     } catch (err) {
@@ -138,7 +166,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 5. Update User Profile
   const updateUser = async (updatedFields: Partial<User>) => {
     if (user) {
       const updated = { ...user, ...updatedFields };
@@ -146,23 +173,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // 6. Logout
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('@auth_token');
-      await AsyncStorage.removeItem('@user_city');
-      await AsyncStorage.removeItem('@user_area');
+      await AsyncStorage.multiRemove([
+        '@auth_token',
+        '@user_city',
+        '@user_area',
+        '@user_pincode',
+      ]);
       setToken(null);
       setUser(null);
       setCityState(null);
       setAreaState(null);
+      setPincodeState(null);
     } catch (err) {
       console.error('Error during logout:', err);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, loading, city, area, setCityAndArea, sendOtp, verifyOtp, updateUser, logout }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        loading,
+        city,
+        area,
+        pincode,
+        setCityAndArea,
+        sendOtp,
+        verifyOtp,
+        updateUser,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

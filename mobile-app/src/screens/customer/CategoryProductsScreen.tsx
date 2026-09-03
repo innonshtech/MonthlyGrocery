@@ -23,9 +23,11 @@ import {
   fetchCategoryProductsConfigWithStatus,
   fetchCategoryProducts,
   fetchBrowseCategoryImage,
+  fetchSubcategoriesForCategory,
   buildSidebarTabs,
   formatCategoryProductsTemplate,
   CategoryProductsScreenConfig,
+  AdminSubcategory,
 } from '../../services/categoryProductsApi';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import { getProductPackLabel } from '../../utils/packUnit';
@@ -43,7 +45,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
     dealsOnly = false,
   } = route?.params || {};
 
-  const { city, area } = useAuth();
+  const { city, area, pincode } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
 
   const [screenConfig, setScreenConfig] = useState<CategoryProductsScreenConfig | null>(null);
@@ -56,6 +58,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'discount'>('relevance');
   const [selectedPackSize, setSelectedPackSize] = useState('');
   const [parentCategoryImage, setParentCategoryImage] = useState<string | undefined>();
+  const [adminSubcategories, setAdminSubcategories] = useState<AdminSubcategory[]>([]);
 
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
   const totalCartCount = items.reduce((s, i) => s + i.quantity, 0);
@@ -83,6 +86,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       categoryId,
       city: city ?? undefined,
       area: area ?? undefined,
+      pincode: pincode ?? undefined,
     });
 
     if (result.error) {
@@ -92,15 +96,20 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       setProducts(result.products);
     }
     setLoading(false);
-  }, [hasDeliveryArea, dealsOnly, categoryName, categoryId, city, area]);
+  }, [hasDeliveryArea, dealsOnly, categoryName, categoryId, city, area, pincode]);
 
   const loadAll = useCallback(async () => {
     await loadConfig();
     if (!dealsOnly) {
-      const img = await fetchBrowseCategoryImage(categoryId, categoryName);
+      const [img, subs] = await Promise.all([
+        fetchBrowseCategoryImage(categoryId, categoryName),
+        fetchSubcategoriesForCategory(categoryId, categoryName),
+      ]);
       setParentCategoryImage(img);
+      setAdminSubcategories(subs);
     } else {
       setParentCategoryImage(undefined);
+      setAdminSubcategories([]);
     }
     await loadProducts();
   }, [loadConfig, loadProducts, dealsOnly, categoryId, categoryName]);
@@ -151,8 +160,11 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
     });
 
   const sidebarTabs = useMemo(
-    () => (allLabel ? buildSidebarTabs(products, allLabel, parentCategoryImage) : []),
-    [products, allLabel, parentCategoryImage],
+    () =>
+      allLabel
+        ? buildSidebarTabs(products, allLabel, parentCategoryImage, adminSubcategories)
+        : [],
+    [products, allLabel, parentCategoryImage, adminSubcategories],
   );
 
   const packSizes = Array.from(

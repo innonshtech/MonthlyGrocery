@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
+import { appendLocationParams } from '../../utils/locationParams';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { HomeSearchIcon, HomeMicIcon, HomeArrowRightIcon } from '../../components/home/HomeFigmaIcons';
@@ -75,7 +76,7 @@ function buildSuggestions(products: Product[], rawQuery: string): string[] {
 }
 
 export default function SearchScreen({ navigation }: any) {
-  const { city, area } = useAuth();
+  const { city, area, pincode } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
 
   const [searchConfig, setSearchConfig] = useState<SearchScreenConfig | null>(null);
@@ -116,9 +117,10 @@ export default function SearchScreen({ navigation }: any) {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        let url = `${API_BASE}/products/all?q=${encodeURIComponent(debouncedQuery)}&limit=50`;
-        url += `&city=${encodeURIComponent(city!)}`;
-        url += `&area_name=${encodeURIComponent(area!)}`;
+        const url = appendLocationParams(
+          `${API_BASE}/products/all?q=${encodeURIComponent(debouncedQuery)}&limit=50`,
+          { city, area, pincode },
+        );
         const res = await fetch(url);
         const data = await res.json();
         setProducts(res.ok && data.success ? data.products : []);
@@ -129,7 +131,7 @@ export default function SearchScreen({ navigation }: any) {
       }
     };
     fetchProducts();
-  }, [debouncedQuery, city, area, hasDeliveryArea]);
+  }, [debouncedQuery, city, area, pincode, hasDeliveryArea]);
 
   const suggestions = showSuggestions && query.trim()
     ? buildSuggestions(products, query)

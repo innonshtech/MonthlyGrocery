@@ -22,6 +22,7 @@ import {
 import {
   fetchOnboardingConfig,
   OnboardingSplashConfig,
+  hasCompletedValueIntroThisSession,
 } from '../services/onboardingApi';
 
 /**
@@ -93,6 +94,9 @@ export default function SplashScreen({ navigation }: any) {
 
   const spreadAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
+  const hasNavigated = useRef(false);
+  const authRef = useRef({ token, user });
+  authRef.current = { token, user };
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +113,7 @@ export default function SplashScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => {
-    if (!configReady) return;
+    if (!configReady || hasNavigated.current) return;
 
     spreadAnim.setValue(0);
     contentAnim.setValue(0);
@@ -130,17 +134,24 @@ export default function SplashScreen({ navigation }: any) {
     }).start();
 
     const timer = setTimeout(() => {
-      if (token && user?.role === 'consumer') {
-        navigation.replace('Shop');
-      } else if (token) {
-        navigation.replace('Login');
-      } else {
+      if (hasNavigated.current) return;
+      hasNavigated.current = true;
+
+      if (!hasCompletedValueIntroThisSession()) {
         navigation.replace('ValueIntro');
+        return;
+      }
+
+      const { token: activeToken, user: activeUser } = authRef.current;
+      if (activeToken && activeUser?.role === 'consumer') {
+        navigation.replace('Shop');
+      } else {
+        navigation.replace('Login');
       }
     }, 2200);
 
     return () => clearTimeout(timer);
-  }, [configReady, token, user, navigation, spreadAnim, contentAnim]);
+  }, [configReady, navigation, spreadAnim, contentAnim]);
 
   const chips = splashConfig?.emoji_chips ?? [];
   const showContent = splashConfig !== null;

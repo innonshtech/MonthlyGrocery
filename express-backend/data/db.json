@@ -38,7 +38,7 @@
       "area_name": "Baner",
       "pincode": "411045",
       "is_serviceable": true,
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     },
     {
       "id": "loc-6",
@@ -55,6 +55,14 @@
       "pincode": "411057",
       "is_serviceable": true,
       "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591"
+    },
+    {
+      "id": "loc-1788458494565",
+      "city": "Pune",
+      "area_name": "Baner",
+      "pincode": "411045",
+      "is_serviceable": true,
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613"
     }
   ],
   "promotional_banners": [
@@ -181,7 +189,28 @@
       "name": "Connaught Place"
     }
   ],
-  "shop_products": [],
+  "shop_products": [
+    {
+      "id": "sp-1788434660065-wqd8pc147",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "product_id": "fa37b5ac-72e8-453f-8802-78298cb620e9",
+      "selling_price": 250,
+      "discount_percentage": 0,
+      "stock": 0,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1788434762825-2gb8cwt0v",
+      "shop_id": "e343ff09-2683-42cf-9d40-f0570c6b695e",
+      "product_id": "2475a4a3-bbd1-4c19-aaa3-306af47168b4",
+      "selling_price": 1000,
+      "discount_percentage": 0,
+      "stock": 0,
+      "available": true,
+      "status": "approved"
+    }
+  ],
   "categories": [
     {
       "id": "cat-1",
@@ -361,7 +390,7 @@
       "quantity_value": 1,
       "quantity_unit": "kg",
       "mrp": 250,
-      "status": "pending",
+      "status": "approved",
       "created_at": "2026-09-03T10:52:36.599Z"
     },
     {
@@ -376,6 +405,19 @@
       "mrp": 120,
       "status": "pending",
       "created_at": "2026-09-03T11:00:56.528Z"
+    },
+    {
+      "id": "req-1788434367748-unga1uv",
+      "shop_id": "e343ff09-2683-42cf-9d40-f0570c6b695e",
+      "name": "Kaju",
+      "category": "Dry Fruits",
+      "brand": "Tata",
+      "unit": "1 kg",
+      "quantity_value": 1,
+      "quantity_unit": "kg",
+      "mrp": 1000,
+      "status": "approved",
+      "created_at": "2026-09-03T11:19:27.748Z"
     }
   ],
   "delivery_slot_configs": [
@@ -1268,6 +1310,127 @@
       "district_id": "dist-pune",
       "district_name": "Pune",
       "city": "Ravet"
+    }
+  ],
+  "subcategories": [
+    {
+      "id": "sub-1",
+      "category_id": "cat-1",
+      "name": "Atta",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-2",
+      "category_id": "cat-1",
+      "name": "Rice",
+      "sort_order": 2,
+      "active": true
+    },
+    {
+      "id": "sub-3",
+      "category_id": "cat-2",
+      "name": "Mustard Oil",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-4",
+      "category_id": "cat-2",
+      "name": "Sunflower Oil",
+      "sort_order": 2,
+      "active": true
+    },
+    {
+      "id": "sub-5",
+      "category_id": "cat-2",
+      "name": "Soya Oil",
+      "sort_order": 3,
+      "active": true
+    },
+    {
+      "id": "sub-6",
+      "category_id": "cat-2",
+      "name": "Ghee",
+      "sort_order": 4,
+      "active": true
+    },
+    {
+      "id": "sub-7",
+      "category_id": "cat-3",
+      "name": "Toor Dal",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-8",
+      "category_id": "cat-3",
+      "name": "Chana",
+      "sort_order": 2,
+      "active": true
+    },
+    {
+      "id": "sub-9",
+      "category_id": "cat-3",
+      "name": "Dal",
+      "sort_order": 3,
+      "active": true
+    },
+    {
+      "id": "sub-10",
+      "category_id": "cat-4",
+      "name": "Garam Masala",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-11",
+      "category_id": "cat-4",
+      "name": "Turmeric",
+      "sort_order": 2,
+      "active": true
+    },
+    {
+      "id": "sub-12",
+      "category_id": "cat-4",
+      "name": "Chilli",
+      "sort_order": 3,
+      "active": true
+    },
+    {
+      "id": "sub-13",
+      "category_id": "cat-6",
+      "name": "Noodles",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-14",
+      "category_id": "cat-7",
+      "name": "Tea",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-15",
+      "category_id": "cat-8",
+      "name": "Biscuits",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-16",
+      "category_id": "cat-9",
+      "name": "Detergents",
+      "sort_order": 1,
+      "active": true
+    },
+    {
+      "id": "sub-17",
+      "category_id": "cat-10",
+      "name": "Handwash",
+      "sort_order": 1,
+      "active": true
     }
   ]
 }

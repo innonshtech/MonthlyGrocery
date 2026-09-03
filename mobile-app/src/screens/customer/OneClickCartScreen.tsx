@@ -61,7 +61,7 @@ function Stepper({
 
 export default function OneClickCartScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { token, city, area } = useAuth();
+  const { token, city, area, pincode } = useAuth();
   const { addToCart } = useCart();
 
   const [screenConfig, setScreenConfig] = useState<OneClickCartScreenConfig | null>(null);
@@ -92,7 +92,7 @@ export default function OneClickCartScreen({ navigation }: any) {
     setGenerating(true);
     setLoadError(false);
 
-    const { basket, error } = await fetchOneClickCartBasket(token, city, area);
+    const { basket, error } = await fetchOneClickCartBasket(token, city, area, pincode);
 
     if (error || !basket) {
       setLoadError(true);
