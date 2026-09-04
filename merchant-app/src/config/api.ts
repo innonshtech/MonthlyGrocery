@@ -4,7 +4,7 @@ import { NativeModules, Platform } from 'react-native';
  * Your PC's Wi‑Fi IPv4 — run `ipconfig` on Windows and update when network changes.
  * Phone and PC must be on the same Wi‑Fi (e.g. both 192.168.0.x).
  */
-const DEV_MACHINE_IP = '192.168.1.15';
+const DEV_MACHINE_IP = '192.168.1.14';
 
 function isAndroidEmulator(): boolean {
   if (Platform.OS !== 'android') return false;
@@ -28,6 +28,4 @@ function resolveDevApiHost(): string {
   return 'localhost';
 }
 
-export const API_BASE = __DEV__
-  ? `http://${resolveDevApiHost()}:8001/api`
-  : 'https://monthly-grocery-rust.vercel.app/api';
+export const API_BASE = `http://${resolveDevApiHost()}:8001/api`;
