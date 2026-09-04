@@ -45,7 +45,9 @@ export type IconName =
   | 'star'
   | 'building'
   | 'mic'
-  | 'percent';
+  | 'percent'
+  | 'repeat'
+  | 'reorder';
 
 interface AppIconProps {
   name: IconName;

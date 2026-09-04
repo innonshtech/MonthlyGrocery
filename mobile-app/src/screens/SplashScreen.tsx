@@ -82,7 +82,7 @@ function MonthlyGroceryLogo({ width, height }: { width: number; height: number }
 }
 
 export default function SplashScreen({ navigation }: any) {
-  const { token, user } = useAuth();
+  const { token, user, city, area } = useAuth();
   const { width, height } = useWindowDimensions();
   const { bottomOffset, availableHeight } = useOnboardingLayout();
   const sx = width / FIGMA_W;
@@ -95,8 +95,8 @@ export default function SplashScreen({ navigation }: any) {
   const spreadAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
   const hasNavigated = useRef(false);
-  const authRef = useRef({ token, user });
-  authRef.current = { token, user };
+  const authRef = useRef({ token, user, city, area });
+  authRef.current = { token, user, city, area };
 
   useEffect(() => {
     let cancelled = false;
@@ -142,9 +142,13 @@ export default function SplashScreen({ navigation }: any) {
         return;
       }
 
-      const { token: activeToken, user: activeUser } = authRef.current;
+      const { token: activeToken, user: activeUser, city: activeCity, area: activeArea } = authRef.current;
       if (activeToken && activeUser?.role === 'consumer') {
-        navigation.replace('Shop');
+        if (!activeCity || !activeArea) {
+          navigation.replace('CitySelection');
+        } else {
+          navigation.replace('Shop');
+        }
       } else {
         navigation.replace('Login');
       }

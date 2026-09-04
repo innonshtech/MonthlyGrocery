@@ -152,7 +152,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={SCREEN_BG} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.topHeader}>
         <TouchableOpacity

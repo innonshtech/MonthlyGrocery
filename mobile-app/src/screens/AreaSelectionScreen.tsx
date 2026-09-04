@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
@@ -50,7 +51,8 @@ function formatUnserviceableSubtitle(
  * Areas from /api/admin/locations; copy from /api/admin/onboarding.
  */
 export default function AreaSelectionScreen({ route, navigation }: any) {
-  const { setCityAndArea, user } = useAuth();
+  const { setCityAndArea, user, token, city: currentCity, area: currentArea } = useAuth();
+  const { items, clearCart } = useCart();
   const cityName = route.params?.cityName?.trim() || '';
   const { bottomPadding } = useOnboardingLayout();
 
@@ -91,9 +93,41 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
 
   const handleAreaSelect = async (area: CityArea) => {
     if (!area.serviceable) return;
-    setSelectedAreaId(area.id);
-    await setCityAndArea(cityName, area.name, area.pincode || null);
-    navigation.navigate('ProfileSetup');
+    const isDifferentArea = Boolean(
+      (currentCity && currentCity.toLowerCase() !== cityName.toLowerCase()) ||
+      (currentArea && currentArea.toLowerCase() !== area.name.toLowerCase()),
+    );
+
+    const proceed = async () => {
+      setSelectedAreaId(area.id);
+      await setCityAndArea(cityName, area.name, area.pincode || null);
+      if (token && user?.name) {
+        navigation.navigate('Shop');
+      } else {
+        navigation.navigate('ProfileSetup');
+      }
+    };
+
+    if (items.length > 0 && isDifferentArea) {
+      Alert.alert(
+        'Change Delivery Location?',
+        'Changing your area will update item availability and pricing. Your cart will be cleared for this area.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Change Area & Clear Cart',
+            style: 'destructive',
+            onPress: async () => {
+              clearCart();
+              await proceed();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    await proceed();
   };
 
   const handleNotifyMe = async () => {

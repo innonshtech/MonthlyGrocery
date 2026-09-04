@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AppLoader from '../../components/AppLoader';
+import AppIcon from '../../components/AppIcon';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import {
   fetchCategoriesConfigWithStatus,

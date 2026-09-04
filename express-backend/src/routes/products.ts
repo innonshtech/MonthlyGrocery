@@ -293,9 +293,9 @@ router.get('/categories', async (req, res) => {
 
     const categoriesFull = adminCategories.map((c: { id: string; name: string; image_url?: string }) => {
       const subcategories = (db.subcategories || [])
-        .filter((s) => s.category_id === c.id && s.active !== false)
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name))
-        .map((s) => ({
+        .filter((s: any) => s.category_id === c.id && s.active !== false)
+        .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name))
+        .map((s: any) => ({
           id: s.id,
           name: s.name,
           image_url: s.image_url || undefined,
@@ -311,7 +311,7 @@ router.get('/categories', async (req, res) => {
 
     const categories =
       categoriesFull.length > 0
-        ? categoriesFull.map((c) => c.name)
+        ? categoriesFull.map((c: any) => c.name)
         : productCategoryNames;
 
     return res.json({

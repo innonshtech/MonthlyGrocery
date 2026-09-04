@@ -59,7 +59,7 @@ export default function CartScreen({
   navigation: any;
   setActiveTab?: (tab: 'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account') => void;
 }) {
-  const { token } = useAuth();
+  const { token, city, area } = useAuth();
   const insets = useSafeAreaInsets();
   const { items, minOrderLimit, updateQuantity, addToCart, appliedCoupon, setAppliedCoupon } = useCart();
 
@@ -123,6 +123,17 @@ export default function CartScreen({
   const emptyPreviewImages = getEmptyPreviewImages(screenConfig);
 
   const handleCheckout = () => {
+    if (!city?.trim() || !area?.trim()) {
+      Alert.alert(
+        'Delivery Location Required',
+        'Please select your delivery city and area before proceeding to checkout.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Select Location', onPress: () => navigation.navigate('CitySelection') },
+        ],
+      );
+      return;
+    }
     if (isBelowMin && screenConfig) {
       Alert.alert(
         'Minimum order value',

@@ -149,6 +149,17 @@ export default function CheckoutScreen({ route, navigation }: any) {
   };
 
   const handleProceedToPayment = () => {
+    if (!city?.trim() || !area?.trim()) {
+      Alert.alert(
+        'Delivery Location Required',
+        'Please select your delivery city and area before proceeding.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Select Location', onPress: () => navigation.navigate('CitySelection') },
+        ],
+      );
+      return;
+    }
     if (!selectedAddress || !selectedSlot) {
       Alert.alert('Delivery info required', 'Please add both delivery address and slot to proceed.');
       return;
@@ -176,7 +187,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={CHECKOUT_BG} />
+      <StatusBar barStyle="dark-content" />
 
       {/* Header — Figma: pl16 pr20 pt4 pb8, gap 10 */}
       <View style={styles.topHeader}>

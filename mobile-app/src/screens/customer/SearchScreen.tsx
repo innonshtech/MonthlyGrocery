@@ -87,7 +87,7 @@ export default function SearchScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<any>(null);
   const debouncedQuery = useDebounce(query, 350);
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
 

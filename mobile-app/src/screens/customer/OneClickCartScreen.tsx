@@ -92,7 +92,7 @@ export default function OneClickCartScreen({ navigation }: any) {
     setGenerating(true);
     setLoadError(false);
 
-    const { basket, error } = await fetchOneClickCartBasket(token, city, area, pincode);
+    const { basket, error } = await fetchOneClickCartBasket(token, city, area, pincode ?? undefined);
 
     if (error || !basket) {
       setLoadError(true);

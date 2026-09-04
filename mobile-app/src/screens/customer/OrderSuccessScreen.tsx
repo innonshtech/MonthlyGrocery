@@ -45,7 +45,7 @@ type OrderSummary = {
 
 function mapApiOrder(order: any): OrderSummary {
   return {
-    orderId: getOrderDisplayId({ display_id: order.display_id, id: order.id }),
+    orderId: getOrderDisplayId({ display_id: order.display_id, id: order.id } as any),
     total: Number(order.total_amount) || 0,
     savings: Number(order.total_savings) ||
       Number(order.product_savings || 0) + Number(order.discount_amount || 0),
@@ -76,7 +76,7 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
           orderId: getOrderDisplayId({
             display_id: params.orderId,
             id: params.backendOrderId || params.orderId,
-          }),
+          } as any),
           total: params.total ?? 0,
           savings: params.savings ?? 0,
           arriving:

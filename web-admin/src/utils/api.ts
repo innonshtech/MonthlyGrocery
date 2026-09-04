@@ -1,4 +1,4 @@
-export const API_BASE = 'http://localhost:8001/api';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
 
 export function clearAdminSession() {
   if (typeof window === 'undefined') return;
@@ -24,7 +24,7 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string> | undefined),
   };
 
-  if (options.body && !headers['Content-Type']) {
+  if (options.body && !headers['Content-Type'] && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
 

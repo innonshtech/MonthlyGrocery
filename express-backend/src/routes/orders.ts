@@ -150,6 +150,14 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ success: false, error: 'Incomplete order checkout details' });
   }
 
+  if (!city?.trim() || !area_name?.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Delivery city and area are required for checkout.',
+      code: 'LOCATION_REQUIRED',
+    });
+  }
+
   if (!finalAddress) {
     return res.status(400).json({ success: false, error: 'Delivery address is required' });
   }

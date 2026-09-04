@@ -81,9 +81,9 @@ export async function fetchCopyLastMonthScreenConfig(): Promise<CopyLastMonthScr
 
 export async function fetchCopyLastMonthBasket(
   token: string,
-  city?: string,
-  area?: string,
-  pincode?: string,
+  city?: string | null,
+  area?: string | null,
+  pincode?: string | null,
 ): Promise<{ basket: CopyLastMonthBasket | null; error: boolean }> {
   try {
     const params = new URLSearchParams();

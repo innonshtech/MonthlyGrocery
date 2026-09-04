@@ -75,9 +75,9 @@ export async function fetchOneClickCartScreenConfig(): Promise<OneClickCartScree
 
 export async function fetchOneClickCartBasket(
   token: string,
-  city?: string,
-  area?: string,
-  pincode?: string,
+  city?: string | null,
+  area?: string | null,
+  pincode?: string | null,
 ): Promise<{ basket: OneClickCartBasket | null; error: boolean }> {
   try {
     const params = new URLSearchParams();

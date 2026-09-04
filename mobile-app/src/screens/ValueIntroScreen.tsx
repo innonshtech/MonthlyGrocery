@@ -34,7 +34,7 @@ import { useAuth } from '../context/AuthContext';
  * All copy, gradients, and chip layout from /api/admin/onboarding.
  */
 export default function ValueIntroScreen({ navigation }: any) {
-  const { token, user } = useAuth();
+  const { token, user, city, area } = useAuth();
   const [slides, setSlides] = useState<ValueIntroSlideConfig[]>([]);
   const [introMeta, setIntroMeta] = useState<ValueIntroMetaConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +69,10 @@ export default function ValueIntroScreen({ navigation }: any) {
       await markValueIntroCompletedThisSession();
     }
     if (token && user?.role === 'consumer') {
+      if (!city || !area) {
+        navigation.replace('CitySelection');
+        return;
+      }
       navigation.replace('Shop');
       return;
     }
@@ -133,7 +137,7 @@ export default function ValueIntroScreen({ navigation }: any) {
         {slide.show_skip ? (
           <TouchableOpacity
             style={styles.skipBtn}
-            onPress={goToLogin}
+            onPress={() => goToLogin(false)}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <Text style={styles.skipText}>Skip</Text>

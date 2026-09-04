@@ -90,7 +90,7 @@ export default function CopyLastMonthScreen({ navigation }: any) {
     setLoading(true);
     setLoadError(false);
 
-    const { basket, error } = await fetchCopyLastMonthBasket(token, city, area, pincode);
+    const { basket, error } = await fetchCopyLastMonthBasket(token, city, area, pincode ?? undefined);
 
     if (error || !basket) {
       setLoadError(true);

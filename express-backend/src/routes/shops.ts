@@ -27,7 +27,7 @@ router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: Aut
 
     const { readDb } = require('../config/localDb');
     const db = readDb();
-    const territoryMap = new Map((db.shop_territories || []).map((t: any) => [t.shop_id, t]));
+    const territoryMap = new Map<string, any>((db.shop_territories || []).map((t: any) => [t.shop_id, t]));
 
     const enrichedShops = (shops || []).map((shop: any) => {
       const territory = territoryMap.get(shop.id);
