@@ -84,62 +84,62 @@
     {
       "id": "cat-1",
       "name": "Atta & Rice",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519364045_rr06qa.png"
     },
     {
       "id": "cat-2",
       "name": "Oils & Ghee",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_mustard_oil_5l.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519424287_w0855u.png"
     },
     {
       "id": "cat-3",
       "name": "Dals & Pulses",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_basmati_rice_5kg.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519449900_nqjgm7.png"
     },
     {
       "id": "cat-4",
       "name": "Spices & Masala",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/everest_garam_masala_100g.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519512871_xqxvn4.png"
     },
     {
       "id": "cat-5",
       "name": "Dry Fruits",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/cadbury_bournvita_1kg.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519682060_os0mj7.png"
     },
     {
       "id": "cat-6",
       "name": "Snacks",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/maggi_masala_noodles_12pack.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519527095_nudj3k.png"
     },
     {
       "id": "cat-7",
       "name": "Beverages",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_tea_gold_500g.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519689921_f0wn1w.png"
     },
     {
       "id": "cat-8",
       "name": "Biscuits",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_salt_lite_1kg.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519549841_4syuid.png"
     },
     {
       "id": "cat-9",
       "name": "Cleaning",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/surf_excel_detergent_3kg.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519700416_r460pm.png"
     },
     {
       "id": "cat-10",
       "name": "Personal Care",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/amul_pure_ghee_1l.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519709113_7pqzpt.png"
     },
     {
       "id": "cat-11",
       "name": "Home & Kitchen",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/lizol_floor_cleaner_2l.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519732834_4c45kw.png"
     },
     {
       "id": "cat-12",
       "name": "Baby Care",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/cadbury_bournvita_1kg.png"
+      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519741028_t25nks.png"
     }
   ],
   "coupons": [

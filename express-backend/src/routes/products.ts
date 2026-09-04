@@ -199,15 +199,14 @@ router.get('/search', async (req, res) => {
 
     let query = supabase.from('products').select('*').eq('available', true);
 
+    if (q) {
+      query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
+    }
     if (category) {
       query = query.eq('primary_category', category);
     }
 
-    if (!q) {
-      query = query.limit(limitVal);
-    }
-
-    const { data: products, error } = await query;
+    const { data: products, error } = await query.limit(limitVal);
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
@@ -240,12 +239,6 @@ router.get('/search', async (req, res) => {
         you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
       });
     });
-
-    if (q) {
-      const { filterAndRankProducts } = require('../utils/intelligentSearch');
-      const ranked = filterAndRankProducts(out, String(q));
-      return res.json({ success: true, products: ranked.slice(0, limitVal) });
-    }
 
     return res.json({ success: true, products: out });
   } catch (error: any) {
