@@ -74,29 +74,75 @@ export function buildDeliverToLabel(address: AddressItem | null | undefined): st
   return `${tag} · ${area}`;
 }
 
-export async function fetchSavedAddressesScreenConfig(): Promise<SavedAddressesScreenConfig | null> {
+const DEFAULT_SAVED_ADDRESSES_CONFIG: SavedAddressesScreenConfig = {
+  title: 'Saved Addresses',
+  select_title: 'Select Delivery Address',
+  empty_title: 'No addresses saved yet',
+  empty_message: 'Add an address to continue with your grocery delivery.',
+  add_address_label: 'Add new address',
+  deliver_button_label: 'Deliver to this address',
+  default_badge_label: 'DEFAULT',
+  select_alert_title: 'Select Address',
+  select_alert_message: 'Please pick an address to proceed.',
+  load_error_message: 'Unable to load addresses.',
+  retry_label: 'Retry',
+};
+
+const DEFAULT_ADD_ADDRESS_CONFIG: AddAddressScreenConfig = {
+  add_title: 'Add New Address',
+  edit_title: 'Edit Address',
+  flat_label: 'House / Flat / Floor No.',
+  flat_placeholder: 'e.g. 402, Block B',
+  street_label: 'Apartment / Road / Area',
+  street_placeholder: 'e.g. Sunrise Enclave, Main Road',
+  landmark_label: 'Landmark (Optional)',
+  landmark_placeholder: 'e.g. Near City Park',
+  pincode_label: 'Pincode',
+  pincode_placeholder: '6-digit pincode',
+  phone_label: 'Phone Number',
+  phone_placeholder: '10-digit mobile number',
+  save_as_label: 'Save address as',
+  tag_home_key: 'Home',
+  tag_home_label: 'Home',
+  tag_work_key: 'Work',
+  tag_work_label: 'Work',
+  tag_other_key: 'Other',
+  tag_other_label: 'Other',
+  default_tag_key: 'Home',
+  save_button_label: 'Save and continue',
+  saving_button_label: 'Saving address...',
+  login_required_title: 'Login Required',
+  login_required_message: 'Please log in to save your address.',
+  incomplete_title: 'Incomplete Details',
+  incomplete_message: 'Please fill in flat, street and pincode.',
+  save_error_title: 'Unable to Save',
+  load_error_message: 'Something went wrong while saving.',
+  retry_label: 'Retry',
+};
+
+export async function fetchSavedAddressesScreenConfig(): Promise<SavedAddressesScreenConfig> {
   try {
     const res = await fetch(`${API_BASE}/admin/saved-addresses-screen`);
     const data = await res.json();
     if (res.ok && data.success && data.saved_addresses) {
       return data.saved_addresses as SavedAddressesScreenConfig;
     }
-    return null;
+    return DEFAULT_SAVED_ADDRESSES_CONFIG;
   } catch {
-    return null;
+    return DEFAULT_SAVED_ADDRESSES_CONFIG;
   }
 }
 
-export async function fetchAddAddressScreenConfig(): Promise<AddAddressScreenConfig | null> {
+export async function fetchAddAddressScreenConfig(): Promise<AddAddressScreenConfig> {
   try {
     const res = await fetch(`${API_BASE}/admin/add-address-screen`);
     const data = await res.json();
     if (res.ok && data.success && data.add_address) {
       return data.add_address as AddAddressScreenConfig;
     }
-    return null;
+    return DEFAULT_ADD_ADDRESS_CONFIG;
   } catch {
-    return null;
+    return DEFAULT_ADD_ADDRESS_CONFIG;
   }
 }
 

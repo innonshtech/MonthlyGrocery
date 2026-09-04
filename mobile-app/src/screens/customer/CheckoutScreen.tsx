@@ -28,6 +28,7 @@ import {
   THUMB_BG,
 } from '../../components/CheckoutFigmaIcons';
 import { calculateCouponDiscount } from '../../utils/couponDiscount';
+import { API_BASE } from '../../config/api';
 
 /** Figma E1 Checkout canvas background */
 const CHECKOUT_BG = '#FBFAF6';
@@ -86,6 +87,42 @@ export default function CheckoutScreen({ route, navigation }: any) {
       };
       loadDefaultAddress();
     }, [token, route?.params?.selectedAddress]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const loadDefaultSlot = async () => {
+        if (route?.params?.selectedSlot || selectedSlot) return;
+        try {
+          const shopId = items[0]?.product?.shop_id;
+          const params = new URLSearchParams({ days: '4' });
+          if (shopId) params.set('shop_id', shopId);
+          const pin = selectedAddress?.pincode || areaPincode;
+          if (pin) params.set('pincode', pin);
+          if (city) params.set('city', city);
+          if (area) params.set('area', area);
+
+          const res = await fetch(`${API_BASE}/delivery-slots?${params.toString()}`);
+          const data = await res.json();
+          if (res.ok && data.success && Array.isArray(data.days) && data.days.length > 0) {
+            const firstDay = data.days.find((d: any) => d.windows?.some((w: any) => !w.disabled)) || data.days[0];
+            const firstWindow = firstDay?.windows?.find((w: any) => !w.disabled) || firstDay?.windows?.[0];
+            if (firstDay && firstWindow) {
+              setSelectedSlot({
+                date: firstDay.date,
+                dateLabel: firstDay.label,
+                timeWindow: firstWindow.label,
+                windowId: firstWindow.id,
+                shopId: data.shop_id || shopId || undefined,
+              });
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      };
+      loadDefaultSlot();
+    }, [items, selectedAddress?.pincode, areaPincode, city, area, route?.params?.selectedSlot, selectedSlot]),
   );
 
   const minLimit = minOrderLimit || 2500;

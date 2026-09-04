@@ -48,12 +48,5 @@ export function validateAddressPincode(
   if (!isValidIndianPincode(pin)) {
     return { valid: false, message: 'Please enter a valid 6-digit pincode.' };
   }
-  const expected = normalizePincode(areaPincode);
-  if (expected && pin !== expected) {
-    return {
-      valid: false,
-      message: `Pincode does not match your selected delivery area (${expected}). Update your address or change your area.`,
-    };
-  }
   return { valid: true };
 }

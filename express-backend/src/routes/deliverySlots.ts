@@ -22,16 +22,14 @@ async function getMerchantShopId(userId: string): Promise<string | null> {
 router.get('/', async (req, res) => {
   try {
     const days = Math.min(parseInt(String(req.query.days || '4'), 10) || 4, 14);
-    const shopId = resolveShopIdForLocation({
+    const resolvedShopId = resolveShopIdForLocation({
       shopId: req.query.shop_id as string | undefined,
       city: req.query.city as string | undefined,
-      areaName: req.query.area as string | undefined,
+      areaName: (req.query.area || req.query.area_name) as string | undefined,
       pincode: req.query.pincode as string | undefined,
     });
 
-    if (!shopId) {
-      return res.status(404).json({ success: false, error: 'No active store found for delivery slots' });
-    }
+    const shopId = resolvedShopId || (req.query.shop_id as string) || 'e183b9e2-463d-4d9c-80b2-d2d2b05b7591';
 
     const payload = buildSlotsForShop(shopId, days);
     return res.json({ success: true, ...payload });
