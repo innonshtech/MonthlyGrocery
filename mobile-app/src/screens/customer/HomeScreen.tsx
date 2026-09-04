@@ -8,6 +8,9 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Platform,
+  useWindowDimensions,
+  Animated,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,13 +41,14 @@ import { fetchCategoryList } from '../../services/categoriesApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
 import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
+import { HomeCategoryEmojiIcon, getCategoryEmojiKind } from '../../components/home/HomeEmojiIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
 const H_PAD = 14;
 const CONTENT_W = width - H_PAD * 2;
-const CAT_SIZE = 80;
-const CAT_GAP = 10;
+const CAT_SIZE = 72;
+const CAT_GAP = 12;
 
 interface CategoryItem {
   id: string;
@@ -86,6 +90,9 @@ function getReorderPreviewItems(lastOrder: any) {
 
 export default function HomeScreen({ navigation, setActiveTab }: any) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const contentWidth = Math.max(windowWidth - H_PAD * 2, 280);
+  const scrollY = React.useRef(new Animated.Value(0)).current;
   const { city, area, pincode, token, user } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
   const [home, setHome] = useState<HomeScreenConfig | null>(null);
@@ -112,6 +119,35 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const lastOrderTotal = hasPastOrder ? Number(orderStats.lastOrder.total_amount) || 0 : 0;
   const reorderPreviewItems = hasPastOrder ? getReorderPreviewItems(orderStats.lastOrder) : [];
 
+  // When idle (scrollY = 0), overlay is 100% transparent so the header is 1 continuous shade.
+  // As user scrolls, it transitions into frosted glass as content passes underneath.
+  const statusBarBg = scrollY.interpolate({
+    inputRange: [0, 60, 260, 380],
+    outputRange: [
+      'rgba(245, 165, 36, 0)',
+      'rgba(232, 140, 21, 0.40)',
+      'rgba(247, 246, 241, 0.90)',
+      'rgba(255, 255, 255, 0.96)',
+    ],
+    extrapolate: 'clamp',
+  });
+
+  const statusBarBorder = scrollY.interpolate({
+    inputRange: [0, 260, 380],
+    outputRange: [
+      'rgba(234, 233, 226, 0)',
+      'rgba(234, 233, 226, 0.4)',
+      'rgba(234, 233, 226, 0.85)',
+    ],
+    extrapolate: 'clamp',
+  });
+
+  const statusBarShadow = scrollY.interpolate({
+    inputRange: [0, 260, 380],
+    outputRange: [0, 1, 4],
+    extrapolate: 'clamp',
+  });
+
   const loadHomeConfig = async () => {
     const result = await fetchHomeConfigWithStatus();
     setHome(result.home);
@@ -130,6 +166,10 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 
   useFocusEffect(
     useCallback(() => {
+      (StatusBar as any).setTranslucent?.(true);
+      if (Platform.OS === 'android') {
+        (StatusBar as any).setBackgroundColor?.('transparent');
+      }
       loadBanners();
     }, [loadBanners]),
   );
@@ -226,44 +266,63 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     navigateFromActionLink(navigation, banner.action_link);
   };
 
+  // ── 150° CSS gradient → pixel coordinates for SVG userSpaceOnUse ──
+  // CSS 150°: direction = (sin(150°), -cos(150°)) = (0.5, 0.866)
+  // Half-length per CSS spec: (W*|sin|+H*|cos|)/2
+  const promoH = 130;
+  const pgHalf = (contentWidth * 0.5 + promoH * 0.866) / 2;
+  const pgX1 = contentWidth / 2 - pgHalf * 0.5;
+  const pgY1 = promoH / 2 - pgHalf * 0.866;
+  const pgX2 = contentWidth / 2 + pgHalf * 0.5;
+  const pgY2 = promoH / 2 + pgHalf * 0.866;
+
   const renderPromoBanner = (banner: PromotionalBanner) => (
     <TouchableOpacity
       key={banner.id}
-      style={styles.bannerItem}
+      style={[styles.bannerItem, { width: contentWidth }]}
       onPress={() => handleBannerPress(banner)}
       activeOpacity={0.9}
     >
       {banner.image_url && banner.kind !== 'promo' ? (
         <Image
           source={{ uri: banner.image_url }}
-          style={styles.bannerImage}
+          style={[styles.bannerImage, { width: contentWidth }]}
           resizeMode="cover"
         />
       ) : (
-        <View style={styles.promoCardFallback}>
-          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+        <View style={[styles.promoCardOuter, { width: contentWidth }]}>
+          <Svg width={contentWidth} height={promoH}>
             <Defs>
-              <LinearGradient id="promoGrad" x1="27%" y1="7%" x2="76%" y2="93%">
-                <Stop offset="0%" stopColor="#F5A524" />
-                <Stop offset="100%" stopColor="#E07C0E" />
+              <LinearGradient
+                id="promoGrad150"
+                gradientUnits="userSpaceOnUse"
+                x1={String(pgX1)}
+                y1={String(pgY1)}
+                x2={String(pgX2)}
+                y2={String(pgY2)}
+              >
+                <Stop offset="0.146" stopColor="#F5A524" />
+                <Stop offset="0.8759" stopColor="#E07C0E" />
               </LinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" fill="url(#promoGrad)" />
+            <Rect x="0" y="0" width={contentWidth} height={promoH} fill="url(#promoGrad150)" />
           </Svg>
-          <View style={styles.promoLeft}>
-            <Text style={styles.promoLabel}>{banner.title || 'MONTHLY SAVINGS SALE'}</Text>
-            <Text style={styles.promoTitle} numberOfLines={2}>{banner.subtitle || 'Up to ₹500 off'}</Text>
-            <Text style={styles.promoSub}>{banner.body || 'on your full monthly basket'}</Text>
-            <View style={styles.promoBtn}>
-              <Text style={styles.promoBtnText}>{banner.cta_text || 'Grab deals'}</Text>
+          <View style={styles.promoContentOverlay}>
+            <View style={styles.promoLeft}>
+              <Text style={styles.promoLabel}>{banner.title || 'MONTHLY SAVINGS SALE'}</Text>
+              <Text style={styles.promoTitle} numberOfLines={1}>{banner.subtitle || 'Up to ₹500 off'}</Text>
+              <Text style={styles.promoSub}>{banner.body || 'on your full monthly basket'}</Text>
+              <View style={styles.promoBtn}>
+                <Text style={styles.promoBtnText}>{banner.cta_text || 'Grab deals'}</Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.promoRight}>
-            <Image
-              source={require('../../assets/figma/promo_coconut_illustration.png')}
-              style={styles.promoImage}
-              resizeMode="contain"
-            />
+            <View style={styles.promoRight}>
+              <Image
+                source={require('../../assets/figma/promo_coconut_illustration.png')}
+                style={styles.promoImage}
+                resizeMode="contain"
+              />
+            </View>
           </View>
         </View>
       )}
@@ -273,15 +332,37 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   return (
     <View style={styles.outerWrap}>
       <StatusBar barStyle="dark-content" />
-      <View style={{ height: insets.top, backgroundColor: '#F5A524' }} />
-      <ScrollView
+      {/* Dynamic Frosted Glass Status Bar that adapts its color as user scrolls */}
+      {insets.top > 0 ? (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: insets.top,
+            backgroundColor: statusBarBg,
+            borderBottomWidth: 1,
+            borderBottomColor: statusBarBorder,
+            zIndex: 999,
+            elevation: statusBarShadow,
+          }}
+        />
+      ) : null}
+      <Animated.ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
         contentContainerStyle={styles.scrollContent}
       >
         {homeLoadError ? (
-          <View style={styles.homeErrorWrap}>
+          <View style={[styles.homeErrorWrap, { paddingTop: insets.top + 20 }]}>
             <Text style={styles.homeErrorText}>
               {'Could not load home screen. Check that the backend is running.'}
             </Text>
@@ -291,16 +372,20 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           </View>
         ) : (
           <View style={styles.mainContent}>
-            {/* ── Orange gradient header (Figma Node 542:725) ── */}
-            <View style={styles.header}>
-              <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+            {/* ── Exact Figma Gradient Header with transparent status bar flow ── */}
+            <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 16 : 16 }]}>
+              <Svg
+                style={StyleSheet.absoluteFill}
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
                 <Defs>
-                  <LinearGradient id="headerGrad" x1="27%" y1="7%" x2="76%" y2="93%">
-                    <Stop offset="0%" stopColor="#F5A524" />
-                    <Stop offset="100%" stopColor="#E07C0E" />
+                  <LinearGradient id="headerGrad" x1="0.146" y1="0" x2="0.876" y2="1">
+                    <Stop offset="0" stopColor="#F5A524" />
+                    <Stop offset="1" stopColor="#E07C0E" />
                   </LinearGradient>
                 </Defs>
-                <Rect width="100%" height="100%" fill="url(#headerGrad)" />
+                <Rect x="0" y="0" width="100" height="100" fill="url(#headerGrad)" />
               </Svg>
 
               <View style={styles.topSectionGroup}>
@@ -331,7 +416,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 </View>
 
                 <View style={styles.deliveryPill}>
-                  <HomeDeliveryIcon size={15} color="#FFFFFF" />
+                  <HomeDeliveryIcon size={15} color="#F5A524" />
                   <Text style={styles.deliveryPillText}>{home?.delivery_pill_text || 'Planned monthly delivery · 4-hour window'}</Text>
                 </View>
               </View>
@@ -351,7 +436,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
-                  style={styles.bannerScrollView}
+                  style={[styles.bannerScrollView, { width: contentWidth }]}
                   contentContainerStyle={styles.bannerScrollContent}
                 >
                   {banners.map((banner) => renderPromoBanner(banner))}
@@ -363,26 +448,17 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
                 activeOpacity={0.85}
               >
-                <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-                  <Defs>
-                    <LinearGradient id="mmgGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <Stop offset="0%" stopColor="#1E7A46" />
-                      <Stop offset="100%" stopColor="#124F2E" />
-                    </LinearGradient>
-                  </Defs>
-                  <Rect width="100%" height="100%" fill="url(#mmgGrad)" />
-                </Svg>
                 <View style={styles.mmgIconWrap}>
-                  <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+                  <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
                     <Defs>
-                      <LinearGradient id="mmgIconGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <Stop offset="0%" stopColor="#F5A524" />
-                        <Stop offset="100%" stopColor="#E07C0E" />
+                      <LinearGradient id="mmgIconGrad" x1="14.6%" y1="0%" x2="87.59%" y2="100%">
+                        <Stop offset="14.6%" stopColor="#F5A524" />
+                        <Stop offset="87.59%" stopColor="#E07C0E" />
                       </LinearGradient>
                     </Defs>
                     <Rect width="100%" height="100%" rx="24" fill="url(#mmgIconGrad)" />
                   </Svg>
-                  <HomeSparkleIcon size={26} />
+                  <HomeSparkleIcon size={24} />
                 </View>
                 <View style={styles.mmgTextCol}>
                   <Text style={styles.mmgLabel}>{home?.mmg_label || 'MY MONTHLY GROCERY'}</Text>
@@ -390,7 +466,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   <Text style={styles.mmgSub}>{home?.mmg_subtitle || 'A smart basket from what your home buys'}</Text>
                 </View>
                 <View style={styles.mmgArrow}>
-                  <HomeArrowRightIcon size={20} color="#FFFFFF" />
+                  <HomeArrowRightIcon size={18} color="#FFFFFF" />
                 </View>
               </TouchableOpacity>
             </View>
@@ -410,30 +486,40 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.catRail}
                 >
-                  {categories.map((cat) => (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={styles.catRailItem}
-                      onPress={() =>
-                        navigation.navigate('CategoryProducts', {
-                          categoryId: cat.id,
-                          categoryName: cat.name,
-                        })
-                      }
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.catTile}>
-                        <Image
-                          source={{ uri: cat.image_url }}
-                          style={styles.categoryPng}
-                          resizeMode="contain"
-                        />
-                      </View>
-                      <Text style={styles.catName} numberOfLines={2}>
-                        {cat.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {categories.map((cat) => {
+                    const kind = getCategoryEmojiKind(cat.name);
+                    const pastelBgs: Record<string, string> = {
+                      atta: '#FFF4D6',
+                      oil: '#E4F5EB',
+                      dal: '#FCE9E4',
+                      salt: '#FDEEF1',
+                      snacks: '#FFF3E8',
+                      bev: '#E8F1FD',
+                      milk: '#F4F1FD',
+                      clean: '#EBF7F2',
+                    };
+                    const bg = pastelBgs[kind] || '#FFF4D6';
+                    return (
+                      <TouchableOpacity
+                        key={cat.id}
+                        style={styles.catRailItem}
+                        onPress={() =>
+                          navigation.navigate('CategoryProducts', {
+                            categoryId: cat.id,
+                            categoryName: cat.name,
+                          })
+                        }
+                        activeOpacity={0.75}
+                      >
+                        <View style={[styles.catTile, { backgroundColor: bg }]}>
+                          <HomeCategoryEmojiIcon kind={kind} size={42} />
+                        </View>
+                        <Text style={styles.catName} numberOfLines={2}>
+                          {cat.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               ) : null}
 
@@ -551,7 +637,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       </View>
         </View>
       )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 }
@@ -575,25 +661,29 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
+    width: '100%',
     alignSelf: 'stretch',
-    height: 470,
-    paddingVertical: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    backgroundColor: '#E07C0E',
+    paddingTop: 16,
+    paddingBottom: 16,
     paddingHorizontal: 14,
     gap: 17,
+    flexShrink: 0,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
     overflow: 'hidden',
   },
   topSectionGroup: {
-    alignSelf: 'stretch',
-    gap: 4,
+    width: '100%',
+    gap: 10,
   },
   headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    width: '100%',
   },
   locationBlock: {
     flex: 1,
@@ -652,25 +742,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.59)',
+    backgroundColor: 'rgba(255, 255, 255, 0.40)',
     borderRadius: RADIUS.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   deliveryPillText: {
     ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 16,
     color: '#FFFFFF',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    height: 50,
+    height: 52,
     paddingHorizontal: 14,
     gap: 10,
+    width: '100%',
   },
   searchPlaceholder: {
     flex: 1,
@@ -680,55 +771,63 @@ const styles = StyleSheet.create({
     color: '#6B7772',
   },
   bannerScrollView: {
-    width: CONTENT_W,
-    height: 130,
-  },
-  bannerScrollContent: {
-    gap: 0,
-  },
-  bannerItem: {
-    width: CONTENT_W,
+    width: '100%',
     height: 130,
     borderRadius: 18,
-    backgroundColor: '#F4F3EE',
+  },
+  bannerScrollContent: {
+    alignItems: 'center',
+  },
+  bannerItem: {
+    height: 130,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   bannerImage: {
-    width: CONTENT_W,
     height: 130,
     borderRadius: 18,
-    backgroundColor: '#F4F3EE',
   },
-  promoCardFallback: {
-    position: 'relative',
+  promoCardOuter: {
+    height: 130,
+    borderRadius: 18,
+    overflow: 'hidden',
+    flexShrink: 0,
+    alignSelf: 'stretch',
+  },
+  promoContentOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    width: CONTENT_W,
-    height: 130,
-    overflow: 'hidden',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+    paddingRight: 14,
+    paddingBottom: 16,
+    paddingLeft: 18,
   },
   promoLeft: {
     flex: 1,
     paddingRight: 4,
+    justifyContent: 'center',
   },
   promoRight: {
-    width: 90,
-    height: 80,
+    width: 110,
+    height: 95,
     justifyContent: 'center',
     alignItems: 'center',
   },
   promoImage: {
-    width: 90,
-    height: 80,
+    width: 110,
+    height: 95,
   },
   promoLabel: {
     ...FONTS.muktaBold,
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#17251E',
-    letterSpacing: 1.44,
+    letterSpacing: 1.3,
     textTransform: 'uppercase',
   },
   promoTitle: {
@@ -741,7 +840,7 @@ const styles = StyleSheet.create({
   },
   promoSub: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#17251E',
     lineHeight: 16,
     marginTop: 2,
@@ -750,7 +849,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#17251E',
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     marginTop: 8,
   },
@@ -762,15 +861,15 @@ const styles = StyleSheet.create({
   },
   mmgCard: {
     position: 'relative',
-    display: 'flex',
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'stretch',
-    height: 100,
-    paddingVertical: 16,
+    height: 92,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    gap: 13,
+    gap: 12,
     borderRadius: 18,
+    backgroundColor: '#155A38',
     overflow: 'hidden',
   },
   mmgIconWrap: {
@@ -781,38 +880,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
+    flexShrink: 0,
   },
   mmgTextCol: {
     flex: 1,
-    gap: 2,
+    justifyContent: 'center',
   },
   mmgLabel: {
     ...FONTS.muktaBold,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
     color: '#FBE0AE',
-    letterSpacing: 1.44,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   mmgTitle: {
     ...FONTS.balooSemiBold,
     fontSize: 18,
     color: '#FFFFFF',
-    lineHeight: 24,
+    lineHeight: 22,
+    letterSpacing: -0.2,
+    marginTop: 1,
   },
   mmgSub: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#E4F3EA',
-    lineHeight: 16,
+    lineHeight: 15,
+    marginTop: 1,
   },
   mmgArrow: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.16)',
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   contentSheet: {
     flexGrow: 1,

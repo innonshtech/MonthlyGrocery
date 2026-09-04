@@ -1810,24 +1810,43 @@ export function readDb(): LocalDbSchema {
     if (!db.onboarding) {
       db.onboarding = defaultDb.onboarding;
       fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
-    } else if (!db.onboarding.phone_entry) {
-      db.onboarding.phone_entry = defaultDb.onboarding!.phone_entry;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
-    } else if (!db.onboarding.otp_verification) {
-      db.onboarding.otp_verification = defaultDb.onboarding!.otp_verification;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
-    } else if (!db.onboarding.city_selection) {
-      db.onboarding.city_selection = defaultDb.onboarding!.city_selection;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
-    } else if (!db.onboarding.area_selection) {
-      db.onboarding.area_selection = defaultDb.onboarding!.area_selection;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
-    } else if (!db.onboarding.profile_setup) {
-      db.onboarding.profile_setup = defaultDb.onboarding!.profile_setup;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
-    } else if (!db.onboarding.value_intro_meta) {
-      db.onboarding.value_intro_meta = defaultDb.onboarding!.value_intro_meta;
-      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+    } else {
+      let changed = false;
+      if (!db.onboarding.phone_entry) {
+        db.onboarding.phone_entry = defaultDb.onboarding!.phone_entry;
+        changed = true;
+      }
+      if (!db.onboarding.otp_verification) {
+        db.onboarding.otp_verification = defaultDb.onboarding!.otp_verification;
+        changed = true;
+      }
+      if (!db.onboarding.city_selection) {
+        db.onboarding.city_selection = defaultDb.onboarding!.city_selection;
+        changed = true;
+      }
+      if (!db.onboarding.area_selection) {
+        db.onboarding.area_selection = defaultDb.onboarding!.area_selection;
+        changed = true;
+      }
+      if (!db.onboarding.profile_setup) {
+        db.onboarding.profile_setup = defaultDb.onboarding!.profile_setup;
+        changed = true;
+      }
+      if (!db.onboarding.value_intro_meta) {
+        db.onboarding.value_intro_meta = defaultDb.onboarding!.value_intro_meta;
+        changed = true;
+      }
+      if (!db.onboarding.value_intro_slides || db.onboarding.value_intro_slides.length === 0) {
+        db.onboarding.value_intro_slides = defaultDb.onboarding!.value_intro_slides;
+        changed = true;
+      }
+      if (!db.onboarding.splash) {
+        db.onboarding.splash = defaultDb.onboarding!.splash;
+        changed = true;
+      }
+      if (changed) {
+        fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), 'utf-8');
+      }
     }
     if (!db.home_screen) {
       db.home_screen = defaultDb.home_screen;
