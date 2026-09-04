@@ -2,6 +2,7 @@ import { readDb } from '../config/localDb';
 import { supabase } from '../config/supabase';
 import { enrichProductPackFields } from '../utils/packUnit';
 import { resolveShopIdForLocation, resolveShopIdForLocationAsync } from './shopResolution';
+import { filterAndRankProducts } from '../utils/intelligentSearch';
 
 export type CatalogQuery = {
   category?: string;
@@ -68,7 +69,7 @@ function mergeShopProduct(
   });
 }
 
-/** Load master catalog products for a shop, applying any approved shop-specific overrides (price, discount, stock). */
+/** Load master catalog products for a shop, applying any approved shop-specific overrides (price, discount, stock) and intelligent search ranking. */
 export async function fetchProductsForShop(
   shopId: string,
   query: CatalogQuery = {},
@@ -87,13 +88,13 @@ export async function fetchProductsForShop(
   if (query.secondary) {
     supaQuery = supaQuery.eq('secondary_category', query.secondary);
   }
-  if (query.q) {
-    supaQuery = supaQuery.or(
-      `name.ilike.%${query.q}%,brand.ilike.%${query.q}%,primary_category.ilike.%${query.q}%`,
-    );
+
+  // If no search query, we can apply limit in SQL directly
+  if (!query.q) {
+    supaQuery = supaQuery.limit(limitVal);
   }
 
-  const { data: masterProducts, error } = await supaQuery.limit(limitVal);
+  const { data: masterProducts, error } = await supaQuery;
   if (error) {
     throw new Error(error.message);
   }
@@ -113,6 +114,11 @@ export async function fetchProductsForShop(
     if (sp && sp.available !== false) {
       out.push(mergeShopProduct(shopId, sp, p));
     }
+  }
+
+  if (query.q) {
+    const ranked = filterAndRankProducts(out, query.q);
+    return ranked.slice(0, limitVal);
   }
 
   return out;
