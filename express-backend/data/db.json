@@ -222,6 +222,19 @@
       "isDefault": true,
       "created_at": "2026-09-04T08:48:59.543Z",
       "updated_at": "2026-09-04T08:48:59.543Z"
+    },
+    {
+      "id": "addr-1788515372463",
+      "consumer_id": "ed293bb7-e302-4c67-81df-84149048024c",
+      "tag": "Home",
+      "flat": "Dyy",
+      "street": "Fuggc",
+      "landmark": "Fhg",
+      "pincode": "000000",
+      "phone": "1234567890",
+      "isDefault": true,
+      "created_at": "2026-09-04T09:49:32.463Z",
+      "updated_at": "2026-09-04T09:49:32.463Z"
     }
   ],
   "onboarding": {

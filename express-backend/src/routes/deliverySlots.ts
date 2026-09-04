@@ -29,7 +29,17 @@ router.get('/', async (req, res) => {
       pincode: req.query.pincode as string | undefined,
     });
 
-    const shopId = resolvedShopId || (req.query.shop_id as string) || 'e183b9e2-463d-4d9c-80b2-d2d2b05b7591';
+    let shopId = resolvedShopId || (req.query.shop_id as string);
+    if (!shopId) {
+      const { data: firstShop } = await supabase
+        .from('shops')
+        .select('id')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      shopId = firstShop?.id || 'default-shop';
+    }
 
     const payload = buildSlotsForShop(shopId, days);
     return res.json({ success: true, ...payload });

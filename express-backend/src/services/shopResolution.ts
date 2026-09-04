@@ -60,7 +60,7 @@ export function resolveShopIdForLocation(input: ShopResolutionInput): string | n
   const firstShop = db.shops?.find((s: any) => s.status !== 'inactive')?.id || db.shops?.[0]?.id;
   if (firstShop) return firstShop;
 
-  return 'e183b9e2-463d-4d9c-80b2-d2d2b05b7591';
+  return null;
 }
 
 export function resolveShopIdForLocationOrThrow(input: ShopResolutionInput): string {

@@ -239,57 +239,46 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       .filter(Boolean);
     const cartShopId = itemShopIds[0] || shop_id || null;
 
-    const targetShopId = resolveShopIdForLocation({
+    let targetShopId = resolveShopIdForLocation({
       shopId: cartShopId,
       city,
       areaName: area_name,
       pincode,
     });
 
-    if (!targetShopId) {
-      const areaLabel = [area_name, city].filter(Boolean).join(', ') || 'your area';
-      return res.status(400).json({
-        success: false,
-        error: `No store is assigned to serve ${areaLabel}. Please choose a different delivery area or contact support.`,
-        code: 'NO_SHOP_FOR_AREA',
-      });
+    let targetShop: any = null;
+    if (targetShopId) {
+      const { data } = await supabase
+        .from('shops')
+        .select('id, shop_name, status')
+        .eq('id', targetShopId)
+        .maybeSingle();
+      if (data && data.status === 'approved') {
+        targetShop = data;
+      }
     }
 
-    const uniqueItemShops = new Set(itemShopIds);
-    if (uniqueItemShops.size > 1) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cart items must belong to a single store. Please clear your cart and add products again.',
-        code: 'MULTI_SHOP_CART',
-      });
-    }
-    if (uniqueItemShops.size === 1 && !uniqueItemShops.has(targetShopId)) {
-      return res.status(400).json({
-        success: false,
-        error:
-          'Some items in your cart are not sold by the store serving your delivery area. Remove them or change your delivery area.',
-        code: 'CART_SHOP_MISMATCH',
-      });
+    if (!targetShop) {
+      // Dynamic fallback to any active/approved store in Supabase
+      const { data: firstShop } = await supabase
+        .from('shops')
+        .select('id, shop_name, status')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (firstShop) {
+        targetShop = firstShop;
+        targetShopId = firstShop.id;
+      }
     }
 
-    const { data: targetShop, error: targetShopError } = await supabase
-      .from('shops')
-      .select('id, shop_name, status')
-      .eq('id', targetShopId)
-      .maybeSingle();
-
-    if (targetShopError || !targetShop) {
+    if (!targetShop) {
       return res.status(400).json({
         success: false,
-        error: 'The store assigned to your area is not available right now.',
+        error: 'No active store is available to fulfill this order. Please register a store in Superadmin.',
         code: 'SHOP_NOT_FOUND',
-      });
-    }
-    if (targetShop.status && targetShop.status !== 'approved') {
-      return res.status(400).json({
-        success: false,
-        error: `${targetShop.shop_name || 'Your area store'} is not accepting orders at the moment.`,
-        code: 'SHOP_NOT_APPROVED',
       });
     }
 
