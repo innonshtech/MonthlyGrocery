@@ -34,7 +34,8 @@ function parseBool(val: any, defaultVal = false): boolean {
 // 1. GET /all: Consumer Catalog (with city pricing overrides)
 // 1. GET /all: Consumer Catalog (location-aware, based on city and area)
 router.get('/all', async (req, res) => {
-  const { city, area_name, category, secondary, q, limit, deals, pincode } = req.query;
+  const area_name = (req.query.area_name as string) || (req.query.area as string);
+  const { city, category, secondary, q, limit, deals, pincode } = req.query;
   const limitVal = parseInt(limit as string) || 100;
   const dealsOnly = deals === '1' || deals === 'true';
 
@@ -172,7 +173,8 @@ router.get('/all', async (req, res) => {
 
 // 1.2 GET /search: Search Consumer Catalog (location-aware when city + area provided)
 router.get('/search', async (req, res) => {
-  const { q, category, limit, city, area_name, pincode } = req.query;
+  const area_name = (req.query.area_name as string) || (req.query.area as string);
+  const { q, category, limit, city, pincode } = req.query;
   const limitVal = parseInt(limit as string) || 50;
 
   try {

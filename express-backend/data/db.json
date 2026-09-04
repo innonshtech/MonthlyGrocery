@@ -6,7 +6,7 @@
       "area_name": "ravet",
       "pincode": "000000",
       "is_serviceable": true,
-      "shop_id": null
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c"
     }
   ],
   "promotional_banners": [
@@ -70,7 +70,7 @@
   ],
   "shop_products": [
     {
-      "id": "sp-1788515834705-enef9wcvo",
+      "id": "sp-1788516570109-637oigwzt",
       "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
       "product_id": "35326e0a-8dfe-4f36-acad-badef35cb765",
       "selling_price": 480,
@@ -1151,7 +1151,16 @@
       "name": "Gautam Buddh Nagar"
     }
   ],
-  "shop_territories": [],
+  "shop_territories": [
+    {
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "state_id": "state-mh",
+      "state_name": "Maharashtra",
+      "district_id": "dist-mh-pune",
+      "district_name": "Pune",
+      "city": "pune"
+    }
+  ],
   "subcategories": [
     {
       "id": "sub-1",

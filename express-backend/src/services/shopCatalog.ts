@@ -1,7 +1,7 @@
 import { readDb } from '../config/localDb';
 import { supabase } from '../config/supabase';
 import { enrichProductPackFields } from '../utils/packUnit';
-import { resolveShopIdForLocation } from './shopResolution';
+import { resolveShopIdForLocation, resolveShopIdForLocationAsync } from './shopResolution';
 
 export type CatalogQuery = {
   category?: string;
@@ -124,11 +124,19 @@ export async function fetchProductsForLocation(input: {
   areaName?: string;
   pincode?: string;
 } & CatalogQuery): Promise<CatalogResult> {
-  const shopId = resolveShopIdForLocation({
+  let shopId = resolveShopIdForLocation({
     city: input.city,
     areaName: input.areaName,
     pincode: input.pincode,
   });
+
+  if (!shopId) {
+    shopId = await resolveShopIdForLocationAsync({
+      city: input.city,
+      areaName: input.areaName,
+      pincode: input.pincode,
+    });
+  }
 
   if (!shopId) {
     return { shopId: null, shopName: null, products: [] };
