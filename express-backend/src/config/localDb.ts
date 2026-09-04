@@ -875,24 +875,7 @@ interface LocalDbSchema {
 }
 
 const defaultDb: LocalDbSchema = {
-  serviceable_locations: [
-    // Seed default areas from mobile app configurations
-    { id: 'loc-1', city: 'Mumbai', area_name: 'Andheri West', pincode: '400053', is_serviceable: true, shop_id: null },
-    { id: 'loc-2', city: 'Mumbai', area_name: 'Bandra West', pincode: '400050', is_serviceable: true, shop_id: null },
-    { id: 'loc-3', city: 'Mumbai', area_name: 'Powai', pincode: '400076', is_serviceable: true, shop_id: null },
-    { id: 'loc-4', city: 'Mumbai', area_name: 'Juhu', pincode: '400049', is_serviceable: true, shop_id: null },
-    { id: 'loc-5', city: 'Pune', area_name: 'Baner', pincode: '411045', is_serviceable: true, shop_id: null },
-    { id: 'loc-6', city: 'Pune', area_name: 'Kothrud', pincode: '411038', is_serviceable: true, shop_id: null },
-    { id: 'loc-7', city: 'Pune', area_name: 'Hinjawadi Phase 1', pincode: '411057', is_serviceable: true, shop_id: null },
-    { id: 'loc-8', city: 'Bengaluru', area_name: 'Koramangala', pincode: '560034', is_serviceable: true, shop_id: null },
-    { id: 'loc-9', city: 'Bengaluru', area_name: 'Indiranagar', pincode: '560038', is_serviceable: true, shop_id: null },
-    { id: 'loc-10', city: 'Delhi NCR', area_name: 'Connaught Place', pincode: '110001', is_serviceable: true, shop_id: null },
-    { id: 'loc-11', city: 'Delhi NCR', area_name: 'Noida Sec-62', pincode: '201309', is_serviceable: true, shop_id: null },
-    { id: 'loc-12', city: 'Hyderabad', area_name: 'Gachibowli', pincode: '500032', is_serviceable: true, shop_id: null },
-    { id: 'loc-13', city: 'Pune', area_name: 'Aundh', pincode: '411007', is_serviceable: true, shop_id: null },
-    { id: 'loc-14', city: 'Pune', area_name: 'Viman Nagar', pincode: '411014', is_serviceable: true, shop_id: null },
-    { id: 'loc-15', city: 'Pune', area_name: 'Hadapsar', pincode: '411028', is_serviceable: false, shop_id: null },
-  ],
+  serviceable_locations: [],
   promotional_banners: [
     {
       id: 'banner-promo-monthly',
@@ -923,27 +906,8 @@ const defaultDb: LocalDbSchema = {
     },
   ],
   franchise_requests: [],
-  cities: [
-    { id: 'city-1', name: 'Mumbai', region: 'Maharashtra' },
-    { id: 'city-2', name: 'Pune', region: 'Maharashtra' },
-    { id: 'city-3', name: 'Bengaluru', region: 'Karnataka' },
-    { id: 'city-4', name: 'Delhi NCR', region: 'NCR' },
-    { id: 'city-5', name: 'Hyderabad', region: 'Telangana' },
-  ],
-  areas: [
-    { id: 'area-1', city_id: 'city-1', name: 'Andheri West' },
-    { id: 'area-2', city_id: 'city-1', name: 'Bandra West' },
-    { id: 'area-3', city_id: 'city-1', name: 'Powai' },
-    { id: 'area-4', city_id: 'city-1', name: 'Juhu' },
-    { id: 'area-5', city_id: 'city-2', name: 'Baner' },
-    { id: 'area-6', city_id: 'city-2', name: 'Kothrud' },
-    { id: 'area-7', city_id: 'city-2', name: 'Hinjawadi Phase 1' },
-    { id: 'area-8', city_id: 'city-3', name: 'Koramangala' },
-    { id: 'area-9', city_id: 'city-3', name: 'Indiranagar' },
-    { id: 'area-10', city_id: 'city-4', name: 'Connaught Place' },
-    { id: 'area-11', city_id: 'city-4', name: 'Noida Sec-62' },
-    { id: 'area-12', city_id: 'city-5', name: 'Gachibowli' },
-  ],
+  cities: [],
+  areas: [],
   states: [
     { id: 'state-mh', name: 'Maharashtra' },
     { id: 'state-ka', name: 'Karnataka' },

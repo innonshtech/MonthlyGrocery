@@ -59,7 +59,7 @@ export default function CitySelectionScreen({ navigation }: any) {
 
     const list = await fetchServiceableCities();
     setCities(list);
-    setLoadError(!cityConfig || list.length === 0);
+    setLoadError(!cityConfig);
     setLoading(false);
   }, []);
 

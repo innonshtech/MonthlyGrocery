@@ -83,7 +83,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
 
     const list = await fetchAreasForCity(cityName);
     setAreas(list);
-    setLoadError(!areaConfig || list.length === 0);
+    setLoadError(!areaConfig);
     setLoading(false);
   }, [cityName]);
 
