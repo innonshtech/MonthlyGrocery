@@ -101,17 +101,17 @@ function mergeSupabaseProduct(shopId: string, p: Record<string, any>): Record<st
   });
 }
 
-/** Supabase master rows tagged to this shop (used when merchant has no local inventory rows yet). */
-async function fetchSupabaseShopCatalog(
+/** Load master catalog products for a shop, applying any approved shop-specific overrides (price, discount, stock). */
+export async function fetchProductsForShop(
   shopId: string,
   query: CatalogQuery = {},
 ): Promise<Record<string, any>[]> {
+  const db = readDb();
   const limitVal = query.limit ?? 100;
 
   let supaQuery = supabase
     .from('products')
     .select('*')
-    .eq('shop_id', shopId)
     .eq('available', true);
 
   if (query.category) {
@@ -131,55 +131,27 @@ async function fetchSupabaseShopCatalog(
     throw new Error(error.message);
   }
 
-  return (masterProducts || []).map((p: any) => mergeSupabaseProduct(shopId, p));
-}
-
-/** Load approved shop_products merged with master catalog for one shop. */
-export async function fetchProductsForShop(
-  shopId: string,
-  query: CatalogQuery = {},
-): Promise<Record<string, any>[]> {
-  const db = readDb();
-  const limitVal = query.limit ?? 100;
-
-  const approvedShopProds =
+  const shopOverrides =
     (db.shop_products || []).filter(
       (sp: any) => sp.shop_id === shopId && sp.status === 'approved',
     ) || [];
-
-  if (approvedShopProds.length > 0) {
-    const productIds = approvedShopProds.map((sp: any) => sp.product_id);
-
-    let supaQuery = supabase.from('products').select('*').in('id', productIds);
-
-    if (query.category) {
-      supaQuery = supaQuery.eq('primary_category', query.category);
-    }
-    if (query.secondary) {
-      supaQuery = supaQuery.eq('secondary_category', query.secondary);
-    }
-    if (query.q) {
-      supaQuery = supaQuery.or(
-        `name.ilike.%${query.q}%,brand.ilike.%${query.q}%,primary_category.ilike.%${query.q}%`,
-      );
-    }
-
-    const { data: masterProducts, error } = await supaQuery.limit(limitVal);
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const out: Record<string, any>[] = [];
-    for (const sp of approvedShopProds) {
-      const p = (masterProducts || []).find((prod: any) => prod.id === sp.product_id);
-      if (!p) continue;
-      out.push(mergeShopProduct(shopId, sp, p));
-    }
-
-    return out;
+  const overrideMap = new Map<string, any>();
+  for (const sp of shopOverrides) {
+    overrideMap.set(sp.product_id, sp);
   }
 
-  return fetchSupabaseShopCatalog(shopId, query);
+  const out: Record<string, any>[] = [];
+  for (const p of masterProducts || []) {
+    const sp = overrideMap.get(p.id);
+    if (sp) {
+      if (sp.available === false) continue;
+      out.push(mergeShopProduct(shopId, sp, p));
+    } else {
+      out.push(mergeSupabaseProduct(shopId, p));
+    }
+  }
+
+  return out;
 }
 
 /** Resolve area → shop, then return that shop's catalog. */
