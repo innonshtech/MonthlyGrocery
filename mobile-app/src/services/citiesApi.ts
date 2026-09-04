@@ -21,32 +21,7 @@ export async function fetchServiceableCities(): Promise<ServiceableCity[]> {
       return [];
     }
 
-    const serviceableNames = new Set<string>();
-    if (locationsRes.ok && locationsData.success && Array.isArray(locationsData.locations)) {
-      locationsData.locations
-        .filter((loc: { is_serviceable?: boolean; city?: string }) => loc.is_serviceable)
-        .forEach((loc: { city: string }) =>
-          serviceableNames.add(loc.city.trim().toLowerCase()),
-        );
-    }
-
-    const citiesWithRegisteredAreas = new Set<string>();
-    if (areasRes.ok && areasData.success && Array.isArray(areasData.areas)) {
-      areasData.areas.forEach((area: { city_id: string }) => {
-        const city = citiesData.cities.find(
-          (c: { id: string }) => c.id === area.city_id,
-        );
-        if (city?.name) {
-          citiesWithRegisteredAreas.add(city.name.trim().toLowerCase());
-        }
-      });
-    }
-
     return citiesData.cities
-      .filter((city: { name: string }) => {
-        const key = city.name.trim().toLowerCase();
-        return serviceableNames.has(key) || citiesWithRegisteredAreas.has(key);
-      })
       .map((city: { id: string; name: string; region?: string }) => ({
         id: city.id,
         name: city.name,

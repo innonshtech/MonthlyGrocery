@@ -293,6 +293,40 @@
   ],
   "orders": [
     {
+      "id": "eb81b168-a70e-49a7-b6c7-891c18ccfebf",
+      "display_id": "MG20659",
+      "consumer_id": "1cd19f3a-02da-4a01-be8d-82e2c2512a17",
+      "consumer_name": "911234537890",
+      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
+      "shop_name": "Thorat Wholesalers",
+      "total_amount": 6490,
+      "discount_amount": 0,
+      "product_savings": 510,
+      "total_savings": 510,
+      "coupon_code": null,
+      "shipping_address": "Egev, Hdbdh, Udgd, 411045",
+      "deliver_to_label": "Home · Hdbdh",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-04",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "8421",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-04T08:49:08.588Z",
+      "order_items": [
+        {
+          "product_id": "1f8e9c93-f209-4d74-8991-2323ce029dcc",
+          "product_name": "Amul Pure Ghee",
+          "name": "Amul Pure Ghee",
+          "quantity": 10,
+          "unit_price": 649,
+          "unit": "1 L",
+          "image_url": "https://images.unsplash.com/photo-1528825871115-3581a5387919?w=600&q=80"
+        }
+      ]
+    },
+    {
       "id": "9093ab62-52cd-49a8-ab81-99103bf61680",
       "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
       "consumer_name": "917777777777",
@@ -438,7 +472,21 @@
       "is_recommended": true
     }
   ],
-  "user_addresses": [],
+  "user_addresses": [
+    {
+      "id": "addr-1788511739543",
+      "consumer_id": "1cd19f3a-02da-4a01-be8d-82e2c2512a17",
+      "tag": "Home",
+      "flat": "Egev",
+      "street": "Hdbdh",
+      "landmark": "Udgd",
+      "pincode": "411045",
+      "phone": "1234537890",
+      "isDefault": true,
+      "created_at": "2026-09-04T08:48:59.543Z",
+      "updated_at": "2026-09-04T08:48:59.543Z"
+    }
+  ],
   "onboarding": {
     "splash": {
       "tagline": "Plan once · Order monthly · Save more",
