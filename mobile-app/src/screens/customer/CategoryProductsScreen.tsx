@@ -360,14 +360,14 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
         <TouchableOpacity
           style={[
             styles.floatingCart,
-            { bottom: Math.max(insets.bottom, 12) + 12 },
+            { bottom: 44 + insets.bottom },
           ]}
           onPress={() => navigation.navigate('Cart')}
           activeOpacity={0.9}
         >
-          <View style={styles.floatingCartLeft}>
+          <View style={styles.floatingCartLeftGroup}>
             <View style={styles.floatingCartIcon}>
-              <AppIcon name="cart" size={17} color="#FFFFFF" />
+              <AppIcon name="cart" size={20} color="#FFFFFF" />
             </View>
             <View style={styles.floatingCartTextCol}>
               <Text style={styles.floatingCartLabel}>{screenConfig?.view_cart_label || 'View cart'}</Text>
@@ -651,31 +651,34 @@ const styles = StyleSheet.create({
   },
   floatingCart: {
     position: 'absolute',
-    left: SIDEBAR_W + 12,
-    right: 14,
+    left: 102,
+    width: 167,
+    height: 58,
+    padding: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#237A4B',
-    borderRadius: 28,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    justifyContent: 'center',
+    gap: 12,
+    borderRadius: 100,
+    borderTopWidth: 1.5,
+    borderTopColor: '#EAE9E2',
+    backgroundColor: 'rgba(30, 122, 70, 0.90)',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
   },
-  floatingCartLeft: {
+  floatingCartLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   floatingCartIcon: {
-    width: 36,
-    height: 36,
+    width: 42,
+    height: 42,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -683,15 +686,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   floatingCartLabel: {
-    ...FONTS.muktaBold,
-    fontSize: 14,
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    fontWeight: '600',
     color: '#FFFFFF',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   floatingCartCount: {
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaRegular,
     fontSize: 11,
-    color: '#D4EFE0',
+    fontWeight: '400',
+    color: '#FFFFFF',
     lineHeight: 14,
   },
   modalOverlay: {
