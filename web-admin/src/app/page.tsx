@@ -575,6 +575,19 @@ export default function DashboardPage() {
     }
   };
 
+  const handleDeleteShop = async (shopId: string, shopName: string) => {
+    if (!token) return;
+    if (!confirm(`Are you sure you want to delete store "${shopName}"?`)) return;
+    try {
+      await apiFetch(`/shops/${shopId}`, {
+        method: 'DELETE',
+      });
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Error deleting store');
+    }
+  };
+
   // Add serviceable locations PIN mapping
   const handleAddLocation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1864,6 +1877,13 @@ export default function DashboardPage() {
                               Reject
                             </button>
                           )}
+                          <button
+                            onClick={() => handleDeleteShop(shop.id, shop.shop_name)}
+                            className="text-xs font-bold px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 rounded-lg transition-all cursor-pointer"
+                            title="Delete store"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}

@@ -242,4 +242,37 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
   }
 });
 
+// 4. DELETE /:shop_id: Delete a store and its territory (Super Admin only)
+router.delete('/:shop_id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { shop_id } = req.params;
+
+  try {
+    const { error: shopDelError } = await supabase
+      .from('shops')
+      .delete()
+      .eq('id', shop_id);
+
+    if (shopDelError) {
+      return res.status(500).json({ success: false, error: shopDelError.message });
+    }
+
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+    if (db.shop_territories) {
+      db.shop_territories = db.shop_territories.filter((t: any) => t.shop_id !== shop_id);
+    }
+    if (db.shop_products) {
+      db.shop_products = db.shop_products.filter((sp: any) => sp.shop_id !== shop_id);
+    }
+    if (db.serviceable_locations) {
+      db.serviceable_locations = db.serviceable_locations.filter((loc: any) => loc.shop_id !== shop_id);
+    }
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Store deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 export default router;

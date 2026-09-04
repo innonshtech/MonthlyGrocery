@@ -1,5 +1,14 @@
 {
-  "serviceable_locations": [],
+  "serviceable_locations": [
+    {
+      "id": "loc-1788514136819",
+      "city": "pune",
+      "area_name": "ravet",
+      "pincode": "000000",
+      "is_serviceable": true,
+      "shop_id": null
+    }
+  ],
   "promotional_banners": [
     {
       "id": "banner-promo-monthly",
@@ -46,30 +55,20 @@
     }
   ],
   "franchise_requests": [],
-  "cities": [],
-  "areas": [],
-  "shop_products": [
+  "cities": [
     {
-      "id": "sp-1788434660065-wqd8pc147",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "product_id": "fa37b5ac-72e8-453f-8802-78298cb620e9",
-      "selling_price": 250,
-      "discount_percentage": 0,
-      "stock": 0,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1788434762825-2gb8cwt0v",
-      "shop_id": "e343ff09-2683-42cf-9d40-f0570c6b695e",
-      "product_id": "2475a4a3-bbd1-4c19-aaa3-306af47168b4",
-      "selling_price": 1000,
-      "discount_percentage": 0,
-      "stock": 0,
-      "available": true,
-      "status": "approved"
+      "id": "city-1788514120950",
+      "name": "pune"
     }
   ],
+  "areas": [
+    {
+      "id": "area-1788514136819",
+      "city_id": "city-1788514120950",
+      "name": "ravet"
+    }
+  ],
+  "shop_products": [],
   "categories": [
     {
       "id": "cat-1",
@@ -150,128 +149,7 @@
       "active": true
     }
   ],
-  "orders": [
-    {
-      "id": "eb81b168-a70e-49a7-b6c7-891c18ccfebf",
-      "display_id": "MG20659",
-      "consumer_id": "1cd19f3a-02da-4a01-be8d-82e2c2512a17",
-      "consumer_name": "911234537890",
-      "shop_id": "4548b0b3-5a4d-4608-84a8-6fb5164af613",
-      "shop_name": "Thorat Wholesalers",
-      "total_amount": 6490,
-      "discount_amount": 0,
-      "product_savings": 510,
-      "total_savings": 510,
-      "coupon_code": null,
-      "shipping_address": "Egev, Hdbdh, Udgd, 411045",
-      "deliver_to_label": "Home · Hdbdh",
-      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
-      "delivery_slot_date": "2026-09-04",
-      "delivery_slot_window_id": "w1",
-      "delivery_otp": "8421",
-      "payment_method": "COD",
-      "payment_method_label": "Cash on Delivery",
-      "status": "pending",
-      "created_at": "2026-09-04T08:49:08.588Z",
-      "order_items": [
-        {
-          "product_id": "1f8e9c93-f209-4d74-8991-2323ce029dcc",
-          "product_name": "Amul Pure Ghee",
-          "name": "Amul Pure Ghee",
-          "quantity": 10,
-          "unit_price": 649,
-          "unit": "1 L",
-          "image_url": "https://images.unsplash.com/photo-1528825871115-3581a5387919?w=600&q=80"
-        }
-      ]
-    },
-    {
-      "id": "9093ab62-52cd-49a8-ab81-99103bf61680",
-      "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
-      "consumer_name": "917777777777",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "total_amount": 3060,
-      "discount_amount": 0,
-      "coupon_code": null,
-      "shipping_address": "Flat 402, Green Meadows, Paud Road, Kothrud, Pune, undefined 4110386",
-      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
-      "delivery_slot_date": "2026-08-27",
-      "delivery_slot_window_id": "w1",
-      "delivery_otp": "9961",
-      "payment_method": "COD",
-      "status": "delivered",
-      "created_at": "2026-08-27T08:28:25.683Z",
-      "order_items": [
-        {
-          "product_id": "6214394d-03aa-4f2f-a5ed-69fe78fdd565",
-          "product_name": "Grocery Item",
-          "quantity": 12,
-          "unit_price": 255,
-          "unit": "1 unit",
-          "image_url": ""
-        }
-      ],
-      "packed_at": "2026-09-03T09:40:20.419Z",
-      "confirmed_at": "2026-08-27T08:28:25.683Z",
-      "out_for_delivery_at": "2026-09-03T09:40:20.519Z",
-      "dispatched_at": "2026-09-03T09:40:20.519Z",
-      "delivered_at": "2026-09-03T09:40:20.583Z"
-    },
-    {
-      "id": "18ebd1c0-1e5f-45ce-acc9-29fa871ad5fa",
-      "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
-      "consumer_name": "917777777777",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "total_amount": 3045,
-      "discount_amount": 0,
-      "coupon_code": null,
-      "shipping_address": "Flat 402, Royal Palms, Main High Street Road, Pune 411038",
-      "delivery_slot": "Tomorrow, Morning 7:00 AM - 10:00 AM",
-      "delivery_otp": "5989",
-      "payment_method": "UPI",
-      "status": "out_for_delivery",
-      "created_at": "2026-08-24T11:29:07.610Z",
-      "order_items": [
-        {
-          "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
-          "product_name": "Grocery Item",
-          "quantity": 21,
-          "unit_price": 145,
-          "unit": "1 unit",
-          "image_url": ""
-        }
-      ],
-      "confirmed_at": "2026-09-03T09:42:24.258Z",
-      "packed_at": "2026-09-03T09:42:24.456Z",
-      "out_for_delivery_at": "2026-09-03T09:42:24.574Z",
-      "dispatched_at": "2026-09-03T09:42:24.574Z"
-    },
-    {
-      "id": "a2536e3f-5329-4415-9979-b43e8c128b1b",
-      "consumer_id": "5c4e4516-b8d0-4579-9d18-5fb7d18a55f6",
-      "consumer_name": "917777777777",
-      "shop_id": "e183b9e2-463d-4d9c-80b2-d2d2b05b7591",
-      "total_amount": 3045,
-      "discount_amount": 0,
-      "coupon_code": null,
-      "shipping_address": "Flat 402, Royal Palms, Main High Street Road, Pune 411038",
-      "delivery_slot": "Tomorrow, Morning 7:00 AM - 10:00 AM",
-      "delivery_otp": "6845",
-      "payment_method": "COD",
-      "status": "confirmed",
-      "created_at": "2026-08-24T11:26:41.056Z",
-      "order_items": [
-        {
-          "product_id": "ff062a9e-e590-49eb-863d-c7dfa3394ef9",
-          "product_name": "Grocery Item",
-          "quantity": 21,
-          "unit_price": 145,
-          "unit": "1 unit",
-          "image_url": ""
-        }
-      ]
-    }
-  ],
+  "orders": [],
   "new_product_requests": [
     {
       "id": "req-1788432756599-ebetc3d",
@@ -1209,16 +1087,7 @@
       "name": "Gautam Buddh Nagar"
     }
   ],
-  "shop_territories": [
-    {
-      "shop_id": "e343ff09-2683-42cf-9d40-f0570c6b695e",
-      "state_id": "state-mh",
-      "state_name": "Maharashtra",
-      "district_id": "dist-pune",
-      "district_name": "Pune",
-      "city": "Ravet"
-    }
-  ],
+  "shop_territories": [],
   "subcategories": [
     {
       "id": "sub-1",
