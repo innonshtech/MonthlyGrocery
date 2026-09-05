@@ -51,11 +51,15 @@ export function HomeSparkleIcon({ size = 26 }: IconProps) {
   return <SvgXml xml={SPARKLE_XML} width={size} height={size} />;
 }
 
+const ARROW_RIGHT_XML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
 export function HomeArrowRightIcon({
   size = 20,
   color = '#FFFFFF',
 }: IconProps) {
-  return <OnboardingChevronRightIcon size={size} color={color} />;
+  return (
+    <SvgXml xml={tintStroke(ARROW_RIGHT_XML, color)} width={size} height={size} />
+  );
 }
 
 const PROMO_ILLUSTRATION_XML = `<svg width="90" height="80" viewBox="0 0 90 80" fill="none" xmlns="http://www.w3.org/2000/svg">

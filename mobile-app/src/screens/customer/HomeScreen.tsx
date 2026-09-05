@@ -461,9 +461,11 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   <HomeSparkleIcon size={24} />
                 </View>
                 <View style={styles.mmgTextCol}>
-                  <Text style={styles.mmgLabel}>{home?.mmg_label || 'MY MONTHLY GROCERY'}</Text>
-                  <Text style={styles.mmgTitle}>{home?.mmg_title || 'Build your month in one tap'}</Text>
-                  <Text style={styles.mmgSub}>{home?.mmg_subtitle || 'A smart basket from what your home buys'}</Text>
+                  <Text style={styles.mmgLabel} numberOfLines={1}>{home?.mmg_label || 'MY MONTHLY GROCERY'}</Text>
+                  <Text style={styles.mmgTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                    {home?.mmg_title || 'Build your month in one tap'}
+                  </Text>
+                  <Text style={styles.mmgSub} numberOfLines={1}>{home?.mmg_subtitle || 'A smart basket from what your home buys'}</Text>
                 </View>
                 <View style={styles.mmgArrow}>
                   <HomeArrowRightIcon size={18} color="#FFFFFF" />
@@ -717,20 +719,20 @@ const styles = StyleSheet.create({
     marginTop: -2,
   },
   avatarBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2A8B54',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#22834E',
     borderWidth: 1.5,
-    borderColor: '#4FBF7E',
+    borderColor: '#45A56F',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   avatarImg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
   },
   avatarText: {
     ...FONTS.balooBold,
@@ -864,7 +866,7 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    height: 92,
+    minHeight: 88,
     paddingVertical: 12,
     paddingHorizontal: 14,
     gap: 12,
@@ -873,9 +875,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   mmgIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -884,21 +886,22 @@ const styles = StyleSheet.create({
   },
   mmgTextCol: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
   },
   mmgLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10.5,
+    lineHeight: 13,
     color: '#FBE0AE',
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
     textTransform: 'uppercase',
   },
   mmgTitle: {
     ...FONTS.balooSemiBold,
-    fontSize: 18,
+    fontSize: 17,
     color: '#FFFFFF',
-    lineHeight: 22,
+    lineHeight: 21,
     letterSpacing: -0.2,
     marginTop: 1,
   },
