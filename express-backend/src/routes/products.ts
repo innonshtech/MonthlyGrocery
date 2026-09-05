@@ -197,16 +197,14 @@ router.get('/search', async (req, res) => {
       });
     }
 
+    const { searchProductsWithIntelligence } = require('../utils/intelligentSearch');
     let query = supabase.from('products').select('*').eq('available', true);
 
-    if (q) {
-      query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
-    }
     if (category) {
       query = query.eq('primary_category', category);
     }
 
-    const { data: products, error } = await query.limit(limitVal);
+    const { data: products, error } = await query.limit(Math.max(limitVal, 100));
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
@@ -240,7 +238,12 @@ router.get('/search', async (req, res) => {
       });
     });
 
-    return res.json({ success: true, products: out });
+    if (q && String(q).trim()) {
+      const ranked = searchProductsWithIntelligence(out, String(q).trim(), category as string | undefined);
+      return res.json({ success: true, products: ranked.slice(0, limitVal) });
+    }
+
+    return res.json({ success: true, products: out.slice(0, limitVal) });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }

@@ -1,194 +1,142 @@
 /**
- * Indian Grocery Synonym & Keyword Mapping Dictionary
- * Maps Hindi, Hinglish, Marathi, and colloquial grocery search terms to standard catalog terms,
- * brands, and product categories.
+ * Comprehensive Hindi, Hinglish, Marathi, and English Grocery Synonyms Dictionary.
+ * Maps common vernacular search terms (e.g. 'aata', 'gehu', 'tel', 'chawal', 'shakkar', 'namak', 'sabun')
+ * to master product categories, brands, and canonical grocery titles.
  */
 
-export const GROCERY_SYNONYM_GROUPS: {
+export interface SynonymGroup {
   keywords: string[];
   canonical: string[];
   categories: string[];
-}[] = [
-  // 1. Atta, Wheat, Flours & Grains
+}
+
+export const GROCERY_SYNONYM_GROUPS: SynonymGroup[] = [
+  // 1. Atta, Flours & Grains
   {
     keywords: [
-      'gehu', 'gehun', 'gahu', 'aata', 'atta', 'ata', 'flour', 'chakki', 'wheat',
-      'whole wheat', 'shudh chakki', 'rotli', 'roti', 'chapati', 'multigrain'
+      'atta', 'aata', 'aatha', 'gehu', 'gehun', 'flour', 'wheat', 'wheat flour', 'chakki',
+      'chakki atta', 'aashirvaad', 'ashirvad', 'ashirwaad', 'aashirwad', 'multigrain',
+      'shudh chakki', 'aata 10kg', 'atta 10kg', 'atta 5kg', 'maida', 'besan', 'chana flour',
+      'gram flour', 'suji', 'sooji', 'rava', 'semolina', 'ragi', 'jowar', 'bajra',
+      'आटा', 'गेहूं', 'मैदा', 'बेसन', 'सूजी', 'रवा'
     ],
-    canonical: ['atta', 'wheat', 'flour', 'chakki'],
+    canonical: ['atta', 'flour', 'wheat', 'chakki', 'besan', 'suji', 'maida'],
     categories: ['Atta & Rice', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['maida', 'all purpose flour', 'refined flour'],
-    canonical: ['maida', 'flour'],
-    categories: ['Atta & Rice', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['sooji', 'suji', 'rava', 'rawa', 'semolina'],
-    canonical: ['sooji', 'suji', 'rava'],
-    categories: ['Atta & Rice', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['besan', 'gram flour', 'chana flour'],
-    canonical: ['besan', 'gram flour'],
-    categories: ['Dals & Pulses', 'Atta & Rice', 'Grocery & Kitchen']
   },
 
-  // 2. Rice & Poha
+  // 2. Rice & Basmati
   {
     keywords: [
-      'chawal', 'chaval', 'tandul', 'bhat', 'rice', 'basmati', 'kolam', 'sona masoori',
-      'wada kolam', 'indrayani', 'brown rice', 'boiled rice', 'steam rice', 'biryani rice',
-      'tukda rice', 'mogra'
+      'chawal', 'chaval', 'chaawal', 'rice', 'basmati', 'daawat', 'dawat', 'india gate', 'indrayani',
+      'kolam', 'sona masoori', 'sonamasoori', 'tukda', 'wada kolam', 'brown rice', 'poha', 'powa', 'aval',
+      'चावल', 'बासमती', 'पोहा'
     ],
-    canonical: ['rice', 'basmati', 'kolam', 'chawal'],
+    canonical: ['rice', 'basmati', 'chawal', 'poha'],
     categories: ['Atta & Rice', 'Grocery & Kitchen']
   },
-  {
-    keywords: ['poha', 'pohe', 'avalakki', 'flattened rice', 'beaten rice', 'thick poha', 'thin poha'],
-    canonical: ['poha', 'rice'],
-    categories: ['Atta & Rice', 'Snacks', 'Grocery & Kitchen']
-  },
 
-  // 3. Oils & Ghee
+  // 3. Edible Oils & Ghee
   {
     keywords: [
-      'tel', 'tail', 'oil', 'cooking oil', 'edible oil', 'refined oil', 'kachi ghani',
-      'mustard oil', 'sarson tel', 'sarson ka tel', 'sarso', 'rai tel', 'fortune oil',
-      'gemini', 'dhara', 'saffola', 'emami', 'sweekar', 'sunflower oil', 'surajmukhi',
-      'soya oil', 'soyabean oil', 'soya bean', 'groundnut oil', 'moongfali tel',
-      'singdana tel', 'rice bran oil', 'til tel', 'sesame oil', 'coconut oil', 'nariyal tel'
+      'tel', 'tail', 'oil', 'cooking oil', 'edible oil', 'refined oil', 'refine tel', 'refine',
+      'mustard oil', 'sarson tel', 'sarson', 'sarson oil', 'sunflower oil', 'surajmukhi',
+      'soya oil', 'soyabean oil', 'fortune', 'fartune', 'fortne', 'gemini', 'saffola', 'dhara',
+      'groundnut oil', 'moongfali tel', 'singdana tel', 'rice bran', 'ghee', 'ghee 1l', 'amul ghee',
+      'gowardhan ghee', 'tup', 'shuddh ghee', 'pure ghee',
+      'तेल', 'सरसों तेल', 'घी', 'फॉर्च्यून'
     ],
-    canonical: ['oil', 'tel', 'mustard oil', 'sunflower oil', 'soya oil', 'groundnut oil'],
-    categories: ['Oils & Ghee', 'Grocery & Kitchen']
-  },
-  {
-    keywords: [
-      'ghee', 'ghi', 'tup', 'pure ghee', 'cow ghee', 'desi ghee', 'buffalo ghee',
-      'amul ghee', 'gowardhan', 'patanjali ghee', 'ananda', 'mother dairy ghee', 'dalda', 'vanaspati'
-    ],
-    canonical: ['ghee', 'desi ghee', 'cow ghee'],
+    canonical: ['oil', 'ghee', 'mustard oil', 'sunflower oil', 'soyabean oil', 'fortune'],
     categories: ['Oils & Ghee', 'Grocery & Kitchen']
   },
 
   // 4. Dals & Pulses (Lentils)
   {
     keywords: [
-      'dal', 'daal', 'dall', 'lentil', 'pulses', 'toor dal', 'tur dal', 'arhar dal',
-      'tuvar', 'yellow dal', 'peeli dal', 'sambar dal'
+      'dal', 'daal', 'dall', 'pulses', 'toor dal', 'tur dal', 'arhar dal', 'arhar', 'tuvar dal',
+      'chana dal', 'chana', 'kabuli chana', 'kala chana', 'moong dal', 'mung dal', 'moong',
+      'green moong', 'yellow moong', 'urad dal', 'urad', 'masoor dal', 'masur', 'red lentil',
+      'rajma', 'chole', 'lobia', 'vatana', 'matar', 'safed matar',
+      'दाल', 'तूर दाल', 'चना', 'मूंग', 'उड़द', 'राजमा', 'छोले'
     ],
-    canonical: ['dal', 'toor dal', 'tur dal', 'arhar dal'],
-    categories: ['Dals & Pulses', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['moong dal', 'mung dal', 'moong chilka', 'moong dhuli', 'green gram', 'yellow moong', 'sabut moong'],
-    canonical: ['moong dal', 'moong'],
-    categories: ['Dals & Pulses', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['urad dal', 'urad gota', 'urad chilka', 'urad dhuli', 'black gram', 'idli dal', 'dosa dal'],
-    canonical: ['urad dal', 'urad'],
-    categories: ['Dals & Pulses', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['chana dal', 'chana', 'kala chana', 'black chickpea', 'chickpeas', 'bengal gram', 'kabuli chana', 'chole', 'safed chana', 'white chickpeas'],
-    canonical: ['chana', 'chana dal', 'chole', 'kabuli chana'],
-    categories: ['Dals & Pulses', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['rajma', 'rajmah', 'kidney beans', 'chitra rajma', 'red rajma', 'kashmiri rajma'],
-    canonical: ['rajma', 'kidney beans'],
-    categories: ['Dals & Pulses', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['masoor dal', 'masur', 'red lentil', 'kali masoor', 'malka masoor'],
-    canonical: ['masoor dal', 'masoor'],
-    categories: ['Dals & Pulses', 'Grocery & Kitchen']
-  },
-  {
-    keywords: ['matar', 'safed matar', 'green peas', 'dry peas', 'vatana', 'safed vatana'],
-    canonical: ['matar', 'vatana', 'peas'],
+    canonical: ['dal', 'toor dal', 'chana dal', 'moong dal', 'urad dal', 'rajma', 'chole'],
     categories: ['Dals & Pulses', 'Grocery & Kitchen']
   },
 
   // 5. Sugar, Jaggery & Sweeteners
   {
     keywords: [
-      'cheeni', 'chini', 'shakkar', 'sakhar', 'sugar', 'white sugar', 'refined sugar',
-      'madhur', 'bura', 'boora', 'icing sugar', 'khand'
+      'cheeni', 'chini', 'shakkar', 'sakar', 'sugar', 'white sugar', 'madhur', 'brown sugar',
+      'gud', 'gur', 'jaggery', 'bura', 'boora', 'khand',
+      'चीनी', 'शक्कर', 'गुड़'
     ],
-    canonical: ['sugar', 'cheeni', 'shakkar'],
-    categories: ['Sugar', 'Grocery & Kitchen', 'Home & Kitchen']
-  },
-  {
-    keywords: ['gur', 'gud', 'gul', 'jaggery', 'jaggery powder', 'organic jaggery', 'bellam'],
-    canonical: ['jaggery', 'gur', 'gud'],
-    categories: ['Sugar', 'Grocery & Kitchen']
+    canonical: ['sugar', 'cheeni', 'jaggery', 'gud'],
+    categories: ['Atta & Rice', 'Grocery & Kitchen']
   },
 
   // 6. Salt & Spices (Masale)
   {
     keywords: [
-      'namak', 'mith', 'meeth', 'salt', 'iodized salt', 'tata salt', 'rock salt',
-      'sendha namak', 'kala namak', 'black salt', 'lite salt'
+      'namak', 'salt', 'tata salt', 'tata namak', 'iodized salt', 'sendha', 'rock salt',
+      'sendha namak', 'kala namak', 'black salt', 'lite salt',
+      'नमक', 'सेंधा नमक'
     ],
     canonical: ['salt', 'namak'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['haldi', 'turmeric', 'haldi powder', 'turmeric powder', 'everest haldi', 'mdh haldi', 'catch haldi'],
+    keywords: ['haldi', 'turmeric', 'haldi powder', 'turmeric powder', 'everest haldi', 'mdh haldi', 'catch haldi', 'हल्दी'],
     canonical: ['haldi', 'turmeric'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['mirch', 'mirchi', 'lal mirch', 'red chilli', 'chilli powder', 'degi mirch', 'kashmiri mirch', 'tikhalal'],
+    keywords: ['mirch', 'mirchi', 'lal mirch', 'red chilli', 'chilli powder', 'degi mirch', 'kashmiri mirch', 'tikhalal', 'मिर्च', 'लाल मिर्च'],
     canonical: ['mirch', 'chilli', 'red chilli'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['dhaniya', 'dhania', 'coriander', 'coriander powder', 'dhana jeera'],
+    keywords: ['dhaniya', 'dhania', 'coriander', 'coriander powder', 'dhana jeera', 'धनिया'],
     canonical: ['dhaniya', 'coriander'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['jeera', 'jira', 'cumin', 'cumin seeds', 'zeera'],
+    keywords: ['jeera', 'jira', 'cumin', 'cumin seeds', 'zeera', 'जीरा'],
     canonical: ['jeera', 'cumin'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['rai', 'mustard seeds', 'sarson dana', 'mohari'],
+    keywords: ['rai', 'mustard seeds', 'sarson dana', 'mohari', 'राई'],
     canonical: ['rai', 'mustard seeds'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['garam masala', 'masala', 'sabji masala', 'kitchen king', 'meat masala', 'chicken masala', 'pav bhaji masala', 'chhole masala', 'sambar masala', 'biryani masala', 'chaat masala', 'hing', 'asafoetida'],
+    keywords: ['garam masala', 'masala', 'sabji masala', 'kitchen king', 'meat masala', 'chicken masala', 'pav bhaji masala', 'chhole masala', 'sambar masala', 'biryani masala', 'chaat masala', 'hing', 'asafoetida', 'गरम मसाला', 'मसाला', 'हींग'],
     canonical: ['masala', 'garam masala'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
   {
-    keywords: ['elaichi', 'cardamom', 'green cardamom', 'badi elaichi', 'black cardamom', 'laung', 'clove', 'dalchini', 'cinnamon', 'kali mirch', 'black pepper', 'tej patta', 'bay leaf', 'saunf', 'fennel', 'methi', 'fenugreek', 'ajwain', 'carom seeds'],
+    keywords: ['elaichi', 'cardamom', 'green cardamom', 'badi elaichi', 'black cardamom', 'laung', 'clove', 'dalchini', 'cinnamon', 'kali mirch', 'black pepper', 'tej patta', 'bay leaf', 'saunf', 'fennel', 'methi', 'fenugreek', 'ajwain', 'carom seeds', 'इलायची', 'लौंग', 'दालचीनी', 'काली मिर्च'],
     canonical: ['spices', 'whole spices', 'elaichi', 'laung'],
     categories: ['Spices & Masala', 'Grocery & Kitchen']
   },
 
   // 7. Dry Fruits & Nuts
   {
-    keywords: ['kaju', 'kaju tukda', 'cashew', 'cashews', 'cashewnut'],
+    keywords: ['kaju', 'kaju tukda', 'cashew', 'cashews', 'cashewnut', 'काजू'],
     canonical: ['kaju', 'cashew', 'cashews'],
     categories: ['Dry Fruits', 'Grocery & Kitchen']
   },
   {
-    keywords: ['badam', 'almond', 'almonds', 'mamra badam', 'california badam'],
+    keywords: ['badam', 'almond', 'almonds', 'mamra badam', 'california badam', 'बादाम'],
     canonical: ['badam', 'almond', 'almonds'],
     categories: ['Dry Fruits', 'Grocery & Kitchen']
   },
   {
-    keywords: ['kismis', 'kishmish', 'kismish', 'raisins', 'dry grapes', 'munakka', 'draksh'],
+    keywords: ['kismis', 'kishmish', 'kismish', 'raisins', 'dry grapes', 'munakka', 'draksh', 'किशमिश'],
     canonical: ['kismis', 'kishmish', 'raisins'],
     categories: ['Dry Fruits', 'Grocery & Kitchen']
   },
   {
-    keywords: ['akhrot', 'walnut', 'walnuts', 'pista', 'pistachio', 'pistachios', 'anjir', 'anjeer', 'fig', 'makhana', 'foxnut', 'dry fruits', 'mixed dry fruits', 'dryfruit'],
+    keywords: ['akhrot', 'walnut', 'walnuts', 'pista', 'pistachio', 'pistachios', 'anjir', 'anjeer', 'fig', 'makhana', 'foxnut', 'dry fruits', 'mixed dry fruits', 'dryfruit', 'अखरोट', 'पिस्ता', 'मखाना'],
     canonical: ['dry fruits', 'akhrot', 'pista', 'makhana'],
     categories: ['Dry Fruits', 'Grocery & Kitchen']
   },
@@ -197,13 +145,13 @@ export const GROCERY_SYNONYM_GROUPS: {
   {
     keywords: [
       'chai', 'chay', 'chaipatti', 'chai patti', 'tea', 'tea powder', 'tata tea', 'tata tea gold',
-      'red label', 'taj mahal', 'wagh bakri', 'green tea', 'lipton'
+      'red label', 'taj mahal', 'wagh bakri', 'green tea', 'lipton', 'चाय', 'चाय पत्ती'
     ],
     canonical: ['tea', 'chai', 'chai patti'],
     categories: ['Beverages', 'Snacks & Beverages']
   },
   {
-    keywords: ['coffee', 'nescafe', 'bru', 'instant coffee', 'filter coffee', 'davidoff'],
+    keywords: ['coffee', 'nescafe', 'bru', 'instant coffee', 'filter coffee', 'davidoff', 'कॉफी'],
     canonical: ['coffee', 'nescafe', 'bru'],
     categories: ['Beverages', 'Snacks & Beverages']
   },
@@ -215,17 +163,17 @@ export const GROCERY_SYNONYM_GROUPS: {
 
   // 9. Snacks & Noodles & Biscuits
   {
-    keywords: ['maggi', 'magi', 'maggie', 'noodles', 'instant noodles', 'yippee', 'top ramen', 'pasta', 'macaroni', 'vermicelli', 'sewai', 'semiya'],
+    keywords: ['maggi', 'magi', 'maggie', 'noodles', 'instant noodles', 'yippee', 'top ramen', 'pasta', 'macaroni', 'vermicelli', 'sewai', 'semiya', 'मैगी', 'नूडल्स'],
     canonical: ['maggi', 'noodles', 'pasta'],
     categories: ['Snacks', 'Snacks & Beverages']
   },
   {
-    keywords: ['biscuit', 'biscuits', 'cookie', 'cookies', 'parle g', 'parle-g', 'good day', 'monaco', 'krackjack', 'marie gold', 'bourbon', 'hide and seek', 'oreo', 'rusk', 'toast'],
+    keywords: ['biscuit', 'biscuits', 'cookie', 'cookies', 'parle g', 'parle-g', 'good day', 'monaco', 'krackjack', 'marie gold', 'bourbon', 'hide and seek', 'oreo', 'rusk', 'toast', 'बिस्कुट'],
     canonical: ['biscuit', 'biscuits', 'cookies'],
     categories: ['Biscuits', 'Snacks & Beverages']
   },
   {
-    keywords: ['namkeen', 'bhujia', 'sev', 'haldiram', 'bikaji', 'balaji', 'chips', 'lays', 'kurkure', 'chivda', 'farsan', 'peanuts', 'moongfali'],
+    keywords: ['namkeen', 'bhujia', 'sev', 'haldiram', 'bikaji', 'balaji', 'chips', 'lays', 'kurkure', 'chivda', 'farsan', 'peanuts', 'moongfali', 'नमकीन', 'भुजिया'],
     canonical: ['namkeen', 'bhujia', 'chips', 'snacks'],
     categories: ['Snacks', 'Snacks & Beverages']
   },
@@ -234,7 +182,8 @@ export const GROCERY_SYNONYM_GROUPS: {
   {
     keywords: [
       'surf', 'detergent', 'washing powder', 'nirma', 'surf excel', 'ariel', 'tide', 'wheel',
-      'rin', 'liquid detergent', 'washing liquid', 'fabric conditioner', 'comfort', 'fabric whitener', 'ujala'
+      'rin', 'liquid detergent', 'washing liquid', 'fabric conditioner', 'comfort', 'fabric whitener', 'ujala',
+      'सर्फ', 'डिटर्जेंट'
     ],
     canonical: ['detergent', 'surf', 'washing powder'],
     categories: ['Cleaning', 'Household & Care']
@@ -242,7 +191,7 @@ export const GROCERY_SYNONYM_GROUPS: {
   {
     keywords: [
       'sabun', 'soap', 'bath soap', 'bathing soap', 'lux', 'dettol', 'lifebuoy', 'dove',
-      'pears', 'santoor', 'cinthol', 'godrej no 1', 'medimix'
+      'pears', 'santoor', 'cinthol', 'godrej no 1', 'medimix', 'साबुन'
     ],
     canonical: ['soap', 'sabun', 'bath soap'],
     categories: ['Personal Care', 'Cleaning', 'Household & Care']
@@ -250,7 +199,7 @@ export const GROCERY_SYNONYM_GROUPS: {
   {
     keywords: [
       'bartan', 'dishwash', 'vim', 'vim bar', 'vim gel', 'dishwash bar', 'dishwash liquid',
-      'scrub pad', 'scotch brite', 'pril', 'exo'
+      'scrub pad', 'scotch brite', 'pril', 'exo', 'बर्तन साबुन'
     ],
     canonical: ['dishwash', 'vim', 'bartan'],
     categories: ['Cleaning', 'Household & Care']
@@ -258,7 +207,8 @@ export const GROCERY_SYNONYM_GROUPS: {
   {
     keywords: [
       'cleaner', 'floor cleaner', 'lizol', 'phenyl', 'harpic', 'toilet cleaner', 'domex',
-      'colin', 'glass cleaner', 'odonil', 'room freshener', 'all out', 'good knight', 'mosquito repellent'
+      'colin', 'glass cleaner', 'odonil', 'room freshener', 'all out', 'good knight', 'mosquito repellent',
+      'फिनाइल', 'हारपिक', 'लायजोल'
     ],
     canonical: ['floor cleaner', 'toilet cleaner', 'lizol', 'harpic'],
     categories: ['Cleaning', 'Home & Kitchen', 'Household & Care']
@@ -266,12 +216,12 @@ export const GROCERY_SYNONYM_GROUPS: {
 
   // 11. Personal Care & Dental
   {
-    keywords: ['colgate', 'toothpaste', 'pepsodent', 'close up', 'sensodyne', 'dabur red', 'meswak', 'toothbrush', 'brush'],
+    keywords: ['colgate', 'toothpaste', 'pepsodent', 'close up', 'sensodyne', 'dabur red', 'meswak', 'toothbrush', 'brush', 'पेस्ट', 'टूथपेस्ट'],
     canonical: ['toothpaste', 'colgate', 'toothbrush'],
     categories: ['Personal Care', 'Household & Care']
   },
   {
-    keywords: ['shampoo', 'conditioner', 'head and shoulders', 'clinic plus', 'dove shampoo', 'sunsilk', 'pantene', 'tresemme', 'hair oil', 'parachute', 'coconut hair oil', 'bajaj almond drops', 'navratna'],
+    keywords: ['shampoo', 'conditioner', 'head and shoulders', 'clinic plus', 'dove shampoo', 'sunsilk', 'pantene', 'tresemme', 'hair oil', 'parachute', 'coconut hair oil', 'bajaj almond drops', 'navratna', 'शैम्पू', 'तेल'],
     canonical: ['shampoo', 'hair oil'],
     categories: ['Personal Care', 'Household & Care']
   },

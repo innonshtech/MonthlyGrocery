@@ -68,6 +68,8 @@ function mergeShopProduct(
   });
 }
 
+import { searchProductsWithIntelligence } from '../utils/intelligentSearch';
+
 /** Load master catalog products for a shop, applying any approved shop-specific overrides (price, discount, stock). */
 export async function fetchProductsForShop(
   shopId: string,
@@ -87,13 +89,8 @@ export async function fetchProductsForShop(
   if (query.secondary) {
     supaQuery = supaQuery.eq('secondary_category', query.secondary);
   }
-  if (query.q) {
-    supaQuery = supaQuery.or(
-      `name.ilike.%${query.q}%,brand.ilike.%${query.q}%,primary_category.ilike.%${query.q}%`,
-    );
-  }
 
-  const { data: masterProducts, error } = await supaQuery.limit(limitVal);
+  const { data: masterProducts, error } = await supaQuery.limit(Math.max(limitVal, 200));
   if (error) {
     throw new Error(error.message);
   }
@@ -115,7 +112,12 @@ export async function fetchProductsForShop(
     }
   }
 
-  return out;
+  if (query.q && query.q.trim()) {
+    const ranked = searchProductsWithIntelligence(out, query.q.trim(), query.category, query.secondary);
+    return ranked.slice(0, limitVal);
+  }
+
+  return out.slice(0, limitVal);
 }
 
 /** Resolve area → shop, then return that shop's catalog. */

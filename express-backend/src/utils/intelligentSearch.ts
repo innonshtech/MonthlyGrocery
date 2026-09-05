@@ -1,47 +1,48 @@
 import { expandSearchTerms, normalizeSearchTerm } from './searchSynonyms';
 
-/** Fast Levenshtein distance algorithm for typo tolerance */
+/** Standard Levenshtein Distance for Typo Tolerance */
 export function levenshteinDistance(a: string, b: string): number {
   if (a === b) return 0;
   if (!a.length) return b.length;
   if (!b.length) return a.length;
 
-  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
 
-  for (let i = 1; i <= a.length; i++) {
-    let prev = i;
-    for (let j = 1; j <= b.length; j++) {
-      let val: number;
-      if (a[i - 1] === b[j - 1]) {
-        val = row[j - 1];
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
       } else {
-        val = Math.min(row[j - 1] + 1, prev + 1, row[j] + 1);
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
       }
-      row[j - 1] = prev;
-      prev = val;
     }
-    row[b.length] = prev;
   }
 
-  return row[b.length];
+  return matrix[b.length][a.length];
 }
 
-/** Check if two words are fuzzy match (handles 1-2 character typos for words >= 4 chars) */
-export function isFuzzyMatch(wordA: string, wordB: string): boolean {
-  const a = wordA.toLowerCase();
-  const b = wordB.toLowerCase();
-  if (a === b) return true;
-  if (a.includes(b) || b.includes(a)) return true;
+/** Check if query word fuzzy matches target word within acceptable distance */
+export function isFuzzyMatch(queryWord: string, targetWord: string): boolean {
+  if (!queryWord || !targetWord) return false;
+  if (targetWord.includes(queryWord) || queryWord.includes(targetWord)) return true;
 
-  const minLen = Math.min(a.length, b.length);
-  const maxLen = Math.max(a.length, b.length);
+  const qLen = queryWord.length;
+  const tLen = targetWord.length;
 
-  if (maxLen - minLen > 2) return false;
-  if (minLen <= 3) return false; // short words require exact match
+  // Short words (< 4 chars) require exact substring match
+  if (qLen < 4 || tLen < 4) {
+    return targetWord.startsWith(queryWord) || queryWord.startsWith(targetWord);
+  }
 
-  const dist = levenshteinDistance(a, b);
-  const maxAllowedDist = minLen >= 6 ? 2 : 1;
-  return dist <= maxAllowedDist;
+  // Max allowed typo distance depends on length
+  const maxDistance = qLen > 6 ? 2 : 1;
+  return levenshteinDistance(queryWord, targetWord) <= maxDistance;
 }
 
 export type ScoredProduct = {
@@ -49,139 +50,135 @@ export type ScoredProduct = {
   score: number;
 };
 
-/** Compute an intelligent relevance score for a product against a search query */
-export function calculateRelevanceScore(
-  product: Record<string, any>,
+/**
+ * Intelligent Search Engine for Grocery:
+ * Computes relevance score based on:
+ * 1. Exact / prefix match on Product Name (Score +100)
+ * 2. Hindi / Hinglish Synonym matches (Score +60)
+ * 3. Brand name match (Score +50)
+ * 4. Primary & Secondary Category match (Score +40)
+ * 5. Typo tolerance fuzzy match on words (Score +30)
+ * 6. Search keywords & description match (Score +20)
+ */
+export function searchProductsWithIntelligence<T extends Record<string, any>>(
+  products: T[],
   query: string,
-): number {
-  const normQuery = normalizeSearchTerm(query);
-  if (!normQuery) return 100;
-
-  const { tokens, expandedKeywords, matchedCategories } = expandSearchTerms(query);
-
-  const name = normalizeSearchTerm(product.name || '');
-  const brand = normalizeSearchTerm(product.brand || '');
-  const company = normalizeSearchTerm(product.company || '');
-  const primCat = normalizeSearchTerm(product.primary_category || '');
-  const secCat = normalizeSearchTerm(product.secondary_category || '');
-  const desc = normalizeSearchTerm(`${product.description || ''} ${product.short_description || ''}`);
-  const keywords = normalizeSearchTerm(product.search_keywords || '');
-
-  const nameTokens = name.split(/\s+/).filter(Boolean);
-  const brandTokens = brand.split(/\s+/).filter(Boolean);
-
-  let score = 0;
-
-  // 1. Exact Full Match in Title
-  if (name === normQuery) {
-    score += 150;
-  } else if (name.startsWith(normQuery)) {
-    score += 120;
-  } else if (name.includes(normQuery)) {
-    score += 100;
+  categoryFilter?: string,
+  secondaryFilter?: string
+): T[] {
+  if (!products || products.length === 0) return [];
+  const rawNormalized = normalizeSearchTerm(query);
+  if (!rawNormalized) {
+    // If no query, apply optional category filters directly
+    return products.filter((p) => {
+      if (categoryFilter && p.primary_category !== categoryFilter) return false;
+      if (secondaryFilter && p.secondary_category !== secondaryFilter) return false;
+      return true;
+    });
   }
 
-  // 2. Token Matches in Title & Brand
-  for (const token of tokens) {
-    if (token.length < 2) continue;
-
-    // Exact word in title
-    if (nameTokens.includes(token)) {
-      score += 50;
-    } else if (nameTokens.some((nt) => nt.startsWith(token) || nt.includes(token))) {
-      score += 35;
-    } else if (nameTokens.some((nt) => isFuzzyMatch(token, nt))) {
-      score += 28;
-    }
-
-    // Exact word in brand
-    if (brandTokens.includes(token) || brand === token) {
-      score += 60;
-    } else if (brand.includes(token) || brandTokens.some((bt) => isFuzzyMatch(token, bt))) {
-      score += 30;
-    }
-  }
-
-  // 3. Synonym & Transliteration Matches (e.g. "gehu" -> matches "wheat", "atta", "chakki")
-  for (const expKw of expandedKeywords) {
-    if (expKw.length < 2) continue;
-
-    if (nameTokens.includes(expKw) || name.includes(expKw)) {
-      score += 45;
-    } else if (nameTokens.some((nt) => isFuzzyMatch(expKw, nt))) {
-      score += 30;
-    }
-
-    if (brand.includes(expKw)) {
-      score += 35;
-    }
-  }
-
-  // 4. Category and Subcategory Alignment
-  if (matchedCategories.size > 0) {
-    for (const cat of matchedCategories) {
-      if (primCat.includes(cat) || cat.includes(primCat)) {
-        score += 50;
-      }
-      if (secCat && (secCat.includes(cat) || cat.includes(secCat))) {
-        score += 40;
-      }
-    }
-  }
-
-  // Query token directly matches category name
-  for (const token of tokens) {
-    if (token.length >= 3) {
-      if (primCat.includes(token)) score += 35;
-      if (secCat.includes(token)) score += 30;
-    }
-  }
-
-  // 5. Description & Search Keywords Matches
-  for (const token of tokens) {
-    if (keywords.includes(token)) score += 30;
-    if (desc.includes(token)) score += 15;
-  }
-
-  // Also check expanded keywords in description / keywords
-  for (const expKw of expandedKeywords) {
-    if (expKw.length >= 3 && keywords.includes(expKw)) {
-      score += 25;
-    }
-  }
-
-  return score;
-}
-
-/** Filter and rank products using the Intelligent Search Engine */
-export function filterAndRankProducts(
-  products: Record<string, any>[],
-  query?: string,
-  minScoreThreshold = 25,
-): Record<string, any>[] {
-  const cleanQuery = normalizeSearchTerm(query);
-  if (!cleanQuery) {
-    return products;
-  }
+  const { tokens, expandedKeywords, matchedCategories } = expandSearchTerms(rawNormalized);
 
   const scored: ScoredProduct[] = [];
 
   for (const product of products) {
-    const score = calculateRelevanceScore(product, cleanQuery);
-    if (score >= minScoreThreshold) {
+    // Check category filter if supplied
+    if (categoryFilter && product.primary_category !== categoryFilter) {
+      continue;
+    }
+    if (secondaryFilter && product.secondary_category !== secondaryFilter) {
+      continue;
+    }
+
+    const name = normalizeSearchTerm(product.name);
+    const brand = normalizeSearchTerm(product.brand);
+    const company = normalizeSearchTerm(product.company);
+    const primaryCategory = normalizeSearchTerm(product.primary_category);
+    const secondaryCategory = normalizeSearchTerm(product.secondary_category);
+    const searchKeywords = normalizeSearchTerm(product.search_keywords);
+    const description = normalizeSearchTerm(product.description || product.short_description);
+
+    const productWords = [
+      ...name.split(/\s+/),
+      ...brand.split(/\s+/),
+      ...primaryCategory.split(/\s+/),
+      ...secondaryCategory.split(/\s+/),
+    ].filter((w) => w.length > 0);
+
+    let score = 0;
+
+    // 1. Exact Name match or prefix
+    if (name === rawNormalized) {
+      score += 200;
+    } else if (name.startsWith(rawNormalized)) {
+      score += 150;
+    } else if (name.includes(rawNormalized)) {
+      score += 100;
+    }
+
+    // 2. Brand match
+    if (brand && (brand === rawNormalized || rawNormalized.includes(brand) || brand.includes(rawNormalized))) {
+      score += 60;
+    }
+
+    // 3. Category match from query or expanded synonyms
+    if (primaryCategory && (primaryCategory.includes(rawNormalized) || matchedCategories.has(primaryCategory))) {
+      score += 50;
+    }
+    if (secondaryCategory && (secondaryCategory.includes(rawNormalized) || matchedCategories.has(secondaryCategory))) {
+      score += 40;
+    }
+
+    // 4. Check expanded synonyms against product title & search keywords
+    for (const kw of expandedKeywords) {
+      if (kw.length >= 3) {
+        if (name.includes(kw)) score += 35;
+        if (brand.includes(kw)) score += 25;
+        if (searchKeywords.includes(kw)) score += 20;
+        if (primaryCategory.includes(kw)) score += 15;
+      }
+    }
+
+    // 5. Check token-level fuzzy match & presence
+    let tokenMatches = 0;
+    for (const token of tokens) {
+      if (token.length < 2) continue;
+
+      let matchedThisToken = false;
+      if (name.includes(token) || brand.includes(token) || searchKeywords.includes(token)) {
+        matchedThisToken = true;
+        score += 30;
+      } else {
+        // Try fuzzy typo match across product words
+        for (const pw of productWords) {
+          if (isFuzzyMatch(token, pw)) {
+            matchedThisToken = true;
+            score += 20;
+            break;
+          }
+        }
+      }
+
+      if (matchedThisToken) tokenMatches++;
+    }
+
+    // 6. Bonus if all tokens from query matched
+    if (tokens.length > 1 && tokenMatches === tokens.length) {
+      score += 50;
+    }
+
+    // 7. Search keywords / description fallback
+    if (searchKeywords.includes(rawNormalized)) score += 25;
+    if (description.includes(rawNormalized)) score += 15;
+
+    // Only include products that have meaningful match
+    if (score > 0) {
       scored.push({ product, score });
     }
   }
 
-  // Sort by highest score first, then by discount/price
-  scored.sort((a, b) => {
-    if (b.score !== a.score) {
-      return b.score - a.score;
-    }
-    const da = a.product.discount_percent || 0;
-    const db = b.product.discount_percent || 0;
-    return db - da;
-  });
+  // Sort by score descending (highest relevance first)
+  scored.sort((a, b) => b.score - a.score);
 
-  return scored.map((s) => s.product);
+  return scored.map((item) => item.product as T);
 }
