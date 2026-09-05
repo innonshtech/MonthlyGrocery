@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
@@ -47,6 +47,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
 
   const { city, area, pincode } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
+  const insets = useSafeAreaInsets();
 
   const [screenConfig, setScreenConfig] = useState<CategoryProductsScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
@@ -357,20 +358,23 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
 
       {totalCartCount > 0 && (
         <TouchableOpacity
-          style={styles.floatingCart}
+          style={[
+            styles.floatingCart,
+            { bottom: 44 + insets.bottom },
+          ]}
           onPress={() => navigation.navigate('Cart')}
           activeOpacity={0.9}
         >
-          <View style={styles.floatingCartLeft}>
+          <View style={styles.floatingCartLeftGroup}>
             <View style={styles.floatingCartIcon}>
-              <AppIcon name="cart" size={16} color="#FFFFFF" />
+              <AppIcon name="cart" size={20} color="#FFFFFF" />
             </View>
-            <View>
-              <Text style={styles.floatingCartLabel}>{screenConfig?.view_cart_label}</Text>
+            <View style={styles.floatingCartTextCol}>
+              <Text style={styles.floatingCartLabel}>{screenConfig?.view_cart_label || 'View cart'}</Text>
               <Text style={styles.floatingCartCount}>{cartCountLabel}</Text>
             </View>
           </View>
-          <AppIcon name="arrow-right" size={16} color="#FFFFFF" />
+          <AppIcon name="arrow-right" size={18} color="#FFFFFF" />
         </TouchableOpacity>
       )}
 
@@ -647,47 +651,53 @@ const styles = StyleSheet.create({
   },
   floatingCart: {
     position: 'absolute',
-    bottom: 16,
-    left: SIDEBAR_W + 12,
-    right: 12,
+    left: 102,
+    width: 167,
+    height: 58,
+    padding: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(30, 122, 70, 0.9)',
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderTopWidth: 0,
+    justifyContent: 'center',
+    gap: 12,
     borderRadius: 100,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    borderTopWidth: 1.5,
+    borderTopColor: '#EAE9E2',
+    backgroundColor: 'rgba(30, 122, 70, 0.90)',
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
   },
-  floatingCartLeft: {
+  floatingCartLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   floatingCartIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  floatingCartTextCol: {
+    justifyContent: 'center',
+  },
   floatingCartLabel: {
-    ...FONTS.muktaBold,
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
+    fontWeight: '600',
     color: '#FFFFFF',
+    lineHeight: 16,
   },
   floatingCartCount: {
-    ...FONTS.muktaBold,
+    ...FONTS.muktaRegular,
     fontSize: 11,
-    color: '#E4F3EA',
+    fontWeight: '400',
+    color: '#FFFFFF',
+    lineHeight: 14,
   },
   modalOverlay: {
     flex: 1,

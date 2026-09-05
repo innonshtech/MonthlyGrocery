@@ -881,23 +881,19 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 16. Check Icon (Lucide-style vector tick)
-  if (name === 'check') {
+  // 16. Arrow Right (Vector clean arrow)
+  if (name === 'arrow-right') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
-        <View style={{ width: size * 0.65, height: size * 0.5, justifyContent: 'center', alignItems: 'center' }}>
-          <View
-            style={{
-              width: size * 0.42,
-              height: size * 0.22,
-              borderLeftWidth: stroke,
-              borderBottomWidth: stroke,
-              borderColor: color,
-              transform: [{ rotate: '-45deg' }],
-              marginTop: -size * 0.06,
-            }}
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M5 12H19M19 12L12 5M19 12L12 19"
+            stroke={color}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-        </View>
+        </Svg>
       </View>
     );
   }
