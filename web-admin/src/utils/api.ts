@@ -1,5 +1,5 @@
 const getApiBase = () => {
-  const envUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api').trim().replace(/\/+$/, '');
+  const envUrl = (process.env.NEXT_PUBLIC_API_URL || 'https://monthly-grocery-rust.vercel.app/api').trim().replace(/\/+$/, '');
   return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
 };
 
