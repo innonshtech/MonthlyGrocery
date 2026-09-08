@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  Menu,
+  X,
+  ChevronRight,
   Shield,
   Store,
   FileSpreadsheet,
@@ -261,6 +264,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('shops');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Lists & data states
   const [shops, setShops] = useState<Shop[]>([]);
@@ -1605,198 +1609,262 @@ export default function DashboardPage() {
 
   const stats = calculateAnalytics();
 
+
+  const navSections = [
+    {
+      title: 'Core Operations',
+      items: [
+        { id: 'shops' as TabType, label: 'Store Approvals', icon: Store, badge: shops.filter(s => s.status === 'pending').length || undefined, badgeColor: 'bg-amber-500' },
+        { id: 'orders-admin' as TabType, label: 'Live Orders Tracker', icon: ShoppingBag, badge: allOrdersList.filter(o => o.status === 'pending').length || undefined, badgeColor: 'bg-emerald-500' },
+        { id: 'sku-requests' as TabType, label: 'SKU Requests', icon: FileSpreadsheet, badge: skuRequests.filter(r => r.status === 'pending').length || undefined, badgeColor: 'bg-amber-500' },
+        { id: 'master-catalog' as TabType, label: 'Master Catalogue', icon: Package, badge: masterProductsList.length || undefined, badgeColor: 'bg-slate-700' },
+        { id: 'categories-admin' as TabType, label: 'Manage Categories', icon: Tag },
+      ]
+    },
+    {
+      title: 'Territories & Delivery',
+      items: [
+        { id: 'cities-areas' as TabType, label: 'Cities & Localities', icon: MapPin },
+        { id: 'locations' as TabType, label: 'Localities Mapping', icon: MapPin },
+      ]
+    },
+    {
+      title: 'Growth & Campaigns',
+      items: [
+        { id: 'coupons-admin' as TabType, label: 'Manage Coupons', icon: Ticket },
+        { id: 'banners' as TabType, label: 'Festive Campaigns', icon: ImageIcon },
+        { id: 'home-screen' as TabType, label: 'App Screen Copy', icon: Home },
+        { id: 'analytics' as TabType, label: 'Platform Analytics', icon: BarChart3 },
+      ]
+    },
+    {
+      title: 'Tools & Inquiries',
+      items: [
+        { id: 'franchise' as TabType, label: 'Franchise Inquiries', icon: MessageSquare, badge: franchiseRequests.length || undefined, badgeColor: 'bg-blue-500' },
+        { id: 'bulk-loader' as TabType, label: 'Bulk SKU Loader', icon: Upload },
+      ]
+    }
+  ];
+
+  const allNavItems = navSections.flatMap(s => s.items);
+  const currentNav = allNavItems.find(n => n.id === activeTab) || allNavItems[0];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] text-slate-100 flex flex-col md:flex-row font-sans">
       
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-[#090D16]/65 border-b md:border-b-0 md:border-r border-slate-800/80 backdrop-blur-xl flex flex-col justify-between p-6">
-        <div className="space-y-8">
+      {/* Mobile Top Navigation Bar */}
+      <header className="md:hidden sticky top-0 z-40 bg-[#090D16]/95 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3 flex items-center justify-between shadow-lg">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-white tracking-tight leading-tight">MonthlyGrocery</h1>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin</span>
+              <span className="text-[10px] text-slate-600">•</span>
+              <span className="text-[10px] text-slate-300 font-semibold truncate max-w-[120px]">{currentNav.label}</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
+          aria-label="Toggle Menu"
+        >
+          {mobileMenuOpen ? <X className="w-5 h-5 text-red-400" /> : <Menu className="w-5 h-5 text-emerald-400" />}
+        </button>
+      </header>
+
+      {/* Mobile Quick-Swipe Tab Bar */}
+      <div className="md:hidden sticky top-[57px] z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shadow-inner">
+        {allNavItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveTab(item.id);
+                setMobileMenuOpen(false);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                isActive
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{item.label}</span>
+              {item.badge ? (
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${isActive ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                  {item.badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mobile Drawer Overlay / Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col justify-between p-5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Navigation Menu</h2>
+                <p className="text-[10px] text-emerald-400 font-bold uppercase">Super Admin Portal</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Drawer Links */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar my-4 space-y-5 pr-1">
+            {navSections.map((sec) => (
+              <div key={sec.title} className="space-y-1.5">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3">{sec.title}</p>
+                <div className="space-y-1">
+                  {sec.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          setActiveTab(item.id);
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                          isActive
+                            ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border-l-4 border-emerald-500 shadow-sm'
+                            : 'text-slate-300 hover:bg-slate-900/60 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                          <span>{item.label}</span>
+                        </div>
+                        {item.badge ? (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${item.badgeColor || 'bg-slate-700'}`}>
+                            {item.badge}
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* User profile / Logout in mobile drawer */}
+          <div className="pt-4 border-t border-slate-800 space-y-3">
+            <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+              <div>
+                <p className="text-sm font-bold text-slate-100">{user.name}</p>
+                <p className="text-[11px] text-slate-500">Super Admin • +91 {user.mobile}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop & Laptop Sidebar Navigation */}
+      <aside className="hidden md:flex md:w-60 lg:w-64 bg-[#090D16]/80 border-r border-slate-800/80 backdrop-blur-2xl flex-col justify-between p-4 lg:p-5 sticky top-0 h-screen z-30 flex-shrink-0 shadow-2xl">
+        <div className="flex flex-col h-full min-h-0">
           {/* Logo Header */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80 flex-shrink-0">
             <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
-              <Shield className="w-6 h-6" />
+              <Shield className="w-5 h-5 lg:w-6 lg:h-6" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
+              <h1 className="text-sm lg:text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
               <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="flex flex-col gap-1.5">
-            <button
-              onClick={() => setActiveTab('shops')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'shops' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Store className="w-4 h-4" /> Store Approvals
-            </button>
-
-            <button
-              onClick={() => setActiveTab('cities-areas')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'cities-areas' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <MapPin className="w-4 h-4" /> Cities & Localities
-            </button>
-
-            <button
-              onClick={() => setActiveTab('sku-requests')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'sku-requests' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> SKU Requests
-            </button>
-
-            <button
-              onClick={() => setActiveTab('categories-admin')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'categories-admin' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Tag className="w-4 h-4" /> Manage Categories
-            </button>
-
-            <button
-              onClick={() => setActiveTab('master-catalog')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'master-catalog' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Package className="w-4 h-4" /> Master Catalogue
-            </button>
-
-            <button
-              onClick={() => setActiveTab('coupons-admin')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'coupons-admin' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Ticket className="w-4 h-4" /> Manage Coupons
-            </button>
-
-            <button
-              onClick={() => setActiveTab('orders-admin')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'orders-admin' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <ShoppingBag className="w-4 h-4" /> Live Orders Tracker
-            </button>
-
-            <button
-              onClick={() => setActiveTab('locations')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'locations' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <MapPin className="w-4 h-4" /> Localities Mapping
-            </button>
-
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'analytics' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" /> Platform Analytics
-            </button>
-
-            <button
-              onClick={() => setActiveTab('home-screen')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'home-screen' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <Home className="w-4 h-4" /> App Screen Copy
-            </button>
-
-            <button
-              onClick={() => setActiveTab('banners')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'banners' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" /> Festive Campaigns
-            </button>
-
-            <button
-              onClick={() => setActiveTab('franchise')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'franchise' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" /> Franchise Inquiries
-            </button>
-
-            <button
-              onClick={() => setActiveTab('bulk-loader')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                activeTab === 'bulk-loader' 
-                  ? 'bg-gradient-to-r from-emerald-500/15 to-teal-500/5 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.04)]' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4" /> Bulk SKU Loader
-            </button>
+          {/* Scrollable Navigation Sections */}
+          <nav className="flex-1 overflow-y-auto custom-scrollbar my-4 space-y-4 pr-1">
+            {navSections.map((sec) => (
+              <div key={sec.title} className="space-y-1">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1">{sec.title}</p>
+                {sec.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 lg:py-2.5 text-xs lg:text-sm font-semibold rounded-xl transition-all cursor-pointer ${
+                        isActive 
+                          ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.06)]' 
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 lg:gap-3 truncate">
+                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.badge ? (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${
+                          isActive ? 'bg-emerald-500 text-slate-950 font-black' : (item.badgeColor || 'bg-slate-800 text-slate-300')
+                        }`}>
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
-        </div>
 
-        {/* User profile / Logout */}
-        <div className="mt-8 pt-6 border-t border-slate-800/60 space-y-4">
-          <div>
-            <p className="text-sm font-bold text-slate-100">{user.name}</p>
-            <p className="text-[11px] text-slate-500">Super Admin Mobile: {user.mobile}</p>
+          {/* User profile / Logout */}
+          <div className="pt-3 border-t border-slate-800/80 space-y-3 flex-shrink-0">
+            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850">
+              <p className="text-xs font-bold text-slate-100 truncate">{user.name}</p>
+              <p className="text-[10px] text-slate-500 truncate">+91 {user.mobile}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 py-2 text-xs lg:text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" /> Log Out
+            </button>
           </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/15 rounded-xl transition-all cursor-pointer"
-          >
-            <LogOut className="w-4 h-4" /> Log Out
-          </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 w-full min-w-0 p-3.5 sm:p-5 md:p-6 lg:p-7 overflow-y-auto">
+        <div className="w-full max-w-[1540px] mx-auto space-y-5 lg:space-y-6">
         {loading && (
-          <div className="flex items-center gap-2 mb-4 text-xs font-bold text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-4 py-2.5 rounded-xl w-max shadow-sm backdrop-blur-md">
-            <Loader2 className="w-4 h-4 animate-spin" /> Querying API Database...
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 rounded-xl w-max shadow-sm backdrop-blur-md">
+            <Loader2 className="w-4 h-4 animate-spin" /> Querying Live Database...
           </div>
         )}
 
-        {/* 1. STORE APPROVALS TAB */}
+                {/* 1. STORE APPROVALS TAB */}
         {activeTab === 'shops' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
             {/* Left: Store Whitelisting table */}
-            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+            <section className="lg:col-span-7 xl:col-span-8 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
@@ -1900,7 +1968,7 @@ export default function DashboardPage() {
             </section>
 
             {/* Right: Register New Store form */}
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
+            <section className="lg:col-span-5 xl:col-span-4 bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Register New Store</h3>
               
               <form onSubmit={handleRegisterShop} className="space-y-4">
@@ -1992,13 +2060,13 @@ export default function DashboardPage() {
 
         {/* 2. LOCALITIES MAPPING TAB */}
         {activeTab === 'locations' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
-            <div className="lg:col-span-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+            <div className="lg:col-span-12 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
               <strong className="text-amber-300">Order routing:</strong> Each locality must be mapped to exactly one approved merchant shop.
               Customer orders from that area go only to the assigned shopkeeper, and they only see products that shop has listed as available.
             </div>
             {/* Left Column: List of Mapped Zones */}
-            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+            <section className="lg:col-span-7 xl:col-span-8 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
               <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-emerald-400" /> Serviceable Delivery Localities
               </h2>
@@ -2066,7 +2134,7 @@ export default function DashboardPage() {
             </section>
 
             {/* Right Column: Add Location form */}
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
+            <section className="lg:col-span-5 xl:col-span-4 bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
               <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Add Serviceable Zone</h3>
               
               <form onSubmit={handleAddLocation} className="space-y-4">
@@ -2156,7 +2224,7 @@ export default function DashboardPage() {
 
         {/* 3. PLATFORM ANALYTICS TAB */}
         {activeTab === 'analytics' && (
-          <div className="space-y-8 max-w-6xl">
+          <div className="space-y-6">
             {/* Sales Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
@@ -2213,7 +2281,7 @@ export default function DashboardPage() {
 
         {/* 3b. HOME SCREEN COPY TAB */}
         {activeTab === 'home-screen' && (
-          <div className="max-w-4xl">
+          <div className="w-full">
             <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
               <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
                 <Home className="w-5 h-5 text-emerald-400" /> Home Screen Copy (B1)
@@ -2715,7 +2783,7 @@ export default function DashboardPage() {
 
         {/* 5. FRANCHISE REQUESTS TAB */}
         {activeTab === 'franchise' && (
-          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
+          <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
             <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-emerald-400" /> Franchise Partnership Requests
             </h2>
@@ -2837,7 +2905,7 @@ export default function DashboardPage() {
               <strong className="text-emerald-300">Pincode sync:</strong> Add the 6-digit PIN when registering a locality.
               Then assign the merchant shop in the <button type="button" onClick={() => setActiveTab('locations')} className="underline text-emerald-200">Localities</button> tab so customer orders route correctly.
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
               <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-6">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-emerald-400" /> Register State
@@ -3091,7 +3159,7 @@ export default function DashboardPage() {
 
         {/* 8. SKU REQUESTS TAB */}
         {activeTab === 'sku-requests' && (
-          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-5xl shadow-xl">
+          <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5 text-emerald-400" /> Merchant SKU Requests
@@ -4189,7 +4257,7 @@ export default function DashboardPage() {
 
         {/* 12. LIVE ORDERS TRACKER TAB */}
         {activeTab === 'orders-admin' && (
-          <div className="space-y-6 max-w-6xl">
+          <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
@@ -4282,6 +4350,7 @@ export default function DashboardPage() {
           </div>
         )}
 
+        </div>
       </main>
     </div>
   );
