@@ -1123,34 +1123,71 @@ router.delete('/banners/:id', authMiddleware, requireRole(['super_admin']), asyn
 router.get('/franchise', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {
     const db = readDb();
-    return res.json({ success: true, requests: db.franchise_requests });
+    const requests = (db.franchise_requests || []).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return res.json({ success: true, requests });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST /franchise: Submit a new inquiry (Public)
+// POST /franchise: Submit or create a new partnership lead
 router.post('/franchise', async (req, res) => {
-  const { name, phone, email, city, message } = req.body;
+  const { name, phone, email, city, message, status, investment_budget } = req.body;
 
-  if (!name || !phone || !city) {
+  if (!name?.trim() || !phone?.trim() || !city?.trim()) {
     return res.status(400).json({ success: false, error: 'Name, phone number, and city are required' });
   }
 
   try {
     const db = readDb();
+    if (!db.franchise_requests) db.franchise_requests = [];
+
     const newReq: FranchiseRequest = {
       id: `req-${Date.now()}`,
-      name,
-      phone,
-      email: email || '',
-      city,
-      message: message || '',
+      name: name.trim(),
+      phone: phone.trim(),
+      email: (email || '').trim(),
+      city: city.trim(),
+      message: (message || '').trim(),
+      status: (status as any) || 'new',
+      investment_budget: (investment_budget || '').trim(),
       created_at: new Date().toISOString()
     };
-    db.franchise_requests.push(newReq);
+
+    db.franchise_requests.unshift(newReq);
     writeDb(db);
-    return res.json({ success: true, message: 'Franchise inquiry submitted successfully' });
+    return res.json({ success: true, message: 'Franchise lead created successfully', lead: newReq, requests: db.franchise_requests });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /franchise/:id: Delete a partnership lead (Super Admin only)
+router.delete('/franchise/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const db = readDb();
+    if (!db.franchise_requests) db.franchise_requests = [];
+    db.franchise_requests = db.franchise_requests.filter(r => r.id !== req.params.id);
+    writeDb(db);
+    return res.json({ success: true, message: 'Lead deleted successfully', requests: db.franchise_requests });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /franchise/:id/status: Update lead status (Super Admin only)
+router.patch('/franchise/:id/status', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const { status } = req.body;
+    const db = readDb();
+    if (!db.franchise_requests) db.franchise_requests = [];
+    const lead = db.franchise_requests.find(r => r.id === req.params.id);
+    if (!lead) {
+      return res.status(404).json({ success: false, error: 'Franchise lead not found' });
+    }
+    lead.status = status;
+    writeDb(db);
+    return res.json({ success: true, message: 'Status updated successfully', requests: db.franchise_requests });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

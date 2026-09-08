@@ -578,9 +578,11 @@ export interface FranchiseRequest {
   id: string;
   name: string;
   phone: string;
-  email: string;
+  email?: string;
   city: string;
-  message: string;
+  message?: string;
+  status?: 'new' | 'contacted' | 'converted' | 'rejected';
+  investment_budget?: string;
   created_at: string;
 }
 
