@@ -1781,6 +1781,91 @@ router.post('/new-product-requests', authMiddleware, requireRole(['admin', 'supe
   }
 });
 
+// GET /my-sku-requests: Merchant lists all their suggested SKUs and their approval statuses
+router.get('/my-sku-requests', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const shopId = await getMerchantShopId(req.user!.id);
+    if (!shopId) {
+      return res.json({ success: true, requests: [] });
+    }
+
+    // 1. Fetch from Supabase products table for this shop
+    const { data: prods, error: pError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('shop_id', shopId)
+      .order('created_at', { ascending: false });
+
+    const skuRequests: any[] = [];
+    const seenIds = new Set<string>();
+
+    if (prods && prods.length > 0) {
+      for (const p of prods) {
+        const isPending = p.sku?.startsWith('PENDING_SKU') || p.company === 'STATUS:PENDING';
+        const isApproved = p.available === true || p.sku?.startsWith('SUGGEST-');
+        const isRejected = p.company === 'STATUS:REJECTED';
+
+        if (isPending || isApproved || isRejected) {
+          seenIds.add(p.id);
+          skuRequests.push({
+            id: p.id,
+            shop_id: p.shop_id,
+            product_name: p.name,
+            category: p.primary_category,
+            brand: p.brand || 'Unbranded',
+            mrp: p.mrp,
+            unit: resolvePackUnitLabel({
+              unit: p.unit,
+              quantity_value: p.quantity_value,
+              quantity_unit: p.quantity_unit,
+            }) || p.unit,
+            quantity_value: p.quantity_value,
+            quantity_unit: p.quantity_unit,
+            short_description: p.short_description || '',
+            description: p.description || '',
+            image_url: p.image_url,
+            status: isApproved ? 'approved' : (isRejected ? 'rejected' : 'pending'),
+            created_at: p.created_at,
+          });
+        }
+      }
+    }
+
+    // 2. Also check db.json
+    try {
+      const db = readDb();
+      const dbRequests = (db.new_product_requests || []).filter((r: any) => r.shop_id === shopId);
+      for (const r of dbRequests) {
+        if (!seenIds.has(r.id)) {
+          skuRequests.push({
+            id: r.id,
+            shop_id: r.shop_id,
+            product_name: r.name,
+            category: r.category,
+            brand: r.brand || 'Unbranded',
+            mrp: r.mrp,
+            unit: resolvePackUnitLabel({
+              unit: r.unit,
+              quantity_value: r.quantity_value,
+              quantity_unit: r.quantity_unit,
+            }) || r.unit,
+            quantity_value: r.quantity_value,
+            quantity_unit: r.quantity_unit,
+            short_description: r.short_description || '',
+            description: r.description || '',
+            status: r.status || 'pending',
+            created_at: r.created_at,
+          });
+        }
+      }
+    } catch {}
+
+    return res.json({ success: true, requests: skuRequests });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /sku-requests: Super Admin lists all pending SKU creation requests (Super Admin only)
 router.get('/sku-requests', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {

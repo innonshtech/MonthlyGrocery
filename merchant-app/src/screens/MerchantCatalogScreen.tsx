@@ -44,6 +44,23 @@ interface ShopProduct {
   status: 'pending' | 'approved' | 'rejected';
 }
 
+export interface MySkuRequest {
+  id: string;
+  shop_id?: string;
+  product_name: string;
+  category: string;
+  brand?: string;
+  mrp: number;
+  unit?: string;
+  quantity_value?: number;
+  quantity_unit?: string;
+  short_description?: string;
+  description?: string;
+  image_url?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
 const DEFAULT_PLATFORM_CATEGORIES = [
   'Atta & Rice',
   'Oils & Ghee',
@@ -60,8 +77,10 @@ const DEFAULT_PLATFORM_CATEGORIES = [
 ];
 
 export default function MerchantCatalogScreen() {
+  const [catalogTab, setCatalogTab] = useState<'master' | 'my_suggestions'>('master');
   const [masterProducts, setMasterProducts] = useState<MasterProduct[]>([]);
   const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
+  const [mySkuRequests, setMySkuRequests] = useState<MySkuRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -130,12 +149,15 @@ export default function MerchantCatalogScreen() {
     setError('');
 
     try {
-      const [masterRes, shopRes, catRes] = await Promise.all([
+      const [masterRes, shopRes, catRes, reqsRes] = await Promise.all([
         fetch(`${API_BASE}/products/master`),
         fetch(`${API_BASE}/admin/shop-products`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_BASE}/products/categories`).catch(() => null),
+        fetch(`${API_BASE}/admin/my-sku-requests`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null),
       ]);
 
       const masterData = await masterRes.json();
@@ -147,6 +169,15 @@ export default function MerchantCatalogScreen() {
           const catData = await catRes.json();
           if (catData?.categories && Array.isArray(catData.categories)) {
             remoteCategories = catData.categories;
+          }
+        } catch {}
+      }
+
+      if (reqsRes && reqsRes.ok) {
+        try {
+          const reqsData = await reqsRes.json();
+          if (reqsData?.success && Array.isArray(reqsData.requests)) {
+            setMySkuRequests(reqsData.requests);
           }
         } catch {}
       }
@@ -386,6 +417,59 @@ export default function MerchantCatalogScreen() {
     return matchesCategory && matchesSearch;
   });
 
+  const renderSuggestedItem = ({ item }: { item: MySkuRequest }) => {
+    const isApproved = item.status === 'approved';
+    const isRejected = item.status === 'rejected';
+    const isPending = !isApproved && !isRejected;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.productThumb} resizeMode="contain" />
+          ) : (
+            <View style={styles.thumbPlaceholder}><Text style={{ fontSize: 20 }}>📦</Text></View>
+          )}
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.productTitle} numberOfLines={2}>{item.product_name}</Text>
+            <Text style={styles.categorySub}>{item.category} • {item.brand || 'Unbranded'}</Text>
+            <Text style={styles.mrpText}>
+              {item.unit ? `${item.unit} · ` : ''}Base MRP: ₹{item.mrp}
+            </Text>
+            {item.short_description ? (
+              <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }} numberOfLines={1}>
+                {item.short_description}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <View style={[styles.approvedRow, { alignItems: 'center' }]}>
+            {isApproved && (
+              <View style={[styles.approvedBadge, { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0', borderWidth: 1 }]}>
+                <Text style={[styles.approvedText, { color: '#16A34A', fontWeight: '700' }]}>✓ Approved & Live</Text>
+              </View>
+            )}
+            {isPending && (
+              <View style={[styles.pendingBadge, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A', borderWidth: 1 }]}>
+                <Text style={[styles.pendingText, { color: '#D97706', fontWeight: '700' }]}>⏳ Pending Approval</Text>
+              </View>
+            )}
+            {isRejected && (
+              <View style={[styles.rejectedBadge, { backgroundColor: '#FEE2E2', borderColor: '#FECACA', borderWidth: 1 }]}>
+                <Text style={[styles.rejectedText, { color: '#DC2626', fontWeight: '700' }]}>✕ Rejected</Text>
+              </View>
+            )}
+            <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500' }}>
+              {item.created_at ? new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderProductItem = ({ item }: { item: MasterProduct }) => {
     const mapping = shopProducts.find((sp) => sp.product_id === item.id);
     const status = mapping ? mapping.status : 'not_requested';
@@ -446,9 +530,9 @@ export default function MerchantCatalogScreen() {
       {/* Header */}
       <View style={styles.topBar}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Master Catalog</Text>
+          <Text style={styles.title}>Merchant Catalog</Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {loading ? 'Loading live catalog…' : `${masterProducts.length} SKUs · ${shopProducts.length} in your store`}
+            {loading ? 'Loading live catalog…' : `${masterProducts.length} SKUs · ${shopProducts.length} in store · ${mySkuRequests.length} suggested`}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -461,69 +545,126 @@ export default function MerchantCatalogScreen() {
         </View>
       </View>
 
-      {/* Search Input */}
-      <View style={styles.searchBox}>
-        <TextInput
-          style={styles.input}
-          placeholder="Search by product name, brand or SKU..."
-          placeholderTextColor="#94A3B8"
-          value={search}
-          onChangeText={setSearch}
-        />
+      {/* Segment Switcher */}
+      <View style={styles.segmentContainer}>
+        <TouchableOpacity
+          style={[styles.segmentBtn, catalogTab === 'master' && styles.segmentBtnActive]}
+          onPress={() => setCatalogTab('master')}
+        >
+          <Text style={[styles.segmentText, catalogTab === 'master' && styles.segmentTextActive]}>
+            Master Catalog ({masterProducts.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.segmentBtn, catalogTab === 'my_suggestions' && styles.segmentBtnActive]}
+          onPress={() => setCatalogTab('my_suggestions')}
+        >
+          <Text style={[styles.segmentText, catalogTab === 'my_suggestions' && styles.segmentTextActive]}>
+            My Suggestions {mySkuRequests.length > 0 ? `(${mySkuRequests.length})` : ''}
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Category Pills — only categories that exist in the live master catalog */}
-      {categories.length > 1 ? (
-        <View style={styles.categoryScrollContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContent}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.categoryPill, activeCategory === cat && styles.activeCategoryPill]}
-                onPress={() => setActiveCategory(cat)}
-              >
-                <Text style={[styles.categoryPillText, activeCategory === cat && styles.activeCategoryPillText]}>
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      ) : null}
+      {catalogTab === 'master' ? (
+        <>
+          {/* Search Input */}
+          <View style={styles.searchBox}>
+            <TextInput
+              style={styles.input}
+              placeholder="Search by product name, brand or SKU..."
+              placeholderTextColor="#94A3B8"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
 
-      {/* Product List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#22C55E" />
-          <Text style={styles.loadingText}>Loading master products...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchData()}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredMasterProducts}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProductItem}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} colors={['#22C55E']} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No SKUs found</Text>
-              <Text style={styles.emptySubtitle}>
-                {search.trim() || activeCategory !== 'All'
-                  ? 'Try changing your search or category filter.'
-                  : 'The master catalog is empty. Ask Super Admin to add products, or suggest a new SKU.'}
-              </Text>
+          {/* Category Pills */}
+          {categories.length > 1 ? (
+            <View style={styles.categoryScrollContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContent}>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.categoryPill, activeCategory === cat && styles.activeCategoryPill]}
+                    onPress={() => setActiveCategory(cat)}
+                  >
+                    <Text style={[styles.categoryPillText, activeCategory === cat && styles.activeCategoryPillText]}>
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-          }
-        />
+          ) : null}
+
+          {/* Product List */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#22C55E" />
+              <Text style={styles.loadingText}>Loading master products...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={() => fetchData()}>
+                <Text style={styles.retryBtnText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredMasterProducts}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProductItem}
+              contentContainerStyle={styles.listContent}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} colors={['#22C55E']} />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>No SKUs found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    {search.trim() || activeCategory !== 'All'
+                      ? 'Try changing your search or category filter.'
+                      : 'The master catalog is empty. Ask Super Admin to add products, or suggest a new SKU.'}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </>
+      ) : (
+        /* My Suggested SKUs Tab */
+        loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#22C55E" />
+            <Text style={styles.loadingText}>Loading your SKU suggestions...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={mySkuRequests}
+            keyExtractor={(item) => item.id}
+            renderItem={renderSuggestedItem}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} colors={['#22C55E']} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={{ fontSize: 36, marginBottom: 8 }}>📦</Text>
+                <Text style={styles.emptyTitle}>No SKU Suggestions Yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  Have a product you want to sell that isn&apos;t in the Master Catalog? Suggest it to Super Admin!
+                </Text>
+                <TouchableOpacity
+                  style={[styles.suggestBtn, { marginTop: 16, paddingHorizontal: 20, paddingVertical: 10 }]}
+                  onPress={() => setSuggestModalVisible(true)}
+                >
+                  <Text style={[styles.suggestBtnText, { fontSize: 14 }]}>+ Suggest New SKU</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        )
       )}
 
       {/* SKU Configuration Modal */}
@@ -804,6 +945,38 @@ const styles = StyleSheet.create({
   },
   refreshText: {
     fontSize: 14,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  segmentBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 9,
+  },
+  segmentBtnActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  segmentTextActive: {
+    color: '#0F172A',
+    fontWeight: '700',
   },
   searchBox: {
     paddingHorizontal: 16,
