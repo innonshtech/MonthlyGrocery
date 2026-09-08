@@ -44,6 +44,21 @@ interface ShopProduct {
   status: 'pending' | 'approved' | 'rejected';
 }
 
+const DEFAULT_PLATFORM_CATEGORIES = [
+  'Atta & Rice',
+  'Oils & Ghee',
+  'Dals & Pulses',
+  'Spices & Masala',
+  'Dry Fruits',
+  'Snacks',
+  'Beverages',
+  'Biscuits',
+  'Cleaning',
+  'Personal Care',
+  'Home & Kitchen',
+  'Baby Care',
+];
+
 export default function MerchantCatalogScreen() {
   const [masterProducts, setMasterProducts] = useState<MasterProduct[]>([]);
   const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
@@ -53,6 +68,7 @@ export default function MerchantCatalogScreen() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [categories, setCategories] = useState<string[]>(['All']);
+  const [suggestCategories, setSuggestCategories] = useState<string[]>(DEFAULT_PLATFORM_CATEGORIES);
   
   // Modal states for configuration
   const [selectedProduct, setSelectedProduct] = useState<MasterProduct | null>(null);
@@ -79,12 +95,23 @@ export default function MerchantCatalogScreen() {
 
   const { token } = useMerchantAuth();
 
-  const syncCategories = useCallback((products: MasterProduct[]) => {
-    const liveCategories = Array.from(
+  const syncCategories = useCallback((products: MasterProduct[], remoteCats: string[] = []) => {
+    const liveProductCategories = Array.from(
       new Set(products.map((p) => p.primary_category).filter(Boolean)),
     ).sort();
-    setCategories(['All', ...liveCategories]);
-    if (activeCategory !== 'All' && !liveCategories.includes(activeCategory)) {
+
+    const allCats = Array.from(
+      new Set([
+        ...DEFAULT_PLATFORM_CATEGORIES,
+        ...remoteCats,
+        ...liveProductCategories,
+      ]),
+    ).sort();
+
+    setSuggestCategories(allCats);
+    setCategories(['All', ...(liveProductCategories.length > 0 ? liveProductCategories : allCats)]);
+
+    if (activeCategory !== 'All' && !liveProductCategories.includes(activeCategory)) {
       setActiveCategory('All');
     }
   }, [activeCategory]);
@@ -103,26 +130,38 @@ export default function MerchantCatalogScreen() {
     setError('');
 
     try {
-      const [masterRes, shopRes] = await Promise.all([
+      const [masterRes, shopRes, catRes] = await Promise.all([
         fetch(`${API_BASE}/products/master`),
         fetch(`${API_BASE}/admin/shop-products`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`${API_BASE}/products/categories`).catch(() => null),
       ]);
 
       const masterData = await masterRes.json();
       const shopData = await shopRes.json();
 
+      let remoteCategories: string[] = [];
+      if (catRes && catRes.ok) {
+        try {
+          const catData = await catRes.json();
+          if (catData?.categories && Array.isArray(catData.categories)) {
+            remoteCategories = catData.categories;
+          }
+        } catch {}
+      }
+
       if (!masterRes.ok || !masterData.success) {
         setMasterProducts([]);
         setShopProducts([]);
+        syncCategories([], remoteCategories);
         setError(masterData.error || 'Failed to load master catalog');
         return;
       }
 
       if (!shopRes.ok || !shopData.success) {
         setMasterProducts(masterData.products || []);
-        syncCategories(masterData.products || []);
+        syncCategories(masterData.products || [], remoteCategories);
         setShopProducts([]);
         setError(shopData.error || 'Failed to load your store mappings');
         return;
@@ -131,10 +170,11 @@ export default function MerchantCatalogScreen() {
       const products = masterData.products || [];
       setMasterProducts(products);
       setShopProducts(shopData.shop_products || []);
-      syncCategories(products);
+      syncCategories(products, remoteCategories);
     } catch (err) {
       setMasterProducts([]);
       setShopProducts([]);
+      syncCategories([]);
       setError('Connection error. Is the backend running on port 8001?');
     } finally {
       setLoading(false);
@@ -593,11 +633,11 @@ export default function MerchantCatalogScreen() {
               placeholder="e.g. Britannia Marie Gold Biscuits"
             />
 
-            <Text style={styles.inputLabel}>Category</Text>
-            {categories.length > 1 ? (
+            <Text style={styles.inputLabel}>Category *</Text>
+            {suggestCategories.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {categories.filter((c) => c !== 'All').map((cat) => {
+                <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 2 }}>
+                  {suggestCategories.map((cat) => {
                     const active = newSkuCategory === cat;
                     return (
                       <TouchableOpacity
@@ -616,7 +656,7 @@ export default function MerchantCatalogScreen() {
               style={styles.modalInput}
               value={newSkuCategory}
               onChangeText={setNewSkuCategory}
-              placeholder="e.g. Atta & Rice"
+              placeholder="Select from above or type custom category (e.g. Atta & Rice)"
             />
 
             <Text style={styles.inputLabel}>Brand</Text>
