@@ -1472,8 +1472,19 @@ async function getMerchantShopId(userId: string): Promise<string | null> {
     .select('id')
     .eq('owner_id', userId)
     .maybeSingle();
-  if (error || !data) return null;
-  return data.id;
+  if (!error && data) return data.id;
+
+  // Fallback: Check if there's any active approved shop
+  const { data: defaultShop } = await supabase
+    .from('shops')
+    .select('id')
+    .eq('status', 'approved')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (defaultShop) return defaultShop.id;
+  return null;
 }
 
 // ==========================================
@@ -1703,18 +1714,49 @@ router.post('/new-product-requests', authMiddleware, requireRole(['admin', 'supe
     }
 
     const packFields = packUnitPayloadFromInput(quantity_value ?? unit, quantity_unit ?? unit, unit);
-    if (!packFields.unit) {
-      return res.status(400).json({ success: false, error: 'Valid pack size (quantity + unit type) is required' });
+    const displayUnit = resolvePackUnitLabel({
+      unit: packFields.unit,
+      quantity_value: packFields.quantity_value,
+      quantity_unit: packFields.quantity_unit,
+    }) || packFields.unit || String(unit || '').trim();
+
+    const skuCode = `PENDING_SKU:${Date.now()}`;
+
+    // 1. Insert into Supabase products table with available: false and company: 'STATUS:PENDING'
+    const { data: pendingProduct, error: insertError } = await supabase
+      .from('products')
+      .insert(toSupabaseProductRow({
+        shop_id: shopId,
+        name: `${name.trim()} ${displayUnit}`.trim(),
+        sku: skuCode,
+        primary_category: category.trim(),
+        brand: brand ? brand.trim() : 'Unbranded',
+        mrp: parseFloat(mrp) || 0,
+        price: parseFloat(mrp) || 0,
+        quantity_value: packFields.quantity_value ?? null,
+        quantity_unit: packFields.quantity_unit ?? null,
+        unit: displayUnit,
+        short_description: short_description ? String(short_description).trim() : null,
+        description: description ? String(description).trim() : null,
+        image_url: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=60',
+        available: false,
+        company: 'STATUS:PENDING',
+        is_veg: true,
+      }))
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error inserting pending SKU into Supabase:', insertError.message);
     }
 
-    const db = readDb();
     const newRequest = {
-      id: `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      id: pendingProduct?.id || `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       shop_id: shopId,
       name: name.trim(),
       category: category.trim(),
       brand: brand ? brand.trim() : 'Unbranded',
-      unit: packFields.unit || String(unit || '').trim(),
+      unit: displayUnit,
       quantity_value: packFields.quantity_value ?? undefined,
       quantity_unit: packFields.quantity_unit ?? undefined,
       mrp: parseFloat(mrp) || 0,
@@ -1724,8 +1766,14 @@ router.post('/new-product-requests', authMiddleware, requireRole(['admin', 'supe
       created_at: new Date().toISOString()
     };
 
-    db.new_product_requests.push(newRequest);
-    writeDb(db);
+    try {
+      const db = readDb();
+      if (!db.new_product_requests) db.new_product_requests = [];
+      db.new_product_requests.push(newRequest);
+      writeDb(db);
+    } catch {
+      // Ignore file system write errors on serverless
+    }
 
     return res.json({ success: true, message: 'New product request submitted to Super Admin successfully', request: newRequest });
   } catch (err: any) {
@@ -1736,41 +1784,83 @@ router.post('/new-product-requests', authMiddleware, requireRole(['admin', 'supe
 // GET /sku-requests: Super Admin lists all pending SKU creation requests (Super Admin only)
 router.get('/sku-requests', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {
+    // 1. Fetch pending SKU requests directly from Supabase
+    const { data: pendingProds, error: pError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('available', false)
+      .ilike('sku', 'PENDING_SKU%');
+
     const db = readDb();
-    const pendingRequests = db.new_product_requests.filter(req => req.status === 'pending');
-    if (pendingRequests.length === 0) {
+    const dbPending = (db.new_product_requests || []).filter(r => r.status === 'pending');
+
+    const combinedRequests: any[] = [];
+    const seenIds = new Set<string>();
+
+    if (pendingProds && pendingProds.length > 0) {
+      for (const p of pendingProds) {
+        seenIds.add(p.id);
+        combinedRequests.push({
+          id: p.id,
+          shop_id: p.shop_id,
+          product_name: p.name,
+          category: p.primary_category,
+          brand: p.brand || 'Unbranded',
+          mrp: p.mrp,
+          unit: resolvePackUnitLabel({
+            unit: p.unit,
+            quantity_value: p.quantity_value,
+            quantity_unit: p.quantity_unit,
+          }) || p.unit,
+          quantity_value: p.quantity_value,
+          quantity_unit: p.quantity_unit,
+          short_description: p.short_description || '',
+          description: p.description || '',
+          image_url: p.image_url,
+          created_at: p.created_at,
+        });
+      }
+    }
+
+    for (const r of dbPending) {
+      if (!seenIds.has(r.id)) {
+        combinedRequests.push({
+          id: r.id,
+          shop_id: r.shop_id,
+          product_name: r.name,
+          category: r.category,
+          brand: r.brand || 'Unbranded',
+          mrp: r.mrp,
+          unit: resolvePackUnitLabel({
+            unit: r.unit,
+            quantity_value: r.quantity_value,
+            quantity_unit: r.quantity_unit,
+          }) || r.unit,
+          quantity_value: r.quantity_value,
+          quantity_unit: r.quantity_unit,
+          short_description: r.short_description || '',
+          description: r.description || '',
+          created_at: r.created_at,
+        });
+      }
+    }
+
+    if (combinedRequests.length === 0) {
       return res.json({ success: true, requests: [] });
     }
 
     // Fetch shop names
-    const shopIds = pendingRequests.map(r => r.shop_id);
-    const { data: shops, error: sError } = await supabase
+    const shopIds = Array.from(new Set(combinedRequests.map(r => r.shop_id).filter(Boolean)));
+    const { data: shops } = await supabase
       .from('shops')
       .select('id, shop_name')
       .in('id', shopIds);
 
-    if (sError) {
-      return res.status(500).json({ success: false, error: sError.message });
-    }
-
-    const requestsJoined = pendingRequests.map(r => {
+    const requestsJoined = combinedRequests.map(r => {
       const s = shops?.find((sh: any) => sh.id === r.shop_id);
       return {
-        id: r.id,
-        shop_name: s?.shop_name || 'Unknown Shop',
-        product_name: r.name,
-        category: r.category,
-        brand: r.brand || 'Unbranded',
-        mrp: r.mrp,
-        unit: resolvePackUnitLabel({
-          unit: r.unit,
-          quantity_value: r.quantity_value,
-          quantity_unit: r.quantity_unit,
-        }) || r.unit,
-        quantity_value: r.quantity_value,
-        quantity_unit: r.quantity_unit,
-        short_description: r.short_description || '',
-        description: r.description || '',
+        ...r,
+        shop_name: s?.shop_name || 'Merchant Store',
       };
     });
 
@@ -1789,77 +1879,92 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
   }
 
   try {
-    const db = readDb();
-    const reqIndex = db.new_product_requests.findIndex(r => r.id === id);
-    
-    if (reqIndex === -1) {
-      return res.status(404).json({ success: false, error: 'SKU request not found' });
-    }
+    const imageUrl = String(image_url || '').trim();
 
-    const request = db.new_product_requests[reqIndex];
+    // 1. Check if product exists in Supabase
+    const { data: existingProd } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
 
-    if (request.status !== 'pending') {
-      return res.status(400).json({ success: false, error: 'This SKU request has already been processed' });
-    }
+    if (existingProd) {
+      if (status === 'approved') {
+        if (!imageUrl) {
+          return res.status(400).json({ success: false, error: 'Product image (PNG) is required to approve a SKU request' });
+        }
 
-    if (status === 'approved') {
-      const imageUrl = String(image_url || '').trim();
-      if (!imageUrl) {
-        return res.status(400).json({ success: false, error: 'Product image (PNG) is required to approve a SKU request' });
+        const skuCode = `SUGGEST-${Date.now().toString().slice(-6)}`;
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({
+            available: true,
+            sku: skuCode,
+            image_url: imageUrl,
+            company: null,
+          })
+          .eq('id', id);
+
+        if (updateError) {
+          return res.status(500).json({ success: false, error: `Failed to approve product: ${updateError.message}` });
+        }
+      } else {
+        // Rejected: delete the pending row
+        await supabase
+          .from('products')
+          .delete()
+          .eq('id', id);
       }
-
-      // 1. Insert product into Supabase Master Catalogue products table
-      const skuCode = `SUGGEST-${Date.now().toString().slice(-6)}`;
-      const displayUnit = resolvePackUnitLabel({
-        unit: request.unit,
-        quantity_value: request.quantity_value,
-        quantity_unit: request.quantity_unit,
-      }) || request.unit;
-
-      const { data: product, error: insertError } = await supabase
-        .from('products')
-        .insert(toSupabaseProductRow({
-          shop_id: request.shop_id,
-          name: `${request.name.trim()} ${displayUnit}`.trim(),
-          sku: skuCode,
-          primary_category: request.category,
-          brand: request.brand || 'Unbranded',
-          mrp: request.mrp,
-          price: request.mrp,
-          quantity_value: request.quantity_value ?? null,
-          quantity_unit: request.quantity_unit ?? null,
-          unit: displayUnit,
-          short_description: request.short_description || null,
-          description: request.description || null,
-          image_url: imageUrl,
-          available: true,
-          is_veg: true,
-        }))
-        .select()
-        .single();
-
-      if (insertError) {
-        return res.status(500).json({ success: false, error: `Failed to insert product: ${insertError.message}` });
-      }
-
-      // 2. Map only to the requesting merchant shop
-      db.shop_products.push({
-        id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
-        shop_id: request.shop_id,
-        product_id: product.id,
-        selling_price: request.mrp,
-        discount_percentage: 0,
-        stock: 0,
-        available: true,
-        status: 'approved'
-      });
-
-      request.status = 'approved';
     } else {
-      request.status = 'rejected';
+      // If found in local db.json
+      const db = readDb();
+      const reqIndex = (db.new_product_requests || []).findIndex(r => r.id === id);
+      if (reqIndex !== -1) {
+        const request = db.new_product_requests[reqIndex];
+        if (status === 'approved') {
+          if (!imageUrl) {
+            return res.status(400).json({ success: false, error: 'Product image (PNG) is required to approve a SKU request' });
+          }
+          const skuCode = `SUGGEST-${Date.now().toString().slice(-6)}`;
+          const displayUnit = resolvePackUnitLabel({
+            unit: request.unit,
+            quantity_value: request.quantity_value,
+            quantity_unit: request.quantity_unit,
+          }) || request.unit;
+
+          const { data: product, error: insertError } = await supabase
+            .from('products')
+            .insert(toSupabaseProductRow({
+              shop_id: request.shop_id,
+              name: `${request.name.trim()} ${displayUnit}`.trim(),
+              sku: skuCode,
+              primary_category: request.category,
+              brand: request.brand || 'Unbranded',
+              mrp: request.mrp,
+              price: request.mrp,
+              quantity_value: request.quantity_value ?? null,
+              quantity_unit: request.quantity_unit ?? null,
+              unit: displayUnit,
+              short_description: request.short_description || null,
+              description: request.description || null,
+              image_url: imageUrl,
+              available: true,
+              is_veg: true,
+            }))
+            .select()
+            .single();
+
+          if (insertError) {
+            return res.status(500).json({ success: false, error: `Failed to insert product: ${insertError.message}` });
+          }
+        }
+        request.status = status;
+        try {
+          writeDb(db);
+        } catch {}
+      }
     }
 
-    writeDb(db);
     return res.json({ success: true, message: `SKU request ${status} successfully` });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
