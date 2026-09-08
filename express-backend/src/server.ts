@@ -22,38 +22,24 @@ const PORT = process.env.PORT || 8001;
 // Middlewares
 app.use(cors());
 
-// Support both standalone Express and Vercel serverless functions (pre-parsed req.body)
-app.use((req, res, next) => {
-  if (typeof req.body === 'string') {
-    try {
-      req.body = JSON.parse(req.body);
-      return next();
-    } catch {
-      // Continue to express.json
-    }
-  }
-  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-    return next();
-  }
-  express.json({ limit: '10mb' })(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ success: false, error: 'Invalid JSON request payload' });
+// Vercel Serverless automatically parses req.body before passing to Express.
+// In standalone Node/local dev, express.json() is required.
+if (!process.env.VERCEL) {
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+} else {
+  // On Vercel, safely ensure body is parsed if delivered as string
+  app.use((req, res, next) => {
+    if (typeof req.body === 'string') {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch {
+        // Keep string if not valid JSON
+      }
     }
     next();
   });
-});
-
-app.use((req, res, next) => {
-  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-    return next();
-  }
-  express.urlencoded({ extended: true, limit: '10mb' })(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ success: false, error: 'Invalid URL-encoded payload' });
-    }
-    next();
-  });
-});
+}
 
 // Routes (Supports both /api/* and root /*)
 app.use('/api/auth', authRouter);
