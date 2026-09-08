@@ -12,7 +12,10 @@ import {
 } from '../utils/packUnit';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 } // Up to 25MB for high-res images / PNGs
+});
 
 const EXCEL_COLUMNS = [
   "name", "city", "mrp", "price", "wholesaler_price", "available",
