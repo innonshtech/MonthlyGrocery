@@ -1,4 +1,9 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api';
+const getApiBase = () => {
+  const envUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api').trim().replace(/\/+$/, '');
+  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+};
+
+export const API_BASE = getApiBase();
 
 export function clearAdminSession() {
   if (typeof window === 'undefined') return;

@@ -55,23 +55,40 @@ app.use((req, res, next) => {
   });
 });
 
-// Routes
+// Routes (Supports both /api/* and root /*)
 app.use('/api/auth', authRouter);
+app.use('/auth', authRouter);
+
 app.use('/api/products', productsRouter);
+app.use('/products', productsRouter);
+
 app.use('/api/orders', ordersRouter);
+app.use('/orders', ordersRouter);
+
 app.use('/api/shops', shopsRouter);
+app.use('/shops', shopsRouter);
+
 app.use('/api/admin', adminRouter);
+app.use('/admin', adminRouter);
+
 app.use('/api/coupons', couponsRouter);
+app.use('/coupons', couponsRouter);
+
 app.use('/api/delivery-slots', deliverySlotsRouter);
+app.use('/delivery-slots', deliverySlotsRouter);
+
 app.use('/api/addresses', addressesRouter);
+app.use('/addresses', addressesRouter);
 
 // Public Config Endpoint
-app.get('/api/config', (req, res) => {
+const sendConfig = (req: express.Request, res: express.Response) => {
   res.json({
     success: true,
     min_order_limit: parseInt(process.env.MIN_ORDER_LIMIT || '2500', 10)
   });
-});
+};
+app.get('/api/config', sendConfig);
+app.get('/config', sendConfig);
 
 // Basic health check route
 app.get('/health', (req, res) => {
