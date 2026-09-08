@@ -38,8 +38,8 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
       ...options,
       headers,
     });
-  } catch {
-    throw new Error('Cannot reach API server. Is express-backend running on port 8001?');
+  } catch (err: any) {
+    throw new Error(`Cannot reach API server at ${API_BASE}. ${err?.message || ''}`);
   }
 
   const text = await response.text();
@@ -48,7 +48,10 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     try {
       data = JSON.parse(text);
     } catch {
-      throw new Error('Invalid response from server');
+      if (!response.ok) {
+        throw new Error(`Server error (${response.status}): ${text.slice(0, 150)}`);
+      }
+      throw new Error('Invalid JSON response format from server');
     }
   }
 

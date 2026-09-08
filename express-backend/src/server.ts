@@ -21,7 +21,39 @@ const PORT = process.env.PORT || 8001;
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
+
+// Support both standalone Express and Vercel serverless functions (pre-parsed req.body)
+app.use((req, res, next) => {
+  if (typeof req.body === 'string') {
+    try {
+      req.body = JSON.parse(req.body);
+      return next();
+    } catch {
+      // Continue to express.json
+    }
+  }
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    return next();
+  }
+  express.json({ limit: '10mb' })(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: 'Invalid JSON request payload' });
+    }
+    next();
+  });
+});
+
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    return next();
+  }
+  express.urlencoded({ extended: true, limit: '10mb' })(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ success: false, error: 'Invalid URL-encoded payload' });
+    }
+    next();
+  });
+});
 
 // Routes
 app.use('/api/auth', authRouter);
@@ -159,6 +191,18 @@ async function seedDatabase() {
     console.error('Database seeding failed with exception:', err.message || err);
   }
 }
+
+// Global Error Handler - always return JSON
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled server error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    success: false,
+    error: err.message || 'Internal Server Error',
+  });
+});
 
 // Start Server (Only when not running as Vercel serverless function)
 if (!process.env.VERCEL) {
