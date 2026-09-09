@@ -2,264 +2,47 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Menu,
-  X,
-  ChevronRight,
-  Shield,
-  Store,
-  FileSpreadsheet,
-  LogOut,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Download,
-  Upload,
-  Loader2,
-  AlertTriangle,
-  MapPin,
-  BarChart3,
-  ImageIcon,
-  MessageSquare,
-  Plus,
-  Trash2,
-  Tag,
-  Package,
-  Ticket,
-  ShoppingBag,
-  Home
-} from 'lucide-react';
-import { PACK_UNIT_OPTIONS, resolvePackUnitLabel, packUnitPayloadFromInput } from '../lib/packUnits';
+import { Loader2 } from 'lucide-react';
 import { apiFetch, clearAdminSession, API_BASE } from '../utils/api';
+import { packUnitPayloadFromInput, resolvePackUnitLabel } from '../lib/packUnits';
+import {
+  Shop,
+  AdminState,
+  AdminDistrict,
+  ServiceableLocation,
+  PromotionalBanner,
+  HomeScreenConfig,
+  SearchScreenConfig,
+  CategoriesScreenConfig,
+  CategoryProductsScreenConfig,
+  ProductDetailScreenConfig,
+  CartScreenConfig,
+  OffersCouponsScreenConfig,
+  FranchiseRequest,
+  PlatformOrder,
+  City,
+  Area,
+  TabType,
+} from '../types/admin.types';
 
-interface Shop {
-  id: string;
-  shop_name: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  state_name?: string | null;
-  district_name?: string | null;
-  city?: string | null;
-  profiles: {
-    name: string;
-    phone: string;
-  };
-}
+// Layout Components
+import AdminSidebar from '../components/layout/AdminSidebar';
+import AdminHeader from '../components/layout/AdminHeader';
 
-interface AdminState {
-  id: string;
-  name: string;
-}
-
-interface AdminDistrict {
-  id: string;
-  state_id: string;
-  name: string;
-}
-
-interface ServiceableLocation {
-  id: string;
-  city: string;
-  area_name: string;
-  pincode: string;
-  is_serviceable: boolean;
-  shop_id: string | null;
-}
-
-interface PromotionalBanner {
-  id: string;
-  title: string;
-  image_url: string;
-  action_link: string;
-  active: boolean;
-  kind?: 'image' | 'promo';
-  subtitle?: string;
-  body?: string;
-  cta_text?: string;
-}
-
-interface HomeScreenConfig {
-  delivering_label: string;
-  location_prefix: string;
-  choose_location_label: string;
-  delivery_pill_text: string;
-  search_placeholder: string;
-  mmg_label: string;
-  mmg_title: string;
-  mmg_subtitle: string;
-  categories_title: string;
-  categories_see_all: string;
-  deals_title: string;
-  deals_see_all: string;
-  loading_deals_label: string;
-  empty_deals_label: string;
-  reorder_title: string;
-  reorder_subtitle_template: string;
-  reorder_cta_label: string;
-  first_basket_title: string;
-  first_basket_subtitle: string;
-  first_basket_cta_label: string;
-  load_error_message: string;
-  retry_label: string;
-  location_required_deals_label: string;
-}
-
-interface SearchScreenConfig {
-  search_placeholder: string;
-  popular_searches_label: string;
-  products_section_label: string;
-  empty_title_template: string;
-  empty_subtitle: string;
-  location_required_message: string;
-  choose_location_label: string;
-  load_error_message: string;
-  retry_label: string;
-}
-
-interface CategoriesScreenConfig {
-  title: string;
-  search_placeholder: string;
-  section_grocery_label: string;
-  section_snacks_label: string;
-  section_household_label: string;
-  section_default_label: string;
-  empty_message: string;
-  load_error_message: string;
-  retry_label: string;
-}
-
-interface CategoryProductsScreenConfig {
-  search_placeholder_template: string;
-  items_count_template: string;
-  sort_label: string;
-  sub_category_all_label: string;
-  empty_message: string;
-  deals_title: string;
-  location_required_message: string;
-  choose_location_label: string;
-  load_error_message: string;
-  retry_label: string;
-  view_cart_label: string;
-  cart_item_label: string;
-  cart_items_template: string;
-  add_button_label: string;
-  filter_sheet_title: string;
-  filter_sort_section_label: string;
-  filter_sort_relevance: string;
-  filter_sort_price_low: string;
-  filter_sort_price_high: string;
-  filter_sort_discount: string;
-  filter_pack_section_label: string;
-  filter_clear_label: string;
-  filter_apply_label: string;
-}
-
-interface ProductDetailScreenConfig {
-  delivery_window_label: string;
-  highlights_section_label: string;
-  add_to_cart_label: string;
-  unit_price_suffix_template: string;
-  not_found_message: string;
-  location_required_message: string;
-  choose_location_label: string;
-  load_error_message: string;
-  retry_label: string;
-}
-
-interface CartScreenConfig {
-  title: string;
-  cart_item_label: string;
-  cart_items_template: string;
-  empty_title: string;
-  empty_message: string;
-  start_shopping_label: string;
-  reorder_last_month_label: string;
-  save_basket_label: string;
-  apply_coupon_label: string;
-  coupon_applied_template: string;
-  bill_details_title: string;
-  bill_item_total_label: string;
-  bill_savings_label: string;
-  bill_delivery_fee_label: string;
-  bill_delivery_fee_value: string;
-  bill_coupon_discount_label: string;
-  bill_to_pay_label: string;
-  sticky_to_pay_label: string;
-  proceed_to_pay_label: string;
-  below_min_title_template: string;
-  below_min_footnote_template: string;
-  savings_banner_template: string;
-  add_more_checkout_template: string;
-  min_order_alert_template: string;
-  empty_preview_image_1: string;
-  empty_preview_image_2: string;
-  load_error_message: string;
-  retry_label: string;
-}
-
-interface OffersCouponsScreenConfig {
-  title: string;
-  manual_code_placeholder: string;
-  manual_apply_label: string;
-  available_section_label: string;
-  expires_template: string;
-  list_apply_label: string;
-  empty_message: string;
-  load_error_message: string;
-  retry_label: string;
-  min_order_alert_title: string;
-  min_order_alert_template: string;
-  invalid_coupon_alert_title: string;
-  apply_failed_fallback: string;
-  connection_error_title: string;
-  connection_error_message: string;
-  unlock_offer_template: string;
-  audience_new_guideline: string;
-  audience_loyal_guideline: string;
-  audience_all_guideline: string;
-  usage_limit_template: string;
-}
-
-interface FranchiseRequest {
-  id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  city: string;
-  message?: string;
-  status?: 'new' | 'contacted' | 'converted' | 'rejected';
-  investment_budget?: string;
-  created_at: string;
-}
-
-interface PlatformOrder {
-  id: string;
-  total_amount: string;
-  status: string;
-  created_at: string;
-  shop_id: string;
-  shops: {
-    shop_name: string;
-  };
-  profiles: {
-    name: string;
-    phone: string;
-  };
-}
-
-interface City {
-  id: string;
-  name: string;
-}
-
-interface Area {
-  id: string;
-  city_id: string;
-  name: string;
-  pincode?: string;
-}
-
-type TabType = 'shops' | 'locations' | 'analytics' | 'banners' | 'home-screen' | 'franchise' | 'bulk-loader' | 'cities-areas' | 'sku-requests' | 'categories-admin' | 'master-catalog' | 'coupons-admin' | 'orders-admin';
+// Tab Components
+import ShopsTab from '../components/tabs/ShopsTab';
+import LocationsTab from '../components/tabs/LocationsTab';
+import AnalyticsTab from '../components/tabs/AnalyticsTab';
+import BannersTab from '../components/tabs/BannersTab';
+import AppScreenTab from '../components/tabs/AppScreenTab';
+import FranchiseTab from '../components/tabs/FranchiseTab';
+import BulkLoaderTab from '../components/tabs/BulkLoaderTab';
+import CitiesAreasTab from '../components/tabs/CitiesAreasTab';
+import { SkuRequestsTab } from '../components/tabs/SkuRequestsTab';
+import { CategoriesAdminTab } from '../components/tabs/CategoriesAdminTab';
+import { MasterCatalogTab } from '../components/tabs/MasterCatalogTab';
+import { CouponsAdminTab } from '../components/tabs/CouponsAdminTab';
+import { OrdersAdminTab } from '../components/tabs/OrdersAdminTab';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -293,7 +76,7 @@ export default function DashboardPage() {
   const [newSubcategoryImageFile, setNewSubcategoryImageFile] = useState<File | null>(null);
   const [newSubcategorySaving, setNewSubcategorySaving] = useState(false);
   const [subcategoryImageUploadingId, setSubcategoryImageUploadingId] = useState<string | null>(null);
-  
+
   // Master Catalog States
   const [masterProductsList, setMasterProductsList] = useState<any[]>([]);
   const [newProdName, setNewProdName] = useState('');
@@ -313,14 +96,6 @@ export default function DashboardPage() {
   const [packEditQty, setPackEditQty] = useState('');
   const [packEditUnit, setPackEditUnit] = useState('kg');
   const [packEditSaving, setPackEditSaving] = useState(false);
-
-  // Shop Inventory Modal States
-  const [selectedShopForInventory, setSelectedShopForInventory] = useState<any | null>(null);
-  const [shopInventoryList, setShopInventoryList] = useState<any[]>([]);
-  const [assignProdId, setAssignProdId] = useState('');
-  const [assignProdPrice, setAssignProdPrice] = useState('');
-  const [assignProdDiscount, setAssignProdDiscount] = useState('');
-  const [assignProdStock, setAssignProdStock] = useState('');
 
   // Forms for City / Area registration
   const [newCityName, setNewCityName] = useState('');
@@ -384,12 +159,13 @@ export default function DashboardPage() {
   const [excelReport, setExcelReport] = useState<any>(null);
   const [excelError, setExcelError] = useState('');
 
-  // Forms states
+  // Locations form states
   const [locCity, setLocCity] = useState('Mumbai');
   const [locArea, setLocArea] = useState('');
   const [locPin, setLocPin] = useState('');
   const [locShop, setLocShop] = useState('');
 
+  // Banners form states
   const [bannerTitle, setBannerTitle] = useState('');
   const [bannerImage, setBannerImage] = useState('');
   const [bannerLink, setBannerLink] = useState('');
@@ -397,20 +173,15 @@ export default function DashboardPage() {
   const [bannerSubtitle, setBannerSubtitle] = useState('');
   const [bannerBody, setBannerBody] = useState('');
   const [bannerCta, setBannerCta] = useState('');
+
+  // App Screen configs
   const [homeScreenDraft, setHomeScreenDraft] = useState<HomeScreenConfig | null>(null);
-  const [homeScreenSaving, setHomeScreenSaving] = useState(false);
   const [searchScreenDraft, setSearchScreenDraft] = useState<SearchScreenConfig | null>(null);
-  const [searchScreenSaving, setSearchScreenSaving] = useState(false);
   const [categoriesScreenDraft, setCategoriesScreenDraft] = useState<CategoriesScreenConfig | null>(null);
-  const [categoriesScreenSaving, setCategoriesScreenSaving] = useState(false);
   const [categoryProductsDraft, setCategoryProductsDraft] = useState<CategoryProductsScreenConfig | null>(null);
-  const [categoryProductsSaving, setCategoryProductsSaving] = useState(false);
   const [productDetailDraft, setProductDetailDraft] = useState<ProductDetailScreenConfig | null>(null);
-  const [productDetailSaving, setProductDetailSaving] = useState(false);
   const [cartScreenDraft, setCartScreenDraft] = useState<CartScreenConfig | null>(null);
-  const [cartScreenSaving, setCartScreenSaving] = useState(false);
   const [offersCouponsDraft, setOffersCouponsDraft] = useState<OffersCouponsScreenConfig | null>(null);
-  const [offersCouponsSaving, setOffersCouponsSaving] = useState(false);
 
   // 1. Guard check on mount — validate token against local backend
   useEffect(() => {
@@ -455,7 +226,7 @@ export default function DashboardPage() {
     try {
       if (activeTab === 'shops' || activeTab === 'locations') {
         const data = await apiFetch('/shops/all');
-        setShops(data.shops);
+        setShops(data.shops || []);
 
         const masterData = await apiFetch('/products/master');
         setMasterProductsList(masterData.products || []);
@@ -491,47 +262,35 @@ export default function DashboardPage() {
 
       if (activeTab === 'home-screen') {
         const data = await apiFetch('/admin/home');
-        if (data.home) {
-          setHomeScreenDraft(data.home);
-        }
+        if (data.home) setHomeScreenDraft(data.home);
+
         const searchData = await apiFetch('/admin/search-screen');
-        if (searchData.search) {
-          setSearchScreenDraft(searchData.search);
-        }
+        if (searchData.search) setSearchScreenDraft(searchData.search);
+
         const categoriesData = await apiFetch('/admin/categories-screen');
-        if (categoriesData.categories) {
-          setCategoriesScreenDraft(categoriesData.categories);
-        }
+        if (categoriesData.categories) setCategoriesScreenDraft(categoriesData.categories);
+
         const categoryProductsData = await apiFetch('/admin/category-products-screen');
-        if (categoryProductsData.category_products) {
-          setCategoryProductsDraft(categoryProductsData.category_products);
-        }
+        if (categoryProductsData.category_products) setCategoryProductsDraft(categoryProductsData.category_products);
+
         const productDetailData = await apiFetch('/admin/product-detail-screen');
-        if (productDetailData.product_detail) {
-          setProductDetailDraft(productDetailData.product_detail);
-        }
+        if (productDetailData.product_detail) setProductDetailDraft(productDetailData.product_detail);
+
         const cartScreenData = await apiFetch('/admin/cart-screen');
-        if (cartScreenData.cart) {
-          setCartScreenDraft(cartScreenData.cart);
-        }
+        if (cartScreenData.cart) setCartScreenDraft(cartScreenData.cart);
+
         const offersCouponsData = await apiFetch('/admin/offers-coupons-screen');
-        if (offersCouponsData.offers_coupons) {
-          setOffersCouponsDraft(offersCouponsData.offers_coupons);
-        }
+        if (offersCouponsData.offers_coupons) setOffersCouponsDraft(offersCouponsData.offers_coupons);
       }
 
       if (activeTab === 'franchise') {
         const data = await apiFetch('/admin/franchise');
-        if (data.requests) {
-          setFranchiseRequests(data.requests);
-        }
+        if (data.requests) setFranchiseRequests(data.requests);
       }
 
       if (activeTab === 'analytics') {
         const data = await apiFetch('/orders/platform/all');
-        if (data.orders) {
-          setOrders(data.orders);
-        }
+        if (data.orders) setOrders(data.orders);
       }
 
       if (activeTab === 'sku-requests') {
@@ -558,16 +317,12 @@ export default function DashboardPage() {
 
       if (activeTab === 'coupons-admin') {
         const data = await apiFetch('/admin/coupons');
-        if (data.coupons) {
-          setCouponsList(data.coupons || []);
-        }
+        if (data.coupons) setCouponsList(data.coupons || []);
       }
 
       if (activeTab === 'orders-admin') {
         const data = await apiFetch('/admin/orders/all');
-        if (data.orders) {
-          setAllOrdersList(data.orders || []);
-        }
+        if (data.orders) setAllOrdersList(data.orders || []);
       }
 
     } catch (err: any) {
@@ -823,6 +578,22 @@ export default function DashboardPage() {
     setSkuApproveImagePreview('');
   };
 
+  const uploadAdminImage = async (file: File): Promise<string> => {
+    const freshToken = token || localStorage.getItem('@admin_token');
+    const formData = new FormData();
+    formData.append('image', file);
+    const uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${freshToken}` },
+      body: formData,
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || !uploadData.image_url) {
+      throw new Error(uploadData.error || 'Image upload failed');
+    }
+    return uploadData.image_url;
+  };
+
   const handleConfirmSkuApprove = async () => {
     if (!token || !skuApproveRequest) return;
     if (!skuApproveImageFile) {
@@ -860,22 +631,6 @@ export default function DashboardPage() {
     } catch (err: any) {
       alert(err.message || 'Failed to update SKU request status');
     }
-  };
-
-  const uploadAdminImage = async (file: File): Promise<string> => {
-    const freshToken = token || localStorage.getItem('@admin_token');
-    const formData = new FormData();
-    formData.append('image', file);
-    const uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${freshToken}` },
-      body: formData,
-    });
-    const uploadData = await uploadRes.json();
-    if (!uploadRes.ok || !uploadData.image_url) {
-      throw new Error(uploadData.error || 'Image upload failed');
-    }
-    return uploadData.image_url;
   };
 
   const getSubcategoriesForCategory = (categoryId: string) =>
@@ -1002,7 +757,7 @@ export default function DashboardPage() {
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProdName.trim() || !newProdCategory) return;
-    
+
     // Validate variants
     const validVariants = newProdVariants.filter(
       (v) => v.quantityValue.trim() && v.quantityUnit.trim() && v.mrp.trim() && v.price.trim() && v.sku.trim(),
@@ -1153,58 +908,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Fetch Shop Inventory Handler
-  const fetchShopInventory = async (shopId: string) => {
-    try {
-      const data = await apiFetch(`/admin/shop-inventory/${shopId}`);
-      setShopInventoryList(data.shop_products || []);
-    } catch (err) {
-      console.error('Failed to fetch shop inventory:', err);
-    }
-  };
-
-  // Direct Assign Product to Shop Handler
-  const handleDirectAssignProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedShopForInventory || !assignProdId || !assignProdPrice) return;
-    try {
-      const data = await apiFetch(`/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
-        method: 'POST',
-        body: JSON.stringify({
-          product_id: assignProdId,
-          selling_price: assignProdPrice,
-          discount_percentage: assignProdDiscount || 0,
-          stock: assignProdStock || 100,
-        }),
-      });
-      if (data.success) {
-        alert('Product assigned directly to shop!');
-        setAssignProdId('');
-        setAssignProdPrice('');
-        setAssignProdDiscount('');
-        setAssignProdStock('');
-        fetchShopInventory(selectedShopForInventory.id);
-      } else {
-        alert(data.error || 'Failed to assign product');
-      }
-    } catch (err) {
-      alert('Error assigning product');
-    }
-  };
-
-  // Unassign Product from Shop Handler
-  const handleUnassignShopProduct = async (mappingId: string) => {
-    if (!confirm('Are you sure you want to unassign this product from this shop?')) return;
-    try {
-      await apiFetch(`/admin/shop-inventory/${mappingId}`, { method: 'DELETE' });
-      if (selectedShopForInventory) {
-        fetchShopInventory(selectedShopForInventory.id);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Error unassigning product');
-    }
-  };
-
   // Create Promo Coupon Handler
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1351,7 +1054,7 @@ export default function DashboardPage() {
       return;
     }
     try {
-      const data = await apiFetch('/shops/register', {
+      await apiFetch('/shops/register', {
         method: 'POST',
         body: JSON.stringify({
           shop_name: regShopName.trim(),
@@ -1411,167 +1114,6 @@ export default function DashboardPage() {
     } catch (err: any) {
       alert(err.message || 'Error saving campaign banner');
     }
-  };
-
-  const handleSaveHomeScreen = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !homeScreenDraft) return;
-    setHomeScreenSaving(true);
-    try {
-      const data = await apiFetch('/admin/home', {
-        method: 'POST',
-        body: JSON.stringify(homeScreenDraft),
-      });
-      setHomeScreenDraft(data.home);
-      alert('Home screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving home screen copy');
-    } finally {
-      setHomeScreenSaving(false);
-    }
-  };
-
-  const updateHomeField = (key: keyof HomeScreenConfig, value: string) => {
-    if (!homeScreenDraft) return;
-    setHomeScreenDraft({ ...homeScreenDraft, [key]: value });
-  };
-
-  const handleSaveSearchScreen = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !searchScreenDraft) return;
-    setSearchScreenSaving(true);
-    try {
-      const data = await apiFetch('/admin/search-screen', {
-        method: 'POST',
-        body: JSON.stringify(searchScreenDraft),
-      });
-      setSearchScreenDraft(data.search);
-      alert('Search screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving search screen copy');
-    } finally {
-      setSearchScreenSaving(false);
-    }
-  };
-
-  const updateSearchField = (key: keyof SearchScreenConfig, value: string) => {
-    if (!searchScreenDraft) return;
-    setSearchScreenDraft({ ...searchScreenDraft, [key]: value });
-  };
-
-  const handleSaveCategoriesScreen = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !categoriesScreenDraft) return;
-    setCategoriesScreenSaving(true);
-    try {
-      const data = await apiFetch('/admin/categories-screen', {
-        method: 'POST',
-        body: JSON.stringify(categoriesScreenDraft),
-      });
-      setCategoriesScreenDraft(data.categories);
-      alert('Categories screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving categories screen copy');
-    } finally {
-      setCategoriesScreenSaving(false);
-    }
-  };
-
-  const updateCategoriesField = (key: keyof CategoriesScreenConfig, value: string) => {
-    if (!categoriesScreenDraft) return;
-    setCategoriesScreenDraft({ ...categoriesScreenDraft, [key]: value });
-  };
-
-  const handleSaveCategoryProducts = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !categoryProductsDraft) return;
-    setCategoryProductsSaving(true);
-    try {
-      const data = await apiFetch('/admin/category-products-screen', {
-        method: 'POST',
-        body: JSON.stringify(categoryProductsDraft),
-      });
-      setCategoryProductsDraft(data.category_products);
-      alert('Product list screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving product list screen copy');
-    } finally {
-      setCategoryProductsSaving(false);
-    }
-  };
-
-  const updateCategoryProductsField = (key: keyof CategoryProductsScreenConfig, value: string) => {
-    if (!categoryProductsDraft) return;
-    setCategoryProductsDraft({ ...categoryProductsDraft, [key]: value });
-  };
-
-  const handleSaveProductDetail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !productDetailDraft) return;
-    setProductDetailSaving(true);
-    try {
-      const data = await apiFetch('/admin/product-detail-screen', {
-        method: 'POST',
-        body: JSON.stringify(productDetailDraft),
-      });
-      setProductDetailDraft(data.product_detail);
-      alert('Product detail screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving product detail screen copy');
-    } finally {
-      setProductDetailSaving(false);
-    }
-  };
-
-  const updateProductDetailField = (key: keyof ProductDetailScreenConfig, value: string) => {
-    if (!productDetailDraft) return;
-    setProductDetailDraft({ ...productDetailDraft, [key]: value });
-  };
-
-  const handleSaveCartScreen = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !cartScreenDraft) return;
-    setCartScreenSaving(true);
-    try {
-      const data = await apiFetch('/admin/cart-screen', {
-        method: 'POST',
-        body: JSON.stringify(cartScreenDraft),
-      });
-      setCartScreenDraft(data.cart);
-      alert('Cart screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving cart screen copy');
-    } finally {
-      setCartScreenSaving(false);
-    }
-  };
-
-  const updateCartScreenField = (key: keyof CartScreenConfig, value: string) => {
-    if (!cartScreenDraft) return;
-    setCartScreenDraft({ ...cartScreenDraft, [key]: value });
-  };
-
-  const handleSaveOffersCouponsScreen = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !offersCouponsDraft) return;
-    setOffersCouponsSaving(true);
-    try {
-      const data = await apiFetch('/admin/offers-coupons-screen', {
-        method: 'POST',
-        body: JSON.stringify(offersCouponsDraft),
-      });
-      setOffersCouponsDraft(data.offers_coupons);
-      alert('Offers & coupons screen copy updated successfully!');
-    } catch (err: any) {
-      alert(err.message || 'Error saving offers screen copy');
-    } finally {
-      setOffersCouponsSaving(false);
-    }
-  };
-
-  const updateOffersCouponsField = (key: keyof OffersCouponsScreenConfig, value: string) => {
-    if (!offersCouponsDraft) return;
-    setOffersCouponsDraft({ ...offersCouponsDraft, [key]: value });
   };
 
   // Delete promotional banner
@@ -1641,41 +1183,6 @@ export default function DashboardPage() {
     router.replace('/login');
   };
 
-  // Math metrics for Analytics
-  const calculateAnalytics = () => {
-    const delivered = orders.filter(o => o.status === 'delivered');
-    const totalSalesSum = delivered.reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
-    const activePipeline = orders.filter(o => ['pending', 'confirmed', 'packing', 'out_for_delivery'].includes(o.status));
-    
-    // Total revenue sum including pending for calculations
-    const allSum = orders.reduce((sum, o) => sum + parseFloat(o.total_amount || '0'), 0);
-    const aov = orders.length > 0 ? Math.round(allSum / orders.length) : 0;
-
-    // Rankings of shops by revenue
-    const shopSales: { [key: string]: { name: string; total: number; count: number } } = {};
-    for (const o of orders) {
-      const name = o.shops?.shop_name || 'Unassigned Merchant';
-      if (!shopSales[o.shop_id]) {
-        shopSales[o.shop_id] = { name, total: 0, count: 0 };
-      }
-      shopSales[o.shop_id].count += 1;
-      if (o.status === 'delivered') {
-        shopSales[o.shop_id].total += parseFloat(o.total_amount || '0');
-      }
-    }
-
-    const rankedShops = Object.values(shopSales).sort((a, b) => b.total - a.total);
-
-    return {
-      gmv: totalSalesSum,
-      totalOrders: orders.length,
-      activeOrders: activePipeline.length,
-      completedOrders: delivered.length,
-      aov,
-      rankedShops
-    };
-  };
-
   if (!user || !token) {
     return (
       <div className="min-h-screen bg-[#090D16] flex items-center justify-center">
@@ -1684,3126 +1191,364 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = calculateAnalytics();
-
-
-  const navSections = [
-    {
-      title: 'Core Operations',
-      items: [
-        { id: 'shops' as TabType, label: 'Store Approvals', icon: Store, badge: shops.filter(s => s.status === 'pending').length || undefined, badgeColor: 'bg-amber-500' },
-        { id: 'orders-admin' as TabType, label: 'Live Orders Tracker', icon: ShoppingBag, badge: allOrdersList.filter(o => o.status === 'pending').length || undefined, badgeColor: 'bg-emerald-500' },
-        { id: 'sku-requests' as TabType, label: 'SKU Requests', icon: FileSpreadsheet, badge: skuRequests.filter(r => r.status === 'pending').length || undefined, badgeColor: 'bg-amber-500' },
-        { id: 'master-catalog' as TabType, label: 'Master Catalogue', icon: Package, badge: masterProductsList.length || undefined, badgeColor: 'bg-slate-700' },
-        { id: 'categories-admin' as TabType, label: 'Manage Categories', icon: Tag },
-      ]
-    },
-    {
-      title: 'Territories & Delivery',
-      items: [
-        { id: 'cities-areas' as TabType, label: 'Cities & Localities', icon: MapPin },
-        { id: 'locations' as TabType, label: 'Localities Mapping', icon: MapPin },
-      ]
-    },
-    {
-      title: 'Growth & Campaigns',
-      items: [
-        { id: 'coupons-admin' as TabType, label: 'Manage Coupons', icon: Ticket },
-        { id: 'banners' as TabType, label: 'Festive Campaigns', icon: ImageIcon },
-        { id: 'home-screen' as TabType, label: 'App Screen Copy', icon: Home },
-        { id: 'analytics' as TabType, label: 'Platform Analytics', icon: BarChart3 },
-      ]
-    },
-    {
-      title: 'Tools & Inquiries',
-      items: [
-        { id: 'franchise' as TabType, label: 'Franchise Inquiries', icon: MessageSquare, badge: franchiseRequests.length || undefined, badgeColor: 'bg-blue-500' },
-        { id: 'bulk-loader' as TabType, label: 'Bulk SKU Loader', icon: Upload },
-      ]
-    }
-  ];
-
-  const allNavItems = navSections.flatMap(s => s.items);
-  const currentNav = allNavItems.find(n => n.id === activeTab) || allNavItems[0];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] text-slate-100 flex flex-col md:flex-row font-sans">
       
       {/* Mobile Top Navigation Bar */}
-      <header className="md:hidden sticky top-0 z-40 bg-[#090D16]/95 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3 flex items-center justify-between shadow-lg">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-white tracking-tight leading-tight">MonthlyGrocery</h1>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin</span>
-              <span className="text-[10px] text-slate-600">•</span>
-              <span className="text-[10px] text-slate-300 font-semibold truncate max-w-[120px]">{currentNav.label}</span>
-            </div>
-          </div>
-        </div>
+      <AdminHeader
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        shops={shops}
+        allOrdersList={allOrdersList}
+        skuRequests={skuRequests}
+        masterProductsList={masterProductsList}
+        franchiseRequests={franchiseRequests}
+      />
 
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
-          aria-label="Toggle Menu"
-        >
-          {mobileMenuOpen ? <X className="w-5 h-5 text-red-400" /> : <Menu className="w-5 h-5 text-emerald-400" />}
-        </button>
-      </header>
-
-      {/* Mobile Quick-Swipe Tab Bar */}
-      <div className="md:hidden sticky top-[57px] z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shadow-inner">
-        {allNavItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setMobileMenuOpen(false);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                isActive
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/20'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800/80'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{item.label}</span>
-              {item.badge ? (
-                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold ${isActive ? 'bg-black/30 text-white' : 'bg-slate-800 text-slate-300'}`}>
-                  {item.badge}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Mobile Drawer Overlay / Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col justify-between p-5 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white">
-                <Shield className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white">Navigation Menu</h2>
-                <p className="text-[10px] text-emerald-400 font-bold uppercase">Super Admin Portal</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Drawer Links */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar my-4 space-y-5 pr-1">
-            {navSections.map((sec) => (
-              <div key={sec.title} className="space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3">{sec.title}</p>
-                <div className="space-y-1">
-                  {sec.items.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          setActiveTab(item.id);
-                          setMobileMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                          isActive
-                            ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border-l-4 border-emerald-500 shadow-sm'
-                            : 'text-slate-300 hover:bg-slate-900/60 hover:text-white'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                          <span>{item.label}</span>
-                        </div>
-                        {item.badge ? (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${item.badgeColor || 'bg-slate-700'}`}>
-                            {item.badge}
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* User profile / Logout in mobile drawer */}
-          <div className="pt-4 border-t border-slate-800 space-y-3">
-            <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
-              <div>
-                <p className="text-sm font-bold text-slate-100">{user.name}</p>
-                <p className="text-[11px] text-slate-500">Super Admin • +91 {user.mobile}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all"
-              >
-                <LogOut className="w-3.5 h-3.5" /> Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Desktop & Laptop Sidebar Navigation */}
-      <aside className="hidden md:flex md:w-60 lg:w-64 bg-[#090D16]/80 border-r border-slate-800/80 backdrop-blur-2xl flex-col justify-between p-4 lg:p-5 sticky top-0 h-screen z-30 flex-shrink-0 shadow-2xl">
-        <div className="flex flex-col h-full min-h-0">
-          {/* Logo Header */}
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80 flex-shrink-0">
-            <div className="p-2 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
-              <Shield className="w-5 h-5 lg:w-6 lg:h-6" />
-            </div>
-            <div>
-              <h1 className="text-sm lg:text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
-              <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
-            </div>
-          </div>
-
-          {/* Scrollable Navigation Sections */}
-          <nav className="flex-1 overflow-y-auto custom-scrollbar my-4 space-y-4 pr-1">
-            {navSections.map((sec) => (
-              <div key={sec.title} className="space-y-1">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 mb-1">{sec.title}</p>
-                {sec.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2 lg:py-2.5 text-xs lg:text-sm font-semibold rounded-xl transition-all cursor-pointer ${
-                        isActive 
-                          ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.06)]' 
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 lg:gap-3 truncate">
-                        <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                        <span className="truncate">{item.label}</span>
-                      </div>
-                      {item.badge ? (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white ${
-                          isActive ? 'bg-emerald-500 text-slate-950 font-black' : (item.badgeColor || 'bg-slate-800 text-slate-300')
-                        }`}>
-                          {item.badge}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-
-          {/* User profile / Logout */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-3 flex-shrink-0">
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850">
-              <p className="text-xs font-bold text-slate-100 truncate">{user.name}</p>
-              <p className="text-[10px] text-slate-500 truncate">+91 {user.mobile}</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs lg:text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" /> Log Out
-            </button>
-          </div>
-        </div>
-      </aside>
+      {/* Desktop Sidebar & Mobile Drawer Navigation */}
+      <AdminSidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        shops={shops}
+        allOrdersList={allOrdersList}
+        skuRequests={skuRequests}
+        masterProductsList={masterProductsList}
+        franchiseRequests={franchiseRequests}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+        handleLogout={handleLogout}
+      />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full min-w-0 p-3.5 sm:p-5 md:p-6 lg:p-7 overflow-y-auto">
-        <div className="w-full max-w-[1540px] mx-auto space-y-5 lg:space-y-6">
+      <main className="flex-1 p-3 sm:p-5 md:p-6 lg:p-8 xl:p-10 overflow-y-auto max-w-[1700px]">
+        {error && (
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold flex items-center gap-2 sm:gap-3">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+            {error}
+          </div>
+        )}
+
         {loading && (
-          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2 rounded-xl w-max shadow-sm backdrop-blur-md">
-            <Loader2 className="w-4 h-4 animate-spin" /> Querying Live Database...
+          <div className="flex items-center gap-2 mb-4 sm:mb-6 text-xs sm:text-sm text-emerald-400 font-semibold animate-pulse">
+            <Loader2 className="w-4 h-4 animate-spin" /> Syncing data...
           </div>
         )}
 
-                {/* 1. STORE APPROVALS TAB */}
-        {activeTab === 'shops' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-            {/* Left: Store Whitelisting table */}
-            <section className="lg:col-span-7 xl:col-span-8 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Store className="w-5 h-5 text-emerald-400" /> Store Registration Whitelisting
-                </h2>
-                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3">Store Name</th>
-                      <th className="pb-3">Territory</th>
-                      <th className="pb-3">Owner Contact</th>
-                      <th className="pb-3">Status</th>
-                      <th className="pb-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/30 text-sm">
-                    {shops.map((shop) => (
-                      <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
-                        <td className="py-4 pr-3">
-                          {shop.state_name ? (
-                            <>
-                              <p className="text-slate-200 text-sm">{shop.state_name}</p>
-                              <p className="text-xs text-slate-500">{shop.district_name} · {shop.city || '—'}</p>
-                            </>
-                          ) : (
-                            <span className="text-slate-500 italic text-xs">Not assigned</span>
-                          )}
-                        </td>
-                        <td className="py-4 pr-3">
-                          <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
-                          <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
-                        </td>
-                        <td className="py-4 pr-3">
-                          {shop.status === 'approved' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              Approved
-                            </span>
-                          )}
-                          {shop.status === 'rejected' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                              Rejected
-                            </span>
-                          )}
-                          {shop.status === 'pending' && (
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
-                              Pending
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 text-right space-x-2">
-                          {shop.status === 'approved' && (
-                            <button
-                              onClick={() => {
-                                setSelectedShopForInventory(shop);
-                                fetchShopInventory(shop.id);
-                              }}
-                              className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-lg transition-all cursor-pointer"
-                            >
-                              Manage Inventory
-                            </button>
-                          )}
-                          {shop.status !== 'approved' && (
-                            <button
-                              onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
-                              className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {shop.status !== 'rejected' && (
-                            <button
-                              onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
-                              className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
-                            >
-                              Reject
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDeleteShop(shop.id, shop.shop_name)}
-                            className="text-xs font-bold px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 rounded-lg transition-all cursor-pointer"
-                            title="Delete store"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {shops.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-500 italic">
-                          No stores registered yet. Use the form on the right to add a merchant.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Right: Register New Store form */}
-            <section className="lg:col-span-5 xl:col-span-4 bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Register New Store</h3>
-              
-              <form onSubmit={handleRegisterShop} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Store / Shop Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Thorat Wholesalers"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regShopName}
-                    onChange={(e) => setRegShopName(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Full Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ramesh Kumar"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regOwnerName}
-                    onChange={(e) => setRegOwnerName(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">State</label>
-                  <select
-                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regStateId}
-                    onChange={(e) => setRegStateId(e.target.value)}
-                  >
-                    <option value="">Select state...</option>
-                    {adminStates.map((state) => (
-                      <option key={state.id} value={state.id}>{state.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">District</label>
-                  <select
-                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none disabled:opacity-50"
-                    value={regDistrictId}
-                    onChange={(e) => setRegDistrictId(e.target.value)}
-                    disabled={!regStateId}
-                  >
-                    <option value="">{regStateId ? 'Select district...' : 'Choose state first'}</option>
-                    {regDistrictOptions.map((district) => (
-                      <option key={district.id} value={district.id}>{district.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">City (type manually)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Pimpri, Wakad, Ranchi City"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regCity}
-                    onChange={(e) => setRegCity(e.target.value)}
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">You decide which city this merchant serves inside the selected district.</p>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Mobile Number</label>
-                  <input
-                    type="text"
-                    maxLength={10}
-                    placeholder="e.g. 9876543210"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={regOwnerMobile}
-                    onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
-                >
-                  Register Store
-                </button>
-              </form>
-            </section>
-          </div>
-        )}
-
-        {/* 2. LOCALITIES MAPPING TAB */}
-        {activeTab === 'locations' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-            <div className="lg:col-span-12 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
-              <strong className="text-amber-300">Order routing:</strong> Each locality must be mapped to exactly one approved merchant shop.
-              Customer orders from that area go only to the assigned shopkeeper, and they only see products that shop has listed as available.
-            </div>
-            {/* Left Column: List of Mapped Zones */}
-            <section className="lg:col-span-7 xl:col-span-8 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-emerald-400" /> Serviceable Delivery Localities
-              </h2>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3">City / Locality</th>
-                      <th className="pb-3">PIN Code</th>
-                      <th className="pb-3">Assigned Merchant</th>
-                      <th className="pb-3 text-right">Delete</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/30 text-sm">
-                    {locations.map((loc) => {
-                      const matchedShop = shops.find(s => s.id === loc.shop_id);
-                      const isUnassigned = !loc.shop_id || !matchedShop;
-                      return (
-                        <tr key={loc.id} className={`hover:bg-slate-800/20 transition-colors ${isUnassigned ? 'bg-amber-500/5' : ''}`}>
-                          <td className="py-4 pr-3 font-semibold">
-                            <span className="text-white">{loc.area_name}</span>
-                            <span className="text-xs text-slate-500 block">{loc.city}</span>
-                          </td>
-                          <td className="py-4 pr-3 text-slate-300 font-mono font-bold">{loc.pincode}</td>
-                          <td className="py-4 pr-3">
-                            <select
-                              className={`w-full max-w-xs h-9 px-2 bg-slate-950 border ${isUnassigned ? 'border-amber-500/70 focus:border-amber-400' : 'border-slate-800 focus:border-emerald-500'} text-slate-200 rounded-lg text-sm outline-none`}
-                              value={loc.shop_id || ''}
-                              onChange={(e) => handleUpdateLocationShop(loc.id, e.target.value)}
-                            >
-                              <option value="">Select shop…</option>
-                              {shops.filter(s => s.status === 'approved').map(s => (
-                                <option key={s.id} value={s.id}>{s.shop_name}</option>
-                              ))}
-                            </select>
-                            {isUnassigned && (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-md mt-1.5">
-                                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                                Unassigned shop — Orders cannot route
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 text-right">
-                            <button
-                              onClick={() => handleDeleteLocation(loc.id)}
-                              className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4 inline" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {locations.length === 0 && (
-                      <tr>
-                        <td colSpan={4} className="py-8 text-center text-slate-500 italic">
-                          No delivery zones mapped yet. Register cities and areas first, then add a zone here.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Right Column: Add Location form */}
-            <section className="lg:col-span-5 xl:col-span-4 bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Add Serviceable Zone</h3>
-              
-              <form onSubmit={handleAddLocation} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">City Location</label>
-                  <select
-                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={locCity}
-                    onChange={(e) => {
-                      setLocCity(e.target.value);
-                      setLocArea('');
-                    }}
-                  >
-                    <option value="">Select registered city...</option>
-                    {cities.map((c) => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Locality Name</label>
-                  <select
-                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    disabled={!locCity}
-                    value={locArea}
-                    onChange={(e) => {
-                      const selectedAreaName = e.target.value;
-                      setLocArea(selectedAreaName);
-                      const cityObj = cities.find(c => c.name === locCity);
-                      const matchedArea = areas.find(a => a.name === selectedAreaName && (cityObj ? a.city_id === cityObj.id : true));
-                      if (matchedArea?.pincode) {
-                        setLocPin(matchedArea.pincode);
-                      }
-                    }}
-                  >
-                    <option value="">Select registered locality...</option>
-                    {areas
-                      .filter((area) => {
-                        const cityObj = cities.find(c => c.name === locCity);
-                        return cityObj ? area.city_id === cityObj.id : false;
-                      })
-                      .map((area) => (
-                        <option key={area.id} value={area.name}>{area.name}</option>
-                      ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">6-Digit PIN Code</label>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    placeholder="e.g. 400053"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={locPin}
-                    onChange={(e) => setLocPin(e.target.value.replace(/[^\d]/g, ''))}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Assign Shop *</label>
-                  <select
-                    required
-                    className="w-full mt-1.5 h-11 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={locShop}
-                    onChange={(e) => setLocShop(e.target.value)}
-                  >
-                    <option value="">Select merchant shop…</option>
-                    {shops.filter(s => s.status === 'approved').map(s => (
-                      <option key={s.id} value={s.id}>{s.shop_name}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-slate-500 mt-1">Required — orders from this area route to this shop.</p>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
-                >
-                  Save Local Zone
-                </button>
-              </form>
-            </section>
-          </div>
-        )}
-
-        {/* 3. PLATFORM ANALYTICS TAB */}
-        {activeTab === 'analytics' && (
-          <div className="space-y-6">
-            {/* Sales Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Platform GMV</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-2">₹{stats.gmv.toLocaleString('en-IN')}</p>
-                <p className="text-[9px] text-slate-500 mt-1">Delivered orders revenue</p>
-              </div>
-
-              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Orders</p>
-                <p className="text-2xl font-bold text-slate-200 mt-2">{stats.totalOrders}</p>
-                <p className="text-[9px] text-slate-500 mt-1">Total placed orders</p>
-              </div>
-
-              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Active Orders</p>
-                <p className="text-2xl font-bold text-amber-400 mt-2">{stats.activeOrders}</p>
-                <p className="text-[9px] text-slate-500 mt-1">In processing pipeline</p>
-              </div>
-
-              <div className="bg-slate-900/40 rounded-2xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-md">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Average Order (AOV)</p>
-                <p className="text-2xl font-bold text-blue-400 mt-2">₹{stats.aov.toLocaleString('en-IN')}</p>
-                <p className="text-[9px] text-slate-500 mt-1">Average spent per basket</p>
-              </div>
-            </div>
-
-            {/* Merchant Rankings */}
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-emerald-400" /> Merchant Sales Rankings
-              </h3>
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-3">Shop Partner</th>
-                    <th className="pb-3 text-center">Orders Placed</th>
-                    <th className="pb-3 text-right">Revenue (GMV)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30 text-sm">
-                  {stats.rankedShops.map((item: any, i: number) => (
-                    <tr key={i} className="hover:bg-slate-800/20 transition-colors">
-                      <td className="py-4 pr-3 font-semibold text-white">{item.name}</td>
-                      <td className="py-4 pr-3 text-center text-slate-400">{item.count} orders</td>
-                      <td className="py-4 text-right font-bold text-emerald-400">₹{item.total.toLocaleString('en-IN')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          </div>
-        )}
-
-        {/* 3b. HOME SCREEN COPY TAB */}
-        {activeTab === 'home-screen' && (
-          <div className="w-full">
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                <Home className="w-5 h-5 text-emerald-400" /> Home Screen Copy (B1)
-              </h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Labels and messages shown on the customer app home screen. Changes apply immediately after save.
-              </p>
-
-              {!homeScreenDraft ? (
-                <p className="text-slate-400 text-sm">Loading home screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveHomeScreen} className="space-y-6">
-                  {([
-                    ['delivering_label', 'Delivering label'],
-                    ['location_prefix', 'Location prefix'],
-                    ['choose_location_label', 'Choose location label'],
-                    ['delivery_pill_text', 'Delivery pill text'],
-                    ['search_placeholder', 'Search placeholder'],
-                    ['mmg_label', 'MMG label'],
-                    ['mmg_title', 'MMG title'],
-                    ['mmg_subtitle', 'MMG subtitle'],
-                    ['categories_title', 'Categories title'],
-                    ['categories_see_all', 'Categories see all'],
-                    ['deals_title', 'Deals title'],
-                    ['deals_see_all', 'Deals see all'],
-                    ['loading_deals_label', 'Loading deals label'],
-                    ['empty_deals_label', 'Empty deals label'],
-                    ['location_required_deals_label', 'Location required (deals)'],
-                    ['reorder_title', 'Reorder title'],
-                    ['reorder_subtitle_template', 'Reorder subtitle template ({count}, {total})'],
-                    ['reorder_cta_label', 'Reorder CTA'],
-                    ['first_basket_title', 'First basket title'],
-                    ['first_basket_subtitle', 'First basket subtitle'],
-                    ['first_basket_cta_label', 'First basket CTA'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={homeScreenDraft[key]}
-                        onChange={(e) => updateHomeField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={homeScreenSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {homeScreenSaving ? 'Saving…' : 'Save Home Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
-              <h2 className="text-lg font-bold text-white mb-2">Search Screen Copy (B2)</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Labels for the customer search screen. Popular chips use live categories from the catalog.
-              </p>
-
-              {!searchScreenDraft ? (
-                <p className="text-slate-400 text-sm">Loading search screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveSearchScreen} className="space-y-6">
-                  {([
-                    ['search_placeholder', 'Search placeholder'],
-                    ['popular_searches_label', 'Popular searches label'],
-                    ['products_section_label', 'Products section label'],
-                    ['empty_title_template', 'Empty title template ({query})'],
-                    ['empty_subtitle', 'Empty subtitle'],
-                    ['location_required_message', 'Location required message'],
-                    ['choose_location_label', 'Choose location label'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={searchScreenDraft[key]}
-                        onChange={(e) => updateSearchField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={searchScreenSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {searchScreenSaving ? 'Saving…' : 'Save Search Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
-              <h2 className="text-lg font-bold text-white mb-2">Categories Screen Copy (B3)</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Title, search placeholder, and section labels on the customer categories tab. Category tiles use live catalog data.
-              </p>
-
-              {!categoriesScreenDraft ? (
-                <p className="text-slate-400 text-sm">Loading categories screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveCategoriesScreen} className="space-y-6">
-                  {([
-                    ['title', 'Screen title'],
-                    ['search_placeholder', 'Search placeholder'],
-                    ['section_grocery_label', 'Grocery section label'],
-                    ['section_snacks_label', 'Snacks section label'],
-                    ['section_household_label', 'Household section label'],
-                    ['section_default_label', 'Default section label'],
-                    ['empty_message', 'Empty search message'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={categoriesScreenDraft[key]}
-                        onChange={(e) => updateCategoriesField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={categoriesScreenSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {categoriesScreenSaving ? 'Saving…' : 'Save Categories Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
-              <h2 className="text-lg font-bold text-white mb-2">Product List Screen Copy (B4)</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Category product grid, sort bar, floating cart, and filter sheet labels. Products load from the catalog API.
-              </p>
-
-              {!categoryProductsDraft ? (
-                <p className="text-slate-400 text-sm">Loading product list screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveCategoryProducts} className="space-y-6">
-                  {([
-                    ['search_placeholder_template', 'Search placeholder ({category})'],
-                    ['items_count_template', 'Items count ({category}, {count})'],
-                    ['sort_label', 'Sort button label'],
-                    ['sub_category_all_label', 'Sidebar “All” label'],
-                    ['empty_message', 'Empty products message'],
-                    ['deals_title', 'Deals screen title'],
-                    ['location_required_message', 'Location required message'],
-                    ['choose_location_label', 'Choose location button'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                    ['view_cart_label', 'View cart label'],
-                    ['cart_item_label', 'Cart — 1 item label'],
-                    ['cart_items_template', 'Cart items template ({count})'],
-                    ['add_button_label', 'ADD button label'],
-                    ['filter_sheet_title', 'Filter sheet title'],
-                    ['filter_sort_section_label', 'Filter sort section label'],
-                    ['filter_sort_relevance', 'Sort — Relevance'],
-                    ['filter_sort_price_low', 'Sort — Price low to high'],
-                    ['filter_sort_price_high', 'Sort — Price high to low'],
-                    ['filter_sort_discount', 'Sort — Discount'],
-                    ['filter_pack_section_label', 'Pack size section label'],
-                    ['filter_clear_label', 'Clear all button'],
-                    ['filter_apply_label', 'Apply button'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={categoryProductsDraft[key]}
-                        onChange={(e) => updateCategoryProductsField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={categoryProductsSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {categoryProductsSaving ? 'Saving…' : 'Save Product List Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
-              <h2 className="text-lg font-bold text-white mb-2">Product Detail Screen Copy (C1)</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Product detail hero, delivery banner, highlights section, and sticky add-to-cart bar. Product data loads from the catalog API.
-              </p>
-
-              {!productDetailDraft ? (
-                <p className="text-slate-400 text-sm">Loading product detail screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveProductDetail} className="space-y-6">
-                  {([
-                    ['delivery_window_label', 'Delivery window banner'],
-                    ['highlights_section_label', 'Highlights section title'],
-                    ['add_to_cart_label', 'Add to cart button'],
-                    ['unit_price_suffix_template', 'Unit price suffix ({unit})'],
-                    ['not_found_message', 'Product not found message'],
-                    ['location_required_message', 'Location required message'],
-                    ['choose_location_label', 'Choose location button'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={productDetailDraft[key]}
-                        onChange={(e) => updateProductDetailField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={productDetailSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {productDetailSaving ? 'Saving…' : 'Save Product Detail Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
-              <h2 className="text-lg font-bold text-white mb-2">Cart Screen Copy (C2)</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Cart header, empty state, bill details, min-order banners, and checkout bar. Min order amount comes from server config API.
-              </p>
-
-              {!cartScreenDraft ? (
-                <p className="text-slate-400 text-sm">Loading cart screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveCartScreen} className="space-y-6">
-                  {([
-                    ['title', 'Screen title'],
-                    ['cart_item_label', 'Header — 1 item'],
-                    ['cart_items_template', 'Header items template ({count})'],
-                    ['empty_title', 'Empty cart title'],
-                    ['empty_message', 'Empty cart message'],
-                    ['start_shopping_label', 'Start shopping button'],
-                    ['reorder_last_month_label', 'Reorder last month link'],
-                    ['save_basket_label', 'Save basket row'],
-                    ['apply_coupon_label', 'Apply coupon label'],
-                    ['coupon_applied_template', 'Coupon applied ({code}, {discount})'],
-                    ['bill_details_title', 'Bill details title'],
-                    ['bill_item_total_label', 'Bill — item total (MRP)'],
-                    ['bill_savings_label', 'Bill — savings label'],
-                    ['bill_delivery_fee_label', 'Bill — delivery fee label'],
-                    ['bill_delivery_fee_value', 'Bill — delivery fee value'],
-                    ['bill_coupon_discount_label', 'Bill — coupon discount label'],
-                    ['bill_to_pay_label', 'Bill — to pay label'],
-                    ['sticky_to_pay_label', 'Sticky bar — TO PAY label'],
-                    ['proceed_to_pay_label', 'Proceed to pay button'],
-                    ['below_min_title_template', 'Below min banner ({amount})'],
-                    ['below_min_footnote_template', 'Below min footnote ({current}, {minimum})'],
-                    ['savings_banner_template', 'Savings banner ({savings})'],
-                    ['add_more_checkout_template', 'Add more checkout CTA ({amount})'],
-                    ['min_order_alert_template', 'Min order alert ({amount}, {minimum})'],
-                    ['empty_preview_image_1', 'Empty state preview image URL 1'],
-                    ['empty_preview_image_2', 'Empty state preview image URL 2'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={cartScreenDraft[key]}
-                        onChange={(e) => updateCartScreenField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={cartScreenSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {cartScreenSaving ? 'Saving…' : 'Save Cart Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl mt-8">
-              <h2 className="text-lg font-bold text-white mb-2">Offers & Coupons Screen Copy (C3)</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Coupon list screen header, manual apply bar, section labels, and eligibility messages. Live coupons load from the coupons API.
-              </p>
-
-              {!offersCouponsDraft ? (
-                <p className="text-slate-400 text-sm">Loading offers screen config…</p>
-              ) : (
-                <form onSubmit={handleSaveOffersCouponsScreen} className="space-y-6">
-                  {([
-                    ['title', 'Screen title'],
-                    ['manual_code_placeholder', 'Manual code placeholder'],
-                    ['manual_apply_label', 'Manual apply button'],
-                    ['available_section_label', 'Available section label'],
-                    ['expires_template', 'Expiry template ({date})'],
-                    ['list_apply_label', 'List APPLY button'],
-                    ['empty_message', 'Empty state message'],
-                    ['load_error_message', 'Load error message'],
-                    ['retry_label', 'Retry button label'],
-                    ['min_order_alert_title', 'Min order alert title'],
-                    ['min_order_alert_template', 'Min order alert ({amount}, {code})'],
-                    ['invalid_coupon_alert_title', 'Invalid coupon alert title'],
-                    ['apply_failed_fallback', 'Apply failed fallback'],
-                    ['connection_error_title', 'Connection error title'],
-                    ['connection_error_message', 'Connection error message'],
-                    ['unlock_offer_template', 'Unlock offer template ({amount})'],
-                    ['audience_new_guideline', 'New customer guideline'],
-                    ['audience_loyal_guideline', 'Loyal customer guideline'],
-                    ['audience_all_guideline', 'All customers guideline'],
-                    ['usage_limit_template', 'Usage limit template ({limit})'],
-                  ] as const).map(([key, label]) => (
-                    <div key={key}>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</label>
-                      <input
-                        type="text"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={offersCouponsDraft[key]}
-                        onChange={(e) => updateOffersCouponsField(key, e.target.value)}
-                      />
-                    </div>
-                  ))}
-
-                  <button
-                    type="submit"
-                    disabled={offersCouponsSaving}
-                    className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 transition-all cursor-pointer"
-                  >
-                    {offersCouponsSaving ? 'Saving…' : 'Save Offers Screen Copy'}
-                  </button>
-                </form>
-              )}
-            </section>
-          </div>
-        )}
-
-        {/* 4. FESTIVE CAMPAIGNS TAB */}
-        {activeTab === 'banners' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
-            {/* Left Column: Banners List */}
-            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-emerald-400" /> Promotional Festive Banners
-              </h2>
-              
-              <div className="space-y-4">
-                {banners.map((b) => (
-                  <div key={b.id} className="flex gap-4 p-4 border border-slate-800/80 rounded-2xl items-center bg-slate-950/40">
-                    {b.kind === 'promo' ? (
-                      <div className="w-24 h-16 rounded-lg bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-300 text-xs font-bold px-2 text-center">
-                        Promo card
-                      </div>
-                    ) : (
-                      <img src={b.image_url} alt={b.title} className="w-24 h-16 object-cover rounded-lg bg-slate-900 border border-slate-800" />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-sm text-slate-200">{b.title}</h4>
-                        <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
-                          {b.kind || 'image'}
-                        </span>
-                      </div>
-                      {b.subtitle ? <p className="text-xs text-slate-400 mt-1">{b.subtitle}</p> : null}
-                      <p className="text-xs text-slate-500 mt-1">Deep Link: {b.action_link || 'None'}</p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteBanner(b.id)}
-                      className="text-red-400 hover:text-red-500 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Right Column: Add Banner Form */}
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max">
-              <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">➕ Publish New Campaign</h3>
-              
-              <form onSubmit={handleAddBanner} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Banner Type</label>
-                  <select
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={bannerKind}
-                    onChange={(e) => setBannerKind(e.target.value as 'image' | 'promo')}
-                  >
-                    <option value="image">Image banner</option>
-                    <option value="promo">Promo text card (orange)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Banner Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. MONTHLY SAVINGS SALE"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={bannerTitle}
-                    onChange={(e) => setBannerTitle(e.target.value)}
-                  />
-                </div>
-
-                {bannerKind === 'promo' ? (
-                  <>
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Promo Headline</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Up to ₹500 off"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={bannerSubtitle}
-                        onChange={(e) => setBannerSubtitle(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Promo Body</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. on your full monthly basket"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={bannerBody}
-                        onChange={(e) => setBannerBody(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">CTA Label</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Grab deals"
-                        className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                        value={bannerCta}
-                        onChange={(e) => setBannerCta(e.target.value)}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Image URL</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. https://images.unsplash.com/..."
-                      className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                      value={bannerImage}
-                      onChange={(e) => setBannerImage(e.target.value)}
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Deep Link</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CategoryProducts?category=Oil"
-                    className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
-                    value={bannerLink}
-                    onChange={(e) => setBannerLink(e.target.value)}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-full font-bold shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all mt-4 cursor-pointer"
-                >
-                  Publish Campaign Banner
-                </button>
-              </form>
-            </section>
-          </div>
-        )}
-
-        {/* 5. FRANCHISE REQUESTS TAB */}
-        {activeTab === 'franchise' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 w-full">
-            
-            {/* Left Column: Leads Tracker & List */}
-            <section className="lg:col-span-7 xl:col-span-8 bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-emerald-400" /> Franchise & Partnership Leads ({franchiseRequests.length})
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Track prospective dark store partners, regional distributors & hub inquiries.</p>
-                </div>
-                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 bg-slate-950 rounded-xl border border-slate-800 w-fit cursor-pointer">
-                  Refresh Leads
-                </button>
-              </div>
-
-              {/* Status Filter Pills & Search */}
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-1.5 bg-slate-950/60 p-1.5 rounded-xl border border-slate-850">
-                  {['all', 'new', 'contacted', 'converted', 'rejected'].map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => setFranchiseStatusFilter(st)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer capitalize ${
-                        franchiseStatusFilter === st
-                          ? 'bg-emerald-500 text-slate-950 font-black shadow-sm'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {st === 'all' ? `All (${franchiseRequests.length})` : st}
-                    </button>
-                  ))}
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Search leads by partner name, phone, city, or notes..."
-                  className="w-full h-9 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none transition-colors"
-                  value={searchFranchiseQuery}
-                  onChange={(e) => setSearchFranchiseQuery(e.target.value)}
-                />
-              </div>
-
-              {/* Leads List */}
-              <div className="space-y-3.5">
-                {franchiseRequests
-                  .filter((req) => {
-                    const st = req.status || 'new';
-                    if (franchiseStatusFilter !== 'all' && st !== franchiseStatusFilter) return false;
-                    const q = searchFranchiseQuery.toLowerCase();
-                    return (
-                      req.name.toLowerCase().includes(q) ||
-                      req.phone.includes(q) ||
-                      req.city.toLowerCase().includes(q) ||
-                      (req.email || '').toLowerCase().includes(q) ||
-                      (req.message || '').toLowerCase().includes(q)
-                    );
-                  })
-                  .map((req) => {
-                    const st = req.status || 'new';
-                    return (
-                      <div key={req.id} className="p-4 sm:p-5 border border-slate-800/80 rounded-2xl bg-slate-950/40 hover:border-slate-700/80 transition-all space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                          <div>
-                            <div className="flex items-center gap-2.5 flex-wrap">
-                              <h4 className="font-bold text-sm sm:text-base text-white">{req.name}</h4>
-                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                                st === 'converted' ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' :
-                                st === 'contacted' ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' :
-                                st === 'rejected' ? 'bg-rose-500/15 border-rose-500/30 text-rose-400' :
-                                'bg-blue-500/15 border-blue-500/30 text-blue-400'
-                              }`}>
-                                {st === 'converted' ? '✓ Partner Converted' : st === 'contacted' ? '⏳ Under Discussion' : st === 'rejected' ? '✕ Closed / Not Eligible' : '✨ New Lead'}
-                              </span>
-                              {req.investment_budget ? (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-purple-300">
-                                  Budget: {req.investment_budget}
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1.5 font-medium">
-                              <a href={`tel:${req.phone}`} className="hover:text-emerald-400 transition-colors flex items-center gap-1">
-                                📞 +91 {req.phone}
-                              </a>
-                              {req.email ? (
-                                <a href={`mailto:${req.email}`} className="hover:text-cyan-400 transition-colors flex items-center gap-1">
-                                  ✉️ {req.email}
-                                </a>
-                              ) : null}
-                              <span className="flex items-center gap-1 text-slate-300">
-                                🏙️ {req.city} Hub
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            {req.created_at ? new Date(req.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
-                          </span>
-                        </div>
-
-                        {req.message && (
-                          <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-850 text-xs text-slate-300 leading-relaxed">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Notes / Discussion</span>
-                            {req.message}
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-900">
-                          <div className="flex items-center gap-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Stage:</label>
-                            <select
-                              value={st}
-                              onChange={(e) => handleUpdateFranchiseStatus(req.id, e.target.value)}
-                              className="h-7 px-2 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                            >
-                              <option value="new">New Lead</option>
-                              <option value="contacted">Contacted / In Discussion</option>
-                              <option value="converted">Approved & Converted</option>
-                              <option value="rejected">Rejected / Dropped</option>
-                            </select>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteFranchiseLead(req.id)}
-                            className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all cursor-pointer text-xs flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                {franchiseRequests.length === 0 && (
-                  <div className="py-12 text-center text-slate-500 space-y-2">
-                    <p className="text-sm">No partnership leads in the system yet.</p>
-                    <p className="text-xs text-slate-600">Use the form on the right to manually generate and record franchise leads.</p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Right Column: Lead Generator Form */}
-            <section className="lg:col-span-5 xl:col-span-4 bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-max space-y-4">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                  ➕ Generate Partnership Lead
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">Manually record prospective franchise partners and hub discussions.</p>
-              </div>
-
-              <form onSubmit={handleCreateFranchiseLead} className="space-y-3.5">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Partner Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ramesh Kulkarni"
-                    className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                    value={newLeadName}
-                    onChange={(e) => setNewLeadName(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Mobile Number *</label>
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    placeholder="e.g. 9876543210"
-                    className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                    value={newLeadPhone}
-                    onChange={(e) => setNewLeadPhone(e.target.value.replace(/[^\d]/g, '').slice(0, 10))}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Email ID (Optional)</label>
-                  <input
-                    type="email"
-                    placeholder="e.g. ramesh@example.com"
-                    className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                    value={newLeadEmail}
-                    onChange={(e) => setNewLeadEmail(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Target City / Territory *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Nashik, Pune (Wakad), Ranchi"
-                    className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                    value={newLeadCity}
-                    onChange={(e) => setNewLeadCity(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Investment Capacity (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ₹5 - 10 Lakhs, Owns 1500 sq ft warehouse"
-                    className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                    value={newLeadBudget}
-                    onChange={(e) => setNewLeadBudget(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Initial Lead Stage</label>
-                  <select
-                    className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors cursor-pointer"
-                    value={newLeadStatus}
-                    onChange={(e) => setNewLeadStatus(e.target.value as any)}
-                  >
-                    <option value="new">New Lead (Not Contacted)</option>
-                    <option value="contacted">In Discussion / Contacted</option>
-                    <option value="converted">Approved / Partner Converted</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Meeting Notes & Discussion</label>
-                  <textarea
-                    rows={3}
-                    placeholder="e.g. Discussed dark store model in College Road. Has 3 delivery vans."
-                    className="w-full p-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors resize-none"
-                    value={newLeadMessage}
-                    onChange={(e) => setNewLeadMessage(e.target.value)}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={newLeadSaving}
-                  className="w-full h-11 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl font-bold shadow-md shadow-emerald-500/15 flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
-                >
-                  <Plus className="w-4 h-4" /> {newLeadSaving ? 'Saving Lead…' : 'Record & Save Lead'}
-                </button>
-              </form>
-            </section>
-
-          </div>
-        )}
-
-        {/* 6. BULK SKU LOADER TAB */}
-        {activeTab === 'bulk-loader' && (
-          <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl max-w-md shadow-xl">
-            <div className="flex items-center gap-2.5 mb-6">
-              <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-              <h2 className="text-lg font-bold text-white">Bulk Inventory Loader</h2>
-            </div>
-
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-sm font-bold text-slate-200">1. Download Template Sheet</h3>
-                <p className="text-xs text-slate-500">Download the standard layout template containing configurations schema.</p>
-                <button
-                  onClick={handleDownloadTemplate}
-                  className="w-full py-2.5 border-2 border-dashed border-slate-800 hover:border-emerald-500 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                >
-                  <Download className="w-4 h-4" /> Download template.xlsx
-                </button>
-              </div>
-
-              <hr className="border-slate-850" />
-
-              <form onSubmit={handleExcelUpload} className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-200">2. Upload Spreadsheet</h3>
-                <p className="text-xs text-slate-500">Select the updated spreadsheet file containing SKUs to upload.</p>
-                
-                <div className="relative border-2 border-dashed border-slate-850 hover:border-slate-700 rounded-2xl p-6 text-center cursor-pointer">
-                  <input
-                    type="file"
-                    accept=".xlsx, .xls"
-                    onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <Upload className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                  <p className="text-sm font-bold text-slate-300">
-                    {excelFile ? excelFile.name : 'Choose Excel File'}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">supports .xlsx up to 5MB</p>
-                </div>
-
-                {excelError && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/15 text-xs text-red-400 rounded-xl">
-                    {excelError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={uploadingExcel || !excelFile}
-                  className={`w-full h-11 rounded-full font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                    excelFile ? 'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg shadow-emerald-500/10' : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                  }`}
-                >
-                  {uploadingExcel ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Start Bulk Import'}
-                </button>
-              </form>
-
-              {excelReport && (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/15 rounded-2xl space-y-3">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                    <CheckCircle className="w-4 h-4" /> Bulk Import Finished
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/10">
-                      <p className="text-slate-500">Processed</p>
-                      <p className="text-base font-bold text-slate-200">{excelReport.rows_processed}</p>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/10">
-                      <p className="text-slate-500">Created</p>
-                      <p className="text-base font-bold text-emerald-400">{excelReport.created}</p>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/10">
-                      <p className="text-slate-500">Updated</p>
-                      <p className="text-base font-bold text-blue-400">{excelReport.updated}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* 7. CITIES & LOCALITIES TAB */}
-        {activeTab === 'cities-areas' && (
-          <div className="space-y-6 w-full">
-            {/* Top Overview Banner & Hierarchy Flow */}
-            <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-emerald-950/20 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-emerald-400" /> Territory & Delivery Hierarchy
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Structure states, districts, cities, and pincode-level delivery localities for order routing.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('locations')}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all w-fit cursor-pointer"
-                >
-                  Map to Merchant Shops →
-                </button>
-              </div>
-
-              {/* 4 Stat Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                <div className="bg-slate-950/60 p-3 sm:p-3.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">1. States</p>
-                    <p className="text-base sm:text-lg font-bold text-white mt-0.5">{adminStates.length}</p>
-                  </div>
-                  <span className="text-xl">🇮🇳</span>
-                </div>
-                <div className="bg-slate-950/60 p-3 sm:p-3.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">2. Districts</p>
-                    <p className="text-base sm:text-lg font-bold text-teal-400 mt-0.5">{adminDistricts.length}</p>
-                  </div>
-                  <span className="text-xl">📍</span>
-                </div>
-                <div className="bg-slate-950/60 p-3 sm:p-3.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">3. Cities</p>
-                    <p className="text-base sm:text-lg font-bold text-cyan-400 mt-0.5">{cities.length}</p>
-                  </div>
-                  <span className="text-xl">🏙️</span>
-                </div>
-                <div className="bg-slate-950/60 p-3 sm:p-3.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">4. Localities (PINs)</p>
-                    <p className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5">{areas.length}</p>
-                  </div>
-                  <span className="text-xl">🚚</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2-Column Responsive Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-              
-              {/* LEFT COLUMN: Administrative Hierarchy (States & Districts) */}
-              <div className="lg:col-span-6 space-y-5">
-                
-                {/* 1. STATES CARD */}
-                <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400 text-xs">🏛️</span>
-                      <h3 className="text-sm sm:text-base font-bold text-white">Registered States</h3>
-                    </div>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full">
-                      {adminStates.length} Total
-                    </span>
-                  </div>
-
-                  {/* Add State Form */}
-                  <form onSubmit={handleAddState} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="State name (e.g. Maharashtra, Jharkhand)"
-                      className="flex-1 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                      value={newStateName}
-                      onChange={(e) => setNewStateName(e.target.value)}
-                    />
-                    <button
-                      type="submit"
-                      className="h-10 px-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/15 flex items-center gap-1.5 transition-all cursor-pointer flex-shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add
-                    </button>
-                  </form>
-
-                  {/* Search Filter if > 3 */}
-                  {adminStates.length > 3 && (
-                    <input
-                      type="text"
-                      placeholder="Filter states..."
-                      className="w-full h-8 px-3 bg-slate-950/60 border border-slate-850 text-slate-300 focus:border-emerald-500/50 rounded-lg text-xs outline-none"
-                      value={searchStateQuery}
-                      onChange={(e) => setSearchStateQuery(e.target.value)}
-                    />
-                  )}
-
-                  {/* States List */}
-                  <div className="divide-y divide-slate-800/40 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-                    {adminStates
-                      .filter((s) => s.name.toLowerCase().includes(searchStateQuery.toLowerCase()))
-                      .map((state) => {
-                        const districtCount = adminDistricts.filter((d) => d.state_id === state.id).length;
-                        return (
-                          <div key={state.id} className="flex justify-between items-center py-2.5 px-2 hover:bg-slate-800/20 rounded-lg transition-colors">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0"></span>
-                              <span className="text-xs sm:text-sm font-semibold text-slate-200">{state.name}</span>
-                              <span className="text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">
-                                {districtCount} {districtCount === 1 ? 'district' : 'districts'}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteState(state.id)}
-                              className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
-                              title={`Delete ${state.name}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    {adminStates.length === 0 && (
-                      <p className="text-xs text-slate-500 py-6 italic text-center">No states registered yet.</p>
-                    )}
-                  </div>
-                </section>
-
-                {/* 2. DISTRICTS CARD */}
-                <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400 text-xs">📍</span>
-                      <h3 className="text-sm sm:text-base font-bold text-white">Registered Districts</h3>
-                    </div>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full">
-                      {adminDistricts.length} Total
-                    </span>
-                  </div>
-
-                  {/* Add District Form */}
-                  <form onSubmit={handleAddDistrict} className="space-y-2.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <select
-                        className="h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors cursor-pointer"
-                        value={selectedStateForDistrict}
-                        onChange={(e) => setSelectedStateForDistrict(e.target.value)}
-                      >
-                        <option value="">-- Choose State --</option>
-                        {adminStates.map((state) => (
-                          <option key={state.id} value={state.id}>{state.name}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="District name (e.g. Pune)"
-                        className="h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                        value={newDistrictName}
-                        onChange={(e) => setNewDistrictName(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full h-10 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-500/15 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add District to State
-                    </button>
-                  </form>
-
-                  {/* Search Filter if > 3 */}
-                  {adminDistricts.length > 3 && (
-                    <input
-                      type="text"
-                      placeholder="Filter districts or states..."
-                      className="w-full h-8 px-3 bg-slate-950/60 border border-slate-850 text-slate-300 focus:border-emerald-500/50 rounded-lg text-xs outline-none"
-                      value={searchDistrictQuery}
-                      onChange={(e) => setSearchDistrictQuery(e.target.value)}
-                    />
-                  )}
-
-                  {/* Districts List */}
-                  <div className="divide-y divide-slate-800/40 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-                    {adminDistricts
-                      .filter((d) => {
-                        const matchedState = adminStates.find((s) => s.id === d.state_id);
-                        const q = searchDistrictQuery.toLowerCase();
-                        return d.name.toLowerCase().includes(q) || (matchedState?.name || '').toLowerCase().includes(q);
-                      })
-                      .map((district) => {
-                        const matchedState = adminStates.find((s) => s.id === district.state_id);
-                        return (
-                          <div key={district.id} className="flex justify-between items-center py-2.5 px-2 hover:bg-slate-800/20 rounded-lg transition-colors">
-                            <div>
-                              <p className="text-xs sm:text-sm font-semibold text-slate-200">{district.name}</p>
-                              <span className="inline-block text-[10px] font-bold text-teal-400 bg-teal-500/10 px-1.5 py-0.2 rounded border border-teal-500/20 mt-0.5">
-                                {matchedState?.name || 'Unknown State'}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteDistrict(district.id)}
-                              className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
-                              title={`Delete ${district.name}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    {adminDistricts.length === 0 && (
-                      <p className="text-xs text-slate-500 py-6 italic text-center">No districts registered yet.</p>
-                    )}
-                  </div>
-                </section>
-              </div>
-
-              {/* RIGHT COLUMN: Operating Delivery Locations (Cities & Localities) */}
-              <div className="lg:col-span-6 space-y-5">
-                
-                {/* 3. CITIES CARD */}
-                <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 bg-cyan-500/10 rounded-lg text-cyan-400 text-xs">🏙️</span>
-                      <h3 className="text-sm sm:text-base font-bold text-white">Registered Operating Cities</h3>
-                    </div>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full">
-                      {cities.length} Total
-                    </span>
-                  </div>
-
-                  {/* Add City Form */}
-                  <form onSubmit={handleAddCity} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="City name (e.g. Pune, Nashik, Ranchi)"
-                      className="flex-1 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                      value={newCityName}
-                      onChange={(e) => setNewCityName(e.target.value)}
-                    />
-                    <button
-                      type="submit"
-                      className="h-10 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-cyan-500/15 flex items-center gap-1.5 transition-all cursor-pointer flex-shrink-0"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add
-                    </button>
-                  </form>
-
-                  {/* Search Filter if > 3 */}
-                  {cities.length > 3 && (
-                    <input
-                      type="text"
-                      placeholder="Filter cities..."
-                      className="w-full h-8 px-3 bg-slate-950/60 border border-slate-850 text-slate-300 focus:border-cyan-500/50 rounded-lg text-xs outline-none"
-                      value={searchCityQuery}
-                      onChange={(e) => setSearchCityQuery(e.target.value)}
-                    />
-                  )}
-
-                  {/* Cities List */}
-                  <div className="divide-y divide-slate-800/40 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-                    {cities
-                      .filter((c) => c.name.toLowerCase().includes(searchCityQuery.toLowerCase()))
-                      .map((city) => {
-                        const areaCount = areas.filter((a) => a.city_id === city.id).length;
-                        return (
-                          <div key={city.id} className="flex justify-between items-center py-2.5 px-2 hover:bg-slate-800/20 rounded-lg transition-colors">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0"></span>
-                              <span className="text-xs sm:text-sm font-semibold text-slate-200">{city.name}</span>
-                              <span className="text-[10px] text-slate-500 bg-slate-950 px-2 py-0.5 rounded border border-slate-850">
-                                {areaCount} {areaCount === 1 ? 'area' : 'areas'}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCity(city.id)}
-                              className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
-                              title={`Delete ${city.name}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    {cities.length === 0 && (
-                      <p className="text-xs text-slate-500 py-6 italic text-center">No cities registered yet.</p>
-                    )}
-                  </div>
-                </section>
-
-                {/* 4. LOCALITIES & PIN CODES CARD */}
-                <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 md:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400 text-xs">🚚</span>
-                      <h3 className="text-sm sm:text-base font-bold text-white">Delivery Localities & PINs</h3>
-                    </div>
-                    <span className="text-[11px] font-bold px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full">
-                      {areas.length} Total
-                    </span>
-                  </div>
-
-                  {/* Add Area Form */}
-                  <form onSubmit={handleAddArea} className="space-y-2.5">
-                    <select
-                      className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors cursor-pointer"
-                      value={selectedCityId}
-                      onChange={(e) => setSelectedCityId(e.target.value)}
-                    >
-                      <option value="">-- Select Registered City --</option>
-                      {cities.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                      <div className="sm:col-span-8">
-                        <input
-                          type="text"
-                          placeholder="Locality name (e.g. College Road, Wakad)"
-                          className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none transition-colors"
-                          value={newAreaName}
-                          onChange={(e) => setNewAreaName(e.target.value)}
-                        />
-                      </div>
-                      <div className="sm:col-span-4">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={6}
-                          placeholder="PIN (411045)"
-                          className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none font-mono text-center transition-colors"
-                          value={newAreaPincode}
-                          onChange={(e) => setNewAreaPincode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full h-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/15 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Locality & PIN Code
-                    </button>
-                  </form>
-
-                  {/* Search Filter if > 3 */}
-                  {areas.length > 3 && (
-                    <input
-                      type="text"
-                      placeholder="Filter by locality, city, or PIN code..."
-                      className="w-full h-8 px-3 bg-slate-950/60 border border-slate-850 text-slate-300 focus:border-emerald-500/50 rounded-lg text-xs outline-none"
-                      value={searchAreaQuery}
-                      onChange={(e) => setSearchAreaQuery(e.target.value)}
-                    />
-                  )}
-
-                  {/* Areas List */}
-                  <div className="divide-y divide-slate-800/40 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-                    {areas
-                      .filter((area) => {
-                        const matchedCity = cities.find((c) => c.id === area.city_id);
-                        const pin = (area as any).pincode || '';
-                        const q = searchAreaQuery.toLowerCase();
-                        return (
-                          area.name.toLowerCase().includes(q) ||
-                          (matchedCity?.name || '').toLowerCase().includes(q) ||
-                          pin.includes(q)
-                        );
-                      })
-                      .map((area) => {
-                        const matchedCity = cities.find((c) => c.id === area.city_id);
-                        const pin = (area as any).pincode as string | null | undefined;
-                        return (
-                          <div key={area.id} className="flex justify-between items-center py-2.5 px-2 hover:bg-slate-800/20 rounded-lg transition-colors">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="text-xs sm:text-sm font-semibold text-slate-200">{area.name}</p>
-                                {pin ? (
-                                  <span className="font-mono text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded">
-                                    {pin}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="text-[10px] text-slate-500 font-medium mt-0.5">
-                                {matchedCity?.name || 'Unknown City'}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteArea(area.id)}
-                              className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
-                              title={`Delete ${area.name}`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    {areas.length === 0 && (
-                      <p className="text-xs text-slate-500 py-6 italic text-center">No localities registered yet.</p>
-                    )}
-                  </div>
-                </section>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* 8. SKU REQUESTS TAB */}
-        {activeTab === 'sku-requests' && (
-          <section className="bg-slate-900/40 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-400" /> Merchant SKU Requests
-              </h2>
-              <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
-            </div>
-            <p className="text-sm text-slate-500 mb-6">
-              Upload a product PNG to approve. The SKU is added only to the requesting shop&apos;s inventory.
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-3">Merchant / Shop</th>
-                    <th className="pb-3">Product Name</th>
-                    <th className="pb-3">Unit</th>
-                    <th className="pb-3">Category</th>
-                    <th className="pb-3">Brand</th>
-                    <th className="pb-3">MRP (Master)</th>
-                    <th className="pb-3">Highlights</th>
-                    <th className="pb-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30 text-sm">
-                  {skuRequests.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-800/20 transition-colors">
-                      <td className="py-4 pr-3 font-semibold text-slate-200">{req.shop_name}</td>
-                      <td className="py-4 pr-3 font-semibold text-white">{req.product_name}</td>
-                      <td className="py-4 pr-3 text-slate-400">{req.unit || '—'}</td>
-                      <td className="py-4 pr-3 text-slate-400">{req.category}</td>
-                      <td className="py-4 pr-3 text-slate-400">{req.brand}</td>
-                      <td className="py-4 pr-3 text-slate-300">₹{req.mrp}</td>
-                      <td className="py-4 pr-3 text-slate-400 max-w-[200px] truncate" title={req.description || req.short_description || ''}>
-                        {req.description || req.short_description || '—'}
-                      </td>
-                      <td className="py-4 text-right space-x-2">
-                        <button
-                          type="button"
-                          onClick={() => openSkuApproveModal(req)}
-                          className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateSkuRequestStatus(req.id, 'rejected')}
-                          className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
-                        >
-                          Reject
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {skuRequests.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-6 text-center text-slate-500 italic">No pending SKU requests found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-
-        {/* 9. CATEGORIES MANAGEMENT TAB */}
-        {activeTab === 'categories-admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
-            <section className="lg:col-span-2 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-emerald-400" /> Platform Categories & Subcategories
-                </h2>
-                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
-              </div>
-              <p className="text-sm text-slate-500 mb-6">
-                Primary category tiles appear on Home and Categories tab. Subcategories power the left sidebar when customers browse a category.
-              </p>
-              <div className="space-y-4">
-                {categoriesList.map((cat) => {
-                  const catSubs = getSubcategoriesForCategory(cat.id);
-                  const expanded = expandedCategoryId === cat.id;
-                  return (
-                    <div key={cat.id} className="rounded-2xl border border-slate-800/80 bg-slate-950/30 overflow-hidden">
-                      <div className="flex items-center gap-4 p-4">
-                        <div className="w-14 h-14 rounded-xl bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
-                          {cat.image_url ? (
-                            <img src={cat.image_url} alt={cat.name} className="w-full h-full object-contain p-1" />
-                          ) : (
-                            <span className="text-[10px] text-slate-500 font-bold uppercase">No PNG</span>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white">{cat.name}</div>
-                          <div className="text-xs text-slate-500 mt-0.5">{catSubs.length} subcategories</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedCategoryId(expanded ? null : cat.id)}
-                            className="text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all cursor-pointer"
-                          >
-                            {expanded ? 'Hide' : 'Manage'}
-                          </button>
-                          <label
-                            className={`text-xs font-bold px-3 py-2 rounded-xl border border-slate-700 text-emerald-400 hover:bg-emerald-500/10 transition-all cursor-pointer ${
-                              categoryImageUploadingId === cat.id ? 'opacity-60 pointer-events-none' : ''
-                            }`}
-                          >
-                            {categoryImageUploadingId === cat.id ? 'Uploading…' : 'PNG'}
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleCategoryImageChange(cat.id, file);
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-                          <button
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {expanded && (
-                        <div className="border-t border-slate-800/80 bg-slate-900/40 p-4">
-                          {catSubs.length === 0 ? (
-                            <p className="text-sm text-slate-500 italic mb-3">No subcategories yet. Add one using the form on the right.</p>
-                          ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                              {catSubs.map((sub) => (
-                                <div key={sub.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-                                  <div className="w-10 h-10 rounded-lg bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
-                                    {sub.image_url ? (
-                                      <img src={sub.image_url} alt={sub.name} className="w-full h-full object-contain p-0.5" />
-                                    ) : (
-                                      <span className="text-[9px] text-slate-500 font-bold">ICON</span>
-                                    )}
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-semibold text-white truncate">{sub.name}</div>
-                                  </div>
-                                  <label
-                                    className={`text-[10px] font-bold px-2 py-1.5 rounded-lg border border-slate-700 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer ${
-                                      subcategoryImageUploadingId === sub.id ? 'opacity-60 pointer-events-none' : ''
-                                    }`}
-                                  >
-                                    {subcategoryImageUploadingId === sub.id ? '…' : 'PNG'}
-                                    <input
-                                      type="file"
-                                      accept="image/png,image/jpeg,image/webp"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleSubcategoryImageChange(sub.id, file);
-                                        e.target.value = '';
-                                      }}
-                                    />
-                                  </label>
-                                  <button
-                                    onClick={() => handleDeleteSubcategory(sub.id)}
-                                    className="text-red-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-500/10 cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setNewSubcategoryCategoryId(cat.id)}
-                            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer"
-                          >
-                            + Add subcategory to {cat.name}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {categoriesList.length === 0 && (
-                  <p className="py-6 text-center text-slate-500 italic">No categories found in database.</p>
-                )}
-              </div>
-            </section>
-
-            <div className="space-y-6">
-              <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
-                <h2 className="text-lg font-bold text-white mb-2">Create New Category</h2>
-                <p className="text-sm text-slate-500 mb-6">Optional tile PNG — same flow as master catalog image upload.</p>
-                <form onSubmit={handleCreateCategory} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Category Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Dry Fruits, Gourmet Oils"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tile PNG (optional)</label>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => setNewCategoryImageFile(e.target.files?.[0] ?? null)}
-                      className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={newCategoryImageUploading}
-                    className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" /> {newCategoryImageUploading ? 'Uploading…' : 'Add Category'}
-                  </button>
-                </form>
-              </section>
-
-              <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
-                <h2 className="text-lg font-bold text-white mb-2">Add Subcategory</h2>
-                <p className="text-sm text-slate-500 mb-6">
-                  Shown in the customer app left sidebar when browsing that category.
-                </p>
-                <form onSubmit={handleCreateSubcategory} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parent Category *</label>
-                    <select
-                      required
-                      value={newSubcategoryCategoryId}
-                      onChange={(e) => setNewSubcategoryCategoryId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                    >
-                      <option value="">-- Choose Category --</option>
-                      {categoriesList.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Subcategory Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Atta, Rice, Mustard Oil"
-                      value={newSubcategoryName}
-                      onChange={(e) => setNewSubcategoryName(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sidebar Icon PNG (optional)</label>
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      onChange={(e) => setNewSubcategoryImageFile(e.target.files?.[0] ?? null)}
-                      className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={newSubcategorySaving}
-                    className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" /> {newSubcategorySaving ? 'Saving…' : 'Add Subcategory'}
-                  </button>
-                </form>
-              </section>
-            </div>
-          </div>
-        )}
-
-        {/* 10. MASTER CATALOGUE TAB */}
-        {activeTab === 'master-catalog' && (
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 max-w-7xl">
-            {/* Products Table (Span 3) */}
-            <section className="xl:col-span-3 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl font-sans">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Package className="w-5 h-5 text-emerald-400" /> Master Catalogue Products
-                </h2>
-                <button onClick={fetchData} className="text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer">Refresh</button>
-              </div>
-              <div className="overflow-x-auto max-h-[640px] overflow-y-auto pr-1">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Product Info</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Pack Size</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">SKU</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Brand</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">MRP (Master)</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Category</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10">Subcategory</th>
-                      <th className="pb-3 sticky top-0 bg-[#131c2e] border-b border-slate-800/85 z-10 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/30 text-sm">
-                    {masterProductsList.map((prod) => (
-                      <tr key={prod.id} className="hover:bg-slate-800/20 transition-colors">
-                        <td className="py-4 pr-3">
-                          <div className="flex items-center gap-3">
-                            {prod.image_url && (
-                              <img src={prod.image_url} alt={prod.name} className="w-10 h-10 object-contain rounded-lg bg-white/5 border border-slate-800" />
-                            )}
-                            <div>
-                              <p className="font-bold text-white leading-tight">{prod.name}</p>
-                              <p className="text-[10px] text-slate-500">{prod.brand || 'Unbranded'}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 pr-3">
-                          <button
-                            type="button"
-                            onClick={() => openPackEditModal(prod)}
-                            className="text-left group cursor-pointer"
-                          >
-                            <span className="font-semibold text-emerald-300 group-hover:text-emerald-200">
-                              {resolvePackUnitLabel(prod) || '—'}
-                            </span>
-                            <span className="block text-[10px] text-slate-500 group-hover:text-slate-400">Edit pack</span>
-                          </button>
-                        </td>
-                        <td className="py-4 pr-3 text-slate-300 font-semibold">{prod.sku}</td>
-                        <td className="py-4 pr-3 text-slate-400">{prod.brand || '-'}</td>
-                        <td className="py-4 pr-3 text-slate-200">₹{prod.mrp}</td>
-                        <td className="py-4 pr-3">
-                          <select
-                            value={prod.primary_category || ''}
-                            onChange={(e) => handleUpdateProductCategory(prod.id, e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                          >
-                            <option value="">-- Unassigned --</option>
-                            {categoriesList.map((cat) => (
-                              <option key={cat.id} value={cat.name}>{cat.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-4 pr-3">
-                          <select
-                            value={prod.secondary_category || ''}
-                            onChange={(e) => handleUpdateProductSubcategory(prod.id, e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[140px]"
-                          >
-                            <option value="">-- None --</option>
-                            {getSubcategoriesForCategoryName(prod.primary_category || '').map((sub) => (
-                              <option key={sub.id} value={sub.name}>{sub.name}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-4 text-right">
-                          <button
-                            onClick={() => handleDeleteProduct(prod.id)}
-                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 p-2 rounded-xl transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {masterProductsList.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="py-6 text-center text-slate-500 italic">No products found in catalogue. Use Bulk Excel Loader or create one on the right.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            {/* Create Product Panel */}
-            <section className="bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl h-fit">
-              <h2 className="text-lg font-bold text-white mb-6 font-sans">Add New Product</h2>
-              <form onSubmit={handleCreateProduct} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Name (Base Name) *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Fortune Soya Health Oil"
-                    value={newProdName}
-                    onChange={(e) => setNewProdName(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Brand</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Fortune"
-                      value={newProdBrand}
-                      onChange={(e) => setNewProdBrand(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Company</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Adani Wilmar"
-                      value={newProdCompany}
-                      onChange={(e) => setNewProdCompany(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Category Assignment *</label>
-                  <select
-                    required
-                    value={newProdCategory}
-                    onChange={(e) => {
-                      setNewProdCategory(e.target.value);
-                      setNewProdSubcategory('');
-                    }}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                  >
-                    <option value="">-- Choose Category --</option>
-                    {categoriesList.map((cat) => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Subcategory</label>
-                  <select
-                    value={newProdSubcategory}
-                    onChange={(e) => setNewProdSubcategory(e.target.value)}
-                    disabled={!newProdCategory}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="">-- Optional --</option>
-                    {getSubcategoriesForCategoryName(newProdCategory).map((sub) => (
-                      <option key={sub.id} value={sub.name}>{sub.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Short Description</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Chakki-fresh whole wheat, no maida"
-                    value={newProdShortDescription}
-                    onChange={(e) => setNewProdShortDescription(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Highlights (Semicolon-separated ;)</label>
-                  <textarea
-                    rows={3}
-                    placeholder="e.g. Stone ground Chakki fresh; 100% whole wheat with zero maida; Milled in small batches for softness"
-                    value={newProdDescription}
-                    onChange={(e) => setNewProdDescription(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Product Image</label>
-                  <div className="flex items-center gap-3">
-                    {/* Preview */}
-                    {newProdImagePreview ? (
-                      <img src={newProdImagePreview} alt="preview" className="w-14 h-14 rounded-xl object-cover border border-slate-700 flex-shrink-0" />
-                    ) : (
-                      <div className="w-14 h-14 rounded-xl border border-dashed border-slate-700 flex items-center justify-center flex-shrink-0 bg-slate-900">
-                        <ImageIcon className="w-5 h-5 text-slate-600" />
-                      </div>
-                    )}
-                    {/* File Input */}
-                    <label className="flex-1 cursor-pointer">
-                      <div className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-400 hover:border-emerald-500 transition-colors text-center">
-                        {newProdImageUploading ? '⏳ Uploading to bucket...' : newProdImageFile ? `✅ ${newProdImageFile.name}` : '📁 Click to choose image (PNG/JPG)'}
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setNewProdImageFile(file);
-                            setNewProdImagePreview(URL.createObjectURL(file));
-                          }
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <p className="text-[10px] text-slate-600 mt-1">Image will be shared across all configured pack unit variants below.</p>
-                </div>
-
-                {/* Variants Editor Block */}
-                <div className="border-t border-slate-800/80 pt-4 mt-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">Pack Unit Variants</h3>
-                    <button
-                      type="button"
-                      onClick={() => setNewProdVariants([...newProdVariants, { sku: '', quantityValue: '', quantityUnit: 'kg', mrp: '', price: '' }])}
-                      className="text-xs font-bold px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 transition-all cursor-pointer"
-                    >
-                      + Add Pack Size
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                    {newProdVariants.map((item, idx) => (
-                      <div key={idx} className="bg-slate-950/40 p-3 rounded-xl border border-slate-800/50 space-y-2 relative">
-                        {newProdVariants.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setNewProdVariants(newProdVariants.filter((_, i) => i !== idx))}
-                            className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs font-bold"
-                          >
-                            ✕
-                          </button>
-                        )}
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Quantity</label>
-                            <input
-                              type="number"
-                              step="any"
-                              min="0"
-                              required
-                              placeholder="e.g. 5"
-                              value={item.quantityValue}
-                              onChange={(e) => {
-                                const copy = [...newProdVariants];
-                                copy[idx].quantityValue = e.target.value;
-                                if (newProdName.trim() && !copy[idx].sku) {
-                                  const baseCode = newProdName.trim().slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '');
-                                  const unitCode = `${e.target.value}${copy[idx].quantityUnit}`.toUpperCase();
-                                  copy[idx].sku = `${baseCode}-${unitCode}`;
-                                }
-                                setNewProdVariants(copy);
-                              }}
-                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Unit type</label>
-                            <select
-                              required
-                              value={item.quantityUnit}
-                              onChange={(e) => {
-                                const copy = [...newProdVariants];
-                                copy[idx].quantityUnit = e.target.value;
-                                if (newProdName.trim() && copy[idx].quantityValue) {
-                                  const baseCode = newProdName.trim().slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '');
-                                  const unitCode = `${copy[idx].quantityValue}${e.target.value}`.toUpperCase();
-                                  copy[idx].sku = `${baseCode}-${unitCode}`;
-                                }
-                                setNewProdVariants(copy);
-                              }}
-                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                            >
-                              {PACK_UNIT_OPTIONS.map((opt) => (
-                                <option key={opt.code} value={opt.code}>{opt.label}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Preview</label>
-                            <div className="h-[30px] flex items-center px-2.5 rounded-lg bg-slate-900/60 border border-slate-850 text-xs text-emerald-300 font-semibold">
-                              {item.quantityValue && item.quantityUnit
-                                ? packUnitPayloadFromInput(item.quantityValue, item.quantityUnit).unit
-                                : '—'}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Variant SKU *</label>
-                            <input
-                              type="text"
-                              required
-                              placeholder="e.g. FORT-SOYA-5L"
-                              value={item.sku}
-                              onChange={(e) => {
-                                const copy = [...newProdVariants];
-                                copy[idx].sku = e.target.value;
-                                setNewProdVariants(copy);
-                              }}
-                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Master MRP (₹)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              placeholder="e.g. 800.00"
-                              value={item.mrp}
-                              onChange={(e) => {
-                                const copy = [...newProdVariants];
-                                copy[idx].mrp = e.target.value;
-                                setNewProdVariants(copy);
-                              }}
-                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[9px] font-semibold text-slate-500 mb-1">Default Price (₹)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              required
-                              placeholder="e.g. 720.00"
-                              value={item.price}
-                              onChange={(e) => {
-                                const copy = [...newProdVariants];
-                                copy[idx].price = e.target.value;
-                                setNewProdVariants(copy);
-                              }}
-                              className="w-full bg-slate-900 border border-slate-850 rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={newProdImageUploading}
-                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
-                >
-                  <Plus className="w-4 h-4" /> Create Product & Variants
-                </button>
-              </form>
-            </section>
-          </div>
-        )}
-
-        {skuApproveRequest && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
-            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-white mb-1">Approve SKU request</h3>
-              <p className="text-xs text-slate-400 mb-4">
-                Product will be added to <span className="text-emerald-300 font-semibold">{skuApproveRequest.shop_name}</span> only.
-              </p>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 mb-4 space-y-2 text-sm">
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-500">Product</span>
-                  <span className="text-white font-semibold text-right">{skuApproveRequest.product_name}</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-500">Category</span>
-                  <span className="text-slate-200 text-right">{skuApproveRequest.category}</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-500">Pack</span>
-                  <span className="text-slate-200 text-right">{skuApproveRequest.unit || '—'}</span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-slate-500">MRP</span>
-                  <span className="text-slate-200 text-right">₹{skuApproveRequest.mrp}</span>
-                </div>
-              </div>
-
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Product PNG *
-              </label>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                disabled={skuApproveSaving}
-                onChange={(e) => {
-                  const file = e.target.files?.[0] ?? null;
-                  setSkuApproveImageFile(file);
-                  setSkuApproveImagePreview(file ? URL.createObjectURL(file) : '');
-                }}
-                className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer mb-4"
-              />
-
-              {skuApproveImagePreview ? (
-                <div className="w-28 h-28 rounded-xl border border-slate-800 bg-white/5 flex items-center justify-center overflow-hidden mb-5">
-                  <img src={skuApproveImagePreview} alt="Preview" className="w-full h-full object-contain p-1" />
-                </div>
-              ) : null}
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={closeSkuApproveModal}
-                  disabled={skuApproveSaving}
-                  className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white disabled:opacity-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={skuApproveSaving || !skuApproveImageFile}
-                  onClick={handleConfirmSkuApprove}
-                  className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 cursor-pointer"
-                >
-                  {skuApproveSaving ? 'Uploading…' : 'Approve with PNG'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {packEditProduct && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
-            <div className="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
-              <h3 className="text-lg font-bold text-white mb-1">Edit pack size</h3>
-              <p className="text-xs text-slate-400 mb-4 truncate">{packEditProduct.name}</p>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Quantity</label>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={packEditQty}
-                    onChange={(e) => setPackEditQty(e.target.value)}
-                    className="w-full mt-1 h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:border-emerald-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Unit type</label>
-                  <select
-                    value={packEditUnit}
-                    onChange={(e) => setPackEditUnit(e.target.value)}
-                    className="w-full mt-1 h-10 px-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-200 focus:border-emerald-500 outline-none cursor-pointer"
-                  >
-                    {PACK_UNIT_OPTIONS.map((opt) => (
-                      <option key={opt.code} value={opt.code}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <p className="text-sm text-emerald-300 font-semibold mb-5">
-                Customer will see: {packEditQty && packEditUnit ? packUnitPayloadFromInput(packEditQty, packEditUnit).unit : '—'}
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setPackEditProduct(null)}
-                  className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={packEditSaving}
-                  onClick={handleSavePackSize}
-                  className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 cursor-pointer"
-                >
-                  {packEditSaving ? 'Saving…' : 'Save pack size'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SHOP INVENTORY MANAGEMENT MODAL */}
-        {selectedShopForInventory && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
-            <div className="bg-[#0f172a] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-slate-800/80">
-                <div>
-                  <h3 className="text-lg font-bold text-white">Inventory: {selectedShopForInventory.shop_name}</h3>
-                  <p className="text-xs text-slate-400">Directly assign products and customize prices.</p>
-                </div>
-                <button
-                  onClick={() => setSelectedShopForInventory(null)}
-                  className="text-slate-400 hover:text-white text-sm font-bold bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
-                >
-                  Close
-                </button>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Direct Assignment Form (Col 1) */}
-                <div className="bg-slate-900/30 p-5 rounded-2xl border border-slate-800/50 h-fit space-y-4">
-                  <h4 className="font-bold text-white text-sm mb-2">➕ Assign Product to Store</h4>
-                  <form onSubmit={handleDirectAssignProduct} className="space-y-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Product SKU *</label>
-                      <select
-                        required
-                        value={assignProdId}
-                        onChange={(e) => setAssignProdId(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                      >
-                        <option value="">-- Choose Product --</option>
-                        {masterProductsList.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} · {resolvePackUnitLabel(p)} (MRP: ₹{p.mrp})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Selling Price (₹) *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        placeholder="165"
-                        value={assignProdPrice}
-                        onChange={(e) => setAssignProdPrice(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Discount %</label>
-                        <input
-                          type="number"
-                          placeholder="5"
-                          value={assignProdDiscount}
-                          onChange={(e) => setAssignProdDiscount(e.target.value)}
-                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Stock</label>
-                        <input
-                          type="number"
-                          placeholder="100"
-                          value={assignProdStock}
-                          onChange={(e) => setAssignProdStock(e.target.value)}
-                          className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
-                    >
-                      Assign SKU to Shop
-                    </button>
-                  </form>
-                </div>
-
-                {/* Assigned Items List (Col 2-3) */}
-                <div className="lg:col-span-2 space-y-4">
-                  <h4 className="font-bold text-white text-sm">Assigned Products ({shopInventoryList.length})</h4>
-                  <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[480px] overflow-y-auto pr-1">
-                    <table className="w-full text-left border-collapse bg-[#0c1220]/40 text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
-                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Product</th>
-                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Master MRP</th>
-                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Shop Price</th>
-                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Stock</th>
-                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Status</th>
-                          <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/30">
-                        {shopInventoryList.map((item) => (
-                          <tr key={item.id} className="hover:bg-slate-800/10 text-slate-200">
-                            <td className="p-3">
-                              <p className="font-bold text-white">{item.product_name}</p>
-                              <p className="text-[9px] text-slate-500">SKU: {item.sku}</p>
-                            </td>
-                            <td className="p-3 text-slate-400">₹{item.mrp}</td>
-                            <td className="p-3 font-semibold text-emerald-400">₹{item.selling_price}</td>
-                            <td className="p-3">{item.stock}</td>
-                            <td className="p-3">
-                              {item.status === 'approved' ? (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/10 text-[9px]">Approved</span>
-                              ) : (
-                                <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/10 text-[9px]">Pending</span>
-                              )}
-                            </td>
-                            <td className="p-3 text-right">
-                              <button
-                                onClick={() => handleUnassignShopProduct(item.id)}
-                                className="text-red-400 hover:text-red-500 hover:bg-red-500/15 p-1.5 rounded-lg transition-all cursor-pointer"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                        {shopInventoryList.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="p-6 text-center text-slate-500 italic">No products assigned to this shop yet.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 11. MANAGE COUPONS TAB */}
-        {activeTab === 'coupons-admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
-            {/* Create Coupon Form (Col 1) */}
-            <div className="bg-slate-900/40 p-6 rounded-3xl border border-slate-800/80 h-fit space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Ticket className="w-5 h-5 text-emerald-400" /> Create Promo Coupon
-              </h3>
-              <form onSubmit={handleCreateCoupon} className="space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Coupon Code *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. FESTIVE20"
-                    value={newCouponCode}
-                    onChange={(e) => setNewCouponCode(e.target.value.toUpperCase())}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 uppercase font-bold"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Type *</label>
-                    <select
-                      value={newCouponType}
-                      onChange={(e) => setNewCouponType(e.target.value as any)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                    >
-                      <option value="percentage">% Percentage</option>
-                      <option value="flat">₹ Flat Off</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Discount Value *</label>
-                    <input
-                      type="number"
-                      required
-                      placeholder="10"
-                      value={newCouponVal}
-                      onChange={(e) => setNewCouponVal(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Order (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="2500"
-                      value={newCouponMinOrder}
-                      onChange={(e) => setNewCouponMinOrder(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Max Discount (₹)</label>
-                    <input
-                      type="number"
-                      placeholder="300"
-                      value={newCouponMaxDiscount}
-                      onChange={(e) => setNewCouponMaxDiscount(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Description</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Save 10% on your monthly groceries"
-                    value={newCouponDesc}
-                    onChange={(e) => setNewCouponDesc(e.target.value)}
-                    className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Target Audience</label>
-                  <select
-                    value={newCouponTarget}
-                    onChange={(e) => setNewCouponTarget(e.target.value as any)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                  >
-                    <option value="all">All Customers</option>
-                    <option value="new">New Customers Only (0 orders)</option>
-                    <option value="loyal">Loyal Customers Only (1+ orders)</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">User Limit</label>
-                    <select
-                      value={newCouponUserLimit}
-                      onChange={(e) => setNewCouponUserLimit(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                    >
-                      <option value="1">Once Per User</option>
-                      <option value="2">Twice Per User</option>
-                      <option value="3">3 Times Per User</option>
-                      <option value="999">Unlimited</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Global Cap</label>
-                    <input
-                      type="number"
-                      placeholder="Unlimited"
-                      value={newCouponGlobalLimit}
-                      onChange={(e) => setNewCouponGlobalLimit(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer mt-2"
-                >
-                  Create Coupon Campaign
-                </button>
-              </form>
-            </div>
-
-            {/* Coupons List (Col 2-3) */}
-            <div className="lg:col-span-2 space-y-4">
-              <h3 className="text-base font-bold text-white">Active Promo Campaigns ({couponsList.length})</h3>
-              <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-[#0c1220]/40">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
-                      <th className="p-3">Code</th>
-                      <th className="p-3">Discount</th>
-                      <th className="p-3">Min Order</th>
-                      <th className="p-3">Target</th>
-                      <th className="p-3">Limits</th>
-                      <th className="p-3">Description</th>
-                      <th className="p-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/30 text-slate-200">
-                    {couponsList.map((cpn) => (
-                      <tr key={cpn.id} className="hover:bg-slate-800/10">
-                        <td className="p-3">
-                          <span className="px-2 py-1 bg-emerald-500/15 border border-emerald-500/20 rounded-lg text-emerald-400 font-mono font-bold">
-                            {cpn.code}
-                          </span>
-                        </td>
-                        <td className="p-3 font-semibold text-white">
-                          {cpn.discount_type === 'percentage' ? `${cpn.discount_value}% OFF` : `₹${cpn.discount_value} FLAT`}
-                        </td>
-                        <td className="p-3 text-slate-400">₹{cpn.min_order_value}</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            cpn.target_audience === 'new' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' :
-                            cpn.target_audience === 'loyal' ? 'bg-purple-500/15 text-purple-400 border border-purple-500/20' :
-                            'bg-slate-500/15 text-slate-400 border border-slate-500/20'
-                          }`}>
-                            {cpn.target_audience === 'new' ? 'New Users' :
-                             cpn.target_audience === 'loyal' ? 'Loyal' : 'All'}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-400 font-mono text-[11px]">
-                          U: {cpn.usage_limit_per_user || 1} | G: {cpn.max_global_uses || '∞'}
-                        </td>
-                        <td className="p-3 text-slate-300 max-w-xs truncate">{cpn.description}</td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleDeleteCoupon(cpn.id)}
-                            className="text-red-400 hover:text-red-500 hover:bg-red-500/15 p-1.5 rounded-lg transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {couponsList.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="p-6 text-center text-slate-500 italic">No coupons created yet.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 12. LIVE ORDERS TRACKER TAB */}
-        {activeTab === 'orders-admin' && (
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-emerald-400" /> Platform Orders ({allOrdersList.length})
-                </h3>
-                <p className="text-xs text-slate-400">Monitor and update customer orders across all stores in real-time.</p>
-              </div>
-
-              {/* Status Filter Tabs */}
-              <div className="flex flex-wrap gap-1.5 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
-                {['all', 'pending', 'confirmed', 'packing', 'out_for_delivery', 'delivered', 'cancelled'].map((st) => (
-                  <button
-                    key={st}
-                    onClick={() => setOrderStatusFilter(st)}
-                    className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer capitalize ${
-                      orderStatusFilter === st ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {st.replace(/_/g, ' ')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl bg-[#0c1220]/40">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="p-3">Order ID & Date</th>
-                    <th className="p-3">Customer & Location</th>
-                    <th className="p-3">Items Summary</th>
-                    <th className="p-3">Total Amount</th>
-                    <th className="p-3">Live Status</th>
-                    <th className="p-3 text-right">Update Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/30 text-slate-200">
-                  {allOrdersList
-                    .filter((ord) => orderStatusFilter === 'all' || ord.status === orderStatusFilter)
-                    .map((ord) => (
-                      <tr key={ord.id} className="hover:bg-slate-800/10">
-                        <td className="p-3">
-                          <p className="font-bold text-white font-mono">#{ord.id.slice(0, 8)}</p>
-                          <p className="text-[10px] text-slate-500">{new Date(ord.created_at).toLocaleDateString('en-IN')}</p>
-                        </td>
-                        <td className="p-3">
-                          <p className="font-bold text-slate-200">{ord.profiles?.name || 'Customer'}</p>
-                          <p className="text-[10px] text-slate-400">{ord.delivery_address || 'Address on file'}</p>
-                        </td>
-                        <td className="p-3 text-slate-300">
-                          {ord.order_items?.map((oi: any) => `${oi.products?.name || 'Item'} (x${oi.quantity})`).join(', ') || 'Grocery items'}
-                        </td>
-                        <td className="p-3 font-bold text-emerald-400">
-                          ₹{ord.total_amount}
-                        </td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            ord.status === 'delivered' ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400' :
-                            ord.status === 'cancelled' ? 'bg-red-500/15 border-red-500/20 text-red-400' :
-                            ord.status === 'out_for_delivery' ? 'bg-purple-500/15 border-purple-500/20 text-purple-400' :
-                            'bg-amber-500/15 border-amber-500/20 text-amber-400'
-                          }`}>
-                            {ord.status?.toUpperCase().replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right">
-                          <select
-                            value={ord.status}
-                            onChange={(e) => handleUpdateOrderStatus(ord.id, e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="packing">Packing</option>
-                            <option value="out_for_delivery">Out for Delivery</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  {allOrdersList.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-slate-500 italic">No customer orders placed yet.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
+        <div className="w-full">
+          {/* 1. SHOPS / STORES TAB */}
+          {activeTab === 'shops' && (
+            <ShopsTab
+              shops={shops}
+              adminStates={adminStates}
+              adminDistricts={adminDistricts}
+              regDistrictOptions={regDistrictOptions}
+              regShopName={regShopName}
+              setRegShopName={setRegShopName}
+              regOwnerName={regOwnerName}
+              setRegOwnerName={setRegOwnerName}
+              regOwnerMobile={regOwnerMobile}
+              setRegOwnerMobile={setRegOwnerMobile}
+              regStateId={regStateId}
+              setRegStateId={setRegStateId}
+              regDistrictId={regDistrictId}
+              setRegDistrictId={setRegDistrictId}
+              regCity={regCity}
+              setRegCity={setRegCity}
+              handleRegisterShop={handleRegisterShop}
+              handleUpdateShopStatus={handleUpdateShopStatus}
+              handleDeleteShop={handleDeleteShop}
+              fetchData={fetchData}
+              masterProductsList={masterProductsList}
+              token={token}
+            />
+          )}
+
+          {/* 2. LOCATIONS / LOCALITIES MAPPING TAB */}
+          {activeTab === 'locations' && (
+            <LocationsTab
+              locations={locations}
+              shops={shops}
+              cities={cities}
+              areas={areas}
+              locCity={locCity}
+              setLocCity={setLocCity}
+              locArea={locArea}
+              setLocArea={setLocArea}
+              locPin={locPin}
+              setLocPin={setLocPin}
+              locShop={locShop}
+              setLocShop={setLocShop}
+              handleAddLocation={handleAddLocation}
+              handleUpdateLocationShop={handleUpdateLocationShop}
+              handleDeleteLocation={handleDeleteLocation}
+            />
+          )}
+
+          {/* 3. PLATFORM ANALYTICS TAB */}
+          {activeTab === 'analytics' && (
+            <AnalyticsTab orders={orders} />
+          )}
+
+          {/* 4. FESTIVE PROMO CAMPAIGNS TAB */}
+          {activeTab === 'banners' && (
+            <BannersTab
+              banners={banners}
+              bannerTitle={bannerTitle}
+              setBannerTitle={setBannerTitle}
+              bannerImage={bannerImage}
+              setBannerImage={setBannerImage}
+              bannerLink={bannerLink}
+              setBannerLink={setBannerLink}
+              bannerKind={bannerKind}
+              setBannerKind={setBannerKind}
+              bannerSubtitle={bannerSubtitle}
+              setBannerSubtitle={setBannerSubtitle}
+              bannerBody={bannerBody}
+              setBannerBody={setBannerBody}
+              bannerCta={bannerCta}
+              setBannerCta={setBannerCta}
+              handleAddBanner={handleAddBanner}
+              handleDeleteBanner={handleDeleteBanner}
+            />
+          )}
+
+          {/* 5. APP SCREEN COPY / CONFIGURATION TAB */}
+          {activeTab === 'home-screen' && (
+            <AppScreenTab
+              token={token}
+              homeScreenDraft={homeScreenDraft}
+              setHomeScreenDraft={setHomeScreenDraft}
+              searchScreenDraft={searchScreenDraft}
+              setSearchScreenDraft={setSearchScreenDraft}
+              categoriesScreenDraft={categoriesScreenDraft}
+              setCategoriesScreenDraft={setCategoriesScreenDraft}
+              categoryProductsDraft={categoryProductsDraft}
+              setCategoryProductsDraft={setCategoryProductsDraft}
+              productDetailDraft={productDetailDraft}
+              setProductDetailDraft={setProductDetailDraft}
+              cartScreenDraft={cartScreenDraft}
+              setCartScreenDraft={setCartScreenDraft}
+              offersCouponsDraft={offersCouponsDraft}
+              setOffersCouponsDraft={setOffersCouponsDraft}
+            />
+          )}
+
+          {/* 6. FRANCHISE PARTNERSHIP INQUIRIES TAB */}
+          {activeTab === 'franchise' && (
+            <FranchiseTab
+              franchiseRequests={franchiseRequests}
+              franchiseStatusFilter={franchiseStatusFilter}
+              setFranchiseStatusFilter={setFranchiseStatusFilter}
+              searchFranchiseQuery={searchFranchiseQuery}
+              setSearchFranchiseQuery={setSearchFranchiseQuery}
+              newLeadName={newLeadName}
+              setNewLeadName={setNewLeadName}
+              newLeadPhone={newLeadPhone}
+              setNewLeadPhone={setNewLeadPhone}
+              newLeadEmail={newLeadEmail}
+              setNewLeadEmail={setNewLeadEmail}
+              newLeadCity={newLeadCity}
+              setNewLeadCity={setNewLeadCity}
+              newLeadBudget={newLeadBudget}
+              setNewLeadBudget={setNewLeadBudget}
+              newLeadMessage={newLeadMessage}
+              setNewLeadMessage={setNewLeadMessage}
+              newLeadStatus={newLeadStatus}
+              setNewLeadStatus={setNewLeadStatus}
+              newLeadSaving={newLeadSaving}
+              handleCreateFranchiseLead={handleCreateFranchiseLead}
+              handleUpdateFranchiseStatus={handleUpdateFranchiseStatus}
+              handleDeleteFranchiseLead={handleDeleteFranchiseLead}
+              fetchData={fetchData}
+            />
+          )}
+
+          {/* 7. BULK EXCEL INVENTORY LOADER TAB */}
+          {activeTab === 'bulk-loader' && (
+            <BulkLoaderTab
+              excelFile={excelFile}
+              setExcelFile={setExcelFile}
+              uploadingExcel={uploadingExcel}
+              excelReport={excelReport}
+              excelError={excelError}
+              handleDownloadTemplate={handleDownloadTemplate}
+              handleExcelUpload={handleExcelUpload}
+            />
+          )}
+
+          {/* 8. CITIES & LOCALITIES MASTER TAB */}
+          {activeTab === 'cities-areas' && (
+            <CitiesAreasTab
+              adminStates={adminStates}
+              adminDistricts={adminDistricts}
+              cities={cities}
+              areas={areas}
+              newStateName={newStateName}
+              setNewStateName={setNewStateName}
+              selectedStateForDistrict={selectedStateForDistrict}
+              setSelectedStateForDistrict={setSelectedStateForDistrict}
+              newDistrictName={newDistrictName}
+              setNewDistrictName={setNewDistrictName}
+              newCityName={newCityName}
+              setNewCityName={setNewCityName}
+              selectedCityId={selectedCityId}
+              setSelectedCityId={setSelectedCityId}
+              newAreaName={newAreaName}
+              setNewAreaName={setNewAreaName}
+              newAreaPincode={newAreaPincode}
+              setNewAreaPincode={setNewAreaPincode}
+              searchStateQuery={searchStateQuery}
+              setSearchStateQuery={setSearchStateQuery}
+              searchDistrictQuery={searchDistrictQuery}
+              setSearchDistrictQuery={setSearchDistrictQuery}
+              searchCityQuery={searchCityQuery}
+              setSearchCityQuery={setSearchCityQuery}
+              searchAreaQuery={searchAreaQuery}
+              setSearchAreaQuery={setSearchAreaQuery}
+              handleAddState={handleAddState}
+              handleDeleteState={handleDeleteState}
+              handleAddDistrict={handleAddDistrict}
+              handleDeleteDistrict={handleDeleteDistrict}
+              handleAddCity={handleAddCity}
+              handleDeleteCity={handleDeleteCity}
+              handleAddArea={handleAddArea}
+              handleDeleteArea={handleDeleteArea}
+              setActiveTab={setActiveTab}
+            />
+          )}
+
+          {/* 9. SKU REQUESTS TAB */}
+          {activeTab === 'sku-requests' && (
+            <SkuRequestsTab
+              skuRequests={skuRequests}
+              fetchData={fetchData}
+              openSkuApproveModal={openSkuApproveModal}
+              handleUpdateSkuRequestStatus={handleUpdateSkuRequestStatus}
+              skuApproveRequest={skuApproveRequest}
+              skuApproveSaving={skuApproveSaving}
+              skuApproveImageFile={skuApproveImageFile}
+              skuApproveImagePreview={skuApproveImagePreview}
+              setSkuApproveImageFile={setSkuApproveImageFile}
+              setSkuApproveImagePreview={setSkuApproveImagePreview}
+              closeSkuApproveModal={closeSkuApproveModal}
+              handleConfirmSkuApprove={handleConfirmSkuApprove}
+            />
+          )}
+
+          {/* 10. CATEGORIES MANAGEMENT TAB */}
+          {activeTab === 'categories-admin' && (
+            <CategoriesAdminTab
+              categoriesList={categoriesList}
+              fetchData={fetchData}
+              expandedCategoryId={expandedCategoryId}
+              setExpandedCategoryId={setExpandedCategoryId}
+              getSubcategoriesForCategory={getSubcategoriesForCategory}
+              categoryImageUploadingId={categoryImageUploadingId}
+              subcategoryImageUploadingId={subcategoryImageUploadingId}
+              handleCategoryImageChange={handleCategoryImageChange}
+              handleSubcategoryImageChange={handleSubcategoryImageChange}
+              handleDeleteCategory={handleDeleteCategory}
+              handleDeleteSubcategory={handleDeleteSubcategory}
+              newCategoryName={newCategoryName}
+              setNewCategoryName={setNewCategoryName}
+              newCategoryImageUploading={newCategoryImageUploading}
+              setNewCategoryImageFile={setNewCategoryImageFile}
+              handleCreateCategory={handleCreateCategory}
+              newSubcategoryCategoryId={newSubcategoryCategoryId}
+              setNewSubcategoryCategoryId={setNewSubcategoryCategoryId}
+              newSubcategoryName={newSubcategoryName}
+              setNewSubcategoryName={setNewSubcategoryName}
+              setNewSubcategoryImageFile={setNewSubcategoryImageFile}
+              newSubcategorySaving={newSubcategorySaving}
+              handleCreateSubcategory={handleCreateSubcategory}
+            />
+          )}
+
+          {/* 11. MASTER CATALOGUE TAB */}
+          {activeTab === 'master-catalog' && (
+            <MasterCatalogTab
+              masterProductsList={masterProductsList}
+              categoriesList={categoriesList}
+              getSubcategoriesForCategoryName={getSubcategoriesForCategoryName}
+              fetchData={fetchData}
+              openPackEditModal={openPackEditModal}
+              handleUpdateProductCategory={handleUpdateProductCategory}
+              handleUpdateProductSubcategory={handleUpdateProductSubcategory}
+              handleDeleteProduct={handleDeleteProduct}
+              newProdName={newProdName}
+              setNewProdName={setNewProdName}
+              newProdBrand={newProdBrand}
+              setNewProdBrand={setNewProdBrand}
+              newProdCompany={newProdCompany}
+              setNewProdCompany={setNewProdCompany}
+              newProdCategory={newProdCategory}
+              setNewProdCategory={setNewProdCategory}
+              newProdSubcategory={newProdSubcategory}
+              setNewProdSubcategory={setNewProdSubcategory}
+              newProdShortDescription={newProdShortDescription}
+              setNewProdShortDescription={setNewProdShortDescription}
+              newProdDescription={newProdDescription}
+              setNewProdDescription={setNewProdDescription}
+              newProdImageFile={newProdImageFile}
+              setNewProdImageFile={setNewProdImageFile}
+              newProdImagePreview={newProdImagePreview}
+              setNewProdImagePreview={setNewProdImagePreview}
+              newProdImageUploading={newProdImageUploading}
+              newProdVariants={newProdVariants}
+              setNewProdVariants={setNewProdVariants}
+              handleCreateProduct={handleCreateProduct}
+              packEditProduct={packEditProduct}
+              packEditQty={packEditQty}
+              setPackEditQty={setPackEditQty}
+              packEditUnit={packEditUnit}
+              setPackEditUnit={setPackEditUnit}
+              packEditSaving={packEditSaving}
+              setPackEditProduct={setPackEditProduct}
+              handleSavePackSize={handleSavePackSize}
+            />
+          )}
+
+          {/* 12. MANAGE COUPONS TAB */}
+          {activeTab === 'coupons-admin' && (
+            <CouponsAdminTab
+              couponsList={couponsList}
+              newCouponCode={newCouponCode}
+              setNewCouponCode={setNewCouponCode}
+              newCouponType={newCouponType}
+              setNewCouponType={setNewCouponType}
+              newCouponVal={newCouponVal}
+              setNewCouponVal={setNewCouponVal}
+              newCouponMinOrder={newCouponMinOrder}
+              setNewCouponMinOrder={setNewCouponMinOrder}
+              newCouponMaxDiscount={newCouponMaxDiscount}
+              setNewCouponMaxDiscount={setNewCouponMaxDiscount}
+              newCouponDesc={newCouponDesc}
+              setNewCouponDesc={setNewCouponDesc}
+              newCouponTarget={newCouponTarget}
+              setNewCouponTarget={setNewCouponTarget}
+              newCouponUserLimit={newCouponUserLimit}
+              setNewCouponUserLimit={setNewCouponUserLimit}
+              newCouponGlobalLimit={newCouponGlobalLimit}
+              setNewCouponGlobalLimit={setNewCouponGlobalLimit}
+              handleCreateCoupon={handleCreateCoupon}
+              handleDeleteCoupon={handleDeleteCoupon}
+            />
+          )}
+
+          {/* 13. LIVE ORDERS TRACKER TAB */}
+          {activeTab === 'orders-admin' && (
+            <OrdersAdminTab
+              allOrdersList={allOrdersList}
+              orderStatusFilter={orderStatusFilter}
+              setOrderStatusFilter={setOrderStatusFilter}
+              handleUpdateOrderStatus={handleUpdateOrderStatus}
+            />
+          )}
         </div>
       </main>
     </div>
   );
 }
-

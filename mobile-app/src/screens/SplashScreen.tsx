@@ -22,8 +22,6 @@ import {
 import {
   fetchOnboardingConfig,
   OnboardingSplashConfig,
-  hasCompletedValueIntroThisSession,
-  hasSeenValueIntro,
 } from '../services/onboardingApi';
 
 /**
@@ -92,7 +90,6 @@ export default function SplashScreen({ navigation }: any) {
 
   const [splashConfig, setSplashConfig] = useState<OnboardingSplashConfig | null>(null);
   const [configReady, setConfigReady] = useState(false);
-  const [introSeen, setIntroSeen] = useState(false);
 
   const spreadAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
@@ -103,13 +100,9 @@ export default function SplashScreen({ navigation }: any) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [config, seen] = await Promise.all([
-        fetchOnboardingConfig(),
-        hasSeenValueIntro(),
-      ]);
+      const config = await fetchOnboardingConfig();
       if (!cancelled) {
         setSplashConfig(config?.splash ?? null);
-        setIntroSeen(seen);
         setConfigReady(true);
       }
     })();
@@ -143,26 +136,20 @@ export default function SplashScreen({ navigation }: any) {
       if (hasNavigated.current) return;
       hasNavigated.current = true;
 
-      // First-time users see the value intro slides
-      if (!introSeen && !hasCompletedValueIntroThisSession()) {
-        navigation.replace('ValueIntro');
-        return;
-      }
-
-      const { token: activeToken, user: activeUser, city: activeCity, area: activeArea } = authRef.current;
-      if (activeToken && activeUser?.role === 'consumer') {
+      const { token: activeToken, city: activeCity, area: activeArea } = authRef.current;
+      if (activeToken) {
         if (!activeCity || !activeArea) {
           navigation.replace('CitySelection');
         } else {
           navigation.replace('Shop');
         }
       } else {
-        navigation.replace('Login');
+        navigation.replace('ValueIntro');
       }
     }, 2200);
 
     return () => clearTimeout(timer);
-  }, [configReady, introSeen, navigation, spreadAnim, contentAnim]);
+  }, [configReady, navigation, spreadAnim, contentAnim]);
 
   const chips = splashConfig?.emoji_chips ?? [];
   const showContent = splashConfig !== null;

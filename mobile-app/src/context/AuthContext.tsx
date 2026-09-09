@@ -65,17 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // 1. Immediately restore cached session so app doesn't flicker or lose state
         if (savedToken) {
           setToken(savedToken);
           if (savedUserStr) {
             try {
-              const parsedUser = JSON.parse(savedUserStr);
-              setUser(parsedUser);
+              setUser(JSON.parse(savedUserStr));
             } catch {}
           }
 
-          // 2. Safely validate session in background
           try {
             const res = await fetch(`${API_BASE}/auth/me`, {
               headers: {
@@ -83,7 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               },
             });
             if (res.status === 401 || res.status === 403) {
-              // Token explicitly expired or rejected by server
               await AsyncStorage.removeItem('@auth_token');
               await AsyncStorage.removeItem('@auth_user');
               setToken(null);
@@ -96,8 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             }
           } catch (netErr) {
-            // Keep cached token & user on temporary network/connection hiccups
-            console.log('Session verification network error (using cached auth):', netErr);
+            console.log('Background auth verify network fallback:', netErr);
           }
         }
       } catch (err) {
@@ -198,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await AsyncStorage.setItem('@auth_user', JSON.stringify(updated));
       } catch (e) {
-        console.error('Failed to save updated user:', e);
+        console.error('Failed to cache updated user:', e);
       }
     }
   };
@@ -211,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         AsyncStorage.removeItem('@user_city'),
         AsyncStorage.removeItem('@user_area'),
         AsyncStorage.removeItem('@user_pincode'),
+        AsyncStorage.removeItem('@value_intro_seen'),
       ]);
       setToken(null);
       setUser(null);

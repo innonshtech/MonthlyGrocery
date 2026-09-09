@@ -62,7 +62,7 @@ export default function ShopScreen({ navigation }: any) {
         url += `&q=${encodeURIComponent(search)}`;
       }
       url = appendLocationParams(url, { city, area, pincode });
-      
+
       const res = await fetch(url);
       const data = await res.json();
       if (res.ok && data.success) {
@@ -102,7 +102,7 @@ export default function ShopScreen({ navigation }: any) {
           <Text style={styles.brandText}>{item.brand}</Text>
           <Text style={styles.nameText} numberOfLines={2}>{item.name}</Text>
           <Text style={styles.unitText}>{item.unit}</Text>
-          
+
           <View style={styles.priceRow}>
             <View>
               <Text style={styles.priceText}>₹{item.price}</Text>
