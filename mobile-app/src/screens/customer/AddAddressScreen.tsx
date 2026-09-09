@@ -17,7 +17,6 @@ import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
-  CheckoutBackIcon,
   MapPinLargeIcon,
   TagHomeIcon,
   TagWorkIcon,
@@ -187,6 +186,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
   if (configLoading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.centered}>
           <AppLoader message="Loading..." />
         </View>
@@ -197,6 +197,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
   if (!screenConfig) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.centered}>
           <TouchableOpacity style={styles.saveBtn} onPress={() => loadConfig()}>
             <ActivityIndicator color="#FFFFFF" />
@@ -206,15 +207,24 @@ export default function AddAddressScreen({ navigation, route }: any) {
     );
   }
 
-  const headerTitle = editingAddress ? screenConfig.edit_title : screenConfig.add_title;
+  const headerTitle = editingAddress
+    ? screenConfig.edit_title || 'Edit address'
+    : screenConfig.add_title || 'Add new address';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Header section matching Figma 538:709 */}
       <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <CheckoutBackIcon size={24} />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{headerTitle}</Text>
       </View>
@@ -229,59 +239,73 @@ export default function AddAddressScreen({ navigation, route }: any) {
           <MapPinLargeIcon size={34} />
         </View>
 
+        {/* Flat / House No. & Building */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{screenConfig.flat_label}</Text>
+          <Text style={styles.fieldLabel}>
+            {screenConfig.flat_label || 'FLAT / HOUSE NO. & BUILDING'}
+          </Text>
           <TextInput
             style={styles.input}
             value={flat}
             onChangeText={setFlat}
-            placeholder={screenConfig.flat_placeholder}
+            placeholder={screenConfig.flat_placeholder || 'e.g. Flat 402, Green Meadows'}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
 
+        {/* Area / Locality */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{screenConfig.street_label}</Text>
+          <Text style={styles.fieldLabel}>
+            {screenConfig.street_label || 'AREA / LOCALITY'}
+          </Text>
           <TextInput
             style={styles.input}
             value={street}
             onChangeText={setStreet}
-            placeholder={screenConfig.street_placeholder}
+            placeholder={screenConfig.street_placeholder || 'e.g. Paud Road, Kothrud'}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
 
+        {/* Landmark (Optional) */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{screenConfig.landmark_label}</Text>
+          <Text style={styles.fieldLabel}>
+            {screenConfig.landmark_label || 'LANDMARK (OPTIONAL)'}
+          </Text>
           <TextInput
             style={styles.input}
             value={landmark}
             onChangeText={setLandmark}
-            placeholder={screenConfig.landmark_placeholder}
+            placeholder={screenConfig.landmark_placeholder || 'Near City Pride multiplex'}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
 
+        {/* Pincode & Phone */}
         <View style={styles.rowFields}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>{screenConfig.pincode_label}</Text>
+            <Text style={styles.fieldLabel}>
+              {screenConfig.pincode_label || 'PINCODE'}
+            </Text>
             <TextInput
               style={styles.input}
               value={pincode}
               onChangeText={(text) => setPincode(normalizePincode(text))}
-              placeholder={screenConfig.pincode_placeholder}
+              placeholder={screenConfig.pincode_placeholder || '411038'}
               keyboardType="number-pad"
               maxLength={6}
               placeholderTextColor={COLORS.ink300}
             />
           </View>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <Text style={styles.fieldLabel}>{screenConfig.phone_label}</Text>
+            <Text style={styles.fieldLabel}>
+              {screenConfig.phone_label || 'PHONE'}
+            </Text>
             <TextInput
               style={styles.input}
               value={phone}
               onChangeText={setPhone}
-              placeholder={screenConfig.phone_placeholder}
+              placeholder={screenConfig.phone_placeholder || 'Mobile number'}
               keyboardType="phone-pad"
               maxLength={10}
               placeholderTextColor={COLORS.ink300}
@@ -289,8 +313,11 @@ export default function AddAddressScreen({ navigation, route }: any) {
           </View>
         </View>
 
+        {/* Save As Tag Chips */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{screenConfig.save_as_label}</Text>
+          <Text style={styles.fieldLabel}>
+            {screenConfig.save_as_label || 'SAVE AS'}
+          </Text>
           <View style={styles.tagRow}>
             {tagOptions.map(({ key, label, Icon }) => {
               const selected = tag === key;
@@ -301,7 +328,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
                   onPress={() => setTag(key)}
                   activeOpacity={0.85}
                 >
-                  <Icon size={16} />
+                  <Icon size={16} color={selected ? COLORS.green700 : COLORS.ink500} />
                   <Text style={[styles.tagChipText, selected && styles.tagChipTextSelected]}>
                     {label}
                   </Text>
@@ -312,6 +339,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
         </View>
       </ScrollView>
 
+      {/* Sticky Bottom Save Button */}
       <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
         <View style={styles.bottomBar}>
           <TouchableOpacity
@@ -320,9 +348,13 @@ export default function AddAddressScreen({ navigation, route }: any) {
             disabled={saving}
             activeOpacity={0.85}
           >
-            <Text style={styles.saveBtnText}>
-              {saving ? screenConfig.saving_button_label : screenConfig.save_button_label}
-            </Text>
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>
+                {screenConfig.save_button_label || 'Save address'}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -339,24 +371,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 28,
   },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingLeft: 16,
-    paddingRight: 20,
+    paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
+    backgroundColor: SCREEN_BG,
   },
   backBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 4,
   },
   headerTitle: {
-    ...FONTS.balooSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
     lineHeight: 24,
     color: COLORS.ink900,
@@ -366,8 +399,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 24,
+    paddingTop: 10,
+    paddingBottom: 40,
     gap: 14,
   },
   mapPreview: {
@@ -378,25 +411,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   fieldGroup: {
-    gap: 6,
+    gap: 4,
   },
   fieldLabel: {
     ...FONTS.muktaBold,
     fontSize: 11,
     lineHeight: 14,
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     color: COLORS.ink500,
     textTransform: 'uppercase',
   },
   input: {
     backgroundColor: COLORS.surface,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
+    height: 48,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaRegular,
     fontSize: 14,
+    lineHeight: 20,
     color: COLORS.ink900,
   },
   rowFields: {
@@ -411,45 +445,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    height: 38,
     borderRadius: 999,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
     backgroundColor: COLORS.surface,
   },
   tagChipSelected: {
     borderColor: COLORS.green700,
-    backgroundColor: COLORS.green50,
+    borderWidth: 1.5,
+    backgroundColor: '#E4F3EA',
   },
   tagChipText: {
     ...FONTS.muktaSemiBold,
     fontSize: 13,
+    lineHeight: 16,
     color: COLORS.ink700,
   },
   tagChipTextSelected: {
     color: COLORS.green700,
   },
   bottomSafe: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderTopWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
     borderTopColor: COLORS.line,
   },
   bottomBar: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   saveBtn: {
     backgroundColor: COLORS.green700,
     borderRadius: 14,
-    height: 49,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
-    ...FONTS.balooSemiBold,
-    fontSize: 15,
-    lineHeight: 16,
+    ...FONTS.muktaBold,
+    fontSize: 16,
+    lineHeight: 22,
     color: '#FFFFFF',
   },
 });

@@ -161,9 +161,11 @@ export default function CartScreen({
     navigation.navigate('SavedBaskets', { openSave: true });
   };
 
+  const safeEdges: ('top' | 'left' | 'right')[] = setActiveTab ? ['left', 'right'] : ['top', 'left', 'right'];
+
   if (configError && !screenConfig) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safe} edges={safeEdges}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.centeredState}>
           <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
@@ -176,7 +178,7 @@ export default function CartScreen({
 
   if (configLoading && !screenConfig) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safe} edges={safeEdges}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.centeredState}>
           <AppLoader message="Loading cart..." />
@@ -187,11 +189,26 @@ export default function CartScreen({
 
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.safe} edges={safeEdges}>
         <StatusBar barStyle="dark-content" />
 
         <View style={styles.topHeader}>
-          <Text style={styles.topTitle}>{screenConfig?.title}</Text>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else if (setActiveTab) {
+                setActiveTab('Home');
+              } else {
+                navigation.navigate('Shop', { initialTab: 'Home' });
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>{screenConfig?.title || 'Your cart'}</Text>
         </View>
 
         <View style={styles.emptyWrap}>
@@ -270,12 +287,29 @@ export default function CartScreen({
       : '';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={safeEdges}>
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.topHeader}>
-        <Text style={styles.topTitle}>{screenConfig?.title}</Text>
-        {headerCountLabel ? <Text style={styles.topCount}>{headerCountLabel}</Text> : null}
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else if (setActiveTab) {
+              setActiveTab('Home');
+            } else {
+              navigation.navigate('Shop', { initialTab: 'Home' });
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <AppIcon name="chevron-left" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>{screenConfig?.title || 'Your cart'}</Text>
+        <View style={styles.topHeaderRight}>
+          {headerCountLabel ? <Text style={styles.topCount}>{headerCountLabel}</Text> : null}
+        </View>
       </View>
 
       <ScrollView
@@ -296,7 +330,7 @@ export default function CartScreen({
           </View>
         ) : (
           <View style={styles.savingsBanner}>
-            <AppIcon name="tag" size={18} color="#8A5200" />
+            <AppIcon name="sparkles" size={16} color="#D97706" />
             <Text style={styles.savingsTxt}>{savingsBannerText}</Text>
           </View>
         )}
@@ -320,7 +354,7 @@ export default function CartScreen({
                       resizeMode="contain"
                     />
                   ) : (
-                    <AppIcon name="shopping-bag" size={22} color={COLORS.green700} />
+                    <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
                   )}
                 </View>
 
@@ -342,10 +376,10 @@ export default function CartScreen({
 
         <TouchableOpacity style={styles.saveBasketRow} onPress={handleSaveBasket} activeOpacity={0.8}>
           <View style={styles.saveBasketIcon}>
-            <AppIcon name="tag" size={16} color="#FFFFFF" />
+            <AppIcon name="bookmark" size={16} color="#FFFFFF" />
           </View>
-          <Text style={styles.saveBasketTxt}>{screenConfig?.save_basket_label}</Text>
-          <AppIcon name="arrow-right" size={16} color={COLORS.green700} />
+          <Text style={styles.saveBasketTxt}>{screenConfig?.save_basket_label || 'Save this cart as a basket'}</Text>
+          <AppIcon name="chevron-right" size={16} color="#15803D" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -353,38 +387,38 @@ export default function CartScreen({
           onPress={() => navigation.navigate('OffersCoupons', { currentTotal: itemTotalPrice })}
           activeOpacity={0.8}
         >
-          <AppIcon name="tag" size={18} color={COLORS.green700} />
+          <AppIcon name="percent" size={18} color="#15803D" />
           <Text style={styles.couponTxt}>
-            {appliedCoupon ? couponAppliedLabel : screenConfig?.apply_coupon_label}
+            {appliedCoupon ? couponAppliedLabel : (screenConfig?.apply_coupon_label || 'Apply coupon')}
           </Text>
-          <AppIcon name="arrow-right" size={16} color={COLORS.ink300} />
+          <AppIcon name="chevron-right" size={16} color="#15803D" />
         </TouchableOpacity>
 
         <View style={styles.billCard}>
-          <Text style={styles.billTitle}>{screenConfig?.bill_details_title}</Text>
+          <Text style={styles.billTitle}>{screenConfig?.bill_details_title || 'Bill details'}</Text>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>{screenConfig?.bill_item_total_label}</Text>
+            <Text style={styles.billLabel}>{screenConfig?.bill_item_total_label || 'Item total (MRP)'}</Text>
             <Text style={styles.billVal}>₹{itemTotalMrp.toLocaleString('en-IN')}</Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>{screenConfig?.bill_savings_label}</Text>
+            <Text style={styles.billLabel}>{screenConfig?.bill_savings_label || 'Savings'}</Text>
             <Text style={[styles.billVal, styles.savingsVal]}>
               − ₹{totalSavings.toLocaleString('en-IN')}
             </Text>
           </View>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>{screenConfig?.bill_delivery_fee_label}</Text>
+            <Text style={styles.billLabel}>{screenConfig?.bill_delivery_fee_label || 'Delivery fee'}</Text>
             <Text style={[styles.billVal, styles.freeDeliveryVal]}>
-              {screenConfig?.bill_delivery_fee_value}
+              {screenConfig?.bill_delivery_fee_value || 'FREE'}
             </Text>
           </View>
 
           {couponDiscount > 0 && (
             <View style={styles.billRow}>
-              <Text style={styles.billLabel}>{screenConfig?.bill_coupon_discount_label}</Text>
+              <Text style={styles.billLabel}>{screenConfig?.bill_coupon_discount_label || 'Coupon discount'}</Text>
               <Text style={[styles.billVal, styles.savingsVal]}>
                 − ₹{couponDiscount.toLocaleString('en-IN')}
               </Text>
@@ -394,7 +428,7 @@ export default function CartScreen({
           <View style={styles.billDivider} />
 
           <View style={styles.billTotalRow}>
-            <Text style={styles.billTotalLabel}>{screenConfig?.bill_to_pay_label}</Text>
+            <Text style={styles.billTotalLabel}>{screenConfig?.bill_to_pay_label || 'To pay'}</Text>
             <Text style={styles.billTotalVal}>₹{toPay.toLocaleString('en-IN')}</Text>
           </View>
         </View>
@@ -402,10 +436,10 @@ export default function CartScreen({
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <View style={[styles.checkoutBar, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={[styles.checkoutBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
         <View style={styles.checkoutBarInner}>
           <View style={styles.toPayCol}>
-            <Text style={styles.toPayLabel}>{screenConfig?.sticky_to_pay_label}</Text>
+            <Text style={styles.toPayLabel}>{screenConfig?.sticky_to_pay_label || 'TO PAY'}</Text>
             <Text style={styles.toPayAmount}>₹{toPay.toLocaleString('en-IN')}</Text>
           </View>
 
@@ -419,7 +453,7 @@ export default function CartScreen({
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.checkoutBtn} onPress={handleCheckout} activeOpacity={0.85}>
-              <Text style={styles.checkoutBtnTxt}>{screenConfig?.proceed_to_pay_label}</Text>
+              <Text style={styles.checkoutBtnTxt}>{screenConfig?.proceed_to_pay_label || 'Proceed to checkout'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -443,7 +477,7 @@ export default function CartScreen({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FBFAF6',
+    backgroundColor: '#F9F9F7',
   },
   centeredState: {
     flex: 1,
@@ -464,141 +498,154 @@ const styles = StyleSheet.create({
   },
   topHeader: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 6,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 8,
-    borderBottomWidth: 1.5,
-    borderBottomColor: COLORS.line,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
   },
   topTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
+  },
+  topHeaderRight: {
+    marginLeft: 'auto',
   },
   topCount: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
+    fontSize: 13,
     color: COLORS.ink500,
   },
   scroll: { flex: 1 },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingHorizontal: 16,
+    paddingTop: 2,
   },
   emptyWrap: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 30,
+    paddingHorizontal: 24,
+    paddingTop: 36,
   },
   emptyIconContainer: {
-    width: 128,
-    height: 128,
+    width: 116,
+    height: 116,
     position: 'relative',
-    marginBottom: 24,
+    marginBottom: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyIconCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
+    width: 116,
+    height: 116,
+    borderRadius: 58,
     backgroundColor: '#E4F3EA',
     justifyContent: 'center',
     alignItems: 'center',
   },
   floatingBadge: {
     position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#FBFAF6',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   badgeImg: {
-    width: 25,
-    height: 25,
+    width: 20,
+    height: 20,
   },
   floatingBadgeTopLeft: {
-    top: -6,
-    left: -6,
+    top: 2,
+    left: 2,
   },
   floatingBadgeBottomRight: {
-    bottom: 8,
-    right: 8,
+    bottom: 4,
+    right: 4,
   },
   emptyTitle: {
-    ...FONTS.balooBold,
-    fontSize: 20,
-    color: COLORS.ink900,
-    marginBottom: 8,
+    ...FONTS.muktaBold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: '#17251E',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   emptySub: {
     ...FONTS.muktaRegular,
-    fontSize: 14,
-    color: COLORS.ink500,
+    fontSize: 13,
+    color: '#6B7772',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 28,
+    lineHeight: 18,
+    maxWidth: 260,
+    marginBottom: 20,
   },
   startBtn: {
-    width: '100%',
-    height: 52,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.green700,
+    height: 42,
+    paddingHorizontal: 26,
+    borderRadius: 10,
+    backgroundColor: '#1E7A46',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
   },
   startBtnTxt: {
-    ...FONTS.balooBold,
-    fontSize: 15,
+    ...FONTS.muktaSemiBold,
+    fontSize: 14,
+    lineHeight: 18,
     color: '#FFFFFF',
   },
-  reorderLink: { paddingVertical: 8 },
+  reorderLink: {
+    paddingVertical: 6,
+  },
   reorderLinkInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   reorderLinkTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 14,
-    color: COLORS.green700,
+    ...FONTS.muktaSemiBold,
+    fontSize: 12.5,
+    lineHeight: 16,
+    color: '#1E7A46',
   },
   savingsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 9,
-    backgroundColor: '#FDEFD3',
-    borderWidth: 1.5,
-    borderColor: '#FBE0AE',
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     marginBottom: 14,
   },
   savingsTxt: {
     flex: 1,
     ...FONTS.muktaMedium,
-    fontSize: 14,
-    color: '#8A5200',
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: COLORS.marigold700,
   },
   belowMinBanner: {
     padding: 13,
     backgroundColor: '#E4F3EA',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#CDE9D6',
     borderRadius: 14,
     marginBottom: 14,
@@ -634,99 +681,103 @@ const styles = StyleSheet.create({
   },
   itemsCard: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: 14,
-    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    marginBottom: 12,
     overflow: 'hidden',
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
     gap: 12,
   },
   itemRowBorder: {
-    borderBottomWidth: 1.5,
-    borderBottomColor: COLORS.line,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   imgTile: {
     width: 52,
     height: 52,
-    borderRadius: 10,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   imgTileImg: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
   },
   itemInfo: {
     flex: 1,
-    gap: 2,
+    justifyContent: 'center',
   },
   itemName: {
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
+    lineHeight: 18,
     color: COLORS.ink900,
-    lineHeight: 20,
+    marginBottom: 2,
   },
   itemUnit: {
     ...FONTS.muktaRegular,
     fontSize: 12,
-    color: COLORS.ink500,
     lineHeight: 16,
+    color: COLORS.ink500,
+    marginBottom: 2,
   },
   itemPrice: {
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaBold,
     fontSize: 14,
+    lineHeight: 18,
     color: COLORS.ink900,
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.green700,
-    borderRadius: 9,
-    height: 32,
+    borderRadius: 8,
+    height: 30,
+    paddingHorizontal: 2,
     flexShrink: 0,
   },
   stepBtn: {
-    width: 30,
-    height: 32,
+    width: 26,
+    height: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepBtnTxt: {
     ...FONTS.muktaBold,
-    fontSize: 16,
+    fontSize: 15,
     color: '#FFFFFF',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   stepQty: {
     ...FONTS.muktaBold,
     fontSize: 13,
     color: '#FFFFFF',
-    minWidth: 18,
+    minWidth: 16,
     textAlign: 'center',
   },
   saveBasketRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    backgroundColor: '#E4F3EA',
-    borderWidth: 1.5,
-    borderColor: '#CDE9D6',
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 10,
+    gap: 12,
+    backgroundColor: '#E6F4EA',
+    borderWidth: 1,
+    borderColor: '#C2E7CB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
   saveBasketIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 9,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: COLORS.green700,
     justifyContent: 'center',
     alignItems: 'center',
@@ -734,41 +785,45 @@ const styles = StyleSheet.create({
   },
   saveBasketTxt: {
     flex: 1,
-    ...FONTS.muktaMedium,
-    fontSize: 14,
+    ...FONTS.muktaSemiBold,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: COLORS.green700,
   },
   couponRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
+    gap: 12,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 13,
     marginBottom: 14,
   },
   couponTxt: {
     flex: 1,
-    ...FONTS.muktaMedium,
-    fontSize: 14,
+    ...FONTS.muktaSemiBold,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: COLORS.green700,
   },
   billCard: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
     padding: 16,
-    gap: 11,
+    gap: 10,
     marginBottom: 16,
   },
   billTitle: {
     ...FONTS.muktaBold,
     fontSize: 13,
+    lineHeight: 18,
     color: COLORS.ink700,
+    marginBottom: 2,
   },
   billRow: {
     flexDirection: 'row',
@@ -777,24 +832,27 @@ const styles = StyleSheet.create({
   },
   billLabel: {
     ...FONTS.muktaRegular,
-    fontSize: 16,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: COLORS.ink500,
   },
   billVal: {
-    ...FONTS.muktaRegular,
-    fontSize: 16,
+    ...FONTS.muktaMedium,
+    fontSize: 13.5,
+    lineHeight: 18,
     color: COLORS.ink900,
   },
   savingsVal: {
-    color: '#8A5200',
+    color: COLORS.marigold700,
   },
   freeDeliveryVal: {
+    ...FONTS.muktaBold,
     color: COLORS.green700,
   },
   billDivider: {
-    height: 1.5,
-    backgroundColor: COLORS.line,
-    marginVertical: 2,
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 4,
   },
   billTotalRow: {
     flexDirection: 'row',
@@ -802,62 +860,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   billTotalLabel: {
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaBold,
     fontSize: 14,
+    lineHeight: 18,
     color: COLORS.ink900,
   },
   billTotalVal: {
     ...FONTS.balooBold,
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 22,
     color: COLORS.ink900,
   },
   checkoutBar: {
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderTopWidth: 1.5,
-    borderTopColor: COLORS.line,
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   checkoutBarInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    justifyContent: 'space-between',
+    gap: 16,
   },
   toPayCol: {
-    flex: 1,
+    justifyContent: 'center',
   },
   toPayLabel: {
     ...FONTS.muktaBold,
     fontSize: 11,
+    lineHeight: 14,
     color: COLORS.ink500,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   toPayAmount: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 22,
+    lineHeight: 26,
     color: COLORS.ink900,
-    lineHeight: 28,
   },
   checkoutBtn: {
     backgroundColor: COLORS.green700,
-    paddingHorizontal: 28,
-    paddingVertical: 15,
-    borderRadius: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 13,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 180,
   },
   checkoutBtnDisabled: {
-    backgroundColor: COLORS.muted,
+    backgroundColor: '#9CA3AF',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderRadius: 14,
+    paddingVertical: 13,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkoutBtnTxt: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 15,
+    lineHeight: 20,
     color: '#FFFFFF',
   },
 });

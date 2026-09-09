@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   headerTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 22,
     color: COLORS.ink900,
   },

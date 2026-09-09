@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   headerTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
     color: COLORS.ink900,
     flex: 1,

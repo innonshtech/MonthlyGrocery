@@ -7,7 +7,6 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,7 +15,6 @@ import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
-  CheckoutBackIcon,
   CheckoutPlusIcon,
   AddressRadioOnIcon,
   AddressRadioOffIcon,
@@ -38,7 +36,7 @@ const SCREEN_BG = '#FBFAF6';
 export default function SavedAddressesScreen({ navigation, route }: any) {
   const { token } = useAuth();
   const isSelectMode =
-    route?.name === 'DeliveryAddress' || typeof route?.params?.onSelect === 'function';
+    route?.name === 'DeliveryAddress' || typeof route?.params?.onSelect === 'function' || route?.params?.fromCheckout;
 
   const [screenConfig, setScreenConfig] = useState<SavedAddressesScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -93,7 +91,9 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
   );
 
   const formatLine = (addr: AddressItem) =>
-    [addr.flat, addr.street, addr.pincode].filter(Boolean).join(', ');
+    [addr.flat, addr.street, addr.landmark, addr.pincode]
+      .filter(Boolean)
+      .join(', ');
 
   const handleOpenAdd = () => {
     navigation.navigate('AddAddress', {
@@ -113,9 +113,15 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
     const addr = addresses.find((a) => a.id === selectedId);
     if (!addr) {
       Alert.alert(
-        screenConfig.select_alert_title,
-        screenConfig.select_alert_message,
+        screenConfig.select_alert_title || 'Select Address',
+        screenConfig.select_alert_message || 'Please select a delivery address.',
       );
+      return;
+    }
+
+    if (route?.params?.onSelect) {
+      route.params.onSelect(addr);
+      navigation.goBack();
       return;
     }
 
@@ -129,6 +135,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
   if (configLoading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.centered}>
           <AppLoader message="Loading addresses..." />
         </View>
@@ -139,6 +146,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
   if (!screenConfig) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.centered}>
           <TouchableOpacity style={styles.retryBtn} onPress={() => loadConfig()}>
             <Text style={{ color: '#FFFFFF' }}>Retry</Text>
@@ -148,19 +156,24 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
     );
   }
 
-  const headerTitle = isSelectMode ? screenConfig.select_title : screenConfig.title;
+  const headerTitle = isSelectMode
+    ? screenConfig.select_title || 'Select delivery address'
+    : screenConfig.title || 'Saved Addresses';
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Header section matching Figma 537:704 */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <CheckoutBackIcon size={24} />
+          <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{headerTitle}</Text>
       </View>
@@ -176,8 +189,10 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
           </View>
         ) : addresses.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>{screenConfig.empty_title}</Text>
-            <Text style={styles.emptySub}>{screenConfig.empty_message}</Text>
+            <Text style={styles.emptyTitle}>{screenConfig.empty_title || 'No saved addresses'}</Text>
+            <Text style={styles.emptySub}>
+              {screenConfig.empty_message || 'Add a delivery address to proceed with your orders.'}
+            </Text>
           </View>
         ) : (
           addresses.map((addr) => {
@@ -201,7 +216,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
                     {addr.isDefault ? (
                       <View style={styles.defaultBadge}>
                         <Text style={styles.defaultBadgeText}>
-                          {screenConfig.default_badge_label}
+                          {screenConfig.default_badge_label || 'DEFAULT'}
                         </Text>
                       </View>
                     ) : null}
@@ -221,12 +236,16 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
           })
         )}
 
+        {/* Add Address Action Card */}
         <TouchableOpacity style={styles.addCard} onPress={handleOpenAdd} activeOpacity={0.85}>
-          <CheckoutPlusIcon size={18} />
-          <Text style={styles.addCardText}>{screenConfig.add_address_label}</Text>
+          <CheckoutPlusIcon size={16} />
+          <Text style={styles.addCardText}>
+            {screenConfig.add_address_label || 'Add a new address'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
+      {/* Sticky Bottom Deliver CTA Button */}
       {isSelectMode ? (
         <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
           <View style={styles.bottomBar}>
@@ -235,7 +254,9 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
               onPress={handleDeliver}
               activeOpacity={0.85}
             >
-              <Text style={styles.deliverBtnText}>{screenConfig.deliver_button_label}</Text>
+              <Text style={styles.deliverBtnText}>
+                {screenConfig.deliver_button_label || 'Deliver to this address'}
+              </Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -257,8 +278,8 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     backgroundColor: COLORS.green700,
-    width: 48,
-    height: 48,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
@@ -266,20 +287,20 @@ const styles = StyleSheet.create({
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingLeft: 16,
-    paddingRight: 20,
+    paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
+    backgroundColor: SCREEN_BG,
   },
   backBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 4,
   },
   headerTitle: {
-    ...FONTS.balooSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
     lineHeight: 24,
     color: COLORS.ink900,
@@ -289,8 +310,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
     gap: 12,
   },
   loadingWrap: {
@@ -319,69 +340,71 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   addressCardSelected: {
-    backgroundColor: COLORS.green50,
-    borderWidth: 1.8,
+    backgroundColor: '#F7FBF8',
+    borderWidth: 1.5,
     borderColor: COLORS.green700,
   },
   addressCardIdle: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
   },
   cardBody: {
     flex: 1,
-    gap: 4,
+    gap: 2,
     minWidth: 0,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: 6,
     flexWrap: 'wrap',
   },
   tagText: {
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaSemiBold,
     fontSize: 14,
     lineHeight: 20,
     color: COLORS.ink900,
   },
   defaultBadge: {
     backgroundColor: COLORS.green100,
-    borderRadius: 5,
+    borderRadius: 4,
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 1,
   },
   defaultBadgeText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 14,
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    lineHeight: 13,
     color: COLORS.green700,
+    textTransform: 'uppercase',
   },
   addressLine: {
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaRegular,
     fontSize: 12,
     lineHeight: 16,
     color: COLORS.ink500,
+    marginTop: 2,
   },
   editBtn: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
   addCard: {
     backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 14,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 8,
   },
   addCardText: {
     ...FONTS.muktaSemiBold,
@@ -390,25 +413,26 @@ const styles = StyleSheet.create({
     color: COLORS.green700,
   },
   bottomSafe: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderTopWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
     borderTopColor: COLORS.line,
   },
   bottomBar: {
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   deliverBtn: {
     backgroundColor: COLORS.green700,
     borderRadius: 14,
-    paddingVertical: 16,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
   },
   deliverBtnText: {
-    ...FONTS.balooSemiBold,
-    fontSize: 15,
-    lineHeight: 16,
+    ...FONTS.muktaBold,
+    fontSize: 16,
+    lineHeight: 22,
     color: '#FFFFFF',
   },
 });

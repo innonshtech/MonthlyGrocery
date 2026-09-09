@@ -83,11 +83,6 @@ export default function BrowseProductCard({
       <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
       <View style={styles.unitRow}>
         {packLabel ? <Text style={styles.unit}>{packLabel}</Text> : null}
-        {Array.isArray((item as any).variants) && (item as any).variants.length > 1 ? (
-          <View style={styles.optionsPill}>
-            <Text style={styles.optionsPillText}>{(item as any).variants.length} sizes</Text>
-          </View>
-        ) : null}
       </View>
 
       <View style={styles.priceRow}>
@@ -199,19 +194,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.ink500,
     lineHeight: 14,
-  },
-  optionsPill: {
-    backgroundColor: COLORS.green50,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
-    borderWidth: 0.8,
-    borderColor: COLORS.green100,
-  },
-  optionsPillText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 9,
-    color: COLORS.green700,
   },
   priceRow: {
     flexDirection: 'row',

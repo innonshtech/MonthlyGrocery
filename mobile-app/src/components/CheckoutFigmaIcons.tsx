@@ -41,8 +41,9 @@ export function CheckoutPlusIcon({ size = 20 }: IconProps) {
   return <SvgXml xml={PLUS_XML} width={size} height={size} />;
 }
 
-export function CheckoutPercentIcon({ size = 20 }: IconProps) {
-  return <SvgXml xml={PERCENT_XML} width={size} height={size} />;
+export function CheckoutPercentIcon({ size = 20, color = '#C77E12' }: IconProps & { color?: string }) {
+  const xml = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.8333 4.16667L4.16667 15.8333" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.25 8.33333C7.40059 8.33333 8.33333 7.40059 8.33333 6.25C8.33333 5.09941 7.40059 4.16667 6.25 4.16667C5.09941 4.16667 4.16667 5.09941 4.16667 6.25C4.16667 7.40059 5.09941 8.33333 6.25 8.33333Z" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.75 15.8333C14.9006 15.8333 15.8333 14.9006 15.8333 13.75C15.8333 12.5994 14.9006 11.6667 13.75 11.6667C12.5994 11.6667 11.6667 12.5994 11.6667 13.75C11.6667 14.9006 12.5994 15.8333 13.75 15.8333Z" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return <SvgXml xml={xml} width={size} height={size} />;
 }
 
 export function CheckoutFallbackEmoji({ index, size = 28 }: { index: number; size?: number }) {
@@ -53,9 +54,9 @@ export function CheckoutFallbackEmoji({ index, size = 28 }: { index: number; siz
 export const THUMB_BG = ['#FFF3D6', '#FDE4E7', '#E4F3EA', '#F6E9E1'] as const;
 
 /** E2 Select Address icons (Figma MCP exports) */
-const RADIO_ON_XML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 20.1667C16.0626 20.1667 20.1667 16.0626 20.1667 11C20.1667 5.93739 16.0626 1.83333 11 1.83333C5.93739 1.83333 1.83333 5.93739 1.83333 11C1.83333 16.0626 5.93739 20.1667 11 20.1667Z" fill="#1E7A46"/><path d="M11 14.6667C13.025 14.6667 14.6667 13.025 14.6667 11C14.6667 8.97496 13.025 7.33333 11 7.33333C8.97496 7.33333 7.33333 8.97496 7.33333 11C7.33333 13.025 8.97496 14.6667 11 14.6667Z" fill="white"/></svg>`;
+const RADIO_ON_XML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="9" stroke="#1E7A46" stroke-width="2.5"/><circle cx="11" cy="11" r="5" fill="#1E7A46"/></svg>`;
 
-const RADIO_OFF_XML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="10.2" stroke="#A7B0AB" stroke-width="1.6"/></svg>`;
+const RADIO_OFF_XML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="9" stroke="#A7B0AB" stroke-width="1.8"/></svg>`;
 
 const PIN_XML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 14C8 14 12.6667 9.8 12.6667 6.66667C12.6667 6.05383 12.546 5.447 12.3114 4.88081C12.0769 4.31462 11.7332 3.80017 11.2998 3.36683C10.8665 2.93349 10.352 2.58975 9.78586 2.35523C9.21967 2.12071 8.61284 2 8 2C7.38716 2 6.78033 2.12071 6.21414 2.35523C5.64796 2.58975 5.13351 2.93349 4.70017 3.36683C4.26683 3.80017 3.92308 4.31462 3.68856 4.88081C3.45404 5.447 3.33333 6.05383 3.33333 6.66667C3.33333 9.8 8 14 8 14Z" stroke="#1E7A46" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 8.33333C8.92047 8.33333 9.66667 7.58714 9.66667 6.66667C9.66667 5.74619 8.92047 5 8 5C7.07953 5 6.33333 5.74619 6.33333 6.66667C6.33333 7.58714 7.07953 8.33333 8 8.33333Z" stroke="#1E7A46" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -136,16 +137,19 @@ export function MapPinLargeIcon({ size = 34 }: IconProps) {
   return <SvgXml xml={MAP_PIN_LARGE_XML} width={size} height={size} />;
 }
 
-export function TagHomeIcon({ size = 16 }: IconProps) {
-  return <SvgXml xml={TAG_HOME_XML} width={size} height={size} />;
+export function TagHomeIcon({ size = 16, color = '#1E7A46' }: IconProps & { color?: string }) {
+  const xml = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 7L8 2L14 7" stroke="${color}" stroke-width="1.26667" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.33333 6.33333V14H12.6667V6.33333" stroke="${color}" stroke-width="1.26667" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return <SvgXml xml={xml} width={size} height={size} />;
 }
 
-export function TagWorkIcon({ size = 16 }: IconProps) {
-  return <SvgXml xml={TAG_WORK_XML} width={size} height={size} />;
+export function TagWorkIcon({ size = 16, color = '#6B7772' }: IconProps & { color?: string }) {
+  const xml = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4.66667H4C3.26362 4.66667 2.66667 5.26362 2.66667 6V12C2.66667 12.7364 3.26362 13.3333 4 13.3333H12C12.7364 13.3333 13.3333 12.7364 13.3333 12V6C13.3333 5.26362 12.7364 4.66667 12 4.66667Z" stroke="${color}" stroke-width="1.26667" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 4.66667V2.66667H10V4.66667" stroke="${color}" stroke-width="1.26667" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return <SvgXml xml={xml} width={size} height={size} />;
 }
 
-export function TagOtherIcon({ size = 16 }: IconProps) {
-  return <SvgXml xml={TAG_OTHER_XML} width={size} height={size} />;
+export function TagOtherIcon({ size = 16, color = '#6B7772' }: IconProps & { color?: string }) {
+  const xml = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z" stroke="${color}" stroke-width="1.26667" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 5.33333H8.00667M7.33333 8H8V10.6667" stroke="${color}" stroke-width="1.26667" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return <SvgXml xml={xml} width={size} height={size} />;
 }
 
 export function SlotInfoIcon({ size = 17 }: IconProps) {

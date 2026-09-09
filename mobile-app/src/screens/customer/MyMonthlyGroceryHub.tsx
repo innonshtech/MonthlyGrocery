@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
     lineHeight: 24,
     color: COLORS.ink900,

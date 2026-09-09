@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 20,
     lineHeight: 26,
     color: '#17251E',
