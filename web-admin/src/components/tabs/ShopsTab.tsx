@@ -66,8 +66,8 @@ export default function ShopsTab({
   const fetchShopInventory = async (shopId: string) => {
     if (!token) return;
     try {
-      const data = await apiFetch(`/shops/${shopId}/products`);
-      setShopInventoryList(data.products || []);
+      const data = await apiFetch(`/admin/shop-inventory/${shopId}`);
+      setShopInventoryList(data.shop_products || []);
     } catch (err: any) {
       console.error('Error fetching shop inventory:', err);
     }
@@ -80,7 +80,7 @@ export default function ShopsTab({
       return;
     }
     try {
-      await apiFetch(`/shops/${selectedShopForInventory.id}/products/assign`, {
+      const data = await apiFetch(`/admin/shop-inventory/${selectedShopForInventory.id}/assign`, {
         method: 'POST',
         body: JSON.stringify({
           product_id: assignProdId,
@@ -89,12 +89,16 @@ export default function ShopsTab({
           stock: assignProdStock ? parseInt(assignProdStock) : 100
         })
       });
-      alert('Product assigned to shop successfully!');
-      setAssignProdId('');
-      setAssignProdPrice('');
-      setAssignProdDiscount('');
-      setAssignProdStock('');
-      fetchShopInventory(selectedShopForInventory.id);
+      if (data.success) {
+        alert('Product assigned to shop successfully!');
+        setAssignProdId('');
+        setAssignProdPrice('');
+        setAssignProdDiscount('');
+        setAssignProdStock('');
+        fetchShopInventory(selectedShopForInventory.id);
+      } else {
+        alert(data.error || 'Failed to assign product');
+      }
     } catch (err: any) {
       alert(err.message || 'Error assigning product to shop');
     }
@@ -103,7 +107,7 @@ export default function ShopsTab({
   const handleUnassignShopProduct = async (invId: string) => {
     if (!confirm('Are you sure you want to remove this product from shop inventory?')) return;
     try {
-      await apiFetch(`/shops/inventory/${invId}`, {
+      await apiFetch(`/admin/shop-inventory/${invId}`, {
         method: 'DELETE'
       });
       if (selectedShopForInventory) {
