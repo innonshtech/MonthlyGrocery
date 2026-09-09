@@ -64,10 +64,8 @@ export default function ValueIntroScreen({ navigation }: any) {
   const slide = slides[currentIndex];
   const isLastSlide = slides.length > 0 && currentIndex === slides.length - 1;
 
-  const goToLogin = async (markCompleted = true) => {
-    if (markCompleted) {
-      await markValueIntroCompletedThisSession();
-    }
+  const goToLogin = async () => {
+    await markValueIntroCompletedThisSession();
     if (token && user?.role === 'consumer') {
       if (!city || !area) {
         navigation.replace('CitySelection');
@@ -110,7 +108,7 @@ export default function ValueIntroScreen({ navigation }: any) {
           label={introMeta?.retry_label || 'Retry'}
           onPress={loadSlides}
         />
-        <TouchableOpacity onPress={() => goToLogin(false)} style={styles.skipLink}>
+        <TouchableOpacity onPress={() => goToLogin()} style={styles.skipLink}>
           <Text style={styles.skipLinkText}>
             {introMeta?.skip_to_login_label || ''}
           </Text>
@@ -137,7 +135,7 @@ export default function ValueIntroScreen({ navigation }: any) {
         {slide.show_skip ? (
           <TouchableOpacity
             style={styles.skipBtn}
-            onPress={() => goToLogin(false)}
+            onPress={() => goToLogin()}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
             <Text style={styles.skipText}>Skip</Text>

@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const loadSession = async () => {
       try {
         const savedToken = await AsyncStorage.getItem('@auth_token');
+        const savedUserStr = await AsyncStorage.getItem('@auth_user');
         const savedCity = await AsyncStorage.getItem('@user_city');
         const savedArea = await AsyncStorage.getItem('@user_area');
         const savedPincode = await AsyncStorage.getItem('@user_pincode');
@@ -64,18 +65,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
+        // 1. Immediately restore cached session so app doesn't flicker or lose state
         if (savedToken) {
-          const res = await fetch(`${API_BASE}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${savedToken}`,
-            },
-          });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            setToken(savedToken);
-            setUser(data.user);
-          } else {
-            await AsyncStorage.removeItem('@auth_token');
+          setToken(savedToken);
+          if (savedUserStr) {
+            try {
+              const parsedUser = JSON.parse(savedUserStr);
+              setUser(parsedUser);
+            } catch {}
+          }
+
+          // 2. Safely validate session in background
+          try {
+            const res = await fetch(`${API_BASE}/auth/me`, {
+              headers: {
+                Authorization: `Bearer ${savedToken}`,
+              },
+            });
+            if (res.status === 401 || res.status === 403) {
+              // Token explicitly expired or rejected by server
+              await AsyncStorage.removeItem('@auth_token');
+              await AsyncStorage.removeItem('@auth_user');
+              setToken(null);
+              setUser(null);
+            } else if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.user) {
+                setUser(data.user);
+                await AsyncStorage.setItem('@auth_user', JSON.stringify(data.user));
+              }
+            }
+          } catch (netErr) {
+            // Keep cached token & user on temporary network/connection hiccups
+            console.log('Session verification network error (using cached auth):', netErr);
           }
         }
       } catch (err) {
@@ -121,6 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       await AsyncStorage.setItem('@auth_token', data.token);
+      if (data.user) {
+        await AsyncStorage.setItem('@auth_user', JSON.stringify(data.user));
+      }
       setToken(data.token);
       setUser(data.user);
       return { success: true };
@@ -170,6 +195,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       const updated = { ...user, ...updatedFields };
       setUser(updated);
+      try {
+        await AsyncStorage.setItem('@auth_user', JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save updated user:', e);
+      }
     }
   };
 
@@ -177,6 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await Promise.all([
         AsyncStorage.removeItem('@auth_token'),
+        AsyncStorage.removeItem('@auth_user'),
         AsyncStorage.removeItem('@user_city'),
         AsyncStorage.removeItem('@user_area'),
         AsyncStorage.removeItem('@user_pincode'),

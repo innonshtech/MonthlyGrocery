@@ -23,6 +23,7 @@ import {
   fetchOnboardingConfig,
   OnboardingSplashConfig,
   hasCompletedValueIntroThisSession,
+  hasSeenValueIntro,
 } from '../services/onboardingApi';
 
 /**
@@ -91,6 +92,7 @@ export default function SplashScreen({ navigation }: any) {
 
   const [splashConfig, setSplashConfig] = useState<OnboardingSplashConfig | null>(null);
   const [configReady, setConfigReady] = useState(false);
+  const [introSeen, setIntroSeen] = useState(false);
 
   const spreadAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
@@ -101,9 +103,13 @@ export default function SplashScreen({ navigation }: any) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const config = await fetchOnboardingConfig();
+      const [config, seen] = await Promise.all([
+        fetchOnboardingConfig(),
+        hasSeenValueIntro(),
+      ]);
       if (!cancelled) {
         setSplashConfig(config?.splash ?? null);
+        setIntroSeen(seen);
         setConfigReady(true);
       }
     })();
@@ -137,7 +143,8 @@ export default function SplashScreen({ navigation }: any) {
       if (hasNavigated.current) return;
       hasNavigated.current = true;
 
-      if (!hasCompletedValueIntroThisSession()) {
+      // First-time users see the value intro slides
+      if (!introSeen && !hasCompletedValueIntroThisSession()) {
         navigation.replace('ValueIntro');
         return;
       }
@@ -155,7 +162,7 @@ export default function SplashScreen({ navigation }: any) {
     }, 2200);
 
     return () => clearTimeout(timer);
-  }, [configReady, navigation, spreadAnim, contentAnim]);
+  }, [configReady, introSeen, navigation, spreadAnim, contentAnim]);
 
   const chips = splashConfig?.emoji_chips ?? [];
   const showContent = splashConfig !== null;
