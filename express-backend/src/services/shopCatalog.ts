@@ -107,8 +107,45 @@ export async function fetchProductsForShop(
   const out: Record<string, any>[] = [];
   for (const p of masterProducts || []) {
     const sp = overrideMap.get(p.id);
-    if (sp && sp.available !== false) {
-      out.push(mergeShopProduct(shopId, sp, p));
+    if (sp) {
+      if (sp.available !== false) {
+        out.push(mergeShopProduct(shopId, sp, p));
+      }
+    } else {
+      const mrp = parseFloat(p.mrp) || 0;
+      const price = parseFloat(p.price) || mrp;
+      const discountPercent =
+        mrp > price && mrp > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0;
+
+      out.push(
+        enrichProductPackFields({
+          id: p.id,
+          shop_id: shopId,
+          name: p.name,
+          sku: p.sku,
+          brand: p.brand,
+          company: p.company,
+          primary_category: p.primary_category,
+          secondary_category: p.secondary_category,
+          description: p.description,
+          short_description: p.short_description,
+          place: p.place,
+          image_url: p.image_url,
+          quantity_value: p.quantity_value,
+          quantity_unit: p.quantity_unit,
+          unit: p.unit,
+          mrp,
+          price,
+          discount_percent: discountPercent,
+          stock: p.stock != null ? Number(p.stock) : 50,
+          available: p.available !== false,
+          is_veg: p.is_veg,
+          featured: p.featured,
+          todays_deal: p.todays_deal,
+          best_seller: p.best_seller,
+          you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
+        }),
+      );
     }
   }
 

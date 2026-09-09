@@ -6,7 +6,7 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
+  Share,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
-import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
+import { getProductDiscountPercent } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
 import {
   fetchProductDetailConfigWithStatus,
@@ -35,6 +35,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   const [configError, setConfigError] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<Product[]>([]);
+  const [selectedPackSize, setSelectedPackSize] = useState<string>('5 kg');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -81,6 +82,9 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     } else {
       setProduct(result.product);
       setVariants(result.variants);
+      if (result.product) {
+        setSelectedPackSize(getProductPackLabel(result.product));
+      }
     }
     setLoading(false);
   }, [productId, hasDeliveryArea, city, area, pincode]);
@@ -93,6 +97,18 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  const handleShare = async () => {
+    if (!product) return;
+    try {
+      await Share.share({
+        message: `Check out ${product.name} on Monthly Grocery!`,
+        title: product.name,
+      });
+    } catch {
+      // Ignored
+    }
+  };
 
   if (configError && !screenConfig) {
     return (
@@ -156,14 +172,30 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     const price = parseFloat(String(product.price)) || 0;
     const mrp = parseFloat(String(product.mrp)) || price;
     const pctOff = getProductDiscountPercent(product);
-    const activePackUnit = getProductPackLabel(product);
+    const activePackUnit = getProductPackLabel(product) || selectedPackSize;
     const highlightsList = parseProductHighlights(product);
     const unitSuffix = screenConfig
       ? formatProductDetailTemplate(screenConfig.unit_price_suffix_template, { unit: activePackUnit })
-      : activePackUnit;
+      : `${activePackUnit} · incl. taxes`;
 
     const cartItem = items.find((i) => i.product?.id === product.id);
     const qty = cartItem ? cartItem.quantity : 0;
+
+    // Weight variant options: dynamically from backend product family variants
+    const weightOptions =
+      variants.length > 1
+        ? variants.map((v) => ({
+            id: v.id,
+            label: getProductPackLabel(v) || v.unit || 'Pack',
+            productObj: v,
+          }))
+        : [
+            {
+              id: product.id,
+              label: getProductPackLabel(product) || product.unit || 'Pack',
+              productObj: product,
+            },
+          ];
 
     return (
       <>
@@ -172,36 +204,62 @@ export default function ProductDetailScreen({ route, navigation }: any) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.heroBox, { backgroundColor: homeDealBg(0) }]}>
+          {/* 1. Full-width Hero Image Section (Figma Node 459-696) */}
+          <View style={styles.heroContainer}>
+            {/* Discount Badge */}
             {pctOff > 0 && (
-              <View style={styles.offBadge}>
-                <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
+              <View style={styles.discountBadgeTop}>
+                <Text style={styles.discountBadgeTopText}>{pctOff}% OFF</Text>
               </View>
             )}
 
-            {product.image_url ? (
-              <Image source={{ uri: product.image_url }} style={styles.heroImg} resizeMode="contain" />
-            ) : (
-              <AppIcon name="shopping-bag" size={72} color={COLORS.green700} />
-            )}
+            {/* Product Image */}
+            <View style={styles.imageWrapper}>
+              {product.image_url ? (
+                <Image
+                  source={{ uri: product.image_url }}
+                  style={styles.heroImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <AppIcon name="shopping-bag" size={90} color={COLORS.green700} />
+              )}
+            </View>
+
+            {/* Pagination Dots (Only if multiple images or single indicator) */}
+            <View style={styles.paginationDots}>
+              <View style={styles.activeDot} />
+            </View>
           </View>
 
-          <View style={styles.infoArea}>
-            <Text style={styles.prodName}>{product.name}</Text>
+          {/* 2. Product Information Area (Figma Node 459-703) */}
+          <View style={styles.detailsContainer}>
+            {/* Title */}
+            <Text style={styles.productTitle}>{product.name}</Text>
 
-            {variants.length > 1 && (
-              <View style={styles.variantsRow}>
-                {variants.map((v) => {
-                  const isSelected = v.id === product.id;
+            {/* 3. Weight / Variant Selector Boxes (Figma Node 459-710) */}
+            {weightOptions.length > 0 && (
+              <View style={styles.weightSelectorRow}>
+                {weightOptions.map((opt) => {
+                  const isSelected =
+                    variants.length > 1
+                      ? opt.productObj.id === product.id
+                      : opt.label === selectedPackSize;
+
                   return (
                     <TouchableOpacity
-                      key={v.id}
-                      style={[styles.variantPill, isSelected && styles.variantPillOn]}
-                      onPress={() => setProduct(v)}
+                      key={opt.id}
+                      style={[styles.weightBox, isSelected && styles.weightBoxSelected]}
+                      onPress={() => {
+                        if (variants.length > 1 && opt.productObj) {
+                          setProduct(opt.productObj);
+                        }
+                        setSelectedPackSize(opt.label);
+                      }}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.variantPillTxt, isSelected && styles.variantPillTxtOn]}>
-                        {getProductPackLabel(v)}
+                      <Text style={[styles.weightText, isSelected && styles.weightTextSelected]}>
+                        {opt.label}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -209,68 +267,83 @@ export default function ProductDetailScreen({ route, navigation }: any) {
               </View>
             )}
 
+            {/* 4. Price & Discount Row */}
             <View style={styles.priceRow}>
-              <Text style={styles.priceVal}>₹{price}</Text>
+              <Text style={styles.sellingPrice}>₹{price}</Text>
               {mrp > price && (
-                <>
-                  <Text style={styles.mrpVal}>₹{mrp}</Text>
-                  {pctOff > 0 && (
-                    <View style={styles.saveBadge}>
-                      <Text style={styles.saveBadgeTxt}>{pctOff}% OFF</Text>
-                    </View>
-                  )}
-                </>
+                <Text style={styles.mrpPrice}>₹{mrp}</Text>
+              )}
+              {pctOff > 0 && (
+                <View style={styles.greenDiscountBadge}>
+                  <Text style={styles.greenDiscountText}>{pctOff}% OFF</Text>
+                </View>
               )}
             </View>
 
-            <View style={styles.deliveredBanner}>
-              <AppIcon name="help" size={16} color={COLORS.green700} />
-              <Text style={styles.deliveredTxt}>{screenConfig?.delivery_window_label}</Text>
+            {/* 5. Planned 4-Hour Delivery Banner (Figma Node 459-717) */}
+            <View style={styles.deliveryBanner}>
+              <AppIcon name="zap" size={15} color="#F59E0B" />
+              <Text style={styles.deliveryText}>
+                {screenConfig?.delivery_window_label || 'Delivered in your planned 4-hour window'}
+              </Text>
             </View>
-          </View>
 
-          {highlightsList.length > 0 && (
-            <View style={styles.highlightsCard}>
-              <Text style={styles.highlightsTitle}>{screenConfig?.highlights_section_label}</Text>
-              {highlightsList.map((hl, index) => (
-                <View key={index} style={styles.hlRow}>
-                  <View style={styles.hlIconCircle}>
-                    <AppIcon name="search" size={12} color={COLORS.green700} />
+            {/* 6. Dynamic Highlights Section (from product description / short description) */}
+            {highlightsList.length > 0 && (
+              <View style={styles.highlightsCard}>
+                <Text style={styles.highlightsHeader}>
+                  {screenConfig?.highlights_section_label || 'HIGHLIGHTS'}
+                </Text>
+                {highlightsList.map((item, index) => (
+                  <View key={index} style={styles.highlightRow}>
+                    <View style={styles.checkCircle}>
+                      <AppIcon name="check" size={10} color="#1E7A46" />
+                    </View>
+                    <Text style={styles.highlightText}>{item}</Text>
                   </View>
-                  <Text style={styles.hlTxt}>{hl}</Text>
-                </View>
-              ))}
-            </View>
-          )}
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
 
+        {/* 7. Bottom Sticky Checkout / Add to Cart Bar */}
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <View style={styles.bottomLeft}>
-            <Text style={styles.bottomPrice}>₹{price}</Text>
-            <Text style={styles.bottomUnit}>{unitSuffix}</Text>
+          <View style={styles.bottomPriceCol}>
+            <Text style={styles.bottomPriceText}>₹{(qty > 0 ? qty : 1) * price}</Text>
+            <Text style={styles.bottomUnitText}>
+              {qty > 1 ? `${qty} × ₹${price} (${activePackUnit})` : unitSuffix}
+            </Text>
           </View>
 
           {qty > 0 ? (
-            <View style={styles.bottomStepper}>
+            <View style={styles.stepperContainer}>
               <TouchableOpacity
-                style={styles.stepBtn}
+                style={styles.stepperBtn}
                 onPress={() => updateQuantity(product.id, qty - 1)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.stepTxt}>−</Text>
+                <Text style={styles.stepperBtnText}>−</Text>
               </TouchableOpacity>
-              <Text style={styles.stepQty}>{qty}</Text>
-              <TouchableOpacity style={styles.stepBtn} onPress={() => addToCart(product)}>
-                <Text style={styles.stepTxt}>+</Text>
+              <Text style={styles.stepperCountText}>{qty}</Text>
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => addToCart(product)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.stepperBtnText}>+</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
-              style={styles.addCartBtn}
+              style={styles.addToCartBtn}
               onPress={() => addToCart(product)}
-              activeOpacity={0.85}
+              activeOpacity={0.88}
             >
               <AppIcon name="cart" size={16} color="#FFFFFF" />
-              <Text style={styles.addCartTxt}>{screenConfig?.add_to_cart_label}</Text>
+              <Text style={styles.addToCartBtnText}>
+                {screenConfig?.add_to_cart_label || 'Add to cart'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -282,27 +355,43 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Reworked Top Navigation Header */}
       <View style={styles.header}>
+        {/* Back Button */}
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.headerBtn}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.circularBtn}
+          activeOpacity={0.85}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
+          <AppIcon name="chevron-left" size={18} color="#1A1A1A" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => navigation.navigate('Cart')}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <AppIcon
-            name="cart"
-            size={22}
-            color={COLORS.ink900}
-            badge={totalCartCount > 0 ? totalCartCount : undefined}
-          />
-        </TouchableOpacity>
+        {/* Right Actions: Share & Cart */}
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            style={styles.circularBtn}
+            onPress={handleShare}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <AppIcon name="share" size={18} color="#1A1A1A" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.circularBtn}
+            onPress={() => navigation.navigate('Cart')}
+            activeOpacity={0.85}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <AppIcon
+              name="cart"
+              size={18}
+              color="#1A1A1A"
+              badge={totalCartCount > 0 ? totalCartCount : undefined}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.bodyFlex}>{renderBody()}</View>
@@ -313,10 +402,11 @@ export default function ProductDetailScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FBFAF6',
+    backgroundColor: '#FFFFFF',
   },
   bodyFlex: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   centeredState: {
     flex: 1,
@@ -341,7 +431,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.green700,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   retryBtnText: {
     ...FONTS.muktaBold,
@@ -349,238 +439,308 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  /* 1. Header */
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 10,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
   },
-  headerBtn: {
-    width: 36,
-    height: 36,
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  circularBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2.5,
   },
 
+  /* Scroll */
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
 
-  heroBox: {
+  /* 2. Hero Image Section (Figma Node 459-696) */
+  heroContainer: {
     width: '100%',
     height: 320,
-    borderRadius: 16,
+    backgroundColor: '#FEF3D6',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: 20,
   },
-  offBadge: {
+  discountBadgeTop: {
     position: 'absolute',
     top: 16,
-    left: 20,
-    backgroundColor: '#E4F3EA',
+    left: 16,
+    backgroundColor: '#F59E0B',
     paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 6,
-    zIndex: 2,
+    zIndex: 10,
   },
-  offBadgeTxt: {
+  discountBadgeTopText: {
     ...FONTS.muktaBold,
     fontSize: 11,
-    color: COLORS.green700,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
-  heroImg: {
-    width: 150,
-    height: 150,
+  imageWrapper: {
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  paginationDots: {
+    position: 'absolute',
+    bottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  activeDot: {
+    width: 22,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1E7A46',
+  },
+  inactiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#CBD5E1',
   },
 
-  infoArea: {
-    marginBottom: 20,
-    gap: 12,
+  /* 3. Details Container (Figma Node 459-712) */
+  detailsContainer: {
+    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 0,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 14,
+    alignSelf: 'stretch',
+    backgroundColor: '#FFFFFF',
   },
-  prodName: {
-    ...FONTS.balooBold,
+  productTitle: {
+    ...FONTS.balooSemiBold,
     fontSize: 22,
-    color: COLORS.ink900,
     lineHeight: 28,
+    letterSpacing: -0.22,
+    color: '#17251E', // var(--ink-900, #17251E)
+    alignSelf: 'stretch',
   },
+
+  /* Weight Selector (Figma Node 459-710) */
+  weightSelectorRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignSelf: 'stretch',
+  },
+  weightBox: {
+    paddingHorizontal: 16,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EAE9E2', // surface/line
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  weightBoxSelected: {
+    backgroundColor: '#E4F3EA', // green/100
+    borderWidth: 1.5,
+    borderColor: '#1E7A46', // green/700
+  },
+  weightText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    color: '#3D4A44', // ink/700
+  },
+  weightTextSelected: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: '#1E7A46', // green/700
+  },
+
+  /* Price & Discount */
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  priceVal: {
+  sellingPrice: {
     ...FONTS.balooBold,
-    fontSize: 26,
-    color: COLORS.ink900,
-    lineHeight: 32,
+    fontSize: 24,
+    color: '#17251E', // ink/900
+    lineHeight: 28,
   },
-  mrpVal: {
+  mrpPrice: {
     ...FONTS.muktaRegular,
-    fontSize: 16,
-    color: COLORS.ink300,
+    fontSize: 15,
+    color: '#A7B0AB', // ink/300
     textDecorationLine: 'line-through',
   },
-  saveBadge: {
-    backgroundColor: '#E4F3EA',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  greenDiscountBadge: {
+    backgroundColor: '#E4F3EA', // green/100
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 4,
   },
-  saveBadgeTxt: {
+  greenDiscountText: {
     ...FONTS.muktaBold,
     fontSize: 11,
-    color: COLORS.green700,
+    color: '#1E7A46', // green/700
   },
-  deliveredBanner: {
+
+  /* Delivery Banner (Figma Node 459-717) */
+  deliveryBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F9F5',
-    borderRadius: 10,
+    backgroundColor: '#F2F9F5', // green/50
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     gap: 8,
+    alignSelf: 'stretch',
   },
-  deliveredTxt: {
+  deliveryText: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
-    color: COLORS.ink900,
+    fontSize: 12.5,
+    color: '#3D4A44', // ink/700
     flex: 1,
+    lineHeight: 18,
   },
 
-  variantsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  variantPill: {
-    flex: 1,
-    minWidth: 80,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  variantPillOn: {
-    backgroundColor: '#E4F3EA',
-    borderColor: COLORS.green700,
-  },
-  variantPillTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 13,
-    color: COLORS.ink700,
-  },
-  variantPillTxtOn: {
-    color: COLORS.green700,
-  },
-
+  /* Highlights Card (Figma Node 460-674) */
   highlightsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 16,
     gap: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
+    borderWidth: 1,
+    borderColor: '#EAE9E2', // surface/line
+    alignSelf: 'stretch',
+    marginBottom: 20,
   },
-  highlightsTitle: {
+  highlightsHeader: {
     ...FONTS.muktaBold,
-    fontSize: 12,
-    color: COLORS.ink500,
-    letterSpacing: 1.44,
+    fontSize: 11,
+    color: '#6B7772', // ink/500
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
-  hlRow: {
+  highlightRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  hlIconCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#E4F3EA',
+  checkCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E4F3EA', // green/100
     justifyContent: 'center',
     alignItems: 'center',
   },
-  hlTxt: {
+  highlightText: {
     flex: 1,
     ...FONTS.muktaRegular,
-    fontSize: 14,
-    color: COLORS.ink900,
+    fontSize: 13.5,
+    color: '#3D4A44', // ink/700
+    lineHeight: 19,
   },
 
+  /* 7. Bottom Sticky Bar (Figma Node 460-696) */
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1.5,
-    borderTopColor: COLORS.line,
-    minHeight: 80,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    minHeight: 84,
   },
-  bottomLeft: {
+  bottomPriceCol: {
     gap: 2,
   },
-  bottomPrice: {
+  bottomPriceText: {
     ...FONTS.balooBold,
-    fontSize: 22,
-    color: COLORS.ink900,
-    lineHeight: 26,
+    fontSize: 24,
+    color: '#17251E', // ink/900
+    lineHeight: 28,
   },
-  bottomUnit: {
-    ...FONTS.muktaMedium,
+  bottomUnitText: {
+    ...FONTS.muktaRegular,
     fontSize: 12,
-    color: COLORS.ink500,
+    color: '#6B7280',
+    lineHeight: 16,
   },
-  addCartBtn: {
+  addToCartBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    backgroundColor: COLORS.green700,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
+    backgroundColor: '#1E7A46',
+    minWidth: 165,
+    height: 48,
+    paddingHorizontal: 24,
+    borderRadius: 12,
   },
-  addCartTxt: {
-    ...FONTS.balooBold,
+  addToCartBtnText: {
+    ...FONTS.muktaBold,
     fontSize: 15,
     color: '#FFFFFF',
   },
-  bottomStepper: {
+  stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green700,
-    borderRadius: 14,
+    backgroundColor: '#1E7A46',
+    borderRadius: 12,
     height: 48,
+    minWidth: 120,
+    justifyContent: 'space-between',
   },
-  stepBtn: {
-    width: 32,
+  stepperBtn: {
+    width: 40,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepTxt: {
+  stepperBtnText: {
     ...FONTS.muktaBold,
-    fontSize: 18,
+    fontSize: 20,
     color: '#FFFFFF',
-    lineHeight: 22,
+    lineHeight: 24,
   },
-  stepQty: {
+  stepperCountText: {
     ...FONTS.muktaBold,
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFFFFF',
-    minWidth: 20,
+    minWidth: 26,
     textAlign: 'center',
   },
 });
