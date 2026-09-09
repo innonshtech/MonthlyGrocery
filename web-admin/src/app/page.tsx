@@ -1508,6 +1508,7 @@ export default function DashboardPage() {
               packEditSaving={packEditSaving}
               setPackEditProduct={setPackEditProduct}
               handleSavePackSize={handleSavePackSize}
+              token={token}
             />
           )}
 

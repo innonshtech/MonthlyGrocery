@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 export type IconName =
   | 'home'
@@ -27,6 +27,10 @@ export type IconName =
   | 'shield-check'
   | 'arrow-right'
   | 'arrow-left'
+  | 'chevron-left'
+  | 'share'
+  | 'zap'
+  | 'lightning'
   | 'search'
   | 'map-pin'
   | 'user'
@@ -881,15 +885,68 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 16. Arrow Right (Vector clean arrow)
-  if (name === 'arrow-right') {
+  // 17. Share Icon (Figma 3-node connected network)
+  if (name === 'share') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size * 0.85} height={size * 0.85} viewBox="0 0 24 24" fill="none">
+          <Circle cx="18" cy="5" r="3" stroke={color} strokeWidth={2.2} />
+          <Circle cx="6" cy="12" r="3" stroke={color} strokeWidth={2.2} />
+          <Circle cx="18" cy="19" r="3" stroke={color} strokeWidth={2.2} />
+          <Path
+            d="M8.59 13.51L15.42 17.49M15.41 6.51L8.59 10.49"
+            stroke={color}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 18. Zap / Lightning Bolt (Figma Delivery Banner)
+  if (name === 'zap' || name === 'lightning') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke={color}>
+          <Path
+            d="M13 2L3 14H12L11 22L21 10H12L13 2Z"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 19. Chevron Left
+  if (name === 'chevron-left') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path
-            d="M5 12H19M19 12L12 5M19 12L12 19"
+            d="M15 19L8 12L15 5"
             stroke={color}
-            strokeWidth={2.2}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 20. Check Icon (Clean Vector Checkmark)
+  if (name === 'check') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size * 0.8} height={size * 0.8} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M20 6L9 17L4 12"
+            stroke={color}
+            strokeWidth={3}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

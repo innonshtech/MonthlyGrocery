@@ -47,20 +47,27 @@ export async function fetchProductDetailConfigWithStatus(): Promise<ProductDetai
 }
 
 export function getBaseProductFamily(nameStr: string): string {
-  return nameStr
-    .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units)\b.*/i, '')
+  return String(nameStr || '')
+    .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units|dozen)\b.*/i, '')
     .trim();
 }
 
 export function buildProductVariants(product: Product, catalog: Product[]): Product[] {
-  const familyName = getBaseProductFamily(product.name);
+  const familyName = getBaseProductFamily(product.name).toLowerCase();
+  const brand = (product.brand || '').trim().toLowerCase();
+
   const related = catalog.filter((p) => {
-    return (
-      p.primary_category === product.primary_category &&
-      (p.brand || '').toLowerCase() === (product.brand || '').toLowerCase() &&
-      getBaseProductFamily(p.name).toLowerCase() === familyName.toLowerCase()
-    );
+    const pFamily = getBaseProductFamily(p.name).toLowerCase();
+    const pBrand = (p.brand || '').trim().toLowerCase();
+
+    if (familyName && pFamily === familyName) {
+      if (!brand || !pBrand || brand === pBrand) {
+        return true;
+      }
+    }
+    return false;
   });
+
   return related.length > 0 ? related : [product];
 }
 
@@ -91,7 +98,7 @@ export async function fetchProductDetail(params: {
   pincode?: string;
 }): Promise<ProductDetailFetchResult> {
   try {
-    const url = appendLocationParams(`${API_BASE}/products/all?limit=100`, {
+    const url = appendLocationParams(`${API_BASE}/products/all?limit=200`, {
       city: params.city,
       area: params.area,
       pincode: params.pincode,
@@ -99,18 +106,18 @@ export async function fetchProductDetail(params: {
 
     const res = await fetch(url);
     const data = await res.json();
-    if (!res.ok || !data.success) {
+    if (!res.ok || !data.success || !Array.isArray(data.products)) {
       return { product: null, variants: [], error: true, notFound: false };
     }
 
-    const catalog: Product[] = data.products ?? [];
-    const found = catalog.find((p) => p.id === params.productId);
-    if (!found) {
+    const catalog: Product[] = data.products;
+    const target = catalog.find((p) => p.id === params.productId);
+    if (!target) {
       return { product: null, variants: [], error: false, notFound: true };
     }
 
-    const variants = buildProductVariants(found, catalog);
-    return { product: found, variants, error: false, notFound: false };
+    const variants = buildProductVariants(target, catalog);
+    return { product: target, variants, error: false, notFound: false };
   } catch {
     return { product: null, variants: [], error: true, notFound: false };
   }

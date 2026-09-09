@@ -49,41 +49,41 @@ export const FONTS = {
   // Baloo 2 variants
   balooExtraBold: Platform.select({
     ios: { fontFamily: 'Baloo2-ExtraBold', fontWeight: '800' as const },
-    android: { fontFamily: 'Baloo2-ExtraBold', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Baloo2-ExtraBold' },
   }),
   balooBold: Platform.select({
     ios: { fontFamily: 'Baloo2-Bold', fontWeight: '700' as const },
-    android: { fontFamily: 'Baloo2-Bold', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Baloo2-Bold' },
   }),
   balooSemiBold: Platform.select({
     ios: { fontFamily: 'Baloo2-SemiBold', fontWeight: '600' as const },
-    android: { fontFamily: 'Baloo2-SemiBold', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Baloo2-SemiBold' },
   }),
   balooMedium: Platform.select({
     ios: { fontFamily: 'Baloo2-Medium', fontWeight: '500' as const },
-    android: { fontFamily: 'Baloo2-Medium', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Baloo2-Medium' },
   }),
   balooRegular: Platform.select({
     ios: { fontFamily: 'Baloo2-Regular', fontWeight: '400' as const },
-    android: { fontFamily: 'Baloo2-Regular', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Baloo2-Regular' },
   }),
 
   // Mukta variants
   muktaBold: Platform.select({
     ios: { fontFamily: 'Mukta-Bold', fontWeight: '700' as const },
-    android: { fontFamily: 'Mukta-Bold', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Mukta-Bold' },
   }),
   muktaSemiBold: Platform.select({
     ios: { fontFamily: 'Mukta-SemiBold', fontWeight: '600' as const },
-    android: { fontFamily: 'Mukta-SemiBold', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Mukta-SemiBold' },
   }),
   muktaMedium: Platform.select({
     ios: { fontFamily: 'Mukta-Medium', fontWeight: '500' as const },
-    android: { fontFamily: 'Mukta-Medium', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Mukta-Medium' },
   }),
   muktaRegular: Platform.select({
     ios: { fontFamily: 'Mukta-Regular', fontWeight: '400' as const },
-    android: { fontFamily: 'Mukta-Regular', fontWeight: 'normal' as const },
+    android: { fontFamily: 'Mukta-Regular' },
   }),
 };
 

@@ -792,20 +792,59 @@ router.delete('/master/:product_id', authMiddleware, requireRole(['super_admin']
   const { product_id } = req.params;
 
   try {
+    // 1. Delete associated city pricing records
+    try {
+      await supabase
+        .from('product_city_prices')
+        .delete()
+        .eq('product_id', product_id);
+    } catch (_ignore) {}
+
+    // 2. Cascade delete mappings in local shop products db
+    try {
+      const { readDb, writeDb } = require('../config/localDb');
+      const db = readDb();
+      if (Array.isArray(db.shop_products)) {
+        db.shop_products = db.shop_products.filter((sp: any) => sp.product_id !== product_id);
+        writeDb(db);
+      }
+    } catch (_ignore) {}
+
+    // 3. Attempt hard delete from PostgreSQL
     const { error } = await supabase
       .from('products')
       .delete()
       .eq('id', product_id);
 
     if (error) {
+      // If foreign key constraint violation (e.g. product is referenced in order_items of past customer orders)
+      if (
+        error.code === '23503' ||
+        error.message?.includes('foreign key constraint') ||
+        error.message?.includes('order_items')
+      ) {
+        // Soft delete: mark product as unavailable and stock 0 so it disappears from catalogues and search without corrupting order history
+        const { error: archiveError } = await supabase
+          .from('products')
+          .update({
+            available: false,
+            stock: 0,
+          })
+          .eq('id', product_id);
+
+        if (archiveError) {
+          return res.status(400).json({ success: false, error: archiveError.message });
+        }
+
+        return res.json({
+          success: true,
+          message: 'Product is linked to past order history. It has been archived and removed from active catalogue.',
+          archived: true,
+        });
+      }
+
       return res.status(400).json({ success: false, error: error.message });
     }
-
-    // Cascade delete mappings in local shop products db
-    const { readDb, writeDb } = require('../config/localDb');
-    const db = readDb();
-    db.shop_products = db.shop_products.filter((sp: any) => sp.product_id !== product_id);
-    writeDb(db);
 
     return res.json({ success: true, message: 'Product deleted successfully from catalog' });
   } catch (error: any) {
