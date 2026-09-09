@@ -34,16 +34,113 @@ function parseBool(val: any, defaultVal = false): boolean {
   return ['yes', 'y', 'true', '1', 'live'].includes(s);
 }
 
-// 1. GET /all: Consumer Catalog (with city pricing overrides)
+// Helper to extract normalized product family key
+export function getProductFamilyKey(p: any): string {
+  const brand = String(p.brand || '').trim().toLowerCase();
+  const rawName = String(p.name || '')
+    .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units|dozen|ltr|gm|litre)\b.*/i, '')
+    .trim()
+    .toLowerCase();
+  return `${brand}::${rawName}`;
+}
+
+export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal = 100): any[] {
+  if (!Array.isArray(products) || products.length === 0) return [];
+
+  const familyMap = new Map<string, any[]>();
+
+  for (const p of products) {
+    const key = getProductFamilyKey(p);
+    if (!familyMap.has(key)) {
+      familyMap.set(key, []);
+    }
+    familyMap.get(key)!.push(p);
+  }
+
+  const groupedList: any[] = [];
+
+  for (const [, siblings] of familyMap.entries()) {
+    const fullVariants = siblings.map((s) => ({
+      id: s.id,
+      shop_id: s.shop_id,
+      name: s.name,
+      sku: s.sku,
+      brand: s.brand,
+      company: s.company,
+      primary_category: s.primary_category,
+      secondary_category: s.secondary_category,
+      unit: s.unit || s.pack_label,
+      quantity_value: s.quantity_value,
+      quantity_unit: s.quantity_unit,
+      mrp: s.mrp,
+      price: s.price,
+      stock: s.stock,
+      available: s.available !== false,
+      discount_percent: s.discount_percent || 0,
+      image_url: s.image_url,
+      is_veg: s.is_veg,
+      featured: s.featured,
+      todays_deal: s.todays_deal,
+      best_seller: s.best_seller,
+      you_save: s.you_save || 0,
+    }));
+
+    const dealSiblings = dealsOnly
+      ? siblings.filter(
+          (p) =>
+            (p.discount_percent && p.discount_percent > 0) ||
+            p.featured ||
+            p.todays_deal ||
+            p.best_seller ||
+            parseFloat(p.mrp) > parseFloat(p.price),
+        )
+      : siblings;
+
+    if (dealsOnly && dealSiblings.length === 0) {
+      continue;
+    }
+
+    const candidateSiblings = dealSiblings.length > 0 ? dealSiblings : siblings;
+
+    const sorted = [...candidateSiblings].sort((a, b) => {
+      const da = a.discount_percent || 0;
+      const db = b.discount_percent || 0;
+      if (db !== da) return db - da;
+
+      const pa = parseFloat(a.price) || 0;
+      const pb = parseFloat(b.price) || 0;
+      return pa - pb;
+    });
+
+    const rep = sorted[0];
+
+    groupedList.push({
+      ...rep,
+      variants: fullVariants,
+      variant_count: siblings.length,
+    });
+  }
+
+  if (dealsOnly) {
+    groupedList.sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0));
+  }
+
+  return groupedList.slice(0, limitVal);
+}
+
 // 1. GET /all: Consumer Catalog (location-aware, based on city and area)
 router.get('/all', async (req, res) => {
   const area_name = (req.query.area_name as string) || (req.query.area as string);
-  const { city, category, secondary, q, limit, deals, pincode } = req.query;
+  const { city, category, secondary, q, limit, deals, pincode, raw, group } = req.query;
   const limitVal = parseInt(limit as string) || 100;
   const dealsOnly = deals === '1' || deals === 'true';
+  const shouldGroup = raw !== 'true' && group !== 'false';
 
   const applyDealsFilter = (products: any[]) => {
-    if (!dealsOnly) return products;
+    if (shouldGroup) {
+      return groupProductsByFamily(products, dealsOnly, limitVal);
+    }
+    if (!dealsOnly) return products.slice(0, limitVal);
     return products
       .filter(
         (p) =>
@@ -194,7 +291,7 @@ router.get('/search', async (req, res) => {
 
       return res.json({
         success: true,
-        products: catalog.products,
+        products: groupProductsByFamily(catalog.products, false, limitVal),
         shop_id: catalog.shopId,
         shop_name: catalog.shopName,
       });
@@ -243,10 +340,10 @@ router.get('/search', async (req, res) => {
 
     if (q && String(q).trim()) {
       const ranked = searchProductsWithIntelligence(out, String(q).trim(), category as string | undefined);
-      return res.json({ success: true, products: ranked.slice(0, limitVal) });
+      return res.json({ success: true, products: groupProductsByFamily(ranked, false, limitVal) });
     }
 
-    return res.json({ success: true, products: out.slice(0, limitVal) });
+    return res.json({ success: true, products: groupProductsByFamily(out, false, limitVal) });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }

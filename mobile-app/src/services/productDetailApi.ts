@@ -126,12 +126,37 @@ export async function fetchProductDetail(params: {
     }
 
     const catalog: Product[] = data.products;
-    const target = catalog.find((p) => p.id === params.productId);
+
+    let target: Product | null = null;
+    let variants: Product[] = [];
+
+    // Search top-level or inside variants array
+    for (const p of catalog) {
+      if (p.id === params.productId) {
+        target = p;
+        if (Array.isArray((p as any).variants) && (p as any).variants.length > 0) {
+          variants = (p as any).variants;
+        }
+        break;
+      }
+      if (Array.isArray((p as any).variants)) {
+        const found = (p as any).variants.find((v: any) => v.id === params.productId);
+        if (found) {
+          target = found;
+          variants = (p as any).variants;
+          break;
+        }
+      }
+    }
+
     if (!target) {
       return { product: null, variants: [], error: false, notFound: true };
     }
 
-    const variants = buildProductVariants(target, catalog);
+    if (variants.length === 0) {
+      variants = buildProductVariants(target, catalog);
+    }
+
     return { product: target, variants, error: false, notFound: false };
   } catch {
     return { product: null, variants: [], error: true, notFound: false };
