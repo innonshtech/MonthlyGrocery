@@ -14,8 +14,20 @@ export interface ProductDetailScreenConfig {
   retry_label: string;
 }
 
+export const DEFAULT_PRODUCT_DETAIL_CONFIG: ProductDetailScreenConfig = {
+  delivery_window_label: 'Delivered in your planned 4-hour window',
+  highlights_section_label: 'HIGHLIGHTS',
+  add_to_cart_label: 'Add to Cart',
+  unit_price_suffix_template: '{unit} · incl. taxes',
+  not_found_message: 'Product not found',
+  location_required_message: 'Please set your delivery location first',
+  choose_location_label: 'Select Location',
+  load_error_message: 'Failed to load product details',
+  retry_label: 'Retry',
+};
+
 export type ProductDetailConfigResult = {
-  config: ProductDetailScreenConfig | null;
+  config: ProductDetailScreenConfig;
   error: boolean;
 };
 
@@ -30,7 +42,7 @@ export function formatProductDetailTemplate(
   template: string,
   vars: Record<string, string | number>,
 ): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? ''));
+  return (template || '{unit} · incl. taxes').replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? ''));
 }
 
 export async function fetchProductDetailConfigWithStatus(): Promise<ProductDetailConfigResult> {
@@ -38,11 +50,14 @@ export async function fetchProductDetailConfigWithStatus(): Promise<ProductDetai
     const res = await fetch(`${API_BASE}/admin/product-detail-screen`);
     const data = await res.json();
     if (!res.ok || !data.success || !data.product_detail) {
-      return { config: null, error: true };
+      return { config: DEFAULT_PRODUCT_DETAIL_CONFIG, error: false };
     }
-    return { config: data.product_detail as ProductDetailScreenConfig, error: false };
+    return {
+      config: { ...DEFAULT_PRODUCT_DETAIL_CONFIG, ...(data.product_detail as Partial<ProductDetailScreenConfig>) },
+      error: false,
+    };
   } catch {
-    return { config: null, error: true };
+    return { config: DEFAULT_PRODUCT_DETAIL_CONFIG, error: false };
   }
 }
 

@@ -23,6 +23,7 @@ import {
   parseProductHighlights,
   formatProductDetailTemplate,
   ProductDetailScreenConfig,
+  DEFAULT_PRODUCT_DETAIL_CONFIG,
 } from '../../services/productDetailApi';
 
 export default function ProductDetailScreen({ route, navigation }: any) {
@@ -31,8 +32,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   const { city, area, pincode } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [screenConfig, setScreenConfig] = useState<ProductDetailScreenConfig | null>(null);
-  const [configError, setConfigError] = useState(false);
+  const [screenConfig, setScreenConfig] = useState<ProductDetailScreenConfig>(DEFAULT_PRODUCT_DETAIL_CONFIG);
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<Product[]>([]);
   const [selectedPackSize, setSelectedPackSize] = useState<string>('5 kg');
@@ -46,7 +46,6 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   const loadConfig = useCallback(async () => {
     const result = await fetchProductDetailConfigWithStatus();
     setScreenConfig(result.config);
-    setConfigError(result.error);
     return result;
   }, []);
 
@@ -109,19 +108,6 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       // Ignored
     }
   };
-
-  if (configError && !screenConfig) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.centeredState}>
-          <TouchableOpacity style={styles.retryBtn} onPress={loadConfig} activeOpacity={0.85}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const renderBody = () => {
     if (!hasDeliveryArea) {
@@ -481,10 +467,12 @@ const styles = StyleSheet.create({
   heroContainer: {
     width: '100%',
     height: 320,
-    backgroundColor: '#FEF3D6',
+    backgroundColor: '#FAF9F5',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EFEA',
   },
   discountBadgeTop: {
     position: 'absolute',
