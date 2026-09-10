@@ -50,6 +50,7 @@ export type IconName =
   | 'building'
   | 'mic'
   | 'percent'
+  | 'bookmark'
   | 'repeat'
   | 'reorder';
 
@@ -791,17 +792,6 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // Sparkles (✦)
-  if (name === 'sparkles' || name === 'star') {
-    return (
-      <View style={[styles.center, { width: size, height: size }]}>
-        <Text style={{ fontSize: size * 0.9, color: color || '#F5A524', fontWeight: 'bold' }}>
-          ✦
-        </Text>
-      </View>
-    );
-  }
-
   // 13. Search Icon (Lucide-style vector outline)
   if (name === 'search') {
     return (
@@ -836,56 +826,85 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 14. Chevron Right Icon (Lucide-style vector arrow)
+  // 14. Chevron Right Icon
   if (name === 'chevron-right') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
-        <View
-          style={{
-            width: size * 0.3,
-            height: size * 0.3,
-            borderRightWidth: stroke,
-            borderTopWidth: stroke,
-            borderColor: color,
-            transform: [{ rotate: '45deg' }],
-            marginLeft: -size * 0.08,
-          }}
-        />
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M9 18L15 12L9 6"
+            stroke={color}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
       </View>
     );
   }
 
-  // 15. Arrow Left Icon (Lucide-style vector back arrow)
+  // 15. Arrow Left Icon
   if (name === 'arrow-left') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
-        <View style={{ width: size * 0.72, height: size * 0.72, justifyContent: 'center', alignItems: 'center' }}>
-          <View
-            style={{
-              position: 'absolute',
-              left: size * 0.08,
-              width: size * 0.34,
-              height: size * 0.34,
-              borderLeftWidth: stroke,
-              borderTopWidth: stroke,
-              borderColor: color,
-              transform: [{ rotate: '-45deg' }],
-            }}
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M19 12H5M12 19L5 12L12 5"
+            stroke={color}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <View
-            style={{
-              width: size * 0.6,
-              height: stroke,
-              backgroundColor: color,
-              borderRadius: 0.5,
-            }}
-          />
-        </View>
+        </Svg>
       </View>
     );
   }
 
-  // 17. Share Icon (Figma 3-node connected network)
+  // 16. Sparkles / 4-Point Star
+  if (name === 'sparkles' || name === 'star') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+          <Path
+            d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 17. Bookmark Ribbon
+  if (name === 'bookmark') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+          <Path
+            d="M19 21L12 16L5 21V5C5 3.89543 5.89543 3 7 3H17C18.1046 3 19 3.89543 19 5V21Z"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 18. Percent Icon
+  if (name === 'percent') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M19 5L5 19"
+            stroke={color}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+          />
+          <Circle cx="7" cy="7" r="2.5" stroke={color} strokeWidth={2} />
+          <Circle cx="17" cy="17" r="2.5" stroke={color} strokeWidth={2} />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 19. Share Icon (Figma 3-node connected network)
   if (name === 'share') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
@@ -905,7 +924,7 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 18. Zap / Lightning Bolt (Figma Delivery Banner)
+  // 20. Zap / Lightning Bolt (Figma Delivery Banner)
   if (name === 'zap' || name === 'lightning') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
@@ -921,13 +940,13 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 19. Chevron Left
+  // 21. Chevron Left
   if (name === 'chevron-left') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Path
-            d="M15 19L8 12L15 5"
+            d="M15 18L9 12L15 6"
             stroke={color}
             strokeWidth={2.4}
             strokeLinecap="round"
@@ -938,7 +957,7 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
     );
   }
 
-  // 20. Check Icon (Clean Vector Checkmark)
+  // 22. Check Icon (Clean Vector Checkmark)
   if (name === 'check') {
     return (
       <View style={[styles.center, { width: size, height: size }]}>

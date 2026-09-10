@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    ...FONTS.balooSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
     lineHeight: 24,
     color: COLORS.ink900,

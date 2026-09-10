@@ -45,12 +45,34 @@ export default function MainTabScreen({ route, navigation }: any) {
     }
   };
 
+  const isHome = activeTab === 'Home';
   const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
 
-  const isHome = activeTab === 'Home';
+  const getTabBgColor = () => {
+    switch (activeTab) {
+      case 'Home':
+        return '#FFFFFF';
+      case 'Cart':
+        return '#F9F9F7';
+      case 'Orders':
+        return '#FBFAF6';
+      case 'Categories':
+        return '#FBFAF6';
+      case 'Account':
+        return '#F9F9F7';
+      default:
+        return '#F9F9F7';
+    }
+  };
 
   return (
-    <View style={[styles.mainContainer, isHome && styles.mainContainerHome, !isHome && { paddingTop: insets.top }]}>
+    <View
+      style={[
+        styles.mainContainer,
+        { backgroundColor: getTabBgColor() },
+        !isHome && { paddingTop: insets.top },
+      ]}
+    >
       <StatusBar barStyle="dark-content" />
       
       {/* Active Screen Area */}
@@ -59,92 +81,94 @@ export default function MainTabScreen({ route, navigation }: any) {
       </View>
 
       {/* =========================================================================
-         EXACT FIGMA 5-TAB BOTTOM NAVIGATION
+         EXACT FIGMA 5-TAB BOTTOM NAVIGATION (Hidden on Cart Screen)
          ========================================================================= */}
-      <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
-        
-        {/* Tab 1: Home */}
-        <TouchableOpacity 
-          style={styles.tabItem}
-          onPress={() => setActiveTab('Home')}
-          activeOpacity={0.7}
-        >
-          <AppIcon 
-            name="home" 
-            size={22} 
-            color={activeTab === 'Home' ? ACTIVE_COLOR : INACTIVE_COLOR} 
-          />
-          <Text style={[styles.tabLabel, { color: activeTab === 'Home' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Home' && styles.tabLabelActive]}>
-            Home
-          </Text>
-        </TouchableOpacity>
+      {activeTab !== 'Cart' && (
+        <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
+          
+          {/* Tab 1: Home */}
+          <TouchableOpacity 
+            style={styles.tabItem}
+            onPress={() => setActiveTab('Home')}
+            activeOpacity={0.7}
+          >
+            <AppIcon 
+              name="home" 
+              size={22} 
+              color={activeTab === 'Home' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+            />
+            <Text style={[styles.tabLabel, { color: activeTab === 'Home' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Home' && styles.tabLabelActive]}>
+              Home
+            </Text>
+          </TouchableOpacity>
 
-        {/* Tab 2: Categories */}
-        <TouchableOpacity 
-          style={styles.tabItem}
-          onPress={() => setActiveTab('Categories')}
-          activeOpacity={0.7}
-        >
-          <AppIcon 
-            name="categories" 
-            size={20} 
-            color={activeTab === 'Categories' ? ACTIVE_COLOR : INACTIVE_COLOR} 
-          />
-          <Text style={[styles.tabLabel, { color: activeTab === 'Categories' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Categories' && styles.tabLabelActive]}>
-            Categories
-          </Text>
-        </TouchableOpacity>
+          {/* Tab 2: Categories */}
+          <TouchableOpacity 
+            style={styles.tabItem}
+            onPress={() => setActiveTab('Categories')}
+            activeOpacity={0.7}
+          >
+            <AppIcon 
+              name="categories" 
+              size={20} 
+              color={activeTab === 'Categories' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+            />
+            <Text style={[styles.tabLabel, { color: activeTab === 'Categories' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Categories' && styles.tabLabelActive]}>
+              Categories
+            </Text>
+          </TouchableOpacity>
 
-        {/* Tab 3: Cart with Dynamic Badge */}
-        <TouchableOpacity 
-          style={styles.tabItem}
-          onPress={() => setActiveTab('Cart')}
-          activeOpacity={0.7}
-        >
-          <AppIcon 
-            name="cart" 
-            size={22} 
-            color={activeTab === 'Cart' ? ACTIVE_COLOR : INACTIVE_COLOR} 
-            badge={totalCartCount > 0 ? totalCartCount : undefined}
-          />
-          <Text style={[styles.tabLabel, { color: activeTab === 'Cart' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Cart' && styles.tabLabelActive]}>
-            Cart
-          </Text>
-        </TouchableOpacity>
+          {/* Tab 3: Cart with Dynamic Badge */}
+          <TouchableOpacity 
+            style={styles.tabItem}
+            onPress={() => setActiveTab('Cart')}
+            activeOpacity={0.7}
+          >
+            <AppIcon 
+              name="cart" 
+              size={22} 
+              color={INACTIVE_COLOR} 
+              badge={totalCartCount > 0 ? totalCartCount : undefined}
+            />
+            <Text style={[styles.tabLabel, { color: INACTIVE_COLOR }]}>
+              Cart
+            </Text>
+          </TouchableOpacity>
 
-        {/* Tab 4: Orders */}
-        <TouchableOpacity 
-          style={styles.tabItem}
-          onPress={() => setActiveTab('Orders')}
-          activeOpacity={0.7}
-        >
-          <AppIcon 
-            name="orders" 
-            size={20} 
-            color={activeTab === 'Orders' ? ACTIVE_COLOR : INACTIVE_COLOR} 
-          />
-          <Text style={[styles.tabLabel, { color: activeTab === 'Orders' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Orders' && styles.tabLabelActive]}>
-            Orders
-          </Text>
-        </TouchableOpacity>
+          {/* Tab 4: Orders */}
+          <TouchableOpacity 
+            style={styles.tabItem}
+            onPress={() => setActiveTab('Orders')}
+            activeOpacity={0.7}
+          >
+            <AppIcon 
+              name="orders" 
+              size={20} 
+              color={activeTab === 'Orders' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+            />
+            <Text style={[styles.tabLabel, { color: activeTab === 'Orders' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Orders' && styles.tabLabelActive]}>
+              Orders
+            </Text>
+          </TouchableOpacity>
 
-        {/* Tab 5: Account */}
-        <TouchableOpacity 
-          style={styles.tabItem}
-          onPress={() => setActiveTab('Account')}
-          activeOpacity={0.7}
-        >
-          <AppIcon 
-            name="account" 
-            size={22} 
-            color={activeTab === 'Account' ? ACTIVE_COLOR : INACTIVE_COLOR} 
-          />
-          <Text style={[styles.tabLabel, { color: activeTab === 'Account' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Account' && styles.tabLabelActive]}>
-            Account
-          </Text>
-        </TouchableOpacity>
+          {/* Tab 5: Account */}
+          <TouchableOpacity 
+            style={styles.tabItem}
+            onPress={() => setActiveTab('Account')}
+            activeOpacity={0.7}
+          >
+            <AppIcon 
+              name="account" 
+              size={22} 
+              color={activeTab === 'Account' ? ACTIVE_COLOR : INACTIVE_COLOR} 
+            />
+            <Text style={[styles.tabLabel, { color: activeTab === 'Account' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Account' && styles.tabLabelActive]}>
+              Account
+            </Text>
+          </TouchableOpacity>
 
-      </View>
+        </View>
+      )}
     </View>
   );
 }

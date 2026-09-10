@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
-import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import { COLORS, FONTS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import {
@@ -99,11 +99,11 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
   const handleApplyCoupon = (coupon: CouponItem) => {
     if (!screenConfig) return;
 
-    if (cartAmount > 0 && cartAmount < coupon.min_order_amount) {
+    if (cartAmount > 0 && cartAmount < (coupon.min_order_amount || 0)) {
       Alert.alert(
         screenConfig.min_order_alert_title,
         formatOffersTemplate(screenConfig.min_order_alert_template, {
-          amount: (coupon.min_order_amount - cartAmount).toLocaleString('en-IN'),
+          amount: ((coupon.min_order_amount || 0) - cartAmount).toLocaleString('en-IN'),
           code: coupon.code,
         }),
       );
@@ -130,6 +130,18 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
 
   const toggleExpand = (id: string) => {
     setExpandedCouponId(expandedCouponId === id ? null : id);
+  };
+
+  const getFormattedCouponTitle = (coupon: CouponItem): string => {
+    if (coupon.title && !coupon.title.includes('undefined')) {
+      return coupon.title;
+    }
+    const val = coupon.discount_value || 0;
+    const minOrder = coupon.min_order_amount || 0;
+    if (coupon.discount_type === 'percentage') {
+      return `${val}% off on orders above ₹${minOrder.toLocaleString('en-IN')}`;
+    }
+    return `₹${val} off on orders above ₹${minOrder.toLocaleString('en-IN')}`;
   };
 
   const buildGuidelineText = (coupon: CouponItem) => {
@@ -177,10 +189,13 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
 
   if (!screenConfig) return null;
 
+  const isManualActive = Boolean(manualCode.trim());
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
+      {/* Header section matching Figma */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -189,9 +204,9 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <CheckoutBackIcon size={24} />
+          <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title || 'Offers & coupons'}</Text>
       </View>
 
       <ScrollView
@@ -199,13 +214,14 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Manual Coupon Input Bar */}
         <View style={styles.applyInputBar}>
           <View style={styles.inputIcon}>
-            <CheckoutPercentIcon size={15} />
+            <CheckoutPercentIcon size={19} color={COLORS.green700} />
           </View>
           <TextInput
             style={styles.textInput}
-            placeholder={screenConfig.manual_code_placeholder}
+            placeholder={screenConfig.manual_code_placeholder || 'Enter coupon code'}
             placeholderTextColor={COLORS.ink300}
             value={manualCode}
             onChangeText={setManualCode}
@@ -213,20 +229,23 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
             autoCorrect={false}
           />
           <TouchableOpacity
-            style={[styles.applyBtn, !manualCode.trim() && styles.applyBtnDisabled]}
+            style={[styles.applyBtn, !isManualActive && styles.applyBtnDisabled]}
             onPress={handleApplyManualCode}
-            disabled={applyingManual || !manualCode.trim()}
+            disabled={applyingManual || !isManualActive}
             activeOpacity={0.85}
           >
             {applyingManual ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.applyBtnTxt}>{screenConfig.manual_apply_label}</Text>
+              <Text style={styles.applyBtnTxt}>{screenConfig.manual_apply_label || 'Apply'}</Text>
             )}
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>{screenConfig.available_section_label}</Text>
+        {/* Section Heading */}
+        <Text style={styles.sectionLabel}>
+          {screenConfig.available_section_label || 'AVAILABLE FOR YOU'}
+        </Text>
 
         {couponsLoading ? (
           <View style={styles.centerLoading}>
@@ -235,20 +254,26 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
         ) : (
           <View style={styles.listContainer}>
             {coupons.map((coupon) => {
-              const isEligible = cartAmount === 0 || cartAmount >= coupon.min_order_amount;
-              const remainingAmount = coupon.min_order_amount - cartAmount;
+              const minAmount = coupon.min_order_amount || 0;
+              const isEligible = cartAmount === 0 || cartAmount >= minAmount;
+              const remainingAmount = minAmount - cartAmount;
               const isExpanded = expandedCouponId === coupon.id;
-              const expiryLabel = formatOffersTemplate(screenConfig.expires_template, {
-                date: coupon.expires_at,
-              });
+              const expiryLabel = coupon.expires_at
+                ? formatOffersTemplate(screenConfig.expires_template || 'Expires {date}', {
+                    date: coupon.expires_at,
+                  })
+                : 'Expires 31 Aug 2026';
+              const displayTitle = getFormattedCouponTitle(coupon);
 
               return (
                 <View key={coupon.id} style={styles.couponCard}>
                   <View style={styles.cardMainRow}>
+                    {/* Left Pastel Amber Tile with % Icon */}
                     <View style={styles.leftColorPill}>
-                      <CheckoutPercentIcon size={15} />
+                      <CheckoutPercentIcon size={24} color={COLORS.marigold600} />
                     </View>
 
+                    {/* Middle Info Area */}
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => toggleExpand(coupon.id)}
@@ -263,11 +288,12 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
                         ) : null}
                       </View>
                       <Text style={styles.couponTitle} numberOfLines={2}>
-                        {coupon.title}
+                        {displayTitle}
                       </Text>
                       <Text style={styles.expiryTxt}>{expiryLabel}</Text>
                     </TouchableOpacity>
 
+                    {/* Right Apply Button */}
                     <TouchableOpacity
                       onPress={() => handleApplyCoupon(coupon)}
                       disabled={!isEligible}
@@ -280,11 +306,12 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
                           !isEligible && styles.cardActionTxtDisabled,
                         ]}
                       >
-                        {screenConfig.list_apply_label}
+                        {screenConfig.list_apply_label || 'APPLY'}
                       </Text>
                     </TouchableOpacity>
                   </View>
 
+                  {/* Collapsible details for terms/conditions */}
                   {isExpanded ? (
                     <View style={styles.collapsibleArea}>
                       {coupon.description ? (
@@ -300,9 +327,12 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
                           <View style={styles.cardDivider} />
                           <View style={styles.warningRow}>
                             <Text style={styles.warningTxt}>
-                              {formatOffersTemplate(screenConfig.unlock_offer_template, {
-                                amount: remainingAmount.toLocaleString('en-IN'),
-                              })}
+                              {formatOffersTemplate(
+                                screenConfig.unlock_offer_template || 'Add ₹{amount} more to unlock this offer',
+                                {
+                                  amount: remainingAmount.toLocaleString('en-IN'),
+                                },
+                              )}
                             </Text>
                           </View>
                         </View>
@@ -315,8 +345,8 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
 
             {coupons.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <CheckoutPercentIcon size={28} />
-                <Text style={styles.emptyTxt}>{screenConfig.empty_message}</Text>
+                <CheckoutPercentIcon size={28} color={COLORS.ink300} />
+                <Text style={styles.emptyTxt}>{screenConfig.empty_message || 'No coupons available'}</Text>
               </View>
             ) : null}
           </View>
@@ -354,7 +384,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 4,
     paddingBottom: 8,
-    gap: 10,
     backgroundColor: SCREEN_BG,
   },
   backBtn: {
@@ -362,10 +391,12 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 4,
   },
   headerTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
+    lineHeight: 24,
     color: COLORS.ink900,
   },
   scroll: {
@@ -373,21 +404,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingTop: 14,
     paddingBottom: 40,
   },
   applyInputBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 12,
     height: 48,
     paddingLeft: 14,
     paddingRight: 6,
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   inputIcon: {
     justifyContent: 'center',
@@ -395,8 +426,9 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    ...FONTS.muktaBold,
+    ...FONTS.muktaRegular,
     fontSize: 14,
+    lineHeight: 20,
     color: COLORS.ink900,
     padding: 0,
   },
@@ -409,18 +441,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   applyBtnDisabled: {
-    opacity: 0.45,
+    backgroundColor: '#8FBCA3',
   },
   applyBtnTxt: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
+    lineHeight: 16,
     color: '#FFFFFF',
   },
   sectionLabel: {
     ...FONTS.muktaBold,
     fontSize: 12,
+    lineHeight: 16,
     color: COLORS.ink500,
-    letterSpacing: 1.4,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginBottom: 14,
   },
@@ -434,7 +468,7 @@ const styles = StyleSheet.create({
   },
   couponCard: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: COLORS.line,
     borderRadius: 14,
     overflow: 'hidden',
@@ -442,11 +476,11 @@ const styles = StyleSheet.create({
   cardMainRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 84,
+    minHeight: 84,
   },
   leftColorPill: {
     width: 52,
-    height: 84,
+    alignSelf: 'stretch',
     backgroundColor: '#FDEFD3',
     justifyContent: 'center',
     alignItems: 'center',
@@ -455,9 +489,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 13,
     paddingBottom: 13,
-    paddingRight: 10,
+    paddingRight: 6,
     paddingLeft: 14,
-    gap: 3,
+    justifyContent: 'center',
   },
   codeHeaderRow: {
     flexDirection: 'row',
@@ -465,8 +499,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   couponCode: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
+    lineHeight: 16,
     color: COLORS.ink900,
   },
   badgePill: {
@@ -477,7 +512,7 @@ const styles = StyleSheet.create({
   },
   badgeTxt: {
     ...FONTS.muktaBold,
-    fontSize: 8.5,
+    fontSize: 9,
     color: COLORS.green700,
   },
   couponTitle: {
@@ -485,21 +520,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.ink700,
     lineHeight: 20,
+    marginTop: 3,
   },
   expiryTxt: {
     ...FONTS.muktaMedium,
     fontSize: 12,
+    lineHeight: 16,
     color: COLORS.ink500,
+    marginTop: 3,
   },
   cardActionArea: {
     width: 55,
-    height: 84,
+    alignSelf: 'stretch',
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardActionTxt: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaSemiBold,
     fontSize: 13,
+    lineHeight: 16,
     color: COLORS.green700,
   },
   cardActionTxtDisabled: {

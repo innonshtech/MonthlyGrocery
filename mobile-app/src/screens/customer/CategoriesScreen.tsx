@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FBFAF6',
   },
   mainTitle: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 22,
     color: COLORS.ink900,
     letterSpacing: -0.22,
