@@ -12,14 +12,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { SvgXml } from 'react-native-svg';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
-import {
-  AccountChevronIcon,
-  AccountMenuHelpIcon,
-  HelpSupportPhoneIcon,
-} from '../../components/account/AccountHubIcons';
 import AppLoader from '../../components/AppLoader';
-import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import { FONTS } from '../../constants/theme';
 import {
   HelpSupportScreenConfig,
   buildTelUrl,
@@ -28,7 +24,13 @@ import {
   formatHelpTemplate,
 } from '../../services/helpSupportApi';
 
-const SCREEN_BG = '#FBFAF6';
+const SCREEN_BG = '#F8FAF8';
+
+const CHAT_XML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="#1E7A46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const CALL_XML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="#D97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const CHEVRON_DOWN_XML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 export default function HelpSupportScreen({ navigation }: any) {
   const [screenConfig, setScreenConfig] = useState<HelpSupportScreenConfig | null>(null);
@@ -118,9 +120,9 @@ export default function HelpSupportScreen({ navigation }: any) {
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <CheckoutBackIcon size={24} />
+          <CheckoutBackIcon size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title || 'Help & support'}</Text>
       </View>
 
       <ScrollView
@@ -134,11 +136,11 @@ export default function HelpSupportScreen({ navigation }: any) {
             onPress={handleChatWhatsApp}
             activeOpacity={0.85}
           >
-            <View style={styles.contactIconBox}>
-              <AccountMenuHelpIcon size={20} />
+            <View style={styles.chatIconBox}>
+              <SvgXml xml={CHAT_XML} width={20} height={20} />
             </View>
-            <Text style={styles.contactTitle}>{screenConfig.chat_title}</Text>
-            <Text style={styles.contactSub}>{screenConfig.chat_subtitle}</Text>
+            <Text style={styles.contactTitle}>{screenConfig.chat_title || 'Chat with us'}</Text>
+            <Text style={styles.contactSub}>{screenConfig.chat_subtitle || 'Replies in ~2 min'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -146,15 +148,15 @@ export default function HelpSupportScreen({ navigation }: any) {
             onPress={handleCallUs}
             activeOpacity={0.85}
           >
-            <View style={styles.contactIconBox}>
-              <HelpSupportPhoneIcon size={20} />
+            <View style={styles.callIconBox}>
+              <SvgXml xml={CALL_XML} width={20} height={20} />
             </View>
-            <Text style={styles.contactTitle}>{screenConfig.call_title}</Text>
-            <Text style={styles.contactSub}>{screenConfig.call_subtitle}</Text>
+            <Text style={styles.contactTitle}>{screenConfig.call_title || 'Call us'}</Text>
+            <Text style={styles.contactSub}>{screenConfig.call_subtitle || '8 AM – 10 PM daily'}</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionHeading}>{screenConfig.faq_section_label}</Text>
+        <Text style={styles.sectionHeading}>{screenConfig.faq_section_label || 'FREQUENT QUESTIONS'}</Text>
 
         <View style={styles.faqsCard}>
           {faqs.map((faq, idx) => {
@@ -175,10 +177,7 @@ export default function HelpSupportScreen({ navigation }: any) {
                       isExpanded && styles.chevronExpanded,
                     ]}
                   >
-                    <AccountChevronIcon
-                      size={18}
-                      color={isExpanded ? COLORS.green700 : COLORS.ink500}
-                    />
+                    <SvgXml xml={CHEVRON_DOWN_XML} width={18} height={18} />
                   </View>
                 </TouchableOpacity>
 
@@ -205,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   retryBtn: {
-    backgroundColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -215,11 +214,11 @@ const styles = StyleSheet.create({
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingLeft: 16,
-    paddingRight: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 8,
+    backgroundColor: SCREEN_BG,
   },
   backBtn: {
     width: 36,
@@ -229,101 +228,108 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...FONTS.muktaBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#111827',
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 10,
     paddingBottom: 36,
   },
   contactRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
     marginBottom: 24,
   },
   contactCard: {
     flex: 1,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 16,
   },
-  contactIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.xs,
-    backgroundColor: COLORS.green50,
+  chatIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EAF5EE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 14,
+  },
+  callIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FDEFD8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
   },
   contactTitle: {
     ...FONTS.muktaBold,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
-    color: COLORS.ink900,
-    marginBottom: 2,
+    color: '#111827',
   },
   contactSub: {
     ...FONTS.muktaRegular,
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 16,
-    color: COLORS.ink500,
+    color: '#64748B',
+    marginTop: 4,
   },
   sectionHeading: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.ink500,
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: '#64748B',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 12,
   },
   faqsCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     paddingHorizontal: 16,
+    overflow: 'hidden',
+    marginBottom: 32,
   },
   faqItem: {
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   faqBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    borderBottomColor: '#F0F4F1',
   },
   faqQuestionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 10,
   },
   faqQuestionText: {
     flex: 1,
     ...FONTS.muktaSemiBold,
-    fontSize: 13.5,
-    lineHeight: 18,
-    color: COLORS.ink900,
+    fontSize: 15,
+    lineHeight: 20,
+    color: '#1E293B',
+    paddingRight: 12,
   },
   chevronWrap: {
-    transform: [{ rotate: '90deg' }],
+    transform: [{ rotate: '0deg' }],
   },
   chevronExpanded: {
-    transform: [{ rotate: '-90deg' }],
+    transform: [{ rotate: '180deg' }],
   },
   faqAnswerText: {
     ...FONTS.muktaRegular,
-    fontSize: 12.5,
-    lineHeight: 18,
-    color: COLORS.ink500,
-    marginTop: 8,
-    paddingTop: 4,
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#475569',
+    marginTop: 10,
+    paddingTop: 2,
   },
 });

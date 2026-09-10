@@ -37,7 +37,7 @@ import {
   formatInr,
 } from '../../services/accountApi';
 
-const SCREEN_BG = '#FBFAF6';
+const SCREEN_BG = '#F8FAF8';
 
 type MenuRowProps = {
   icon: React.ReactNode;
@@ -51,14 +51,14 @@ function MenuRow({ icon, label, onPress, badge, isLast }: MenuRowProps) {
   return (
     <>
       <TouchableOpacity style={styles.menuRow} onPress={onPress} activeOpacity={0.7}>
-        <View style={styles.menuIconCircle}>{icon}</View>
+        <View style={styles.menuIconSquircle}>{icon}</View>
         <Text style={styles.menuLabel}>{label}</Text>
         {badge != null && badge > 0 ? (
           <View style={styles.couponBadge}>
             <Text style={styles.couponBadgeText}>{badge}</Text>
           </View>
         ) : null}
-        <AccountChevronIcon size={20} />
+        <AccountChevronIcon size={18} color="#94A3B8" />
       </TouchableOpacity>
       {!isLast ? <View style={styles.menuDivider} /> : null}
     </>
@@ -119,23 +119,23 @@ export default function AccountScreen({ navigation }: any) {
 
   if (configLoading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <View style={styles.safe}>
         <View style={styles.centered}>
           <AppLoader message="Loading account..." />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!screenConfig) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <View style={styles.safe}>
         <View style={styles.centered}>
           <TouchableOpacity style={styles.primaryBtn} onPress={() => loadConfig()}>
             <Text style={styles.primaryBtnText}>Retry</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -156,7 +156,7 @@ export default function AccountScreen({ navigation }: any) {
       : null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <View style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
@@ -222,7 +222,7 @@ export default function AccountScreen({ navigation }: any) {
                 )}
               </View>
               <View style={styles.savingsCoinCircle}>
-                <AccountSavingsCoinLargeIcon size={28} />
+                <AccountSavingsCoinLargeIcon size={26} />
               </View>
             </View>
 
@@ -261,7 +261,7 @@ export default function AccountScreen({ navigation }: any) {
               onPress={() => setShowLogoutModal(true)}
               activeOpacity={0.85}
             >
-              <AccountLogoutIcon size={20} color="#D9383A" />
+              <AccountLogoutIcon size={18} color="#E53E3E" />
               <Text style={styles.logoutText}>{screenConfig.logout_label}</Text>
             </TouchableOpacity>
           </>
@@ -288,14 +288,14 @@ export default function AccountScreen({ navigation }: any) {
                 onPress={() => navigation.navigate('CitySelection')}
                 activeOpacity={0.7}
               >
-                <View style={styles.menuIconCircle}>
+                <View style={styles.menuIconSquircle}>
                   <AccountMenuPinIcon size={20} />
                 </View>
                 <View style={styles.guestMenuText}>
                   <Text style={styles.menuLabel}>{screenConfig.guest_delivery_area_label}</Text>
                   <Text style={styles.guestAreaSub}>{guestAreaLabel}</Text>
                 </View>
-                <AccountChevronIcon size={20} />
+                <AccountChevronIcon size={18} color="#94A3B8" />
               </TouchableOpacity>
               <View style={styles.menuDivider} />
               <MenuRow
@@ -351,7 +351,7 @@ export default function AccountScreen({ navigation }: any) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -365,14 +365,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 14,
   },
   headerTitle: {
     ...FONTS.muktaBold,
-    fontSize: 24,
-    lineHeight: 28,
-    color: COLORS.ink900,
+    fontSize: 26,
+    lineHeight: 30,
+    color: '#111827',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -381,23 +381,20 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    minHeight: 80,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   avatarCircle: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.green50,
+    backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 13,
+    marginRight: 14,
     overflow: 'hidden',
   },
   avatarImg: {
@@ -406,47 +403,45 @@ const styles = StyleSheet.create({
     borderRadius: 26,
   },
   avatarLetter: {
-    ...FONTS.balooBold,
-    fontSize: 24,
-    lineHeight: 28,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 22,
+    lineHeight: 26,
+    color: '#1E7A46',
   },
   profileInfo: { flex: 1, paddingRight: 8 },
   profileName: {
-    ...FONTS.balooBold,
-    fontSize: 16,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    ...FONTS.muktaBold,
+    fontSize: 17,
+    lineHeight: 22,
+    color: '#111827',
   },
   profilePhone: {
     ...FONTS.muktaRegular,
     fontSize: 13,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    lineHeight: 18,
+    color: '#64748B',
     marginTop: 2,
   },
   editBtn: {
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 16,
-    height: 32,
+    borderWidth: 1.5,
+    borderColor: '#1E7A46',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    height: 34,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
   },
   editBtnText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 13,
-    lineHeight: 16,
-    color: COLORS.ink700,
+    color: '#1E7A46',
   },
   savingsCard: {
-    backgroundColor: COLORS.green800,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    minHeight: 108,
+    backgroundColor: '#165B33',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -456,23 +451,25 @@ const styles = StyleSheet.create({
   savingsHeader: {
     ...FONTS.muktaBold,
     fontSize: 11,
-    lineHeight: 16,
-    color: COLORS.marigold500,
-    letterSpacing: 0.4,
-    marginBottom: 3,
+    lineHeight: 14,
+    color: '#D4E972',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   savingsAmount: {
     ...FONTS.balooBold,
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 34,
+    lineHeight: 40,
     color: '#FFFFFF',
+    marginTop: 4,
+    marginBottom: 2,
   },
   savingsSince: {
     ...FONTS.muktaRegular,
-    fontSize: 13,
+    fontSize: 12.5,
     lineHeight: 16,
-    color: '#D1FAE5',
-    marginTop: 4,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 2,
   },
   savingsLoader: { alignSelf: 'flex-start', marginTop: 8 },
   metricsErrorText: {
@@ -484,66 +481,63 @@ const styles = StyleSheet.create({
   metricsRetryText: {
     ...FONTS.muktaBold,
     fontSize: 12,
-    color: COLORS.marigold500,
+    color: '#D4E972',
     marginTop: 4,
   },
   savingsCoinCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: COLORS.marigold500,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FAB82C',
     justifyContent: 'center',
     alignItems: 'center',
   },
   menuCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    overflow: 'hidden',
     marginBottom: 16,
   },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 68,
-    gap: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  menuIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.green50,
+  menuIconSquircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#EAF5EE',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    marginRight: 14,
   },
   menuLabel: {
     ...FONTS.muktaSemiBold,
     fontSize: 15,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#1E293B',
     flex: 1,
   },
   couponBadge: {
-    minWidth: 22,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: COLORS.marigold500,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#F59E0B',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    marginRight: 4,
+    marginRight: 8,
   },
   couponBadgeText: {
     ...FONTS.muktaBold,
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 14,
-    color: COLORS.ink900,
+    color: '#FFFFFF',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: COLORS.line,
+    backgroundColor: '#F0F4F1',
   },
   guestMenuText: {
     flex: 1,
@@ -563,25 +557,22 @@ const styles = StyleSheet.create({
     gap: 10,
     height: 52,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EAE9E2',
-    borderRadius: RADIUS.pill,
-    marginTop: 12,
-    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    marginBottom: 32,
   },
   logoutText: {
-    ...FONTS.muktaBold,
+    ...FONTS.muktaSemiBold,
     fontSize: 15,
-    color: '#D9383A',
+    color: '#E53E3E',
   },
   guestCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
+    backgroundColor: '#EAF5EE',
+    borderRadius: 20,
     paddingHorizontal: 20,
-    paddingTop: 22,
-    paddingBottom: 20,
+    paddingTop: 24,
+    paddingBottom: 22,
     alignItems: 'center',
     marginBottom: 16,
   },
@@ -589,39 +580,40 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.green50,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   guestTitle: {
-    ...FONTS.balooBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
-    marginBottom: 8,
+    ...FONTS.muktaBold,
+    fontSize: 17,
+    lineHeight: 22,
+    color: '#111827',
+    marginBottom: 6,
     textAlign: 'center',
   },
   guestSub: {
     ...FONTS.muktaRegular,
     fontSize: 13,
-    lineHeight: 20,
-    color: COLORS.ink500,
+    lineHeight: 18,
+    color: '#475569',
     textAlign: 'center',
     marginBottom: 20,
+    paddingHorizontal: 8,
   },
   primaryBtn: {
-    backgroundColor: COLORS.green700,
-    height: 44,
-    borderRadius: RADIUS.pill,
+    backgroundColor: '#1E7A46',
+    height: 50,
+    borderRadius: 14,
     paddingHorizontal: 28,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'stretch',
   },
   primaryBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 15,
     color: '#FFFFFF',
   },
   modalRoot: {

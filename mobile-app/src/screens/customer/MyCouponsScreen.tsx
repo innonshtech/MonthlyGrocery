@@ -11,24 +11,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { SvgXml } from 'react-native-svg';
 import AppLoader from '../../components/AppLoader';
-import { COLORS, FONTS } from '../../constants/theme';
+import { FONTS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import {
-  CheckoutBackIcon,
-  CheckoutPercentIcon,
-} from '../../components/CheckoutFigmaIcons';
+import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import {
   CouponItem,
   MyCouponsScreenConfig,
-  buildMyCouponGuideline,
   fetchLiveCoupons,
   fetchMyCouponsScreenConfig,
   formatOffersTemplate,
 } from '../../services/myCouponsApi';
 
-const SCREEN_BG = '#FBFAF6';
+const SCREEN_BG = '#F8FAF8';
+
+const COUPON_PERCENT_XML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><line x1="19" y1="5" x2="5" y2="19" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="7" r="2.5" stroke="#D97706" stroke-width="2"/><circle cx="17" cy="17" r="2.5" stroke="#D97706" stroke-width="2"/></svg>`;
+
+const INFO_ICON_XML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9.5" stroke="#94A3B8" stroke-width="1.8"/><circle cx="12" cy="7.5" r="0.75" fill="#94A3B8"/><line x1="12" y1="11" x2="12" y2="16.5" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round"/></svg>`;
 
 export default function MyCouponsScreen({ navigation }: any) {
   const { token } = useAuth();
@@ -38,7 +39,6 @@ export default function MyCouponsScreen({ navigation }: any) {
   const [configLoading, setConfigLoading] = useState(true);
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(true);
-  const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -81,10 +81,6 @@ export default function MyCouponsScreen({ navigation }: any) {
     ]);
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedCouponId(expandedCouponId === id ? null : id);
-  };
-
   if (configLoading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -107,6 +103,8 @@ export default function MyCouponsScreen({ navigation }: any) {
     );
   }
 
+  const availableHeader = `AVAILABLE · ${coupons.length}`;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
@@ -117,9 +115,9 @@ export default function MyCouponsScreen({ navigation }: any) {
           style={styles.backBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <CheckoutBackIcon size={24} />
+          <CheckoutBackIcon size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title || 'My coupons'}</Text>
       </View>
 
       <ScrollView
@@ -127,17 +125,7 @@ export default function MyCouponsScreen({ navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.bannerCard}>
-          <View style={styles.bannerIconCircle}>
-            <CheckoutPercentIcon size={18} />
-          </View>
-          <View style={styles.bannerTextBlock}>
-            <Text style={styles.bannerTitle}>{screenConfig.banner_title}</Text>
-            <Text style={styles.bannerSubtitle}>{screenConfig.banner_subtitle}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>{screenConfig.section_label}</Text>
+        <Text style={styles.sectionLabel}>{availableHeader}</Text>
 
         {couponsLoading ? (
           <View style={styles.centerLoading}>
@@ -146,69 +134,50 @@ export default function MyCouponsScreen({ navigation }: any) {
         ) : (
           <View style={styles.listContainer}>
             {coupons.map((coupon) => {
-              const isExpanded = expandedCouponId === coupon.id;
               const expiryLabel = formatOffersTemplate(screenConfig.expires_template, {
                 date: coupon.expires_at,
               });
 
               return (
                 <View key={coupon.id} style={styles.couponCard}>
-                  <View style={styles.cardTopRow}>
-                    <View style={styles.percentCircle}>
-                      <CheckoutPercentIcon size={16} />
-                    </View>
-
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => toggleExpand(coupon.id)}
-                      style={styles.couponInfo}
-                    >
-                      <View style={styles.codeHeaderRow}>
-                        <Text style={styles.couponCode}>{coupon.code}</Text>
-                        {coupon.badge ? (
-                          <View style={styles.badgePill}>
-                            <Text style={styles.badgeTxt}>{coupon.badge}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text style={styles.couponTitle}>{coupon.title}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.cardActionBtn}
-                      onPress={() => handleCopyCoupon(coupon)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.cardActionTxt}>{screenConfig.list_copy_label}</Text>
-                    </TouchableOpacity>
+                  <View style={styles.stubContainer}>
+                    <SvgXml xml={COUPON_PERCENT_XML} width={22} height={22} />
                   </View>
 
-                  {coupon.description ? (
-                    <Text style={styles.couponDesc}>{coupon.description}</Text>
-                  ) : null}
-
-                  <View style={styles.expiryRow}>
-                    <View style={styles.cardDivider} />
+                  <View style={styles.couponContent}>
+                    <Text style={styles.couponCode}>{coupon.code}</Text>
+                    <Text style={styles.couponTitle} numberOfLines={2}>
+                      {coupon.title}
+                    </Text>
                     <Text style={styles.expiryTxt}>{expiryLabel}</Text>
                   </View>
 
-                  {isExpanded ? (
-                    <View style={styles.guidelineRow}>
-                      <Text style={styles.guidelineTxt}>
-                        {buildMyCouponGuideline(screenConfig, coupon)}
-                      </Text>
-                    </View>
-                  ) : null}
+                  <TouchableOpacity
+                    style={styles.copyBtn}
+                    onPress={() => handleCopyCoupon(coupon)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.copyBtnTxt}>
+                      {screenConfig.list_copy_label || 'COPY'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               );
             })}
 
             {coupons.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <CheckoutPercentIcon size={28} />
+                <SvgXml xml={COUPON_PERCENT_XML} width={28} height={28} />
                 <Text style={styles.emptyTxt}>{screenConfig.empty_message}</Text>
               </View>
-            ) : null}
+            ) : (
+              <View style={styles.footerNoteRow}>
+                <SvgXml xml={INFO_ICON_XML} width={14} height={14} />
+                <Text style={styles.footerNoteText}>
+                  Coupons apply automatically at checkout when eligible.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -228,7 +197,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   retryBtn: {
-    backgroundColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -239,9 +208,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 10,
-    gap: 10,
+    paddingTop: 8,
+    paddingBottom: 12,
+    gap: 8,
     backgroundColor: SCREEN_BG,
   },
   backBtn: {
@@ -252,59 +221,26 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...FONTS.muktaBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#111827',
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 10,
     paddingBottom: 40,
-  },
-  bannerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.green50,
-    borderWidth: 1.5,
-    borderColor: COLORS.green100,
-    borderRadius: 14,
-    padding: 16,
-    gap: 12,
-    marginBottom: 20,
-  },
-  bannerIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.green100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bannerTextBlock: {
-    flex: 1,
-    gap: 4,
-  },
-  bannerTitle: {
-    ...FONTS.balooBold,
-    fontSize: 15,
-    color: COLORS.green700,
-  },
-  bannerSubtitle: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink700,
-    lineHeight: 16,
   },
   sectionLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    color: COLORS.ink500,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#64748B',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   centerLoading: {
     paddingVertical: 40,
@@ -312,102 +248,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   listContainer: {
-    gap: 14,
-  },
-  couponCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 12,
   },
-  percentCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.green50,
+  couponCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  stubContainer: {
+    width: 68,
+    alignSelf: 'stretch',
+    backgroundColor: '#FDEFD8',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  couponInfo: {
+  couponContent: {
     flex: 1,
-    gap: 2,
-  },
-  codeHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    paddingLeft: 14,
+    paddingRight: 8,
+    paddingVertical: 14,
   },
   couponCode: {
-    ...FONTS.balooBold,
-    fontSize: 16,
-    color: COLORS.ink900,
-    lineHeight: 20,
-  },
-  badgePill: {
-    backgroundColor: COLORS.green50,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeTxt: {
     ...FONTS.muktaBold,
-    fontSize: 9,
-    color: COLORS.green700,
+    fontSize: 14.5,
+    lineHeight: 18,
+    color: '#111827',
   },
   couponTitle: {
-    ...FONTS.muktaBold,
-    fontSize: 12,
-    color: COLORS.ink500,
-    lineHeight: 16,
-  },
-  cardActionBtn: {
-    backgroundColor: COLORS.green50,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  cardActionTxt: {
-    ...FONTS.balooBold,
-    fontSize: 12,
-    color: COLORS.green700,
-  },
-  couponDesc: {
-    ...FONTS.muktaRegular,
+    ...FONTS.muktaMedium,
     fontSize: 13,
-    color: COLORS.ink700,
     lineHeight: 18,
-    paddingLeft: 48,
-  },
-  cardDivider: {
-    height: 1.5,
-    backgroundColor: COLORS.line,
-    marginVertical: 4,
-  },
-  expiryRow: {
-    gap: 6,
+    color: '#475569',
+    marginTop: 3,
   },
   expiryTxt: {
-    ...FONTS.muktaMedium,
-    fontSize: 11,
-    color: COLORS.ink300,
-    paddingLeft: 48,
-  },
-  guidelineRow: {
-    paddingLeft: 48,
-    paddingTop: 4,
-  },
-  guidelineTxt: {
-    ...FONTS.muktaMedium,
-    fontSize: 11,
-    color: COLORS.ink500,
+    ...FONTS.muktaRegular,
+    fontSize: 11.5,
     lineHeight: 16,
+    color: '#94A3B8',
+    marginTop: 3,
+  },
+  copyBtn: {
+    paddingRight: 18,
+    paddingLeft: 8,
+    paddingVertical: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  copyBtnTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    color: '#1E7A46',
+  },
+  footerNoteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 14,
+    paddingHorizontal: 4,
+  },
+  footerNoteText: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#64748B',
+    flex: 1,
   },
   emptyWrap: {
     paddingVertical: 60,
@@ -418,6 +324,6 @@ const styles = StyleSheet.create({
   emptyTxt: {
     ...FONTS.muktaMedium,
     fontSize: 14,
-    color: COLORS.ink500,
+    color: '#64748B',
   },
 });

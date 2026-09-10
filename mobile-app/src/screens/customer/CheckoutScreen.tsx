@@ -9,17 +9,17 @@ import {
   Alert,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { COLORS, FONTS } from '../../constants/theme';
-import AppIcon from '../../components/AppIcon';
 import {
   fetchUserAddresses,
   cacheAddressesLocally,
 } from '../../services/addressApi';
 import {
+  CheckoutBackIcon,
   CheckoutHomeIcon,
   CheckoutClockIcon,
   CheckoutPlusIcon,
@@ -31,13 +31,14 @@ import { calculateCouponDiscount } from '../../utils/couponDiscount';
 import { API_BASE } from '../../config/api';
 
 /** Figma E1 Checkout canvas background */
-const CHECKOUT_BG = '#FBFAF6';
+const CHECKOUT_BG = '#F8FAF8';
 const REQUIRED_BG = '#FDEEEC';
 
 const formatInr = (n: number) =>
   `₹${Math.round(n).toLocaleString('en-IN')}`;
 
 export default function CheckoutScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { items, minOrderLimit = 2500, appliedCoupon, setAppliedCoupon } = useCart();
   const { token, city, area, pincode: areaPincode } = useAuth();
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
@@ -227,13 +228,11 @@ export default function CheckoutScreen({ route, navigation }: any) {
     });
   };
 
-  const isCheckoutReady = !!(selectedAddress && selectedSlot);
-
-  return (
+    return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header — Figma: pl16 pr20 pt4 pb8 */}
+      {/* Header — Figma: pl16 pr20 pt8 pb12 */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -242,7 +241,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
+          <CheckoutBackIcon size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Checkout</Text>
       </View>
@@ -370,7 +369,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
         {/* Coupon card */}
         {appliedCoupon ? (
           <View style={styles.appliedCouponCard}>
-            <CheckoutPercentIcon size={20} color={COLORS.marigold600} />
+            <CheckoutPercentIcon size={20} color="#B45309" />
             <View style={styles.couponDetails}>
               <Text style={styles.appliedCouponCode}>{appliedCoupon.code} applied</Text>
               <Text style={styles.appliedCouponSavings}>
@@ -388,7 +387,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
             activeOpacity={0.8}
           >
             <View style={styles.couponLeft}>
-              <CheckoutPercentIcon size={20} color={COLORS.green700} />
+              <CheckoutPercentIcon size={20} color="#1E7A46" />
               <Text style={styles.noCouponTitle}>Apply coupon</Text>
             </View>
             <Text style={styles.changeLink}>Select</Text>
@@ -430,24 +429,22 @@ export default function CheckoutScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Sticky bottom bar — Figma height ~72, always shows TO PAY & Proceed to pay */}
-      <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
-        <View style={styles.bottomBar}>
-          <View style={styles.paymentRow}>
-            <View style={styles.payableSummary}>
-              <Text style={styles.payableLabel}>TO PAY</Text>
-              <Text style={styles.payableAmount}>{formatInr(toPay)}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.proceedPayBtn}
-              onPress={handleProceedToPayment}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.proceedPayBtnText}>Proceed to pay</Text>
-            </TouchableOpacity>
+      {/* Sticky bottom bar — Figma height ~74, shows TO PAY & Proceed to pay */}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+        <View style={styles.paymentRow}>
+          <View style={styles.payableSummary}>
+            <Text style={styles.payableLabel}>TO PAY</Text>
+            <Text style={styles.payableAmount}>{formatInr(toPay)}</Text>
           </View>
+          <TouchableOpacity
+            style={styles.proceedPayBtn}
+            onPress={handleProceedToPayment}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.proceedPayBtnText}>Proceed to pay</Text>
+          </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -461,22 +458,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: CHECKOUT_BG,
+    gap: 8,
   },
   backBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 4,
   },
   headerTitle: {
     ...FONTS.muktaBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#111827',
   },
   scrollArea: {
     flex: 1,
@@ -489,8 +486,8 @@ const styles = StyleSheet.create({
   },
   belowMinNotice: {
     backgroundColor: COLORS.marigold100,
-    borderRadius: 12,
-    paddingHorizontal: 14,
+    borderRadius: 14,
+    paddingHorizontal: 16,
     paddingVertical: 12,
   },
   belowMinText: {
@@ -500,24 +497,26 @@ const styles = StyleSheet.create({
     color: COLORS.marigold700,
   },
   sectionCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   sectionCardCol: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     gap: 12,
   },
   iconSquare: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: COLORS.green100,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EAF5EE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -533,54 +532,55 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   cardTitle: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 15,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   requiredTitle: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 15,
     lineHeight: 20,
-    color: COLORS.green700,
+    color: '#1E7A46',
   },
   cardSub: {
     ...FONTS.muktaRegular,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#64748B',
+    marginTop: 2,
   },
   defaultBadge: {
-    backgroundColor: COLORS.green100,
+    backgroundColor: '#EAF5EE',
     borderRadius: 4,
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
   },
   defaultBadgeText: {
     ...FONTS.muktaBold,
-    fontSize: 10,
+    fontSize: 10.5,
     lineHeight: 13,
-    color: COLORS.green700,
+    color: '#1E7A46',
     textTransform: 'uppercase',
   },
   requiredBadge: {
     backgroundColor: REQUIRED_BG,
     borderRadius: 4,
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
   },
   requiredBadgeText: {
     ...FONTS.muktaBold,
-    fontSize: 10,
+    fontSize: 10.5,
     lineHeight: 13,
     color: COLORS.error,
     textTransform: 'uppercase',
   },
   changeLink: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 13,
-    lineHeight: 16,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: '#1E7A46',
   },
   basketHeader: {
     flexDirection: 'row',
@@ -588,39 +588,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   basketTitle: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 15,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   basketCount: {
     ...FONTS.muktaRegular,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#64748B',
   },
   thumbsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   itemThumbWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   thumbImage: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
   quantityBadge: {
     position: 'absolute',
     top: -3,
     right: -3,
-    backgroundColor: COLORS.ink700,
+    backgroundColor: '#1E293B',
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -631,43 +631,45 @@ const styles = StyleSheet.create({
   quantityBadgeText: {
     ...FONTS.muktaBold,
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 9.5,
     lineHeight: 12,
   },
   appliedCouponCard: {
-    backgroundColor: '#FDEFD3',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#FDF0DC',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   couponDetails: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   appliedCouponCode: {
     ...FONTS.muktaBold,
-    fontSize: 14,
+    fontSize: 14.5,
     lineHeight: 20,
     color: '#8A5200',
   },
   appliedCouponSavings: {
     ...FONTS.muktaRegular,
-    fontSize: 12,
+    fontSize: 12.5,
     lineHeight: 16,
-    color: COLORS.ink700,
+    color: '#92400E',
   },
   removeCouponBtnTxt: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 12,
+    ...FONTS.muktaBold,
+    fontSize: 13,
     lineHeight: 16,
-    color: COLORS.green700,
+    color: '#1E7A46',
   },
   noCouponCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -679,22 +681,22 @@ const styles = StyleSheet.create({
   },
   noCouponTitle: {
     ...FONTS.muktaSemiBold,
-    fontSize: 14,
+    fontSize: 14.5,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   billCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    gap: 12,
   },
   billHeading: {
     ...FONTS.muktaBold,
-    fontSize: 12,
+    fontSize: 13,
     lineHeight: 16,
-    color: COLORS.ink700,
+    color: '#334155',
     marginBottom: 2,
   },
   billRow: {
@@ -706,31 +708,31 @@ const styles = StyleSheet.create({
     ...FONTS.muktaRegular,
     fontSize: 14,
     lineHeight: 20,
-    color: COLORS.ink500,
+    color: '#64748B',
   },
   billVal: {
-    ...FONTS.muktaRegular,
+    ...FONTS.muktaMedium,
     fontSize: 14,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   billValMarigold: {
     ...FONTS.muktaMedium,
     fontSize: 14,
     lineHeight: 20,
-    color: COLORS.marigold700,
+    color: '#B45309',
   },
   billValFree: {
     ...FONTS.muktaBold,
     fontSize: 14,
     lineHeight: 20,
-    color: COLORS.green700,
+    color: '#1E7A46',
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.line,
+    backgroundColor: '#F0F4F1',
     width: '100%',
-    marginVertical: 2,
+    marginVertical: 4,
   },
   billTotalRow: {
     flexDirection: 'row',
@@ -739,40 +741,24 @@ const styles = StyleSheet.create({
   },
   billTotalLabel: {
     ...FONTS.muktaBold,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   billTotalVal: {
     ...FONTS.muktaBold,
     fontSize: 18,
     lineHeight: 24,
-    color: COLORS.ink900,
-  },
-  bottomSafe: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.line,
+    color: '#111827',
   },
   bottomBar: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    minHeight: 68,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EBEFEB',
+    minHeight: 74,
     justifyContent: 'center',
-  },
-  disabledBarBtn: {
-    backgroundColor: '#F4F3EE',
-    borderRadius: 14,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  disabledBarBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
-    lineHeight: 18,
-    color: COLORS.ink300,
   },
   paymentRow: {
     flexDirection: 'row',
@@ -784,29 +770,29 @@ const styles = StyleSheet.create({
   },
   payableLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.ink500,
+    fontSize: 10.5,
+    lineHeight: 13,
+    color: '#64748B',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   payableAmount: {
     ...FONTS.muktaBold,
-    fontSize: 22,
+    fontSize: 24,
     lineHeight: 28,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   proceedPayBtn: {
-    backgroundColor: COLORS.green700,
-    borderRadius: 14,
-    height: 48,
-    paddingHorizontal: 28,
+    backgroundColor: '#1E7A46',
+    borderRadius: 16,
+    height: 52,
+    paddingHorizontal: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   proceedPayBtnText: {
     ...FONTS.muktaBold,
-    fontSize: 15,
+    fontSize: 15.5,
     lineHeight: 20,
     color: '#FFFFFF',
   },

@@ -34,12 +34,12 @@ try {
   imagePickerModule = null;
 }
 
-const SCREEN_BG = '#FAF9F5';
+const SCREEN_BG = '#F8FAF8';
 
 export default function EditProfileScreen({ navigation }: any) {
   const { token, user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
-  const bottomPadding = insets.bottom > 0 ? insets.bottom + 8 : 16;
+  const bottomPadding = Math.max(insets.bottom, 16);
 
   const [screenConfig, setScreenConfig] = useState<EditProfileScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
@@ -283,9 +283,9 @@ export default function EditProfileScreen({ navigation }: any) {
           onPress={() => navigation.goBack()}
           activeOpacity={0.7}
         >
-          <CheckoutBackIcon size={24} />
+          <CheckoutBackIcon size={22} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+        <Text style={styles.headerTitle}>{screenConfig.title || 'Edit profile'}</Text>
       </View>
 
       <ScrollView
@@ -314,7 +314,7 @@ export default function EditProfileScreen({ navigation }: any) {
             </View>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleChangePhoto} activeOpacity={0.7}>
-            <Text style={styles.changePhotoText}>{screenConfig.change_photo_label}</Text>
+            <Text style={styles.changePhotoText}>{screenConfig.change_photo_label || 'Change photo'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -325,8 +325,8 @@ export default function EditProfileScreen({ navigation }: any) {
           style={styles.inputField}
           value={name}
           onChangeText={setName}
-          placeholder={screenConfig.full_name_placeholder}
-          placeholderTextColor={COLORS.ink300}
+          placeholder={screenConfig.full_name_placeholder || 'Enter your name'}
+          placeholderTextColor="#94A3B8"
           autoCapitalize="words"
         />
 
@@ -334,25 +334,25 @@ export default function EditProfileScreen({ navigation }: any) {
           {screenConfig.phone_label ? screenConfig.phone_label.toUpperCase() : 'PHONE NUMBER'}
         </Text>
         <View style={styles.phoneInputWrap}>
-          <Text style={styles.phoneInputText}>{formattedPhone}</Text>
+          <Text style={styles.phoneInputText}>{formattedPhone || phone}</Text>
           {phone ? (
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedBadgeText}>
-                ✓ {screenConfig.verified_label}
+                ✓ {screenConfig.verified_label || 'Verified'}
               </Text>
             </View>
           ) : null}
         </View>
 
         <Text style={styles.fieldLabel}>
-          {screenConfig.email_label ? screenConfig.email_label.toUpperCase() : 'EMAIL ADDRESS'}
+          {screenConfig.email_label ? screenConfig.email_label.toUpperCase() : 'EMAIL (OPTIONAL)'}
         </Text>
         <TextInput
           style={styles.inputField}
           value={email}
           onChangeText={setEmail}
-          placeholder={screenConfig.email_placeholder}
-          placeholderTextColor={COLORS.ink300}
+          placeholder={screenConfig.email_placeholder || 'name@email.com'}
+          placeholderTextColor="#94A3B8"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -361,10 +361,10 @@ export default function EditProfileScreen({ navigation }: any) {
         <TouchableOpacity
           style={styles.deleteLinkRow}
           onPress={() => navigation.navigate('DeleteAccount')}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
-          <AccountDeleteTrashIcon size={18} color="#D9383A" />
-          <Text style={styles.deleteLinkText}>{screenConfig.delete_account_label}</Text>
+          <AccountDeleteTrashIcon size={16} color="#E53E3E" />
+          <Text style={styles.deleteLinkText}>{screenConfig.delete_account_label || 'Delete account'}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -378,7 +378,7 @@ export default function EditProfileScreen({ navigation }: any) {
           {saving ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.saveBtnText}>{screenConfig.save_button_label}</Text>
+            <Text style={styles.saveBtnText}>{screenConfig.save_button_label || 'Save changes'}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -420,12 +420,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 52,
+    paddingTop: 8,
+    paddingBottom: 12,
     gap: 8,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -433,153 +434,139 @@ const styles = StyleSheet.create({
     ...FONTS.muktaBold,
     fontSize: 20,
     lineHeight: 26,
-    color: '#17251E',
+    color: '#111827',
   },
   scrollContent: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 32,
   },
   avatarWrap: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 6,
+    marginBottom: 26,
   },
   avatarCircleContainer: {
     position: 'relative',
-    width: 88,
-    height: 88,
+    width: 90,
+    height: 90,
     marginBottom: 10,
   },
   avatarCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#E4F3EA',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#E2F2E7',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   avatarImg: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
   },
   avatarLetter: {
-    ...FONTS.balooBold,
-    fontSize: 34,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 36,
+    lineHeight: 42,
+    color: '#1E7A46',
   },
   cameraBadge: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.green700,
-    borderWidth: 2.5,
-    borderColor: SCREEN_BG,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#1E7A46',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   changePhotoText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 14,
     lineHeight: 18,
-    color: COLORS.green700,
+    color: '#1E7A46',
   },
   fieldLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11,
+    fontSize: 11.5,
     lineHeight: 16,
-    letterSpacing: 1.2,
-    color: '#3D4A44',
-    marginBottom: 6,
+    letterSpacing: 0.6,
+    color: '#334155',
+    marginBottom: 8,
   },
   inputField: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EAE9E2',
-    borderRadius: 12,
-    height: 52,
+    borderRadius: 16,
+    height: 54,
     paddingHorizontal: 16,
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaSemiBold,
     fontSize: 15,
     lineHeight: 22,
-    color: '#17251E',
+    color: '#111827',
     marginBottom: 20,
   },
   phoneInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4F3EE',
-    borderWidth: 1.5,
-    borderColor: '#EAE9E2',
-    borderRadius: 12,
-    height: 52,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    height: 54,
     paddingHorizontal: 16,
     marginBottom: 20,
   },
   phoneInputText: {
     flex: 1,
-    ...FONTS.muktaMedium,
+    ...FONTS.muktaSemiBold,
     fontSize: 15,
     lineHeight: 22,
-    color: '#17251E',
+    color: '#111827',
   },
   verifiedBadge: {
-    backgroundColor: '#E4F3EA',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   verifiedBadgeText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 13,
+    lineHeight: 16,
+    color: '#1E7A46',
   },
   deleteLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    height: 52,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#EAE9E2',
-    borderRadius: RADIUS.pill,
-    marginTop: 12,
-    marginBottom: 16,
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 24,
+    alignSelf: 'center',
   },
   deleteLinkText: {
-    ...FONTS.muktaBold,
-    fontSize: 15,
-    color: '#D9383A',
+    ...FONTS.muktaSemiBold,
+    fontSize: 14,
+    color: '#E53E3E',
   },
   bottomBar: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#EAE9E2',
+    borderTopColor: '#F0F4F1',
   },
   saveBtn: {
-    backgroundColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
     height: 52,
-    borderRadius: RADIUS.pill,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   saveBtnText: {
-    ...FONTS.balooBold,
+    ...FONTS.muktaBold,
     fontSize: 16,
-    lineHeight: 22,
     color: '#FFFFFF',
   },
 });

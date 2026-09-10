@@ -6,10 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CheckoutBackIcon,
   AddressRadioOnIcon,
@@ -20,7 +19,7 @@ import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
 import { API_BASE } from '../../config/api';
 
-const SCREEN_BG = '#FBFAF6';
+const SCREEN_BG = '#F8FAF8';
 
 type BadgeType = 'available' | 'recommended' | 'filling' | 'full';
 
@@ -41,6 +40,7 @@ type DayOption = {
 };
 
 export default function DeliverySlotScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
   const currentSlot = route?.params?.selectedSlot;
   const shopId = route?.params?.shopId;
   const pincode = route?.params?.pincode;
@@ -146,13 +146,15 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
     );
   }
 
+  const bottomPadding = Math.max(insets.bottom, 16);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <CheckoutBackIcon size={24} />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <CheckoutBackIcon size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Choose delivery slot</Text>
       </View>
@@ -239,25 +241,23 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.infoBanner}>
-          <SlotInfoIcon size={17} />
+          <SlotInfoIcon size={18} />
           <Text style={styles.infoBannerText}>
             Your whole monthly order arrives together in this one 4-hour window.
           </Text>
         </View>
       </ScrollView>
 
-      <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={[styles.confirmBtn, (selectedWindow?.disabled) && styles.confirmBtnDisabled]}
-            onPress={handleConfirmSlot}
-            activeOpacity={0.85}
-            disabled={!selectedWindow || selectedWindow.disabled}
-          >
-            <Text style={styles.confirmBtnText}>Confirm slot</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={[styles.bottomBar, { paddingBottom: bottomPadding }]}>
+        <TouchableOpacity
+          style={[styles.confirmBtn, (!selectedWindow || selectedWindow.disabled) && styles.confirmBtnDisabled]}
+          onPress={handleConfirmSlot}
+          activeOpacity={0.85}
+          disabled={!selectedWindow || selectedWindow.disabled}
+        >
+          <Text style={styles.confirmBtnText}>Confirm slot</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -273,19 +273,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  loadingText: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    color: COLORS.ink500,
-  },
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingLeft: 16,
-    paddingRight: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: SCREEN_BG,
   },
   backBtn: {
     width: 36,
@@ -295,62 +290,60 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...FONTS.muktaBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#111827',
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 6,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 24,
-    gap: 16,
+    gap: 18,
   },
   section: {
     gap: 10,
   },
   sectionLabel: {
     ...FONTS.muktaBold,
-    fontSize: 12,
+    fontSize: 11.5,
     lineHeight: 16,
-    letterSpacing: 1.44,
-    color: COLORS.ink500,
+    letterSpacing: 0.8,
+    color: '#64748B',
     textTransform: 'uppercase',
   },
   dateRow: {
     flexDirection: 'row',
-    gap: 9,
+    gap: 10,
   },
   dateCard: {
     flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    paddingVertical: 11,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
   },
   dateCardSelected: {
-    backgroundColor: COLORS.green700,
-    borderColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
   },
   dateCardLabel: {
     ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.ink500,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#64748B',
   },
   dateCardLabelSelected: {
     color: '#FFFFFF',
   },
   dateCardDay: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.ink900,
+    ...FONTS.muktaBold,
+    fontSize: 18,
+    lineHeight: 22,
+    color: '#111827',
   },
   dateCardDaySelected: {
     color: '#FFFFFF',
@@ -359,102 +352,100 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   windowCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-    paddingHorizontal: 14,
-    paddingVertical: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
   },
   windowCardSelected: {
-    backgroundColor: COLORS.green50,
-    borderColor: COLORS.green700,
-    borderWidth: 1.8,
+    borderWidth: 1.5,
+    borderColor: '#1E7A46',
   },
   windowCardDisabled: {
-    opacity: 1,
+    opacity: 0.5,
   },
   windowLabel: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
     flex: 1,
+    marginLeft: 12,
   },
   windowLabelDisabled: {
-    color: COLORS.ink300,
+    color: '#94A3B8',
   },
   badge: {
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
   badgeAvailable: {
-    backgroundColor: COLORS.green100,
+    backgroundColor: '#EAF5EE',
   },
   badgeRecommended: {
-    backgroundColor: COLORS.green100,
+    backgroundColor: '#EAF5EE',
   },
   badgeFilling: {
-    backgroundColor: COLORS.marigold100,
+    backgroundColor: '#FDF0DC',
   },
   badgeFull: {
-    backgroundColor: COLORS.muted,
+    backgroundColor: '#F1F5F2',
   },
   badgeText: {
     ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.green700,
+    fontSize: 11.5,
+    lineHeight: 15,
+    color: '#1E7A46',
   },
   badgeTextFilling: {
-    color: COLORS.marigold700,
+    color: '#B45309',
   },
   badgeTextMuted: {
-    color: COLORS.ink500,
+    color: '#64748B',
   },
   infoBanner: {
-    backgroundColor: COLORS.green100,
-    borderRadius: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    backgroundColor: '#EAF5EE',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
-    gap: 9,
-    alignItems: 'flex-start',
+    gap: 10,
+    alignItems: 'center',
   },
   infoBannerText: {
-    ...FONTS.muktaMedium,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.green800,
+    ...FONTS.muktaRegular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#1E7A46',
     flex: 1,
   },
-  bottomSafe: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderTopWidth: 1.5,
-    borderTopColor: COLORS.line,
-  },
   bottomBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EBEFEB',
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingTop: 16,
   },
   confirmBtn: {
-    backgroundColor: COLORS.green700,
-    borderRadius: 14,
-    height: 49,
+    backgroundColor: '#1E7A46',
+    borderRadius: 16,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
   confirmBtnDisabled: {
-    backgroundColor: COLORS.ink300,
+    backgroundColor: '#1E7A46',
+    opacity: 0.45,
   },
   confirmBtnText: {
-    ...FONTS.balooSemiBold,
-    fontSize: 15,
-    lineHeight: 16,
+    ...FONTS.muktaBold,
+    fontSize: 16,
+    lineHeight: 22,
     color: '#FFFFFF',
   },
 });

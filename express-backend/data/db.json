@@ -172,6 +172,219 @@
   ],
   "orders": [
     {
+      "id": "b23c0c58-afc4-441b-a659-082d7513fc69",
+      "display_id": "MG46945",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "consumer_name": "919176203011",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 3920,
+      "discount_amount": 0,
+      "product_savings": 560,
+      "total_savings": 560,
+      "coupon_code": null,
+      "shipping_address": "Uvbih, Bibib, Bipbi, 000000",
+      "deliver_to_label": "Home · Bibib",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-10",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "7895",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-10T12:23:25.626Z",
+      "order_items": [
+        {
+          "product_id": "4495a759-ec25-4b91-9125-8482f0fde35b",
+          "product_name": "Fortune Chakki Fresh Atta 5 kg",
+          "name": "Fortune Chakki Fresh Atta 5 kg",
+          "quantity": 16,
+          "unit_price": 245,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        }
+      ]
+    },
+    {
+      "id": "84e5dfcb-f9ea-479f-b452-e878b7029627",
+      "display_id": "MG34712",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "consumer_name": "919176203011",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 5200,
+      "discount_amount": 0,
+      "product_savings": 4800,
+      "total_savings": 4800,
+      "coupon_code": null,
+      "shipping_address": "Uvbih, Bibib, Bipbi, 000000",
+      "deliver_to_label": "Home · Bibib",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-10",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "5153",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-10T11:35:44.684Z",
+      "order_items": [
+        {
+          "product_id": "7cd6ac47-52f7-460d-8791-66f8da69eb63",
+          "product_name": "Fortune oil 5 L",
+          "name": "Fortune oil 5 L",
+          "quantity": 4,
+          "unit_price": 1300,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788515304411_rq407l.jpg"
+        }
+      ]
+    },
+    {
+      "id": "20fe045e-4c74-458c-a187-01a38a1cd124",
+      "display_id": "MG18481",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "consumer_name": "919176203011",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 9100,
+      "discount_amount": 0,
+      "product_savings": 8400,
+      "total_savings": 8400,
+      "coupon_code": null,
+      "shipping_address": "Uvbih, Bibib, Bipbi, 000000",
+      "deliver_to_label": "Home · Bibib",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-10",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "6250",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-10T11:33:19.176Z",
+      "order_items": [
+        {
+          "product_id": "7cd6ac47-52f7-460d-8791-66f8da69eb63",
+          "product_name": "Fortune oil 5 L",
+          "name": "Fortune oil 5 L",
+          "quantity": 7,
+          "unit_price": 1300,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788515304411_rq407l.jpg"
+        }
+      ]
+    },
+    {
+      "id": "935c4861-3091-4540-974d-ccd4a04b4eec",
+      "display_id": "MG63807",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "consumer_name": "919176203011",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 3185,
+      "discount_amount": 0,
+      "product_savings": 455,
+      "total_savings": 455,
+      "coupon_code": null,
+      "shipping_address": "Uvbih, Bibib, Bipbi, 000000",
+      "deliver_to_label": "Home · Bibib",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-10",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "6880",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-10T11:31:20.327Z",
+      "order_items": [
+        {
+          "product_id": "4495a759-ec25-4b91-9125-8482f0fde35b",
+          "product_name": "Fortune Chakki Fresh Atta 5 kg",
+          "name": "Fortune Chakki Fresh Atta 5 kg",
+          "quantity": 13,
+          "unit_price": 245,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        }
+      ]
+    },
+    {
+      "id": "d38bfd18-2221-4b1a-ae92-e7cc6d73f372",
+      "display_id": "MG86718",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "consumer_name": "919176203011",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 3900,
+      "discount_amount": 0,
+      "product_savings": 3600,
+      "total_savings": 3600,
+      "coupon_code": null,
+      "shipping_address": "Uvbih, Bibib, Bipbi, 000000",
+      "deliver_to_label": "Home · Bibib",
+      "delivery_slot": "Today, 12:00 PM – 4:00 PM",
+      "delivery_slot_date": "2026-09-10",
+      "delivery_slot_window_id": "w2",
+      "delivery_otp": "7336",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-10T11:27:21.595Z",
+      "order_items": [
+        {
+          "product_id": "7cd6ac47-52f7-460d-8791-66f8da69eb63",
+          "product_name": "Fortune oil 5 L",
+          "name": "Fortune oil 5 L",
+          "quantity": 3,
+          "unit_price": 1300,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788515304411_rq407l.jpg"
+        }
+      ]
+    },
+    {
+      "id": "589a373e-8817-4ec3-a742-8fab688eed8e",
+      "display_id": "MG86058",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "consumer_name": "919176203011",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 4485,
+      "discount_amount": 0,
+      "product_savings": 1655,
+      "total_savings": 1655,
+      "coupon_code": null,
+      "shipping_address": "Uvbih, Bibib, Bipbi, 000000",
+      "deliver_to_label": "Home · Bibib",
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-10",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "5939",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-10T11:08:58.450Z",
+      "order_items": [
+        {
+          "product_id": "4495a759-ec25-4b91-9125-8482f0fde35b",
+          "product_name": "Fortune Chakki Fresh Atta 5 kg",
+          "name": "Fortune Chakki Fresh Atta 5 kg",
+          "quantity": 13,
+          "unit_price": 245,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        },
+        {
+          "product_id": "7cd6ac47-52f7-460d-8791-66f8da69eb63",
+          "product_name": "Fortune oil 5 L",
+          "name": "Fortune oil 5 L",
+          "quantity": 1,
+          "unit_price": 1300,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788515304411_rq407l.jpg"
+        }
+      ]
+    },
+    {
       "id": "230ed017-d3ae-4369-89a1-dcb2d515548b",
       "display_id": "MG68676",
       "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
@@ -343,6 +556,19 @@
       "isDefault": true,
       "created_at": "2026-09-09T05:22:59.627Z",
       "updated_at": "2026-09-09T05:22:59.627Z"
+    },
+    {
+      "id": "addr-1789038532802",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "tag": "Home",
+      "flat": "Uvbih",
+      "street": "Bibib",
+      "landmark": "Bipbi",
+      "pincode": "000000",
+      "phone": "9176203011",
+      "isDefault": true,
+      "created_at": "2026-09-10T11:08:52.802Z",
+      "updated_at": "2026-09-10T11:08:52.802Z"
     }
   ],
   "onboarding": {
@@ -728,7 +954,7 @@
     "empty_cta_label": "Start monthly shopping",
     "past_orders_section_label": "PAST ORDERS",
     "active_arriving_template": "Arriving {slot}",
-    "track_button_label": "Details",
+    "track_button_label": "Track",
     "delivery_otp_label": "Delivery OTP",
     "items_count_template": "{count} items",
     "reorder_button_label": "Reorder",
@@ -1054,9 +1280,9 @@
   "help_support_screen": {
     "title": "Help & support",
     "chat_title": "Chat with us",
-    "chat_subtitle": "Avg reply: < 5 min",
+    "chat_subtitle": "Replies in ~2 min",
     "call_title": "Call us",
-    "call_subtitle": "7:00 AM - 10:00 PM daily",
+    "call_subtitle": "8 AM – 10 PM daily",
     "phone_number": "+918830480015",
     "whatsapp_phone": "918830480015",
     "whatsapp_message": "Hi MonthlyGrocery Support",
@@ -1065,33 +1291,33 @@
     "call_fallback_alert_title": "Helpline",
     "call_fallback_alert_message": "Could not start a phone call on this device.",
     "call_fallback_message_template": "Call our support team at {phone} ({hours}).",
-    "faq_section_label": "FREQUENTLY ASKED QUESTIONS",
+    "faq_section_label": "FREQUENT QUESTIONS",
     "delivery_areas_answer_template": "We currently deliver across {areas} with expanding coverage across Maharashtra.",
     "faqs": [
       {
-        "id": "faq-delivery",
-        "question": "Where do you deliver?",
-        "answer_template": "{delivery_areas}"
+        "id": "faq-order-status",
+        "question": "Where is my order?",
+        "answer": "You can track live updates on your order status under the Orders tab in real time."
       },
       {
         "id": "faq-min-order",
-        "question": "How does the ₹2,000 minimum work?",
-        "answer": "To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,000."
+        "question": "How does the ₹2,500 minimum work?",
+        "answer": "To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,500."
       },
       {
-        "id": "faq-edit-cancel",
-        "question": "Can I edit or cancel a placed order?",
-        "answer": "Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket."
+        "id": "faq-slot-change",
+        "question": "Change or cancel a delivery slot",
+        "answer": "You can modify your delivery slot or cancel your order anytime before the local hub begins packing your basket."
       },
       {
-        "id": "faq-baskets",
-        "question": "How do subscriptions & baskets work?",
-        "answer": "You can tap \"Save as a basket\" on any active cart to create a reusable template. Next month, open Saved Baskets and reorder in one tap with verified live rates."
+        "id": "faq-refunds",
+        "question": "How do refunds work?",
+        "answer": "Refunds for returned or cancelled items are automatically processed back to your original payment method within 2-4 business days."
       },
       {
-        "id": "faq-slots",
-        "question": "Delivery slots and timing",
-        "answer": "We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM)."
+        "id": "faq-delivery-timing",
+        "question": "Delivery areas & timing",
+        "answer": "We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM) across all active serviceable zones."
       }
     ],
     "load_error_message": "Could not load help & support. Please try again.",
@@ -1099,8 +1325,8 @@
   },
   "delete_account_screen": {
     "title": "Delete account",
-    "warning_text": "This permanently deletes your MonthlyGrocery account and all your saved data. This action cannot be undone.",
-    "section_label": "WHAT WILL BE DELETED:",
+    "warning_text": "This permanently deletes your MonthlyGrocery account. This action can't be undone.",
+    "section_label": "WHAT YOU'LL LOSE",
     "deleted_items": [
       {
         "id": "item-orders",
@@ -1119,17 +1345,17 @@
         "label": "Coupons & rewards"
       }
     ],
-    "active_orders_warning": "Any active orders will be delivered before your account is closed.",
-    "agreement_label": "I understand this is permanent and cannot be undone",
+    "active_orders_warning": "Any active orders will still be delivered before your account is closed.",
+    "agreement_label": "I understand this is permanent and can't be undone.",
     "delete_button_label": "Delete my account",
     "cancel_label": "Cancel",
     "agreement_required_title": "Required",
     "agreement_required_message": "Please check the confirmation box to proceed.",
     "delete_error_message": "Could not delete your account. Please try again.",
     "success_title": "Your account has been deleted",
-    "success_subtitle": "Your MonthlyGrocery account and all your associated data have been permanently removed. We're sorry to see you go — you're always welcome back!",
-    "success_active_orders_note": "Active orders (if any) will still be delivered.",
-    "success_back_home_label": "Back to Home",
+    "success_subtitle": "Your MonthlyGrocery account and all saved data have been permanently removed. We're sorry to see you go — you're always welcome back.",
+    "success_active_orders_note": "Any active orders will still be delivered",
+    "success_back_home_label": "Back to home",
     "load_error_message": "Could not load delete account screen. Please try again.",
     "retry_label": "Retry"
   },

@@ -71,23 +71,30 @@ export const getMergedCouponsList = () => {
   let adminCoupons: any[] = [];
   try {
     const db = readDb() as any;
-    if (db && db.coupons) {
-      adminCoupons = db.coupons.map((c: any) => ({
-        id: c.id || `cpn-${Date.now()}`,
-        code: c.code.toUpperCase(),
-        title: c.description || `${c.discount_type === 'percentage' ? `${c.discount_value}%` : `₹${c.discount_value}`} OFF on orders above ₹${c.min_order_value}`,
-        discount_type: c.discount_type === 'flat' ? 'fixed' : c.discount_type,
-        discount_value: c.discount_value,
-        min_order_amount: c.min_order_value || 0,
-        max_discount: c.max_discount || c.discount_value,
-        expires_at: '31 Dec 2026',
-        badge: c.discount_type === 'percentage' ? 'Percentage Off' : 'Flat Discount',
-        description: c.description || 'Special promo coupon configured by Super Admin.',
-        target_audience: c.target_audience || 'all',
-        usage_limit_per_user: c.usage_limit_per_user ? parseInt(c.usage_limit_per_user) : 1,
-        max_global_uses: c.max_global_uses ? parseInt(c.max_global_uses) : undefined
-      }));
-    }
+      adminCoupons = db.coupons.map((c: any) => {
+        const minOrder = Number(c.min_order_value ?? c.min_order_amount ?? c.min_order ?? 0);
+        const discountVal = Number(c.discount_value ?? c.discount ?? c.value ?? 0);
+        const discountType = c.discount_type === 'flat' ? 'fixed' : (c.discount_type || 'fixed');
+        const defaultTitle = discountType === 'percentage'
+          ? `${discountVal}% off on orders above ₹${minOrder.toLocaleString('en-IN')}`
+          : `₹${discountVal} off on orders above ₹${minOrder.toLocaleString('en-IN')}`;
+
+        return {
+          id: c.id || `cpn-${Date.now()}`,
+          code: String(c.code).toUpperCase(),
+          title: c.title || defaultTitle,
+          discount_type: discountType,
+          discount_value: discountVal,
+          min_order_amount: minOrder,
+          max_discount: Number(c.max_discount ?? discountVal),
+          expires_at: c.expires_at || '31 Dec 2026',
+          badge: c.badge || (discountType === 'percentage' ? 'Percentage Off' : 'Flat Discount'),
+          description: c.description || defaultTitle,
+          target_audience: c.target_audience || 'all',
+          usage_limit_per_user: c.usage_limit_per_user ? parseInt(c.usage_limit_per_user) : 1,
+          max_global_uses: c.max_global_uses ? parseInt(c.max_global_uses) : undefined
+        };
+      });
   } catch (err) {
     console.error('Coupons DB read error:', err);
   }

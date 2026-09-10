@@ -1329,7 +1329,7 @@ const defaultDb: LocalDbSchema = {
     empty_cta_label: 'Start monthly shopping',
     past_orders_section_label: 'PAST ORDERS',
     active_arriving_template: 'Arriving {slot}',
-    track_button_label: 'Details',
+    track_button_label: 'Track',
     delivery_otp_label: 'Delivery OTP',
     items_count_template: '{count} items',
     reorder_button_label: 'Reorder',
@@ -1636,9 +1636,9 @@ const defaultDb: LocalDbSchema = {
   help_support_screen: {
     title: 'Help & support',
     chat_title: 'Chat with us',
-    chat_subtitle: 'Avg reply: < 5 min',
+    chat_subtitle: 'Replies in ~2 min',
     call_title: 'Call us',
-    call_subtitle: '7:00 AM - 10:00 PM daily',
+    call_subtitle: '8 AM – 10 PM daily',
     phone_number: '+918830480015',
     whatsapp_phone: '918830480015',
     whatsapp_message: 'Hi MonthlyGrocery Support',
@@ -1647,38 +1647,38 @@ const defaultDb: LocalDbSchema = {
     call_fallback_alert_title: 'Helpline',
     call_fallback_alert_message: 'Could not start a phone call on this device.',
     call_fallback_message_template: 'Call our support team at {phone} ({hours}).',
-    faq_section_label: 'FREQUENTLY ASKED QUESTIONS',
+    faq_section_label: 'FREQUENT QUESTIONS',
     delivery_areas_answer_template:
       'We currently deliver across {areas} with expanding coverage across Maharashtra.',
     faqs: [
       {
-        id: 'faq-delivery',
-        question: 'Where do you deliver?',
-        answer_template: '{delivery_areas}',
+        id: 'faq-order-status',
+        question: 'Where is my order?',
+        answer: 'You can track live updates on your order status under the Orders tab in real time.',
       },
       {
         id: 'faq-min-order',
-        question: 'How does the ₹2,000 minimum work?',
+        question: 'How does the ₹2,500 minimum work?',
         answer:
-          'To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,000.',
+          'To provide direct-from-brand wholesale pricing, maximum savings, and free scheduled doorstep delivery, all monthly baskets require a minimum value of ₹2,500.',
       },
       {
-        id: 'faq-edit-cancel',
-        question: 'Can I edit or cancel a placed order?',
+        id: 'faq-slot-change',
+        question: 'Change or cancel a delivery slot',
         answer:
-          'Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket.',
+          'You can modify your delivery slot or cancel your order anytime before the local hub begins packing your basket.',
       },
       {
-        id: 'faq-baskets',
-        question: 'How do subscriptions & baskets work?',
+        id: 'faq-refunds',
+        question: 'How do refunds work?',
         answer:
-          'You can tap "Save as a basket" on any active cart to create a reusable template. Next month, open Saved Baskets and reorder in one tap with verified live rates.',
+          'Refunds for returned or cancelled items are automatically processed back to your original payment method within 2-4 business days.',
       },
       {
-        id: 'faq-slots',
-        question: 'Delivery slots and timing',
+        id: 'faq-delivery-timing',
+        question: 'Delivery areas & timing',
         answer:
-          'We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM).',
+          'We offer planned 3-hour delivery windows: Morning (7:00 AM - 10:00 AM), Afternoon (12:00 PM - 3:00 PM), and Evening (6:00 PM - 9:00 PM) across all active serviceable zones.',
       },
     ],
     load_error_message: 'Could not load help & support. Please try again.',
@@ -1687,8 +1687,8 @@ const defaultDb: LocalDbSchema = {
   delete_account_screen: {
     title: 'Delete account',
     warning_text:
-      'This permanently deletes your MonthlyGrocery account and all your saved data. This action cannot be undone.',
-    section_label: 'WHAT WILL BE DELETED:',
+      "This permanently deletes your MonthlyGrocery account. This action can't be undone.",
+    section_label: "WHAT YOU'LL LOSE",
     deleted_items: [
       { id: 'item-orders', label: 'Order history & tracking' },
       { id: 'item-baskets', label: 'Saved monthly baskets' },
@@ -1696,8 +1696,8 @@ const defaultDb: LocalDbSchema = {
       { id: 'item-coupons', label: 'Coupons & rewards' },
     ],
     active_orders_warning:
-      'Any active orders will be delivered before your account is closed.',
-    agreement_label: 'I understand this is permanent and cannot be undone',
+      'Any active orders will still be delivered before your account is closed.',
+    agreement_label: "I understand this is permanent and can't be undone.",
     delete_button_label: 'Delete my account',
     cancel_label: 'Cancel',
     agreement_required_title: 'Required',
@@ -1705,9 +1705,9 @@ const defaultDb: LocalDbSchema = {
     delete_error_message: 'Could not delete your account. Please try again.',
     success_title: 'Your account has been deleted',
     success_subtitle:
-      'Your MonthlyGrocery account and all your associated data have been permanently removed. We\'re sorry to see you go — you\'re always welcome back!',
-    success_active_orders_note: 'Active orders (if any) will still be delivered.',
-    success_back_home_label: 'Back to Home',
+      "Your MonthlyGrocery account and all saved data have been permanently removed. We're sorry to see you go — you're always welcome back.",
+    success_active_orders_note: 'Any active orders will still be delivered',
+    success_back_home_label: 'Back to home',
     load_error_message: 'Could not load delete account screen. Please try again.',
     retry_label: 'Retry',
   },

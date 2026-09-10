@@ -46,9 +46,27 @@ export async function buildAccountSummary(consumerId: string): Promise<AccountSu
   );
 
   const firstOrder = orders[0];
-  const joinedMonth = firstOrder
+  let joinedMonth = firstOrder
     ? new Date(firstOrder.created_at).toLocaleDateString('en-IN', { month: 'long' })
     : '';
+
+  if (!joinedMonth) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('created_at')
+        .eq('id', consumerId)
+        .maybeSingle();
+      if (profile?.created_at) {
+        joinedMonth = new Date(profile.created_at).toLocaleDateString('en-IN', { month: 'long' });
+      }
+    } catch {
+      // Ignore
+    }
+  }
+  if (!joinedMonth) {
+    joinedMonth = new Date().toLocaleDateString('en-IN', { month: 'long' });
+  }
 
   const availableCoupons = filterCouponsForUser(consumerId, db.orders || []);
 
