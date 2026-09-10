@@ -10,6 +10,11 @@ import {
   resolvePackUnitLabel,
   toSupabaseProductRow,
 } from '../utils/packUnit';
+import {
+  parseProductMedia,
+  formatProductDescriptionWithMedia,
+  enrichProductWithMedia,
+} from '../utils/productMedia';
 
 const router = Router();
 const upload = multer({
@@ -60,30 +65,36 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
   const groupedList: any[] = [];
 
   for (const [, siblings] of familyMap.entries()) {
-    const fullVariants = siblings.map((s) => ({
-      id: s.id,
-      shop_id: s.shop_id,
-      name: s.name,
-      sku: s.sku,
-      brand: s.brand,
-      company: s.company,
-      primary_category: s.primary_category,
-      secondary_category: s.secondary_category,
-      unit: s.unit || s.pack_label,
-      quantity_value: s.quantity_value,
-      quantity_unit: s.quantity_unit,
-      mrp: s.mrp,
-      price: s.price,
-      stock: s.stock,
-      available: s.available !== false,
-      discount_percent: s.discount_percent || 0,
-      image_url: s.image_url,
-      is_veg: s.is_veg,
-      featured: s.featured,
-      todays_deal: s.todays_deal,
-      best_seller: s.best_seller,
-      you_save: s.you_save || 0,
-    }));
+    const fullVariants = siblings.map((s) => {
+      const media = parseProductMedia(s);
+      return {
+        id: s.id,
+        shop_id: s.shop_id,
+        name: s.name,
+        sku: s.sku,
+        brand: s.brand,
+        company: s.company,
+        primary_category: s.primary_category,
+        secondary_category: s.secondary_category,
+        unit: s.unit || s.pack_label,
+        quantity_value: s.quantity_value,
+        quantity_unit: s.quantity_unit,
+        mrp: s.mrp,
+        price: s.price,
+        stock: s.stock,
+        available: s.available !== false,
+        discount_percent: s.discount_percent || 0,
+        image_url: media.primary_image_url,
+        images: media.images,
+        video_url: media.video_url,
+        description: media.clean_description,
+        is_veg: s.is_veg,
+        featured: s.featured,
+        todays_deal: s.todays_deal,
+        best_seller: s.best_seller,
+        you_save: s.you_save || 0,
+      };
+    });
 
     const dealSiblings = dealsOnly
       ? siblings.filter(
@@ -113,9 +124,14 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
     });
 
     const rep = sorted[0];
+    const repMedia = parseProductMedia(rep);
 
     groupedList.push({
       ...rep,
+      image_url: repMedia.primary_image_url,
+      images: repMedia.images,
+      video_url: repMedia.video_url,
+      description: repMedia.clean_description,
       variants: fullVariants,
       variant_count: siblings.length,
     });
@@ -369,7 +385,7 @@ router.get('/master', async (req, res) => {
 
     return res.json({
       success: true,
-      products: (products || []).map((p: any) => enrichProductPackFields(p)),
+      products: (products || []).map((p: any) => enrichProductWithMedia(enrichProductPackFields(p))),
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
@@ -675,13 +691,34 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       return res.status(400).json({ success: false, error: 'No approved shop found. Please create a merchant shop first.' });
     }
 
-    const { name, sku, brand, company, description, short_description, mrp, price, primary_category, image_url, unit, quantity_value, quantity_unit, available, is_veg } = req.body;
+    const {
+      name,
+      sku,
+      brand,
+      company,
+      description,
+      short_description,
+      mrp,
+      price,
+      primary_category,
+      secondary_category,
+      image_url,
+      images,
+      video_url,
+      unit,
+      quantity_value,
+      quantity_unit,
+      available,
+      is_veg,
+    } = req.body;
     
     if (!name || !sku || !primary_category) {
       return res.status(400).json({ success: false, error: 'Name, SKU, and Category are required.' });
     }
 
     const packFields = packUnitPayloadFromInput(quantity_value ?? unit, quantity_unit, unit);
+    const media = parseProductMedia({ image_url, images, video_url });
+    const formattedDescription = formatProductDescriptionWithMedia(description, media.images, media.video_url);
 
     const newProduct = {
       shop_id: shopId,
@@ -689,12 +726,13 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       sku,
       brand: brand || null,
       company: company || null,
-      description: description || null,
+      description: formattedDescription || null,
       short_description: short_description || null,
       mrp: parseFloat(mrp) || 0,
       price: parseFloat(price) || 0,
       primary_category,
-      image_url: image_url || null,
+      secondary_category: secondary_category || null,
+      image_url: media.primary_image_url || null,
       quantity_value: packFields.quantity_value,
       quantity_unit: packFields.quantity_unit,
       unit: packFields.unit || unit || 'units',
@@ -712,7 +750,7 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    return res.json({ success: true, product });
+    return res.json({ success: true, product: enrichProductWithMedia(enrichProductPackFields(product)) });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -848,18 +886,30 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       unitLabel = packFields.unit || unitLabel;
     }
 
+    const media = parseProductMedia({
+      image_url: data.image_url !== undefined ? data.image_url : product.image_url,
+      images: data.images !== undefined ? data.images : undefined,
+      video_url: data.video_url !== undefined ? data.video_url : undefined,
+      description: product.description,
+    });
+    const formattedDescription = formatProductDescriptionWithMedia(
+      data.description !== undefined ? data.description : media.clean_description,
+      data.images !== undefined ? data.images : media.images,
+      data.video_url !== undefined ? data.video_url : media.video_url,
+    );
+
     const updatedData = {
       name: data.name !== undefined ? data.name : product.name,
       sku: data.sku !== undefined ? data.sku : product.sku,
       brand: data.brand !== undefined ? data.brand : product.brand,
       company: data.company !== undefined ? data.company : product.company,
-      description: data.description !== undefined ? data.description : product.description,
+      description: formattedDescription,
       short_description: data.short_description !== undefined ? data.short_description : product.short_description,
       mrp: data.mrp !== undefined ? parseFloat(data.mrp) : product.mrp,
       price: data.price !== undefined ? parseFloat(data.price) : product.price,
       primary_category: data.primary_category !== undefined ? data.primary_category : product.primary_category,
       secondary_category: data.secondary_category !== undefined ? data.secondary_category : product.secondary_category,
-      image_url: data.image_url !== undefined ? data.image_url : product.image_url,
+      image_url: media.primary_image_url || null,
       quantity_value,
       quantity_unit,
       unit: unitLabel,
@@ -878,7 +928,7 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       return res.status(400).json({ success: false, error: updateError.message });
     }
 
-    return res.json({ success: true, product: updatedProduct });
+    return res.json({ success: true, product: enrichProductWithMedia(enrichProductPackFields(updatedProduct)) });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -1020,10 +1070,10 @@ router.post('/upload-image', authMiddleware, requireRole(['admin', 'super_admin'
     const filePath = `products/${fileName}`;
 
     // Upload to Supabase storage bucket 'product-images'
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('product-images')
       .upload(filePath, req.file.buffer, {
-        contentType: req.file.mimetype,
+        contentType: req.file.mimetype || (fileExt === 'svg' ? 'image/svg+xml' : 'image/png'),
         upsert: true
       });
 
@@ -1037,10 +1087,52 @@ router.post('/upload-image', authMiddleware, requireRole(['admin', 'super_admin'
 
     return res.json({
       success: true,
-      image_url: publicUrlData.publicUrl
+      image_url: publicUrlData.publicUrl,
+      url: publicUrlData.publicUrl,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Image upload failed' });
+  }
+});
+
+// 13. POST /upload-media: Upload multiple images/media directly to Supabase Storage
+router.post('/upload-media', authMiddleware, requireRole(['admin', 'super_admin']), upload.array('files', 10), async (req: AuthRequest, res: Response) => {
+  const files = (req.files as Express.Multer.File[]) || [];
+  if (files.length === 0) {
+    return res.status(400).json({ success: false, error: 'No media files uploaded' });
+  }
+
+  try {
+    const uploadedUrls: string[] = [];
+
+    for (const file of files) {
+      const fileExt = file.originalname.split('.').pop() || 'png';
+      const fileName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file.buffer, {
+          contentType: file.mimetype || (fileExt === 'svg' ? 'image/svg+xml' : 'image/png'),
+          upsert: true,
+        });
+
+      if (!uploadError) {
+        const { data: publicUrlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+        uploadedUrls.push(publicUrlData.publicUrl);
+      }
+    }
+
+    return res.json({
+      success: true,
+      urls: uploadedUrls,
+      images: uploadedUrls,
+      image_url: uploadedUrls[0] || '',
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Media upload failed' });
   }
 });
 

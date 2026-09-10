@@ -10,6 +10,8 @@ export interface Product {
   primary_category: string;
   secondary_category?: string;
   image_url: string;
+  images?: string[];
+  video_url?: string;
   unit: string;
   mrp: number;
   price: number;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,8 +8,11 @@ import {
   TouchableOpacity,
   Share,
   StatusBar,
+  Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SvgUri } from 'react-native-svg';
 import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../../components/AppIcon';
@@ -31,14 +34,23 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   const { items, addToCart, updateQuantity } = useCart();
   const { city, area, pincode } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const carouselRef = useRef<any>(null);
 
   const [screenConfig, setScreenConfig] = useState<ProductDetailScreenConfig>(DEFAULT_PRODUCT_DETAIL_CONFIG);
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<Product[]>([]);
   const [selectedPackSize, setSelectedPackSize] = useState<string>('5 kg');
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [notFound, setNotFound] = useState(false);
+
+  // Reset active media slide on product change
+  useEffect(() => {
+    setActiveMediaIndex(0);
+    carouselRef.current?.scrollTo({ x: 0, animated: false });
+  }, [product?.id]);
 
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
   const totalCartCount = items.reduce((s, i) => s + i.quantity, 0);
@@ -167,6 +179,30 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     const cartItem = items.find((i) => i.product?.id === product.id);
     const qty = cartItem ? cartItem.quantity : 0;
 
+    // Build multi-media items list (Images + SVG + Demo Video)
+    const mediaList = useMemo(() => {
+      if (!product) return [];
+      const list: Array<{ id: string; type: 'image' | 'video'; url: string; isSvg?: boolean }> = [];
+
+      const rawImages: string[] = Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : product.image_url ? [product.image_url] : [];
+
+      rawImages.forEach((img, idx) => {
+        if (typeof img === 'string' && img.trim()) {
+          const clean = img.trim();
+          const isSvg = clean.toLowerCase().endsWith('.svg') || clean.toLowerCase().includes('.svg');
+          list.push({ id: `img-${idx}`, type: 'image', url: clean, isSvg });
+        }
+      });
+
+      if (product.video_url && typeof product.video_url === 'string' && product.video_url.trim()) {
+        list.push({ id: 'video-0', type: 'video', url: product.video_url.trim() });
+      }
+
+      return list;
+    }, [product]);
+
     // Weight variant options: dynamically from backend product family variants
     const weightOptions =
       variants.length > 1
@@ -190,7 +226,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* 1. Full-width Hero Image Section (Figma Node 459-696) */}
+          {/* 1. Amazon / Flipkart Multi-Media Hero Section */}
           <View style={styles.heroContainer}>
             {/* Discount Badge */}
             {pctOff > 0 && (
@@ -199,24 +235,124 @@ export default function ProductDetailScreen({ route, navigation }: any) {
               </View>
             )}
 
-            {/* Product Image */}
-            <View style={styles.imageWrapper}>
-              {product.image_url ? (
-                <Image
-                  source={{ uri: product.image_url }}
-                  style={styles.heroImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <AppIcon name="shopping-bag" size={90} color={COLORS.green700} />
-              )}
-            </View>
+            {/* Media Counter Badge */}
+            {mediaList.length > 1 && (
+              <View style={styles.mediaCounterBadge}>
+                <Text style={styles.mediaCounterText}>
+                  {mediaList[activeMediaIndex]?.type === 'video'
+                    ? '🎥 Video'
+                    : `${activeMediaIndex + 1} / ${mediaList.length}`}
+                </Text>
+              </View>
+            )}
 
-            {/* Pagination Dots (Only if multiple images or single indicator) */}
-            <View style={styles.paginationDots}>
-              <View style={styles.activeDot} />
-            </View>
+            {/* Swipeable Media Carousel */}
+            {mediaList.length > 0 ? (
+              <ScrollView
+                ref={carouselRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                scrollEventThrottle={16}
+                onMomentumScrollEnd={(e) => {
+                  const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                  setActiveMediaIndex(Math.max(0, Math.min(idx, mediaList.length - 1)));
+                }}
+                style={{ width: screenWidth, height: 260 }}
+              >
+                {mediaList.map((item) => (
+                  <View key={item.id} style={[styles.carouselSlide, { width: screenWidth }]}>
+                    {item.type === 'video' ? (
+                      <TouchableOpacity
+                        style={styles.videoSlideContainer}
+                        activeOpacity={0.9}
+                        onPress={() => {
+                          if (item.url) {
+                            Linking.openURL(item.url).catch(() => {});
+                          }
+                        }}
+                      >
+                        <View style={styles.videoPlayCircle}>
+                          <AppIcon name="play" size={26} color="#FFFFFF" />
+                        </View>
+                        <Text style={styles.videoSlideTitle}>Product Video Demonstration</Text>
+                        <Text style={styles.videoSlideSubtitle}>Tap to watch video demo</Text>
+                      </TouchableOpacity>
+                    ) : item.isSvg ? (
+                      <View style={styles.svgWrapper}>
+                        <SvgUri uri={item.url} width={screenWidth * 0.75} height={220} />
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: item.url }}
+                        style={styles.heroImage}
+                        resizeMode="contain"
+                      />
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.imageWrapper}>
+                <AppIcon name="shopping-bag" size={90} color={COLORS.green700} />
+              </View>
+            )}
+
+            {/* Pagination Dots */}
+            {mediaList.length > 1 && (
+              <View style={styles.paginationDots}>
+                {mediaList.map((_, idx) => (
+                  <View
+                    key={idx}
+                    style={idx === activeMediaIndex ? styles.activeDot : styles.inactiveDot}
+                  />
+                ))}
+              </View>
+            )}
           </View>
+
+          {/* Interactive Thumbnail Navigation Strip */}
+          {mediaList.length > 1 && (
+            <View style={styles.thumbnailStripContainer}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.thumbnailStripContent}
+              >
+                {mediaList.map((item, idx) => {
+                  const isActive = idx === activeMediaIndex;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.thumbnailItem,
+                        isActive && styles.thumbnailItemActive,
+                      ]}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setActiveMediaIndex(idx);
+                        carouselRef.current?.scrollTo({ x: idx * screenWidth, animated: true });
+                      }}
+                    >
+                      {item.type === 'video' ? (
+                        <View style={styles.videoThumbBadge}>
+                          <AppIcon name="play" size={16} color={isActive ? '#1E7A46' : '#64748B'} />
+                        </View>
+                      ) : item.isSvg ? (
+                        <SvgUri uri={item.url} width={34} height={34} />
+                      ) : (
+                        <Image
+                          source={{ uri: item.url }}
+                          style={styles.thumbnailImage}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* 2. Product Information Area (Figma Node 459-703) */}
           <View style={styles.detailsContainer}>
@@ -466,7 +602,7 @@ const styles = StyleSheet.create({
   /* 2. Hero Image Section (Figma Node 459-696) */
   heroContainer: {
     width: '100%',
-    height: 320,
+    height: 290,
     backgroundColor: '#FAF9F5',
     justifyContent: 'center',
     alignItems: 'center',
@@ -490,6 +626,112 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  mediaCounterBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(23, 37, 30, 0.75)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+  },
+  mediaCounterText: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: '#FFFFFF',
+  },
+  carouselSlide: {
+    height: 260,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  svgWrapper: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoSlideContainer: {
+    width: '85%',
+    height: 190,
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  videoPlayCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#1E7A46',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#1E7A46',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  videoSlideTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  videoSlideSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  thumbnailStripContainer: {
+    backgroundColor: '#FAF9F5',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0EFEA',
+  },
+  thumbnailStripContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    alignItems: 'center',
+  },
+  thumbnailItem: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 3,
+  },
+  thumbnailItemActive: {
+    borderColor: '#1E7A46',
+    backgroundColor: '#E4F3EA',
+    borderWidth: 2,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  videoThumbBadge: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
+  },
   imageWrapper: {
     width: 200,
     height: 200,
@@ -502,20 +744,20 @@ const styles = StyleSheet.create({
   },
   paginationDots: {
     position: 'absolute',
-    bottom: 14,
+    bottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   activeDot: {
-    width: 22,
-    height: 6,
+    width: 20,
+    height: 5,
     borderRadius: 3,
     backgroundColor: '#1E7A46',
   },
   inactiveDot: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
     backgroundColor: '#CBD5E1',
   },

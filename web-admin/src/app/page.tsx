@@ -86,8 +86,9 @@ export default function DashboardPage() {
   const [newProdSubcategory, setNewProdSubcategory] = useState('');
   const [newProdDescription, setNewProdDescription] = useState('');
   const [newProdShortDescription, setNewProdShortDescription] = useState('');
-  const [newProdImageFile, setNewProdImageFile] = useState<File | null>(null);
-  const [newProdImagePreview, setNewProdImagePreview] = useState('');
+  const [newProdImageFiles, setNewProdImageFiles] = useState<File[]>([]);
+  const [newProdImagePreviews, setNewProdImagePreviews] = useState<string[]>([]);
+  const [newProdVideoUrl, setNewProdVideoUrl] = useState('');
   const [newProdImageUploading, setNewProdImageUploading] = useState(false);
   const [newProdVariants, setNewProdVariants] = useState<Array<{ sku: string; quantityValue: string; quantityUnit: string; mrp: string; price: string }>>([
     { sku: '', quantityValue: '1', quantityUnit: 'kg', mrp: '', price: '' }
@@ -768,13 +769,17 @@ export default function DashboardPage() {
     }
 
     try {
-      // Step 1: Upload image to bucket first (if a file was selected)
-      let uploadedImageUrl = '';
-      if (newProdImageFile) {
+      // Step 1: Upload images to bucket first (if files were selected)
+      let uploadedImageUrls: string[] = [];
+      if (newProdImageFiles.length > 0) {
         setNewProdImageUploading(true);
-        uploadedImageUrl = await uploadAdminImage(newProdImageFile);
+        uploadedImageUrls = await Promise.all(
+          newProdImageFiles.map((file) => uploadAdminImage(file))
+        );
         setNewProdImageUploading(false);
       }
+
+      const primaryImageUrl = uploadedImageUrls[0] || '';
 
       // Step 2: Loop and create each variant SKU
       const createPromises = validVariants.map(async (v) => {
@@ -793,7 +798,9 @@ export default function DashboardPage() {
             price: parseFloat(v.price),
             primary_category: newProdCategory,
             secondary_category: newProdSubcategory || null,
-            image_url: uploadedImageUrl,
+            image_url: primaryImageUrl,
+            images: uploadedImageUrls,
+            video_url: newProdVideoUrl.trim() || undefined,
             quantity_value: pack.quantity_value,
             quantity_unit: pack.quantity_unit,
             unit: pack.unit,
@@ -810,8 +817,9 @@ export default function DashboardPage() {
       setNewProdSubcategory('');
       setNewProdDescription('');
       setNewProdShortDescription('');
-      setNewProdImageFile(null);
-      setNewProdImagePreview('');
+      setNewProdImageFiles([]);
+      setNewProdImagePreviews([]);
+      setNewProdVideoUrl('');
       setNewProdVariants([{ sku: '', quantityValue: '1', quantityUnit: 'kg', mrp: '', price: '' }]);
       fetchData();
     } catch (err: any) {
@@ -1492,10 +1500,12 @@ export default function DashboardPage() {
               setNewProdShortDescription={setNewProdShortDescription}
               newProdDescription={newProdDescription}
               setNewProdDescription={setNewProdDescription}
-              newProdImageFile={newProdImageFile}
-              setNewProdImageFile={setNewProdImageFile}
-              newProdImagePreview={newProdImagePreview}
-              setNewProdImagePreview={setNewProdImagePreview}
+              newProdImageFiles={newProdImageFiles}
+              setNewProdImageFiles={setNewProdImageFiles}
+              newProdImagePreviews={newProdImagePreviews}
+              setNewProdImagePreviews={setNewProdImagePreviews}
+              newProdVideoUrl={newProdVideoUrl}
+              setNewProdVideoUrl={setNewProdVideoUrl}
               newProdImageUploading={newProdImageUploading}
               newProdVariants={newProdVariants}
               setNewProdVariants={setNewProdVariants}

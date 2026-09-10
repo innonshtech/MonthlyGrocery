@@ -55,10 +55,12 @@ export interface MasterCatalogTabProps {
   setNewProdShortDescription: (val: string) => void;
   newProdDescription: string;
   setNewProdDescription: (val: string) => void;
-  newProdImageFile: File | null;
-  setNewProdImageFile: (file: File | null) => void;
-  newProdImagePreview: string;
-  setNewProdImagePreview: (url: string) => void;
+  newProdImageFiles: File[];
+  setNewProdImageFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  newProdImagePreviews: string[];
+  setNewProdImagePreviews: React.Dispatch<React.SetStateAction<string[]>>;
+  newProdVideoUrl: string;
+  setNewProdVideoUrl: (url: string) => void;
   newProdImageUploading: boolean;
   newProdVariants: VariantItem[];
   setNewProdVariants: React.Dispatch<React.SetStateAction<VariantItem[]>>;
@@ -97,10 +99,12 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
   setNewProdShortDescription,
   newProdDescription,
   setNewProdDescription,
-  newProdImageFile,
-  setNewProdImageFile,
-  newProdImagePreview,
-  setNewProdImagePreview,
+  newProdImageFiles,
+  setNewProdImageFiles,
+  newProdImagePreviews,
+  setNewProdImagePreviews,
+  newProdVideoUrl,
+  setNewProdVideoUrl,
   newProdImageUploading,
   newProdVariants,
   setNewProdVariants,
@@ -133,7 +137,11 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
   const [editProdPackQty, setEditProdPackQty] = useState('');
   const [editProdPackUnit, setEditProdPackUnit] = useState('kg');
   const [editProdImageUrl, setEditProdImageUrl] = useState('');
-  const [editProdImageFile, setEditProdImageFile] = useState<File | null>(null);
+  const [editProdImages, setEditProdImages] = useState<string[]>([]);
+  const [editProdVideoUrl, setEditProdVideoUrl] = useState('');
+  const [editProdNewImageFiles, setEditProdNewImageFiles] = useState<File[]>([]);
+  const [editProdNewImagePreviews, setEditProdNewImagePreviews] = useState<string[]>([]);
+  const [editCustomImageUrlInput, setEditCustomImageUrlInput] = useState('');
   const [editProdImageUploading, setEditProdImageUploading] = useState(false);
   const [editProdShortDesc, setEditProdShortDesc] = useState('');
   const [editProdDesc, setEditProdDesc] = useState('');
@@ -288,7 +296,16 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
     setEditProdMrp(prod.mrp != null ? String(prod.mrp) : '');
     setEditProdPrice(prod.price != null ? String(prod.price) : '');
     setEditProdImageUrl(prod.image_url || '');
-    setEditProdImageFile(null);
+
+    const existingImages: string[] = Array.isArray(prod.images) && prod.images.length > 0
+      ? [...prod.images]
+      : prod.image_url ? [prod.image_url] : [];
+    setEditProdImages(existingImages);
+    setEditProdVideoUrl(prod.video_url || '');
+    setEditProdNewImageFiles([]);
+    setEditProdNewImagePreviews([]);
+    setEditCustomImageUrlInput('');
+
     setEditProdShortDesc(prod.short_description || '');
     setEditProdDesc(prod.description || '');
     setEditProdIsVeg(prod.is_veg !== false);
@@ -326,12 +343,17 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
 
     setEditProdSaving(true);
     try {
-      let finalImageUrl = editProdImageUrl.trim();
-      if (editProdImageFile) {
+      let finalImages = [...editProdImages];
+      if (editProdNewImageFiles.length > 0) {
         setEditProdImageUploading(true);
-        finalImageUrl = await uploadImage(editProdImageFile);
+        const uploadedUrls = await Promise.all(
+          editProdNewImageFiles.map((f) => uploadImage(f))
+        );
+        finalImages = [...finalImages, ...uploadedUrls];
         setEditProdImageUploading(false);
       }
+
+      const primaryImageUrl = finalImages[0] || editProdImageUrl.trim() || null;
 
       const payload: any = {
         name: editProdName.trim(),
@@ -342,7 +364,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
         sku: editProdSku.trim() || null,
         mrp: editProdMrp ? parseFloat(editProdMrp) : 0,
         price: editProdPrice ? parseFloat(editProdPrice) : 0,
-        image_url: finalImageUrl || null,
+        image_url: primaryImageUrl,
+        images: finalImages,
+        video_url: editProdVideoUrl.trim() || null,
         short_description: editProdShortDesc.trim() || null,
         description: editProdDesc.trim() || null,
         is_veg: editProdIsVeg,
@@ -366,6 +390,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
       alert(err.message || 'Failed to update product details');
     } finally {
       setEditProdSaving(false);
+      setEditProdImageUploading(false);
     }
   };
 
@@ -955,39 +980,89 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Product Image
-              </label>
-              <div className="flex items-center gap-3">
-                {newProdImagePreview ? (
-                  <img
-                    src={newProdImagePreview}
-                    alt="preview"
-                    className="w-12 h-12 rounded-xl object-contain border border-slate-700 bg-white/5 p-1 shrink-0"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl border border-dashed border-slate-700 flex items-center justify-center shrink-0 bg-slate-950">
-                    <ImageIcon className="w-5 h-5 text-slate-600" />
-                  </div>
-                )}
-                <label className="flex-1 cursor-pointer">
-                  <div className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-400 hover:border-emerald-500 transition-colors text-center truncate">
-                    {newProdImageUploading ? '⏳ Uploading...' : newProdImageFile ? `✅ ${newProdImageFile.name}` : '📁 Choose Image'}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setNewProdImageFile(file);
-                        setNewProdImagePreview(URL.createObjectURL(file));
-                      }
-                    }}
-                  />
+            {/* Multi-Image Gallery & Video URL in Create Product */}
+            <div className="space-y-3 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/70">
+              <div className="flex items-center justify-between">
+                <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider">
+                  Product Gallery Images (PNG, JPG, WebP, SVG)
                 </label>
+                <span className="text-[10px] font-semibold text-emerald-400">
+                  {newProdImageFiles.length} selected
+                </span>
+              </div>
+
+              {/* Thumbnails preview grid */}
+              {newProdImagePreviews.length > 0 && (
+                <div className="grid grid-cols-4 gap-2">
+                  {newProdImagePreviews.map((preview, idx) => (
+                    <div key={idx} className="relative group rounded-xl bg-slate-900 border border-slate-700 p-1 flex items-center justify-center h-16">
+                      <img
+                        src={preview}
+                        alt={`preview-${idx}`}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                      {idx === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-emerald-500 text-[8px] font-bold text-slate-950 px-1 rounded shadow">
+                          Cover
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFiles = newProdImageFiles.filter((_, i) => i !== idx);
+                          const newPrev = newProdImagePreviews.filter((_, i) => i !== idx);
+                          setNewProdImageFiles(newFiles);
+                          setNewProdImagePreviews(newPrev);
+                        }}
+                        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500/90 text-white text-[10px] flex items-center justify-center hover:bg-red-600 transition-colors"
+                        title="Remove image"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <label className="block cursor-pointer">
+                <div className="w-full bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 rounded-xl px-3 py-2.5 text-xs text-slate-300 hover:text-white transition-all text-center flex items-center justify-center gap-2">
+                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>
+                    {newProdImageUploading
+                      ? '⏳ Uploading...'
+                      : newProdImageFiles.length > 0
+                      ? '📁 Add More Images'
+                      : '📁 Select Multiple Images (PNG/JPG/SVG)'}
+                  </span>
+                </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      const updatedFiles = [...newProdImageFiles, ...files];
+                      const newPreviews = files.map((f) => URL.createObjectURL(f));
+                      setNewProdImageFiles(updatedFiles);
+                      setNewProdImagePreviews([...newProdImagePreviews, ...newPreviews]);
+                    }
+                  }}
+                />
+              </label>
+
+              <div>
+                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
+                  Product Demo Video URL (Optional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="e.g. https://domain.com/demo.mp4"
+                  value={newProdVideoUrl}
+                  onChange={(e) => setNewProdVideoUrl(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                />
               </div>
             </div>
 
@@ -1511,50 +1586,170 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                 </div>
               </div>
 
-              {/* 4. Image URL & Upload */}
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Product Image (PNG / Transparent)
-                </label>
-                <div className="flex gap-3 items-center">
-                  {editProdImageUrl ? (
-                    <img
-                      src={editProdImageUrl}
-                      alt="Preview"
-                      className="w-14 h-14 object-contain rounded-xl bg-white/5 border border-slate-800 p-1 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-slate-600 shrink-0">
-                      <Package className="w-6 h-6" />
+              {/* 4. Multi-Media Gallery & Video in Edit Modal */}
+              <div className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4 text-emerald-400" /> Multi-Media Gallery (Amazon / Flipkart Style)
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Upload multiple PNG/JPG/SVG photos, set primary cover, and add demo video URL.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                    {editProdImages.length + editProdNewImageFiles.length} Media Files
+                  </span>
+                </div>
+
+                {/* Gallery Preview Grid */}
+                {(editProdImages.length > 0 || editProdNewImagePreviews.length > 0) && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 pt-1">
+                    {editProdImages.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        className={`relative group rounded-xl bg-slate-900 border p-1.5 flex flex-col items-center justify-between h-24 transition-all ${
+                          idx === 0 ? 'border-emerald-500 shadow-md shadow-emerald-950/50' : 'border-slate-800 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={imgUrl}
+                            alt={`gallery-${idx}`}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+
+                        <div className="w-full flex items-center justify-between mt-1 pt-1 border-t border-slate-800/60">
+                          {idx === 0 ? (
+                            <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded">
+                              ★ Cover
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const copy = [...editProdImages];
+                                const [selected] = copy.splice(idx, 1);
+                                setEditProdImages([selected, ...copy]);
+                              }}
+                              className="text-[9px] text-slate-400 hover:text-emerald-300 font-semibold"
+                              title="Make this the primary cover photo"
+                            >
+                              Make Cover
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const copy = editProdImages.filter((_, i) => i !== idx);
+                              setEditProdImages(copy);
+                            }}
+                            className="text-slate-500 hover:text-red-400 text-xs font-bold p-0.5"
+                            title="Remove photo from gallery"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Newly picked local files waiting to be saved */}
+                    {editProdNewImagePreviews.map((preview, idx) => (
+                      <div
+                        key={`new-${idx}`}
+                        className="relative group rounded-xl bg-slate-900 border border-teal-500/60 p-1.5 flex flex-col items-center justify-between h-24"
+                      >
+                        <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={preview}
+                            alt={`new-${idx}`}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                        <div className="w-full flex items-center justify-between mt-1 pt-1 border-t border-slate-800/60">
+                          <span className="text-[9px] font-bold text-teal-300 bg-teal-500/15 px-1 py-0.5 rounded">
+                            Pending
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newF = editProdNewImageFiles.filter((_, i) => i !== idx);
+                              const newP = editProdNewImagePreviews.filter((_, i) => i !== idx);
+                              setEditProdNewImageFiles(newF);
+                              setEditProdNewImagePreviews(newP);
+                            }}
+                            className="text-slate-500 hover:text-red-400 text-xs font-bold p-0.5"
+                            title="Remove pending upload"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Upload & Add URL Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <label className="cursor-pointer">
+                    <div className="w-full bg-slate-900/90 border border-dashed border-emerald-500/40 hover:border-emerald-400 rounded-xl px-4 py-2.5 text-xs text-slate-200 hover:text-white transition-all flex items-center justify-center gap-2">
+                      <Upload className="w-4 h-4 text-emerald-400" />
+                      <span className="font-semibold">Upload Images (PNG, JPG, WebP, SVG)</span>
                     </div>
-                  )}
-                  <div className="flex-1 space-y-2">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      className="hidden"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        if (files.length > 0) {
+                          const updatedFiles = [...editProdNewImageFiles, ...files];
+                          const newPreviews = files.map((f) => URL.createObjectURL(f));
+                          setEditProdNewImageFiles(updatedFiles);
+                          setEditProdNewImagePreviews([...editProdNewImagePreviews, ...newPreviews]);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <div className="flex gap-2">
                     <input
                       type="url"
-                      value={editProdImageUrl}
-                      onChange={(e) => setEditProdImageUrl(e.target.value)}
-                      placeholder="Image URL: https://..."
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                      placeholder="Paste Image URL..."
+                      value={editCustomImageUrlInput}
+                      onChange={(e) => setEditCustomImageUrlInput(e.target.value)}
+                      className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:border-emerald-500 outline-none"
                     />
-                    <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/80 rounded-xl text-xs font-semibold text-slate-300 hover:text-white cursor-pointer transition-colors">
-                      <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>{editProdImageFile ? `✅ ${editProdImageFile.name}` : 'Upload New PNG/JPG'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setEditProdImageFile(file);
-                            const reader = new FileReader();
-                            reader.onload = () => setEditProdImageUrl(reader.result as string);
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editCustomImageUrlInput.trim()) {
+                          setEditProdImages([...editProdImages, editCustomImageUrlInput.trim()]);
+                          setEditCustomImageUrlInput('');
+                        }
+                      }}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      + Add URL
+                    </button>
                   </div>
+                </div>
+
+                {/* Video Demo URL */}
+                <div className="pt-2 border-t border-slate-800/80">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Product Demo Video URL (MP4 / Web Video)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="e.g. https://assets.myshop.com/product_demo.mp4"
+                    value={editProdVideoUrl}
+                    onChange={(e) => setEditProdVideoUrl(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                  />
                 </div>
               </div>
 

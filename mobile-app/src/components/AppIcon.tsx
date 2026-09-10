@@ -52,7 +52,9 @@ export type IconName =
   | 'percent'
   | 'bookmark'
   | 'repeat'
-  | 'reorder';
+  | 'reorder'
+  | 'play'
+  | 'video';
 
 interface AppIconProps {
   name: IconName;
@@ -966,6 +968,48 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
             d="M20 6L9 17L4 12"
             stroke={color}
             strokeWidth={3}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 23. Play Icon (Video Play Triangle)
+  if (name === 'play') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size * 0.9} height={size * 0.9} viewBox="0 0 24 24" fill={color}>
+          <Path
+            d="M8 5V19L19 12L8 5Z"
+            fill={color}
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // 24. Video / Camera Icon
+  if (name === 'video') {
+    return (
+      <View style={[styles.center, { width: size, height: size }]}>
+        <Svg width={size * 0.9} height={size * 0.9} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M23 7L16 12L23 17V7Z"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <Path
+            d="M14 5H3C1.89543 5 1 5.89543 1 7V17C1 18.1046 1.89543 19 3 19H14C15.1046 19 16 18.1046 16 17V7C16 5.89543 15.1046 5 14 5Z"
+            stroke={color}
+            strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

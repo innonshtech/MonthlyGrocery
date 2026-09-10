@@ -93,17 +93,23 @@ export function parseProductHighlights(product: Product): string[] {
     const fromShort = shortDesc
       .split(/[;\n•]+/)
       .map((item) => item.trim())
-      .filter((item) => item.length > 0);
+      .filter((item) => item.length > 0 && !item.includes('PRODUCT_MEDIA'));
     if (fromShort.length > 0) return fromShort;
   }
 
-  const desc = (product.description || '').trim();
+  let desc = (product.description || '').trim();
   if (!desc) return [];
+
+  // Remove any embedded PRODUCT_MEDIA metadata tags
+  desc = desc
+    .replace(/<!--\s*PRODUCT_MEDIA:[\s\S]*?-->/g, '')
+    .replace(/<!--\s*PRODUCT_MEDIA_JSON:[\s\S]*?-->/g, '')
+    .trim();
 
   return desc
     .split(/[;\n•]+/)
     .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+    .filter((item) => item.length > 0 && !item.includes('PRODUCT_MEDIA'));
 }
 
 export async function fetchProductDetail(params: {
