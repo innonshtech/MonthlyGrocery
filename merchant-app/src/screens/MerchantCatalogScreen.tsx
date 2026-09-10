@@ -272,8 +272,8 @@ export default function MerchantCatalogScreen() {
       }
     }
     
-    setLocalStock(String(existingMapping ? existingMapping.stock : 0));
-    setLocalAvailable(existingMapping ? existingMapping.available : false);
+    setLocalStock(String(existingMapping ? existingMapping.stock : 50));
+    setLocalAvailable(existingMapping ? existingMapping.available : true);
     setLocalShortDescription(prod.short_description || '');
     setLocalDescription(prod.description || '');
     setConfigModalVisible(true);
@@ -630,6 +630,9 @@ export default function MerchantCatalogScreen() {
               const isSelected = v.id === activeVariant.id;
               const vMapping = shopProducts.find((sp) => sp.product_id === v.id);
               const inStore = Boolean(vMapping);
+              const isInactive = inStore && !vMapping?.available;
+              const isOOS = inStore && Boolean(vMapping?.available) && ((vMapping?.stock ?? 0) <= 0);
+              const isLive = inStore && Boolean(vMapping?.available) && ((vMapping?.stock ?? 0) > 0);
               const unitLabel = getPackUnitLabel(v) || v.unit || 'Pack';
 
               return (
@@ -639,6 +642,8 @@ export default function MerchantCatalogScreen() {
                     styles.packPill,
                     isSelected && styles.packPillSelected,
                     inStore && styles.packPillInStore,
+                    isInactive && styles.packPillInactive,
+                    isOOS && styles.packPillOOS,
                   ]}
                   onPress={() => {
                     setSelectedMasterVariantMap((prev) => ({
@@ -653,6 +658,8 @@ export default function MerchantCatalogScreen() {
                         styles.packPillUnit,
                         isSelected && styles.packPillUnitSelected,
                         inStore && styles.packPillUnitInStore,
+                        isInactive && styles.packPillUnitInactive,
+                        isOOS && styles.packPillUnitOOS,
                       ]}
                     >
                       {unitLabel}
@@ -660,7 +667,13 @@ export default function MerchantCatalogScreen() {
                     <View
                       style={[
                         styles.statusDot,
-                        inStore ? (vMapping?.available ? styles.statusDotLive : styles.statusDotInactive) : styles.statusDotNotAdded,
+                        !inStore
+                          ? styles.statusDotNotAdded
+                          : isInactive
+                            ? styles.statusDotInactive
+                            : isOOS
+                              ? styles.statusDotOOS
+                              : styles.statusDotLive,
                       ]}
                     />
                   </View>
@@ -677,9 +690,17 @@ export default function MerchantCatalogScreen() {
                       styles.packPillStock,
                       isSelected && styles.packPillStockSelected,
                       inStore && styles.packPillStockInStore,
+                      isInactive && styles.packPillStockInactive,
+                      isOOS && styles.packPillStockOOS,
                     ]}
                   >
-                    {inStore ? (vMapping?.available ? '✓ In Shop' : '✕ Inactive') : '+ Not in Shop'}
+                    {!inStore
+                      ? '+ Not in Shop'
+                      : isInactive
+                        ? '✕ Inactive'
+                        : isOOS
+                          ? 'Out of Stock'
+                          : `✓ In Shop (${vMapping?.stock})`}
                   </Text>
                 </TouchableOpacity>
               );
@@ -700,9 +721,29 @@ export default function MerchantCatalogScreen() {
         <View style={styles.cardFooter}>
           {mapping ? (
             <View style={styles.approvedRow}>
-              <View style={mapping.available ? styles.approvedBadge : styles.rejectedBadge}>
-                <Text style={mapping.available ? styles.approvedText : styles.rejectedText}>
-                  {mapping.available ? `✓ Live in Shop (₹${mapping.selling_price})` : '✕ Inactive in Shop'}
+              <View
+                style={
+                  !mapping.available
+                    ? styles.rejectedBadge
+                    : mapping.stock <= 0
+                      ? styles.pendingBadge
+                      : styles.approvedBadge
+                }
+              >
+                <Text
+                  style={
+                    !mapping.available
+                      ? styles.rejectedText
+                      : mapping.stock <= 0
+                        ? styles.pendingText
+                        : styles.approvedText
+                  }
+                >
+                  {!mapping.available
+                    ? `✕ Inactive in Shop`
+                    : mapping.stock <= 0
+                      ? `🟠 Out of Stock (0 units)`
+                      : `✓ Live in Shop (₹${mapping.selling_price})`}
                 </Text>
               </View>
               <TouchableOpacity
@@ -714,14 +755,14 @@ export default function MerchantCatalogScreen() {
             </View>
           ) : (
             <View style={styles.approvedRow}>
-              <View style={styles.pendingBadge}>
-                <Text style={styles.pendingText}>⚠️ {activeUnitLabel || 'Unit'} Not Added</Text>
+              <View style={styles.notAddedBadge}>
+                <Text style={styles.notAddedText}>+ Not in Shop</Text>
               </View>
               <TouchableOpacity
-                style={styles.configBtn}
+                style={styles.addBtn}
                 onPress={() => handleOpenConfigModal(activeVariant)}
               >
-                <Text style={styles.configBtnText}>+ Add {activeUnitLabel || 'Unit'} to Shop</Text>
+                <Text style={styles.addBtnText}>+ Add {activeUnitLabel || 'Unit'} to Shop</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -1560,11 +1601,28 @@ const styles = StyleSheet.create({
   statusDotLive: {
     backgroundColor: '#22C55E',
   },
+  statusDotOOS: {
+    backgroundColor: '#F59E0B',
+  },
   statusDotInactive: {
     backgroundColor: '#EF4444',
   },
   statusDotNotAdded: {
     backgroundColor: '#94A3B8',
+  },
+  packPillInactive: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
+  packPillOOS: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+  },
+  packPillUnitInactive: {
+    color: '#DC2626',
+  },
+  packPillUnitOOS: {
+    color: '#B45309',
   },
   packPillPrice: {
     fontSize: 12,
@@ -1586,6 +1644,12 @@ const styles = StyleSheet.create({
   },
   packPillStockInStore: {
     color: '#16A34A',
+  },
+  packPillStockInactive: {
+    color: '#DC2626',
+  },
+  packPillStockOOS: {
+    color: '#D97706',
   },
   mediaTagRow: {
     flexDirection: 'row',
@@ -1638,14 +1702,39 @@ const styles = StyleSheet.create({
   },
   pendingBadge: {
     backgroundColor: '#FEF3C7',
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
     alignItems: 'center',
   },
   pendingText: {
     color: '#D97706',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 11,
+  },
+  notAddedBadge: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  notAddedText: {
+    color: '#64748B',
+    fontWeight: 'bold',
+    fontSize: 11,
+  },
+  addBtn: {
+    backgroundColor: '#22C55E',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 11,
   },
   approvedRow: {
     flexDirection: 'row',
@@ -1678,14 +1767,15 @@ const styles = StyleSheet.create({
   },
   rejectedBadge: {
     backgroundColor: '#FEE2E2',
-    paddingVertical: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
     alignItems: 'center',
   },
   rejectedText: {
     color: '#DC2626',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 11,
   },
   loadingContainer: {
     flex: 1,

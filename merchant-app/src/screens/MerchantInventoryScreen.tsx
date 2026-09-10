@@ -272,13 +272,14 @@ export default function MerchantInventoryScreen() {
   };
 
   const renderFamilyCard = ({ item }: { item: ProductFamily<any> }) => {
-    const activeVariantId = selectedVariantMap[item.familyKey] || item.variants[0]?.product_id;
-    const activeVariant = item.variants.find((v) => v.product_id === activeVariantId) || item.variants[0];
+    const activeVariantId = selectedVariantMap[item.familyKey] || item.variants[0]?.product_id || item.variants[0]?.id;
+    const activeVariant = item.variants.find((v) => (v.product_id || v.id) === activeVariantId) || item.variants[0];
 
     if (!activeVariant) return null;
 
     const isInactive = !activeVariant.available;
-    const isOutOfStock = isInactive || activeVariant.stock <= 0;
+    const isOutOfStock = !isInactive && activeVariant.stock <= 0;
+    const isLive = !isInactive && activeVariant.stock > 0;
     const images = Array.isArray(item.images) && item.images.length > 0
       ? item.images
       : (item.image_url ? [item.image_url] : []);
@@ -287,7 +288,7 @@ export default function MerchantInventoryScreen() {
     const activeUnitLabel = getPackUnitLabel(activeVariant) || activeVariant.unit || '';
 
     return (
-      <View style={[styles.productCard, isInactive && styles.productCardInactive, !isInactive && isOutOfStock && styles.productCardOOS]}>
+      <View style={[styles.productCard, isInactive && styles.productCardInactive, isOutOfStock && styles.productCardOOS]}>
         {/* Card Top Row: Media + Product Family Info */}
         <View style={styles.cardTopRow}>
           <TouchableOpacity
@@ -386,8 +387,9 @@ export default function MerchantInventoryScreen() {
             contentContainerStyle={styles.packPillScroll}
           >
             {item.variants.map((v: any) => {
-              const isSelected = v.product_id === activeVariant.product_id;
+              const isSelected = (v.product_id || v.id) === (activeVariant.product_id || activeVariant.id);
               const vInactive = !v.available;
+              const vOOS = !vInactive && v.stock <= 0;
               const unitLabel = getPackUnitLabel(v) || v.unit || 'Pack';
 
               return (
@@ -397,11 +399,12 @@ export default function MerchantInventoryScreen() {
                     styles.packPill,
                     isSelected && styles.packPillSelected,
                     vInactive && styles.packPillInactive,
+                    vOOS && styles.packPillOOS,
                   ]}
                   onPress={() => {
                     setSelectedVariantMap((prev) => ({
                       ...prev,
-                      [item.familyKey]: v.product_id,
+                      [item.familyKey]: v.product_id || v.id,
                     }));
                   }}
                 >
@@ -411,6 +414,7 @@ export default function MerchantInventoryScreen() {
                         styles.packPillUnit,
                         isSelected && styles.packPillUnitSelected,
                         vInactive && styles.packPillUnitInactive,
+                        vOOS && styles.packPillUnitOOS,
                       ]}
                     >
                       {unitLabel}
@@ -418,7 +422,7 @@ export default function MerchantInventoryScreen() {
                     <View
                       style={[
                         styles.statusDot,
-                        v.available ? (v.stock > 0 ? styles.statusDotLive : styles.statusDotOOS) : styles.statusDotInactive,
+                        vInactive ? styles.statusDotInactive : (v.stock > 0 ? styles.statusDotLive : styles.statusDotOOS),
                       ]}
                     />
                   </View>
@@ -436,6 +440,7 @@ export default function MerchantInventoryScreen() {
                       styles.packPillStock,
                       isSelected && styles.packPillStockSelected,
                       vInactive && styles.packPillStockInactive,
+                      vOOS && styles.packPillStockOOS,
                     ]}
                   >
                     {vInactive ? 'Inactive' : (v.stock <= 0 ? 'Out of Stock' : `${v.stock} in stock`)}
@@ -461,8 +466,8 @@ export default function MerchantInventoryScreen() {
           </View>
           <View style={styles.stockBadge}>
             <Text style={styles.stockLabel}>STOCK:</Text>
-            <Text style={[styles.stockValue, activeVariant.stock < 10 && styles.lowStock]}>
-              {activeVariant.stock} units
+            <Text style={[styles.stockValue, activeVariant.stock <= 0 && styles.outOfStockText, activeVariant.stock > 0 && activeVariant.stock < 10 && styles.lowStock]}>
+              {activeVariant.stock <= 0 ? '0 (Out of Stock)' : `${activeVariant.stock} units`}
             </Text>
           </View>
         </View>
@@ -470,12 +475,16 @@ export default function MerchantInventoryScreen() {
         {/* Selected Unit Controls Row: In Stock Switch & Edit Button */}
         <View style={styles.cardControlsRow}>
           <View style={styles.switchWrapper}>
-            <Text style={[styles.switchLabel, !activeVariant.available && styles.switchLabelInactive]}>
-              {activeVariant.available ? (activeVariant.stock > 0 ? `${activeUnitLabel || 'Unit'}: Live & In Stock` : `${activeUnitLabel || 'Unit'}: In Stock (0 units)`) : `${activeUnitLabel || 'Unit'}: Inactive / Hidden`}
+            <Text style={[styles.switchLabel, isInactive && styles.switchLabelInactive, isOutOfStock && styles.switchLabelOOS]}>
+              {isInactive
+                ? `🔴 ${activeUnitLabel || 'Unit'}: Inactive / Hidden`
+                : isOutOfStock
+                  ? `🟠 ${activeUnitLabel || 'Unit'}: Out of Stock (0 units)`
+                  : `🟢 ${activeUnitLabel || 'Unit'}: Live (${activeVariant.stock} in stock)`}
             </Text>
             <Switch
               value={activeVariant.available}
-              onValueChange={() => handleToggleAvailable(activeVariant.product_id, activeVariant.available)}
+              onValueChange={() => handleToggleAvailable(activeVariant.product_id || activeVariant.id, activeVariant.available)}
               trackColor={{ false: '#CBD5E1', true: '#86EFAC' }}
               thumbColor={activeVariant.available ? '#22C55E' : '#94A3B8'}
             />
@@ -979,11 +988,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  productCardOOS: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#CBD5E1',
-    opacity: 0.85,
-  },
   cardTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1448,6 +1452,23 @@ const styles = StyleSheet.create({
   packPillStockInactive: {
     color: '#DC2626',
   },
+  packPillStockOOS: {
+    color: '#D97706',
+  },
+  packPillOOS: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+  },
+  packPillUnitOOS: {
+    color: '#B45309',
+  },
+  productCardOOS: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFDF5',
+  },
+  outOfStockText: {
+    color: '#D97706',
+  },
   activeVariantInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1459,6 +1480,9 @@ const styles = StyleSheet.create({
   },
   switchLabelInactive: {
     color: '#DC2626',
+  },
+  switchLabelOOS: {
+    color: '#D97706',
   },
   modalSiblingContainer: {
     marginBottom: 14,
