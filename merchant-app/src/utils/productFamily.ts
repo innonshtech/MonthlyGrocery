@@ -2,6 +2,17 @@
  * Product Family and Multi-Unit Variant Utilities for Merchant App
  */
 
+export interface ProductFamily<T> {
+  familyKey: string;
+  brand: string;
+  name: string;
+  primary_category: string;
+  image_url: string;
+  images: string[];
+  video_url: string | null;
+  variants: T[];
+}
+
 export function getProductFamilyKey(p: { brand?: string; name?: string }): string {
   const brand = String(p.brand || '').trim().toLowerCase();
   const rawName = String(p.name || '')
@@ -85,4 +96,85 @@ export function findSiblingVariants<T extends { id?: string; product_id?: string
     const priceB = parseFloat(b.selling_price ?? b.price ?? b.mrp ?? 0);
     return priceA - priceB;
   });
+}
+
+/**
+ * Groups an array of products into ProductFamily groups with sorted variants
+ */
+export function groupProductsIntoFamilies<T extends {
+  id?: string;
+  product_id?: string;
+  brand?: string;
+  name?: string;
+  unit?: string;
+  primary_category?: string;
+  image_url?: string;
+  images?: string[];
+  video_url?: string | null;
+  mrp?: any;
+  price?: any;
+  selling_price?: any;
+}>(products: T[]): ProductFamily<T>[] {
+  if (!Array.isArray(products) || products.length === 0) return [];
+
+  const familyMap = new Map<string, T[]>();
+
+  for (const p of products) {
+    const key = getProductFamilyKey(p);
+    if (!familyMap.has(key)) {
+      familyMap.set(key, []);
+    }
+    familyMap.get(key)!.push(p);
+  }
+
+  const result: ProductFamily<T>[] = [];
+
+  for (const [familyKey, rawVariants] of familyMap.entries()) {
+    const sortedVariants = rawVariants.sort((a, b) => {
+      const unitA = getPackUnitLabel(a);
+      const unitB = getPackUnitLabel(b);
+      const weightA = getUnitSortWeight(unitA);
+      const weightB = getUnitSortWeight(unitB);
+
+      if (weightA !== weightB && weightA !== 999999 && weightB !== 999999) {
+        return weightA - weightB;
+      }
+
+      const priceA = parseFloat(a.selling_price ?? a.price ?? a.mrp ?? 0);
+      const priceB = parseFloat(b.selling_price ?? b.price ?? b.mrp ?? 0);
+      return priceA - priceB;
+    });
+
+    const primaryVariant = sortedVariants[0];
+    const allImages: string[] = [];
+    let videoUrl: string | null = null;
+
+    sortedVariants.forEach((v) => {
+      if (Array.isArray(v.images)) {
+        v.images.forEach((img) => {
+          if (img && !allImages.includes(img)) allImages.push(img);
+        });
+      } else if (v.image_url && !allImages.includes(v.image_url)) {
+        allImages.push(v.image_url);
+      }
+      if (!videoUrl && v.video_url) {
+        videoUrl = v.video_url;
+      }
+    });
+
+    const primaryImageUrl = allImages[0] || primaryVariant.image_url || '';
+
+    result.push({
+      familyKey,
+      brand: primaryVariant.brand || '',
+      name: getDisplayBaseName(primaryVariant),
+      primary_category: primaryVariant.primary_category || '',
+      image_url: primaryImageUrl,
+      images: allImages.length > 0 ? allImages : (primaryImageUrl ? [primaryImageUrl] : []),
+      video_url: videoUrl,
+      variants: sortedVariants,
+    });
+  }
+
+  return result;
 }

@@ -21,7 +21,7 @@ import { API_BASE } from '../config/api';
 import { PACK_UNIT_OPTIONS, formatPackUnit } from '../config/packUnits';
 import SafeProductImage from '../components/SafeProductImage';
 import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
-import { findSiblingVariants, getPackUnitLabel, getDisplayBaseName } from '../utils/productFamily';
+import { groupProductsIntoFamilies, ProductFamily, findSiblingVariants, getPackUnitLabel, getDisplayBaseName } from '../utils/productFamily';
 
 interface MasterProduct {
   id: string;
@@ -87,6 +87,7 @@ export default function MerchantCatalogScreen() {
   const [masterProducts, setMasterProducts] = useState<MasterProduct[]>([]);
   const [shopProducts, setShopProducts] = useState<ShopProduct[]>([]);
   const [mySkuRequests, setMySkuRequests] = useState<MySkuRequest[]>([]);
+  const [selectedMasterVariantMap, setSelectedMasterVariantMap] = useState<{ [familyKey: string]: string }>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -423,14 +424,28 @@ export default function MerchantCatalogScreen() {
     }
   };
 
-  const filteredMasterProducts = masterProducts.filter((p) => {
-    const matchesCategory = activeCategory === 'All' || p.primary_category === activeCategory;
-    const matchesSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      (p.brand && p.brand.toLowerCase().includes(search.toLowerCase())) ||
-      (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const masterFamilies = React.useMemo(() => {
+    return groupProductsIntoFamilies(masterProducts);
+  }, [masterProducts]);
+
+  const filteredMasterFamilies = React.useMemo(() => {
+    let out = masterFamilies;
+    if (activeCategory !== 'All') {
+      out = out.filter(f => f.primary_category === activeCategory);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      out = out.filter(f =>
+        f.name.toLowerCase().includes(q) ||
+        f.brand.toLowerCase().includes(q) ||
+        f.variants.some((v: any) =>
+          (v.sku && v.sku.toLowerCase().includes(q)) ||
+          (v.name && v.name.toLowerCase().includes(q))
+        )
+      );
+    }
+    return out;
+  }, [masterFamilies, search, activeCategory]);
 
   const renderSuggestedItem = ({ item }: { item: MySkuRequest }) => {
     const isApproved = item.status === 'approved';
@@ -503,16 +518,19 @@ export default function MerchantCatalogScreen() {
     );
   };
 
-  const renderProductItem = ({ item }: { item: MasterProduct }) => {
-    const mapping = shopProducts.find((sp) => sp.product_id === item.id);
+  const renderMasterFamilyCard = ({ item }: { item: ProductFamily<MasterProduct> }) => {
+    const activeVariantId = selectedMasterVariantMap[item.familyKey] || item.variants[0]?.id;
+    const activeVariant = item.variants.find((v) => v.id === activeVariantId) || item.variants[0];
+
+    if (!activeVariant) return null;
+
+    const mapping = shopProducts.find((sp) => sp.product_id === activeVariant.id);
     const images = Array.isArray(item.images) && item.images.length > 0
       ? item.images
       : (item.image_url ? [item.image_url] : []);
     const hasMultipleAngles = images.length > 1;
     const hasVideo = Boolean(item.video_url);
-    const packUnit = getPackUnitLabel(item) || item.unit || '';
-    const siblings = findSiblingVariants(item, masterProducts);
-    const hasSiblingVariants = siblings.length > 1;
+    const activeUnitLabel = getPackUnitLabel(activeVariant) || activeVariant.unit || '';
 
     return (
       <View style={styles.card}>
@@ -522,15 +540,15 @@ export default function MerchantCatalogScreen() {
             activeOpacity={0.8}
             onPress={() => {
               setPreviewProduct({
-                name: item.name,
-                sku: item.sku,
-                unit: item.unit,
+                name: `${item.name}${activeUnitLabel ? ` (${activeUnitLabel})` : ''}`,
+                sku: activeVariant.sku,
+                unit: activeVariant.unit,
                 primary_category: item.primary_category,
                 images,
                 image_url: item.image_url,
                 video_url: item.video_url,
-                selling_price: mapping ? mapping.selling_price : parseFloat(item.price) || 0,
-                mrp: parseFloat(item.mrp) || 0,
+                selling_price: mapping ? mapping.selling_price : parseFloat(activeVariant.price) || 0,
+                mrp: parseFloat(activeVariant.mrp) || 0,
               });
               setPreviewModalVisible(true);
             }}
@@ -548,60 +566,13 @@ export default function MerchantCatalogScreen() {
           </TouchableOpacity>
 
           <View style={styles.headerTextContainer}>
-            <View style={styles.titleRow}>
-              <Text style={styles.productTitle} numberOfLines={2}>{item.name}</Text>
-              {packUnit ? (
-                <View style={styles.cardUnitBadge}>
-                  <Text style={styles.cardUnitBadgeText}>{packUnit}</Text>
-                </View>
-              ) : null}
-            </View>
+            <Text style={styles.productTitle} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.categorySub}>{item.primary_category} • {item.brand || 'Unbranded'}</Text>
-            <Text style={styles.mrpText}>
-              Base MRP: ₹{item.mrp} | Default: ₹{item.price}
+            <Text style={styles.activeSkuCode}>
+              Active SKU: {activeVariant.sku || 'N/A'} {activeUnitLabel ? `(${activeUnitLabel})` : ''}
             </Text>
 
-            {/* Sibling Pack Variants Bar */}
-            {hasSiblingVariants && (
-              <View style={styles.cardSiblingRow}>
-                <Text style={styles.cardSiblingLabel}>Pack Sizes ({siblings.length}):</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.cardSiblingList}
-                >
-                  {siblings.map((sib) => {
-                    const sibMapping = shopProducts.find((sp) => sp.product_id === sib.id);
-                    const isCurrent = sib.id === item.id;
-                    const inStore = Boolean(sibMapping);
-                    const sibUnit = getPackUnitLabel(sib) || sib.unit || 'Pack';
-                    return (
-                      <TouchableOpacity
-                        key={sib.id}
-                        style={[
-                          styles.cardSiblingChip,
-                          isCurrent && styles.cardSiblingChipCurrent,
-                          inStore && styles.cardSiblingChipInStore,
-                        ]}
-                        onPress={() => handleOpenConfigModal(sib, sibMapping)}
-                      >
-                        <Text
-                          style={[
-                            styles.cardSiblingChipText,
-                            isCurrent && styles.cardSiblingChipTextCurrent,
-                            inStore && styles.cardSiblingChipTextInStore,
-                          ]}
-                        >
-                          {sibUnit} {inStore && sibMapping ? `✓ ₹${sibMapping.selling_price}` : `· ₹${sib.price || sib.mrp}`}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Photo angles & Video badges */}
+            {/* Media Indicators */}
             {(hasMultipleAngles || hasVideo) && (
               <View style={styles.mediaTagRow}>
                 {hasMultipleAngles && (
@@ -609,15 +580,15 @@ export default function MerchantCatalogScreen() {
                     style={styles.photoCountPill}
                     onPress={() => {
                       setPreviewProduct({
-                        name: item.name,
-                        sku: item.sku,
-                        unit: item.unit,
+                        name: `${item.name}${activeUnitLabel ? ` (${activeUnitLabel})` : ''}`,
+                        sku: activeVariant.sku,
+                        unit: activeVariant.unit,
                         primary_category: item.primary_category,
                         images,
                         image_url: item.image_url,
                         video_url: item.video_url,
-                        selling_price: mapping ? mapping.selling_price : parseFloat(item.price) || 0,
-                        mrp: parseFloat(item.mrp) || 0,
+                        selling_price: mapping ? mapping.selling_price : parseFloat(activeVariant.price) || 0,
+                        mrp: parseFloat(activeVariant.mrp) || 0,
                       });
                       setPreviewModalVisible(true);
                     }}
@@ -644,31 +615,113 @@ export default function MerchantCatalogScreen() {
           </View>
         </View>
 
+        {/* Interactive Pack Unit Selector */}
+        <View style={styles.packSelectorContainer}>
+          <View style={styles.packSelectorHeader}>
+            <Text style={styles.packSelectorTitle}>AVAILABLE PACK SIZES ({item.variants.length}):</Text>
+            <Text style={styles.packSelectorHint}>Tap to switch & configure</Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.packPillScroll}
+          >
+            {item.variants.map((v: MasterProduct) => {
+              const isSelected = v.id === activeVariant.id;
+              const vMapping = shopProducts.find((sp) => sp.product_id === v.id);
+              const inStore = Boolean(vMapping);
+              const unitLabel = getPackUnitLabel(v) || v.unit || 'Pack';
+
+              return (
+                <TouchableOpacity
+                  key={v.id}
+                  style={[
+                    styles.packPill,
+                    isSelected && styles.packPillSelected,
+                    inStore && styles.packPillInStore,
+                  ]}
+                  onPress={() => {
+                    setSelectedMasterVariantMap((prev) => ({
+                      ...prev,
+                      [item.familyKey]: v.id,
+                    }));
+                  }}
+                >
+                  <View style={styles.packPillTop}>
+                    <Text
+                      style={[
+                        styles.packPillUnit,
+                        isSelected && styles.packPillUnitSelected,
+                        inStore && styles.packPillUnitInStore,
+                      ]}
+                    >
+                      {unitLabel}
+                    </Text>
+                    <View
+                      style={[
+                        styles.statusDot,
+                        inStore ? (vMapping?.available ? styles.statusDotLive : styles.statusDotInactive) : styles.statusDotNotAdded,
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.packPillPrice,
+                      isSelected && styles.packPillPriceSelected,
+                    ]}
+                  >
+                    {inStore && vMapping ? `₹${vMapping.selling_price}` : `₹${v.price || v.mrp}`}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.packPillStock,
+                      isSelected && styles.packPillStockSelected,
+                      inStore && styles.packPillStockInStore,
+                    ]}
+                  >
+                    {inStore ? (vMapping?.available ? '✓ In Shop' : '✕ Inactive') : '+ Not in Shop'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Selected Unit Price Row */}
+        <View style={styles.activeVariantInfoRow}>
+          <View style={styles.priceRow}>
+            <Text style={styles.mrpText}>
+              Base MRP: ₹{activeVariant.mrp} | Default Selling: ₹{activeVariant.price}
+            </Text>
+          </View>
+        </View>
+
+        {/* Card Footer Actions */}
         <View style={styles.cardFooter}>
           {mapping ? (
             <View style={styles.approvedRow}>
               <View style={mapping.available ? styles.approvedBadge : styles.rejectedBadge}>
                 <Text style={mapping.available ? styles.approvedText : styles.rejectedText}>
-                  {mapping.available ? `✓ Live (₹${mapping.selling_price})` : '✕ Inactive'}
+                  {mapping.available ? `✓ Live in Shop (₹${mapping.selling_price})` : '✕ Inactive in Shop'}
                 </Text>
               </View>
               <TouchableOpacity
                 style={styles.configBtn}
-                onPress={() => handleOpenConfigModal(item, mapping)}
+                onPress={() => handleOpenConfigModal(activeVariant, mapping)}
               >
-                <Text style={styles.configBtnText}>⚙️ Configure</Text>
+                <Text style={styles.configBtnText}>⚙️ Configure {activeUnitLabel || 'Unit'}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.approvedRow}>
               <View style={styles.pendingBadge}>
-                <Text style={styles.pendingText}>⚠️ Not in Store</Text>
+                <Text style={styles.pendingText}>⚠️ {activeUnitLabel || 'Unit'} Not Added</Text>
               </View>
               <TouchableOpacity
                 style={styles.configBtn}
-                onPress={() => handleOpenConfigModal(item)}
+                onPress={() => handleOpenConfigModal(activeVariant)}
               >
-                <Text style={styles.configBtnText}>⚙️ Configure</Text>
+                <Text style={styles.configBtnText}>+ Add {activeUnitLabel || 'Unit'} to Shop</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -685,7 +738,7 @@ export default function MerchantCatalogScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Merchant Catalog</Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {loading ? 'Loading live catalog…' : `${masterProducts.length} SKUs · ${shopProducts.length} in store · ${mySkuRequests.length} suggested`}
+            {loading ? 'Loading live catalog…' : `${masterFamilies.length} Products (${masterProducts.length} Pack Sizes) · ${shopProducts.length} in store · ${mySkuRequests.length} suggested`}
           </Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -705,7 +758,7 @@ export default function MerchantCatalogScreen() {
           onPress={() => setCatalogTab('master')}
         >
           <Text style={[styles.segmentText, catalogTab === 'master' && styles.segmentTextActive]}>
-            Master Catalog ({masterProducts.length})
+            Master Catalog ({masterFamilies.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -765,9 +818,9 @@ export default function MerchantCatalogScreen() {
             </View>
           ) : (
             <FlatList
-              data={filteredMasterProducts}
-              keyExtractor={(item) => item.id}
-              renderItem={renderProductItem}
+              data={filteredMasterFamilies}
+              keyExtractor={(item) => item.familyKey}
+              renderItem={renderMasterFamilyCard}
               contentContainerStyle={styles.listContent}
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={() => fetchData(true)} colors={['#22C55E']} />
@@ -1414,11 +1467,125 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  activeSkuCode: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 2,
+  },
   mrpText: {
     fontSize: 11,
     color: '#0F172A',
     fontWeight: '600',
     marginTop: 4,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeVariantInfoRow: {
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  packSelectorContainer: {
+    marginTop: 10,
+    marginBottom: 6,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  packSelectorHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  packSelectorTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  packSelectorHint: {
+    fontSize: 9,
+    color: '#94A3B8',
+  },
+  packPillScroll: {
+    gap: 8,
+  },
+  packPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    minWidth: 88,
+  },
+  packPillSelected: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  packPillInStore: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+  },
+  packPillTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  packPillUnit: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  packPillUnitSelected: {
+    color: '#15803D',
+  },
+  packPillUnitInStore: {
+    color: '#16A34A',
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusDotLive: {
+    backgroundColor: '#22C55E',
+  },
+  statusDotInactive: {
+    backgroundColor: '#EF4444',
+  },
+  statusDotNotAdded: {
+    backgroundColor: '#94A3B8',
+  },
+  packPillPrice: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 1,
+  },
+  packPillPriceSelected: {
+    color: '#16A34A',
+  },
+  packPillStock: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  packPillStockSelected: {
+    color: '#15803D',
+    fontWeight: '600',
+  },
+  packPillStockInStore: {
+    color: '#16A34A',
   },
   mediaTagRow: {
     flexDirection: 'row',
