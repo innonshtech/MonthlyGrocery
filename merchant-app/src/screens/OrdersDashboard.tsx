@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
+import SafeProductImage from '../components/SafeProductImage';
+import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
 
 const STATUS_FILTERS = [
   { key: 'all', label: 'All Orders' },
@@ -85,6 +87,10 @@ export default function OrdersDashboard() {
   const [error, setError] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  // Media Inspection Modal (for order packing verification)
+  const [previewProduct, setPreviewProduct] = useState<ProductMediaItem | null>(null);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
 
   const fetchOrders = useCallback(async (isRefresh = false) => {
     if (!token) return;
@@ -236,20 +242,70 @@ export default function OrdersDashboard() {
               const itemName = resolveItemName(it);
               const itemUnit = resolveItemUnit(it);
               const itemImage = resolveItemImage(it);
+              const itemImages = Array.isArray(it.images) && it.images.length > 0
+                ? it.images
+                : (Array.isArray(it.products?.images) && it.products.images.length > 0
+                  ? it.products.images
+                  : (itemImage ? [itemImage] : []));
+              const hasMultipleAngles = itemImages.length > 1;
+
               return (
-              <View key={idx} style={styles.itemRow}>
-                {itemImage ? (
-                  <Image source={{ uri: itemImage }} style={styles.itemThumb} resizeMode="contain" />
-                ) : (
-                  <View style={styles.itemThumbPlaceholder}><Text>🛒</Text></View>
-                )}
-                <View style={styles.itemInfo}>
-                  <Text style={styles.itemTitle} numberOfLines={1}>{itemName}</Text>
-                  <Text style={styles.itemUnitQty}>{itemUnit} × {it.quantity}</Text>
+                <View key={idx} style={styles.itemRow}>
+                  <TouchableOpacity
+                    style={styles.itemThumbTouchable}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setPreviewProduct({
+                        name: itemName,
+                        unit: itemUnit,
+                        images: itemImages,
+                        image_url: itemImage,
+                        video_url: it.video_url || it.products?.video_url,
+                        selling_price: it.unit_price,
+                      });
+                      setPreviewModalVisible(true);
+                    }}
+                  >
+                    <SafeProductImage
+                      uri={itemImage || itemImages[0]}
+                      style={styles.itemThumb}
+                      resizeMode="contain"
+                    />
+                    {hasMultipleAngles && (
+                      <View style={styles.itemAngleBadge}>
+                        <Text style={styles.itemAngleBadgeText}>+{itemImages.length - 1}</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemTitle} numberOfLines={1}>{itemName}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Text style={styles.itemUnitQty}>{itemUnit} × {it.quantity}</Text>
+                      {hasMultipleAngles && (
+                        <TouchableOpacity
+                          style={styles.packInspectionPill}
+                          onPress={() => {
+                            setPreviewProduct({
+                              name: itemName,
+                              unit: itemUnit,
+                              images: itemImages,
+                              image_url: itemImage,
+                              video_url: it.video_url || it.products?.video_url,
+                              selling_price: it.unit_price,
+                            });
+                            setPreviewModalVisible(true);
+                          }}
+                        >
+                          <Text style={styles.packInspectionText}>🔍 {itemImages.length} angles</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                  <Text style={styles.itemPrice}>₹{(it.unit_price * it.quantity).toFixed(2)}</Text>
                 </View>
-                <Text style={styles.itemPrice}>₹{(it.unit_price * it.quantity).toFixed(2)}</Text>
-              </View>
-            );})}
+              );
+            })}
           </View>
         )}
 
@@ -391,6 +447,13 @@ export default function OrdersDashboard() {
           }
         />
       )}
+
+      {/* Product Media Inspection Modal for Packing */}
+      <ProductMediaModal
+        visible={previewModalVisible}
+        onClose={() => setPreviewModalVisible(false)}
+        product={previewProduct}
+      />
     </View>
   );
 }
@@ -633,16 +696,36 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  itemThumb: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
+  itemThumbTouchable: {
+    position: 'relative',
     marginRight: 10,
   },
-  itemThumbPlaceholder: {
-    width: 32,
-    height: 32,
+  itemThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  itemAngleBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#0F172A',
     borderRadius: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+  },
+  itemAngleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  itemThumbPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
     backgroundColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
@@ -652,16 +735,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemTitle: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: 'bold',
     color: '#1E293B',
   },
   itemUnitQty: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#64748B',
   },
+  packInspectionPill: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  packInspectionText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#2563EB',
+  },
   itemPrice: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#0F172A',
   },

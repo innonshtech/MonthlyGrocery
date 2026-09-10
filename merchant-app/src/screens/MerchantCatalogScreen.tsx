@@ -14,10 +14,13 @@ import {
   ScrollView,
   StatusBar,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
 import { PACK_UNIT_OPTIONS, formatPackUnit } from '../config/packUnits';
+import SafeProductImage from '../components/SafeProductImage';
+import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
 
 interface MasterProduct {
   id: string;
@@ -26,6 +29,8 @@ interface MasterProduct {
   brand: string;
   primary_category: string;
   image_url: string;
+  images?: string[];
+  video_url?: string | null;
   mrp: string;
   price: string;
   unit?: string;
@@ -89,9 +94,14 @@ export default function MerchantCatalogScreen() {
   const [categories, setCategories] = useState<string[]>(['All']);
   const [suggestCategories, setSuggestCategories] = useState<string[]>(DEFAULT_PLATFORM_CATEGORIES);
   
+  // Media Inspection Modal
+  const [previewProduct, setPreviewProduct] = useState<ProductMediaItem | null>(null);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+
   // Modal states for configuration
   const [selectedProduct, setSelectedProduct] = useState<MasterProduct | null>(null);
   const [configModalVisible, setConfigModalVisible] = useState(false);
+  const [configModalActiveImage, setConfigModalActiveImage] = useState('');
   const [localPrice, setLocalPrice] = useState('');
   const [localDiscount, setLocalDiscount] = useState('');
   const [localStock, setLocalStock] = useState('');
@@ -241,6 +251,10 @@ export default function MerchantCatalogScreen() {
 
   const handleOpenConfigModal = (prod: MasterProduct, existingMapping?: ShopProduct) => {
     setSelectedProduct(prod);
+    const pImages = Array.isArray(prod.images) && prod.images.length > 0
+      ? prod.images
+      : (prod.image_url ? [prod.image_url] : []);
+    setConfigModalActiveImage(pImages[0] || prod.image_url || '');
     const initialPrice = existingMapping ? existingMapping.selling_price : parseFloat(prod.price) || 0;
     setLocalPrice(String(initialPrice));
     
@@ -425,11 +439,29 @@ export default function MerchantCatalogScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={styles.productThumb} resizeMode="contain" />
-          ) : (
-            <View style={styles.thumbPlaceholder}><Text style={{ fontSize: 20 }}>📦</Text></View>
-          )}
+          <TouchableOpacity
+            style={styles.thumbTouchable}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (item.image_url) {
+                setPreviewProduct({
+                  name: item.product_name,
+                  primary_category: item.category,
+                  unit: item.unit,
+                  images: [item.image_url],
+                  image_url: item.image_url,
+                  mrp: item.mrp,
+                });
+                setPreviewModalVisible(true);
+              }
+            }}
+          >
+            <SafeProductImage
+              uri={item.image_url}
+              style={styles.productThumb}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.productTitle} numberOfLines={2}>{item.product_name}</Text>
             <Text style={styles.categorySub}>{item.category} • {item.brand || 'Unbranded'}</Text>
@@ -472,22 +504,92 @@ export default function MerchantCatalogScreen() {
 
   const renderProductItem = ({ item }: { item: MasterProduct }) => {
     const mapping = shopProducts.find((sp) => sp.product_id === item.id);
-    const status = mapping ? mapping.status : 'not_requested';
+    const images = Array.isArray(item.images) && item.images.length > 0
+      ? item.images
+      : (item.image_url ? [item.image_url] : []);
+    const hasMultipleAngles = images.length > 1;
+    const hasVideo = Boolean(item.video_url);
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={styles.productThumb} resizeMode="contain" />
-          ) : (
-            <View style={styles.thumbPlaceholder}><Text>🛒</Text></View>
-          )}
+          <TouchableOpacity
+            style={styles.thumbTouchable}
+            activeOpacity={0.8}
+            onPress={() => {
+              setPreviewProduct({
+                name: item.name,
+                sku: item.sku,
+                unit: item.unit,
+                primary_category: item.primary_category,
+                images,
+                image_url: item.image_url,
+                video_url: item.video_url,
+                selling_price: mapping ? mapping.selling_price : parseFloat(item.price) || 0,
+                mrp: parseFloat(item.mrp) || 0,
+              });
+              setPreviewModalVisible(true);
+            }}
+          >
+            <SafeProductImage
+              uri={item.image_url || images[0]}
+              style={styles.productThumb}
+              resizeMode="contain"
+            />
+            {hasMultipleAngles && (
+              <View style={styles.cardAngleBadge}>
+                <Text style={styles.cardAngleBadgeText}>+{images.length - 1}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
           <View style={styles.headerTextContainer}>
             <Text style={styles.productTitle} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.categorySub}>{item.primary_category} • {item.brand || 'Unbranded'}</Text>
             <Text style={styles.mrpText}>
               {item.unit ? `${item.unit} · ` : ''}Base MRP: ₹{item.mrp} | Default: ₹{item.price}
             </Text>
+
+            {/* Photo angles & Video badges */}
+            {(hasMultipleAngles || hasVideo) && (
+              <View style={styles.mediaTagRow}>
+                {hasMultipleAngles && (
+                  <TouchableOpacity
+                    style={styles.photoCountPill}
+                    onPress={() => {
+                      setPreviewProduct({
+                        name: item.name,
+                        sku: item.sku,
+                        unit: item.unit,
+                        primary_category: item.primary_category,
+                        images,
+                        image_url: item.image_url,
+                        video_url: item.video_url,
+                        selling_price: mapping ? mapping.selling_price : parseFloat(item.price) || 0,
+                        mrp: parseFloat(item.mrp) || 0,
+                      });
+                      setPreviewModalVisible(true);
+                    }}
+                  >
+                    <Text style={styles.photoCountText}>📷 {images.length} angles</Text>
+                  </TouchableOpacity>
+                )}
+                {hasVideo && (
+                  <TouchableOpacity
+                    style={styles.videoPill}
+                    onPress={() => {
+                      if (item.video_url) {
+                        Linking.openURL(item.video_url).catch(() => {
+                          Alert.alert('Error', 'Unable to open video preview URL.');
+                        });
+                      }
+                    }}
+                  >
+                    <Text style={styles.videoPillText}>▶️ Video</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         </View>
 
@@ -670,90 +772,175 @@ export default function MerchantCatalogScreen() {
       {/* SKU Configuration Modal */}
       <Modal visible={configModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Configure SKU for Shop</Text>
-            {selectedProduct && (
-              <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
-            )}
+          <View style={[styles.modalCard, { maxHeight: '88%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 8 }}>
+                <Text style={styles.modalTitle}>Configure SKU for Shop</Text>
+                <TouchableOpacity onPress={() => setConfigModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={{ fontSize: 18, color: '#94A3B8', fontWeight: 'bold' }}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-            <Text style={styles.inputLabel}>My Selling Price (₹)</Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              value={localPrice}
-              onChangeText={handlePriceChange}
-              placeholder="e.g. 199.00"
-            />
+              {selectedProduct && (
+                <>
+                  <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
+                  
+                  {/* Photo Gallery Preview */}
+                  {(() => {
+                    const pImages = Array.isArray(selectedProduct.images) && selectedProduct.images.length > 0
+                      ? selectedProduct.images
+                      : (selectedProduct.image_url ? [selectedProduct.image_url] : []);
+                    const activePreview = configModalActiveImage || pImages[0] || selectedProduct.image_url || '';
 
-            <Text style={styles.inputLabel}>Discount Percentage (%)</Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              value={localDiscount}
-              onChangeText={handleDiscountChange}
-              placeholder="e.g. 10"
-            />
+                    return (
+                      <View style={styles.modalGalleryContainer}>
+                        <View style={styles.modalMainPreviewBox}>
+                          <SafeProductImage
+                            uri={activePreview}
+                            style={styles.modalMainPreviewImage}
+                            resizeMode="contain"
+                          />
+                          {pImages.length > 1 && (
+                            <View style={styles.modalAngleBadge}>
+                              <Text style={styles.modalAngleBadgeText}>{pImages.length} photo angles</Text>
+                            </View>
+                          )}
+                        </View>
 
-            <Text style={styles.inputLabel}>Available Stock Units</Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              value={localStock}
-              onChangeText={setLocalStock}
-              placeholder="e.g. 50"
-            />
+                        {/* Thumbnails */}
+                        {pImages.length > 1 && (
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.modalThumbStrip}
+                          >
+                            {pImages.map((imgUri, idx) => {
+                              const isSelected = activePreview === imgUri;
+                              const isPng = imgUri.toLowerCase().endsWith('.png') || imgUri.includes('.png?');
+                              const isSvg = imgUri.toLowerCase().endsWith('.svg') || imgUri.includes('.svg?');
 
-            {selectedProduct?.unit ? (
-              <Text style={styles.readOnlyUnit}>Pack unit: {selectedProduct.unit} (set at catalog level)</Text>
-            ) : null}
+                              return (
+                                <TouchableOpacity
+                                  key={idx}
+                                  style={[styles.modalThumbChip, isSelected && styles.modalThumbChipSelected]}
+                                  onPress={() => setConfigModalActiveImage(imgUri)}
+                                >
+                                  <SafeProductImage
+                                    uri={imgUri}
+                                    style={styles.modalThumbImage}
+                                    resizeMode="contain"
+                                  />
+                                  <View style={[styles.modalThumbTag, isSelected && styles.modalThumbTagSelected]}>
+                                    <Text style={[styles.modalThumbTagText, isSelected && styles.modalThumbTagTextSelected]}>
+                                      {isPng ? 'PNG' : isSvg ? 'SVG' : `#${idx + 1}`}
+                                    </Text>
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        )}
 
-            <Text style={styles.inputLabel}>Short description</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={localShortDescription}
-              onChangeText={setLocalShortDescription}
-              placeholder="One-line summary for customers"
-            />
+                        {/* Video button */}
+                        {selectedProduct.video_url ? (
+                          <TouchableOpacity
+                            style={styles.modalVideoBtn}
+                            onPress={() => {
+                              if (selectedProduct.video_url) {
+                                Linking.openURL(selectedProduct.video_url).catch(() => {
+                                  Alert.alert('Error', 'Unable to open video preview URL.');
+                                });
+                              }
+                            }}
+                          >
+                            <Text style={styles.modalVideoBtnText}>▶️ Watch Product Video Demo</Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </View>
+                    );
+                  })()}
+                </>
+              )}
 
-            <Text style={styles.inputLabel}>Highlights (semicolon-separated)</Text>
-            <TextInput
-              style={[styles.modalInput, { minHeight: 72, textAlignVertical: 'top' }]}
-              multiline
-              value={localDescription}
-              onChangeText={setLocalDescription}
-              placeholder="e.g. Stone ground; 100% whole wheat; Milled in small batches"
-            />
-
-            <View style={styles.switchRow}>
-              <Text style={styles.switchText}>In-Stock & Visible</Text>
-              <Switch
-                value={localAvailable}
-                onValueChange={setLocalAvailable}
-                trackColor={{ false: '#767577', true: '#86EFAC' }}
-                thumbColor={localAvailable ? '#22C55E' : '#f4f3f4'}
+              <Text style={styles.inputLabel}>My Selling Price (₹)</Text>
+              <TextInput
+                style={styles.modalInput}
+                keyboardType="numeric"
+                value={localPrice}
+                onChangeText={handlePriceChange}
+                placeholder="e.g. 199.00"
               />
-            </View>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setConfigModalVisible(false)}
-                disabled={saving}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSaveConfig}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Save SKU Details</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+              <Text style={styles.inputLabel}>Discount Percentage (%)</Text>
+              <TextInput
+                style={styles.modalInput}
+                keyboardType="numeric"
+                value={localDiscount}
+                onChangeText={handleDiscountChange}
+                placeholder="e.g. 10"
+              />
+
+              <Text style={styles.inputLabel}>Available Stock Units</Text>
+              <TextInput
+                style={styles.modalInput}
+                keyboardType="numeric"
+                value={localStock}
+                onChangeText={setLocalStock}
+                placeholder="e.g. 50"
+              />
+
+              {selectedProduct?.unit ? (
+                <Text style={styles.readOnlyUnit}>Pack unit: {selectedProduct.unit} (set at catalog level)</Text>
+              ) : null}
+
+              <Text style={styles.inputLabel}>Short description</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={localShortDescription}
+                onChangeText={setLocalShortDescription}
+                placeholder="One-line summary for customers"
+              />
+
+              <Text style={styles.inputLabel}>Highlights (semicolon-separated)</Text>
+              <TextInput
+                style={[styles.modalInput, { minHeight: 72, textAlignVertical: 'top' }]}
+                multiline
+                value={localDescription}
+                onChangeText={setLocalDescription}
+                placeholder="e.g. Stone ground; 100% whole wheat; Milled in small batches"
+              />
+
+              <View style={styles.switchRow}>
+                <Text style={styles.switchText}>In-Stock & Visible</Text>
+                <Switch
+                  value={localAvailable}
+                  onValueChange={setLocalAvailable}
+                  trackColor={{ false: '#767577', true: '#86EFAC' }}
+                  thumbColor={localAvailable ? '#22C55E' : '#f4f3f4'}
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setConfigModalVisible(false)}
+                  disabled={saving}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveBtn}
+                  onPress={handleSaveConfig}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Save SKU Details</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -895,6 +1082,13 @@ export default function MerchantCatalogScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Media Inspection Full Modal */}
+      <ProductMediaModal
+        visible={previewModalVisible}
+        onClose={() => setPreviewModalVisible(false)}
+        product={previewProduct}
+      />
     </View>
   );
 }
@@ -1043,15 +1237,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   productThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
+    width: 58,
+    height: 58,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  thumbTouchable: {
+    position: 'relative',
     marginRight: 12,
   },
-  thumbPlaceholder: {
-    width: 52,
-    height: 52,
+  cardAngleBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#0F172A',
     borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  cardAngleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  thumbPlaceholder: {
+    width: 58,
+    height: 58,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1075,6 +1289,38 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     fontWeight: '600',
     marginTop: 4,
+  },
+  mediaTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  photoCountPill: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  photoCountText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#2563EB',
+  },
+  videoPill: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  videoPillText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#16A34A',
   },
   cardFooter: {
     marginTop: 12,
@@ -1207,10 +1453,107 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   modalProductName: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 16,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 12,
     marginTop: 2,
+  },
+  modalGalleryContainer: {
+    marginBottom: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalMainPreviewBox: {
+    height: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    position: 'relative',
+  },
+  modalMainPreviewImage: {
+    width: '90%',
+    height: '90%',
+  },
+  modalAngleBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  modalAngleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  modalThumbStrip: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  modalThumbChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 2,
+    position: 'relative',
+  },
+  modalThumbChipSelected: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  modalThumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalThumbTag: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  modalThumbTagSelected: {
+    backgroundColor: '#22C55E',
+  },
+  modalThumbTagText: {
+    fontSize: 7,
+    fontWeight: 'bold',
+    color: '#64748B',
+  },
+  modalThumbTagTextSelected: {
+    color: '#FFFFFF',
+  },
+  modalVideoBtn: {
+    marginTop: 8,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalVideoBtnText: {
+    color: '#16A34A',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   inputLabel: {
     fontSize: 11,

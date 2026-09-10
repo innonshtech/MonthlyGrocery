@@ -27,26 +27,31 @@ function formatPaymentMethodLabel(method?: string): string {
   return method;
 }
 
+import { enrichProductWithMedia } from '../utils/productMedia';
+
 async function fetchCatalogMap(productIds: string[]) {
-  const catalogMap = new Map<string, { name: string; image_url: string; unit: string }>();
+  const catalogMap = new Map<string, { name: string; image_url: string; images: string[]; video_url: string | null; unit: string }>();
   if (!productIds.length) return catalogMap;
 
   const { data: catalogProducts } = await supabase
     .from('products')
-    .select('id, name, image_url, unit')
+    .select('id, name, image_url, description, unit')
     .in('id', productIds);
 
   for (const p of catalogProducts || []) {
+    const enriched = enrichProductWithMedia(p);
     catalogMap.set(p.id, {
-      name: p.name,
-      image_url: p.image_url || '',
-      unit: p.unit || '1 unit',
+      name: enriched.name,
+      image_url: enriched.image_url || '',
+      images: enriched.images || (enriched.image_url ? [enriched.image_url] : []),
+      video_url: enriched.video_url || null,
+      unit: enriched.unit || '1 unit',
     });
   }
   return catalogMap;
 }
 
-function enrichOrderItems(order: any, catalogMap: Map<string, { name: string; image_url: string; unit: string }>) {
+function enrichOrderItems(order: any, catalogMap: Map<string, { name: string; image_url: string; images: string[]; video_url: string | null; unit: string }>) {
   order.order_items = (order.order_items || []).map((it: any) => {
     const catalog = catalogMap.get(it.product_id);
     const catalogName = catalog?.name?.trim();
@@ -54,11 +59,16 @@ function enrichOrderItems(order: any, catalogMap: Map<string, { name: string; im
     const resolvedName =
       catalogName ||
       (itemName && itemName.toLowerCase() !== 'grocery item' ? itemName : '');
+    const images = (it.images && it.images.length > 0)
+      ? it.images
+      : (catalog?.images || (it.image_url || catalog?.image_url ? [it.image_url || catalog?.image_url] : []));
     return {
       ...it,
       product_name: resolvedName,
       name: resolvedName,
-      image_url: it.image_url || catalog?.image_url || '',
+      image_url: it.image_url || catalog?.image_url || (images[0] || ''),
+      images,
+      video_url: it.video_url || catalog?.video_url || null,
       unit: it.unit || catalog?.unit || '1 unit',
     };
   });
@@ -78,13 +88,21 @@ function mapOrderItemsForMerchant(items: any[] = []) {
     const name = it.products?.name || it.product_name || it.name || 'Item';
     const unit = it.products?.unit || it.unit || '1 unit';
     const imageUrl = it.products?.image_url || it.image_url || '';
+    const images = Array.isArray(it.images) && it.images.length > 0
+      ? it.images
+      : (Array.isArray(it.products?.images) && it.products.images.length > 0
+        ? it.products.images
+        : (imageUrl ? [imageUrl] : []));
+    const videoUrl = it.video_url || it.products?.video_url || null;
     return {
       ...it,
       product_name: name,
       name,
       unit,
       image_url: imageUrl,
-      products: it.products || { name, unit, image_url: imageUrl },
+      images,
+      video_url: videoUrl,
+      products: it.products || { name, unit, image_url: imageUrl, images, video_url: videoUrl },
     };
   });
 }

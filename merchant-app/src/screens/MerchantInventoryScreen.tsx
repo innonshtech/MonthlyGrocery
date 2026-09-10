@@ -16,9 +16,12 @@ import {
   ScrollView,
   StatusBar,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
+import SafeProductImage from '../components/SafeProductImage';
+import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
 
 export default function MerchantInventoryScreen() {
   const { token } = useMerchantAuth();
@@ -31,9 +34,14 @@ export default function MerchantInventoryScreen() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [shopName, setShopName] = useState('');
 
+  // Media Inspection Modal
+  const [previewProduct, setPreviewProduct] = useState<ProductMediaItem | null>(null);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+
   // Edit Modal States
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [modalActiveImage, setModalActiveImage] = useState('');
   const [editPrice, setEditPrice] = useState('');
   const [editMrp, setEditMrp] = useState('');
   const [editStock, setEditStock] = useState('');
@@ -158,6 +166,10 @@ export default function MerchantInventoryScreen() {
 
   const handleOpenEditModal = (item: any) => {
     setEditingProduct(item);
+    const itemImages = Array.isArray(item.images) && item.images.length > 0
+      ? item.images
+      : (item.image_url ? [item.image_url] : []);
+    setModalActiveImage(itemImages[0] || item.image_url || '');
     setEditPrice(String(item.selling_price || ''));
     setEditMrp(String(item.mrp || ''));
     setEditStock(String(item.stock || '0'));
@@ -252,15 +264,34 @@ export default function MerchantInventoryScreen() {
 
   const renderInventoryItem = ({ item }: { item: any }) => {
     const isOutOfStock = !item.available || item.stock <= 0;
-    
+    const images = Array.isArray(item.images) && item.images.length > 0
+      ? item.images
+      : (item.image_url ? [item.image_url] : []);
+    const hasMultipleAngles = images.length > 1;
+    const hasVideo = Boolean(item.video_url);
+
     return (
       <View style={[styles.productCard, isOutOfStock && styles.productCardOOS]}>
         <View style={styles.cardTopRow}>
-          {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={styles.productThumb} resizeMode="contain" />
-          ) : (
-            <View style={styles.placeholderThumb}><Text style={{ fontSize: 20 }}>📦</Text></View>
-          )}
+          <TouchableOpacity
+            style={styles.thumbTouchable}
+            activeOpacity={0.8}
+            onPress={() => {
+              setPreviewProduct(item);
+              setPreviewModalVisible(true);
+            }}
+          >
+            <SafeProductImage
+              uri={item.image_url || images[0]}
+              style={styles.productThumb}
+              resizeMode="contain"
+            />
+            {hasMultipleAngles && (
+              <View style={styles.cardAngleBadge}>
+                <Text style={styles.cardAngleBadgeText}>+{images.length - 1}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
 
           <View style={styles.productDetails}>
             <View style={styles.nameRow}>
@@ -270,6 +301,37 @@ export default function MerchantInventoryScreen() {
               SKU: {item.sku || 'N/A'} • {item.primary_category}
               {item.unit ? ` • ${item.unit}` : ''}
             </Text>
+
+            {/* Media Indicators */}
+            {(hasMultipleAngles || hasVideo) && (
+              <View style={styles.mediaTagRow}>
+                {hasMultipleAngles && (
+                  <TouchableOpacity
+                    style={styles.photoCountPill}
+                    onPress={() => {
+                      setPreviewProduct(item);
+                      setPreviewModalVisible(true);
+                    }}
+                  >
+                    <Text style={styles.photoCountText}>📷 {images.length} angles</Text>
+                  </TouchableOpacity>
+                )}
+                {hasVideo && (
+                  <TouchableOpacity
+                    style={styles.videoPill}
+                    onPress={() => {
+                      if (item.video_url) {
+                        Linking.openURL(item.video_url).catch(() => {
+                          Alert.alert('Error', 'Unable to open video preview URL.');
+                        });
+                      }
+                    }}
+                  >
+                    <Text style={styles.videoPillText}>▶️ Video</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             <View style={styles.priceRow}>
               <Text style={styles.sellingPrice}>₹{item.selling_price}</Text>
@@ -426,12 +488,87 @@ export default function MerchantInventoryScreen() {
             </View>
 
             {editingProduct && (
-              <ScrollView>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 <Text style={styles.modalProductName}>{editingProduct.name}</Text>
                 <Text style={styles.modalProductSku}>SKU: {editingProduct.sku || 'N/A'}</Text>
                 {editingProduct.unit ? (
                   <Text style={styles.readOnlyUnit}>Pack unit: {editingProduct.unit} (catalog level)</Text>
                 ) : null}
+
+                {/* Product Photo Gallery & Video Section */}
+                {(() => {
+                  const modalImages = Array.isArray(editingProduct.images) && editingProduct.images.length > 0
+                    ? editingProduct.images
+                    : (editingProduct.image_url ? [editingProduct.image_url] : []);
+                  const currentPreview = modalActiveImage || modalImages[0] || editingProduct.image_url || '';
+
+                  return (
+                    <View style={styles.modalGalleryContainer}>
+                      <View style={styles.modalMainPreviewBox}>
+                        <SafeProductImage
+                          uri={currentPreview}
+                          style={styles.modalMainPreviewImage}
+                          resizeMode="contain"
+                        />
+                        {modalImages.length > 1 && (
+                          <View style={styles.modalAngleBadge}>
+                            <Text style={styles.modalAngleBadgeText}>{modalImages.length} photo angles</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Thumbnails selector if multiple photos */}
+                      {modalImages.length > 1 && (
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.modalThumbStrip}
+                        >
+                          {modalImages.map((imgUri: string, idx: number) => {
+                            const isSelected = currentPreview === imgUri;
+                            const isPng = imgUri.toLowerCase().endsWith('.png') || imgUri.includes('.png?');
+                            const isSvg = imgUri.toLowerCase().endsWith('.svg') || imgUri.includes('.svg?');
+
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[styles.modalThumbChip, isSelected && styles.modalThumbChipSelected]}
+                                onPress={() => setModalActiveImage(imgUri)}
+                              >
+                                <SafeProductImage
+                                  uri={imgUri}
+                                  style={styles.modalThumbImage}
+                                  resizeMode="contain"
+                                />
+                                <View style={[styles.modalThumbTag, isSelected && styles.modalThumbTagSelected]}>
+                                  <Text style={[styles.modalThumbTagText, isSelected && styles.modalThumbTagTextSelected]}>
+                                    {isPng ? 'PNG' : isSvg ? 'SVG' : `#${idx + 1}`}
+                                  </Text>
+                                </View>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      )}
+
+                      {/* Video button if video_url present */}
+                      {editingProduct.video_url ? (
+                        <TouchableOpacity
+                          style={styles.modalVideoBtn}
+                          onPress={() => {
+                            if (editingProduct.video_url) {
+                              Linking.openURL(editingProduct.video_url).catch(() => {
+                                Alert.alert('Error', 'Unable to open video preview URL.');
+                              });
+                            }
+                          }}
+                        >
+                          <Text style={styles.modalVideoBtnText}>▶️ Watch Product Video Demo</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  );
+                })()}
 
                 {/* Selling Price input */}
                 <View style={styles.inputGroup}>
@@ -469,6 +606,7 @@ export default function MerchantInventoryScreen() {
                   />
                 </View>
 
+                {/* Short Description */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>SHORT DESCRIPTION</Text>
                   <TextInput
@@ -479,6 +617,7 @@ export default function MerchantInventoryScreen() {
                   />
                 </View>
 
+                {/* Description */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>HIGHLIGHTS (SEMICOLON-SEPARATED)</Text>
                   <TextInput
@@ -507,6 +646,13 @@ export default function MerchantInventoryScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Media Inspection Full Modal */}
+      <ProductMediaModal
+        visible={previewModalVisible}
+        onClose={() => setPreviewModalVisible(false)}
+        product={previewProduct}
+      />
     </View>
   );
 }
@@ -655,15 +801,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   productThumb: {
-    width: 52,
-    height: 52,
-    borderRadius: 8,
+    width: 58,
+    height: 58,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  thumbTouchable: {
+    position: 'relative',
     marginRight: 12,
   },
-  placeholderThumb: {
-    width: 52,
-    height: 52,
+  cardAngleBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#0F172A',
     borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  cardAngleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  placeholderThumb: {
+    width: 58,
+    height: 58,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
@@ -685,6 +851,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+  mediaTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  photoCountPill: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  photoCountText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#2563EB',
+  },
+  videoPill: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  videoPillText: {
+    fontSize: 9,
+    fontWeight: 'bold',
+    color: '#16A34A',
   },
   priceRow: {
     flexDirection: 'row',
@@ -778,7 +976,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -799,7 +997,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   modalProductName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#0F172A',
     marginTop: 12,
@@ -807,12 +1005,108 @@ const styles = StyleSheet.create({
   modalProductSku: {
     fontSize: 12,
     color: '#64748B',
-    marginBottom: 16,
+    marginBottom: 4,
   },
   readOnlyUnit: {
     fontSize: 12,
     color: '#64748B',
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  modalGalleryContainer: {
+    marginBottom: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalMainPreviewBox: {
+    height: 150,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    position: 'relative',
+  },
+  modalMainPreviewImage: {
+    width: '90%',
+    height: '90%',
+  },
+  modalAngleBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  modalAngleBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  modalThumbStrip: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  modalThumbChip: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 2,
+    position: 'relative',
+  },
+  modalThumbChipSelected: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  modalThumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalThumbTag: {
+    position: 'absolute',
+    bottom: 1,
+    right: 1,
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  modalThumbTagSelected: {
+    backgroundColor: '#22C55E',
+  },
+  modalThumbTagText: {
+    fontSize: 7,
+    fontWeight: 'bold',
+    color: '#64748B',
+  },
+  modalThumbTagTextSelected: {
+    color: '#FFFFFF',
+  },
+  modalVideoBtn: {
+    marginTop: 8,
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalVideoBtnText: {
+    color: '#16A34A',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   inputGroup: {
     marginBottom: 14,
@@ -835,7 +1129,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   modalTextArea: {
-    minHeight: 80,
+    minHeight: 70,
     textAlignVertical: 'top',
   },
   modalSaveBtn: {
