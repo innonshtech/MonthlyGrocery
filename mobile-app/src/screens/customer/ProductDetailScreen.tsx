@@ -46,28 +46,40 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   const [fetchError, setFetchError] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  // Build multi-media items list (Images + SVG + Demo Video) with family fallback
+  // Build multi-media items list (All angle Images + SVG + Demo Video) with smart family gallery fallback
   const mediaList = useMemo(() => {
     if (!product) return [];
     const list: Array<{ id: string; type: 'image' | 'video'; url: string; isSvg?: boolean }> = [];
 
-    // 1. Try current variant's images
-    let rawImages: string[] = Array.isArray(product.images) && product.images.length > 0
-      ? product.images
-      : product.image_url ? [product.image_url] : [];
+    // 1. Collect the most complete gallery (all angles) and video across all family variants
+    let familyGalleryImages: string[] = [];
+    let familyVideo: string | null = null;
 
-    // 2. Fallback to any sibling variant in the family if current variant has no images
-    if (rawImages.length === 0 && Array.isArray(variants)) {
+    if (Array.isArray(variants)) {
       for (const v of variants) {
-        if (Array.isArray(v.images) && v.images.length > 0) {
-          rawImages = v.images;
-          break;
+        if (Array.isArray(v.images) && v.images.length > familyGalleryImages.length) {
+          familyGalleryImages = v.images;
+        } else if (familyGalleryImages.length === 0 && v.image_url) {
+          familyGalleryImages = [v.image_url];
         }
-        if (v.image_url) {
-          rawImages = [v.image_url];
-          break;
+        if (!familyVideo && v.video_url) {
+          familyVideo = v.video_url;
         }
       }
+    }
+
+    // 2. Determine which image set to display:
+    // If current variant has a dedicated multi-image gallery (>1), use it;
+    // Otherwise inherit the full family multi-angle gallery!
+    let rawImages: string[] = [];
+    if (Array.isArray(product.images) && product.images.length > 1) {
+      rawImages = product.images;
+    } else if (familyGalleryImages.length > 0) {
+      rawImages = familyGalleryImages;
+    } else if (Array.isArray(product.images) && product.images.length > 0) {
+      rawImages = product.images;
+    } else if (product.image_url) {
+      rawImages = [product.image_url];
     }
 
     rawImages.forEach((img, idx) => {
@@ -78,15 +90,8 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       }
     });
 
-    // Video URL with family fallback
-    let videoUrl = product.video_url;
-    if (!videoUrl && Array.isArray(variants)) {
-      const sibWithVideo = variants.find((v) => v.video_url);
-      if (sibWithVideo) {
-        videoUrl = sibWithVideo.video_url;
-      }
-    }
-
+    // 3. Video URL (current variant override or family video)
+    const videoUrl = product.video_url || familyVideo;
     if (videoUrl && typeof videoUrl === 'string' && videoUrl.trim()) {
       list.push({ id: 'video-0', type: 'video', url: videoUrl.trim() });
     }
