@@ -62,6 +62,11 @@ export default function HomeDealCard({
       <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
       <View style={styles.unitRow}>
         {packLabel ? <Text style={styles.unit}>{packLabel}</Text> : null}
+        {Array.isArray((item as any).variants) && (item as any).variants.length > 1 ? (
+          <View style={styles.optionsPill}>
+            <Text style={styles.optionsPillText}>{(item as any).variants.length} sizes</Text>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.priceRow}>
@@ -153,6 +158,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.ink500,
     lineHeight: 16,
+  },
+  optionsPill: {
+    backgroundColor: COLORS.green50,
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 0.8,
+    borderColor: COLORS.green100,
+  },
+  optionsPillText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 10,
+    color: COLORS.green700,
   },
   priceRow: {
     flexDirection: 'row',
