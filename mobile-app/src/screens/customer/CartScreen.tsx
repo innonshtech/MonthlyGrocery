@@ -161,6 +161,14 @@ export default function CartScreen({
     navigation.navigate('SavedBaskets', { openSave: true });
   };
 
+  const handleGoHome = () => {
+    if (setActiveTab) {
+      setActiveTab('Home');
+    } else {
+      navigation.navigate('Shop', { initialTab: 'Home' });
+    }
+  };
+
   const safeEdges: ('top' | 'left' | 'right')[] = setActiveTab ? ['left', 'right'] : ['top', 'left', 'right'];
 
   if (configError && !screenConfig) {
@@ -195,15 +203,7 @@ export default function CartScreen({
         <View style={styles.topHeader}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => {
-              if (navigation.canGoBack()) {
-                navigation.goBack();
-              } else if (setActiveTab) {
-                setActiveTab('Home');
-              } else {
-                navigation.navigate('Shop', { initialTab: 'Home' });
-              }
-            }}
+            onPress={handleGoHome}
             activeOpacity={0.7}
           >
             <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
@@ -231,12 +231,7 @@ export default function CartScreen({
 
           <TouchableOpacity
             style={styles.startBtn}
-            onPress={() => {
-              if (setActiveTab) {
-                setActiveTab('Home');
-              }
-              navigation.navigate('Shop', { initialTab: 'Home' });
-            }}
+            onPress={handleGoHome}
             activeOpacity={0.85}
           >
             <Text style={styles.startBtnTxt}>{screenConfig?.start_shopping_label}</Text>
@@ -293,15 +288,7 @@ export default function CartScreen({
       <View style={styles.topHeader}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else if (setActiveTab) {
-              setActiveTab('Home');
-            } else {
-              navigation.navigate('Shop', { initialTab: 'Home' });
-            }
-          }}
+          onPress={handleGoHome}
           activeOpacity={0.7}
         >
           <AppIcon name="chevron-left" size={24} color="#111827" />
