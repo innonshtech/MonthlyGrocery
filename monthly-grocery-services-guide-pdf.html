@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monthly Grocery - Services & Deployment Blueprint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    :root {
+      --primary: #059669;
+      --primary-dark: #065f46;
+      --primary-light: #ecfdf5;
+      --primary-border: #a7f3d0;
+      
+      --accent: #4f46e5;
+      --accent-light: #eef2ff;
+      --accent-border: #c7d2fe;
+      
+      --text-dark: #0f172a;
+      --text-body: #334155;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      
+      --req-bg: #fef2f2;
+      --req-text: #b91c1c;
+      --req-border: #fecaca;
+      
+      --rec-bg: #eff6ff;
+      --rec-text: #1d4ed8;
+      --rec-border: #bfdbfe;
+      
+      --con-bg: #fffbeb;
+      --con-text: #b45309;
+      --con-border: #fde68a;
+      
+      --def-bg: #f1f5f9;
+      --def-text: #475569;
+      --def-border: #cbd5e1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #ffffff;
+      color: var(--text-body);
+      line-height: 1.4;
+      font-size: 8.8pt;
+    }
+
+    code, .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.8pt;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Fixed A4 Page Container */
+    .page-container {
+      width: 210mm;
+      height: 297mm;
+      padding: 12mm 13mm 10mm 13mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .page-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-grow: 1;
+    }
+
+    /* Cover / Header */
+    .doc-header {
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 8px;
+    }
+
+    .doc-tag {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: 1px solid var(--primary-border);
+      font-weight: 700;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 5px;
+    }
+
+    .doc-title {
+      font-size: 16.5pt;
+      font-weight: 800;
+      color: var(--text-dark);
+      line-height: 1.15;
+      margin-bottom: 4px;
+      letter-spacing: -0.02em;
+    }
+
+    .doc-subtitle {
+      font-size: 8.2pt;
+      color: var(--text-muted);
+      line-height: 1.35;
+    }
+
+    .meta-bar {
+      display: flex;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 6px 12px;
+      font-size: 7.8pt;
+    }
+
+    .meta-item strong {
+      color: var(--text-dark);
+    }
+
+    /* Stat Cards Grid */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .stat-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 7px 10px;
+      border-left: 3px solid var(--primary);
+    }
+
+    .stat-box.aws { border-left-color: #f59e0b; }
+    .stat-box.play { border-left-color: #10b981; }
+    .stat-box.app { border-left-color: #3b82f6; }
+    .stat-box.phase { border-left-color: #8b5cf6; }
+
+    .stat-box .title {
+      font-size: 7pt;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .stat-box .value {
+      font-size: 11pt;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin: 1px 0;
+    }
+
+    .stat-box .desc {
+      font-size: 6.8pt;
+      color: var(--text-muted);
+      line-height: 1.2;
+    }
+
+    /* Section Cards */
+    .section-block {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 12px;
+    }
+
+    .section-block.deferred {
+      background: #fafafa;
+      border: 1px dashed var(--border-strong);
+    }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 5px;
+      margin-bottom: 6px;
+    }
+
+    .section-heading-text {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-icon {
+      font-size: 11pt;
+    }
+
+    .section-heading h2 {
+      font-size: 10.5pt;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: -0.01em;
+    }
+
+    .section-heading p {
+      font-size: 7.2pt;
+      color: var(--text-muted);
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      font-size: 6.8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 1.5px 5px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
+    .badge-req { background: var(--req-bg); color: var(--req-text); border: 1px solid var(--req-border); }
+    .badge-rec { background: var(--rec-bg); color: var(--rec-text); border: 1px solid var(--rec-border); }
+    .badge-con { background: var(--con-bg); color: var(--con-text); border: 1px solid var(--con-border); }
+    .badge-def { background: var(--def-bg); color: var(--def-text); border: 1px solid var(--def-border); }
+
+    /* Tables */
+    table.pdf-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 4px 0 2px;
+      font-size: 7.8pt;
+    }
+
+    table.pdf-table th {
+      background: #f1f5f9;
+      color: var(--text-dark);
+      font-weight: 700;
+      text-align: left;
+      padding: 5px 7px;
+      border: 1px solid var(--border);
+      font-size: 7.2pt;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    table.pdf-table td {
+      padding: 5px 7px;
+      border: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.25;
+    }
+
+    table.pdf-table tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .row-title {
+      font-weight: 700;
+      color: var(--text-dark);
+      font-size: 8pt;
+    }
+
+    .row-sub {
+      font-size: 6.8pt;
+      color: var(--text-muted);
+    }
+
+    /* Grid Items */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-top: 5px;
+    }
+
+    .item-card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 6px 8px;
+    }
+
+    .item-card h4 {
+      font-size: 8pt;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .item-card h4::before {
+      content: "▪";
+      color: var(--primary);
+      font-size: 10pt;
+      line-height: 0;
+    }
+
+    .item-card p {
+      font-size: 7.2pt;
+      color: var(--text-body);
+      line-height: 1.25;
+    }
+
+    /* Callouts */
+    .callout {
+      border-radius: 5px;
+      padding: 5px 8px;
+      margin: 4px 0;
+      font-size: 7.4pt;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+      line-height: 1.3;
+    }
+
+    .callout.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .callout.warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .callout.note { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; }
+
+    /* Cost Box */
+    .cost-grid-pdf {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin: 4px 0 6px;
+    }
+
+    .cost-card-pdf {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 6px 8px;
+      text-align: center;
+    }
+
+    .cost-card-pdf .c-title {
+      font-size: 6.8pt;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .cost-card-pdf .c-amount {
+      font-size: 10pt;
+      font-weight: 800;
+      color: var(--primary-dark);
+      margin: 1px 0;
+    }
+
+    .cost-card-pdf .c-note {
+      font-size: 6.5pt;
+      color: var(--text-muted);
+    }
+
+    /* Stepper */
+    .stepper-pdf {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .step-box-pdf {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 6px 8px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .step-num {
+      width: 18px;
+      height: 18px;
+      background: var(--primary);
+      color: white;
+      font-weight: 800;
+      font-size: 7.5pt;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-text h4 {
+      font-size: 7.8pt;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 1px;
+    }
+
+    .step-text p {
+      font-size: 7pt;
+      color: var(--text-body);
+      line-height: 1.25;
+    }
+
+    /* Footer for each page */
+    .page-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 5px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PAGE 1: TITLE & AWS CLOUD INFRASTRUCTURE ==================== -->
+  <div class="page-container">
+    <div class="page-body">
+      
+      <div class="doc-header">
+        <div class="doc-tag">Production Architecture &amp; Deployment Suite</div>
+        <h1 class="doc-title">Monthly Grocery Platform Services &amp; Deployment Master Blueprint</h1>
+        <p class="doc-subtitle">
+          Operational prerequisites, accounts, cloud infrastructure, APIs, and procurement roadmap for the <strong>Monthly Grocery Platform</strong> (Customer App, Merchant App, Web Admin Portal &amp; Express Backend API).
+        </p>
+      </div>
+
+      <div class="meta-bar">
+        <div class="meta-item"><strong>Project:</strong> Monthly Grocery Ecosystem</div>
+        <div class="meta-item"><strong>Target Stack:</strong> React Native • Next.js 16 • Node.js • PostgreSQL</div>
+        <div class="meta-item"><strong>Stage:</strong> Phase 1 Launch</div>
+        <div class="meta-item"><strong>Architect:</strong> Innonsh Tech Team</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box aws">
+          <div class="title">AWS &amp; Cloud Core</div>
+          <div class="value">5 Req + 3 Rec</div>
+          <div class="desc">EC2, RDS PostgreSQL, S3, VPC, IAM, ALB</div>
+        </div>
+        <div class="stat-box play">
+          <div class="title">Google Play Store</div>
+          <div class="value">Android (2 Apps)</div>
+          <div class="desc">Customer &amp; Merchant Partner Apps</div>
+        </div>
+        <div class="stat-box app">
+          <div class="title">Apple App Store</div>
+          <div class="value">iOS (2 Apps)</div>
+          <div class="desc">D-U-N-S, Dev Account &amp; Test Creds</div>
+        </div>
+        <div class="stat-box phase">
+          <div class="title">Phase 1 Scope</div>
+          <div class="value">COD &amp; SMS First</div>
+          <div class="desc">Online PG &amp; FCM deferred to Phase 2</div>
+        </div>
+      </div>
+
+      <!-- SECTION 1: AWS INFRASTRUCTURE -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">☁️</span>
+            <div>
+              <h2>1. AWS &amp; Cloud Infrastructure Services</h2>
+              <p>Hosts Express Backend REST API, PostgreSQL Database, Next.js Web Admin &amp; Media</p>
+            </div>
+          </div>
+          <span class="badge badge-req">5 Required + 3 Recommended</span>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 27%;">Service Name</th>
+              <th style="width: 14%;">Requirement</th>
+              <th style="width: 20%;">Component</th>
+              <th style="width: 39%;">Purpose &amp; Why We Need It</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="row-title">Amazon EC2 / Beanstalk</div>
+                <div class="row-sub">t4g.small / t3.medium</div>
+              </td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td><span class="mono">express-backend</span></td>
+              <td>Runs Node.js/Express API server 24/7 for order processing, catalog, merchant APIs, and auth.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">Amazon RDS PostgreSQL</div>
+                <div class="row-sub">db.t4g.micro / Supabase Pro</div>
+              </td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Central Database</td>
+              <td>Stores structured business data: Customers, Merchants, Products, Delivery Slots, Monthly Baskets, Orders &amp; Addresses with daily auto-backups.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">Amazon S3 Storage</div>
+                <div class="row-sub">Object Storage Bucket</div>
+              </td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Media &amp; Documents</td>
+              <td>Stores product photos, merchant banners, user avatars, generated PDF tax invoices, and Excel product catalogs uploaded via Web Admin.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">Amazon VPC &amp; Sec. Groups</div>
+                <div class="row-sub">Virtual Private Cloud</div>
+              </td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Network Security</td>
+              <td>Isolates PostgreSQL database in a private subnet, preventing public internet exposure while allowing secure backend communication.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">AWS IAM</div>
+                <div class="row-sub">Identity &amp; Access Mgmt</div>
+              </td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Security &amp; Permissions</td>
+              <td>Controls programmatic API keys for S3 image uploads and least-privilege server admin credentials.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">Load Balancer (ALB)</div>
+                <div class="row-sub">Application Load Balancer</div>
+              </td>
+              <td><span class="badge badge-rec">Recommended</span></td>
+              <td>Traffic Routing &amp; SSL</td>
+              <td>Distributes incoming API traffic, terminates SSL/TLS, and enables zero-downtime rolling backend updates.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">AWS Cert. Manager (ACM)</div>
+                <div class="row-sub">SSL/TLS Certificates</div>
+              </td>
+              <td><span class="badge badge-rec">Recommended</span></td>
+              <td>HTTPS Security</td>
+              <td>Provides free, auto-renewing SSL certificates for <span class="mono">api.monthlygrocery.com</span> and <span class="mono">admin.monthlygrocery.com</span>.</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="row-title">Route 53 / Cloudflare</div>
+                <div class="row-sub">Domain DNS Management</div>
+              </td>
+              <td><span class="badge badge-con">Conditional</span></td>
+              <td>DNS Routing</td>
+              <td>Resolves domain names to AWS ALB and Vercel/Amplify Admin dashboard with DDoS mitigation.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <span>💡</span>
+          <div><strong>Web Admin Hosting:</strong> The Next.js Admin portal (<span class="mono">web-admin</span>) can be deployed seamlessly to <strong>Vercel Pro</strong> ($20/mo) or AWS Amplify for automated CI/CD and SSR performance.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>Monthly Grocery Platform • Services &amp; Deployment Blueprint</span>
+      <span>Page 1 of 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 2: GOOGLE MAPS, PLAY STORE, APP STORE ==================== -->
+  <div class="page-container">
+    <div class="page-body">
+      
+      <!-- SECTION 2: GOOGLE MAPS PLATFORM -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">📍</span>
+            <div>
+              <h2>2. Google Maps Platform &amp; Location APIs</h2>
+              <p>Required for Customer Address Pinning, Merchant Delivery Radius &amp; Geocoding</p>
+            </div>
+          </div>
+          <span class="badge badge-req">Required</span>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 27%;">Google API</th>
+              <th style="width: 14%;">Requirement</th>
+              <th style="width: 21%;">App Flow</th>
+              <th style="width: 38%;">Functionality</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="row-title">Places API (Autocomplete)</div></td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Customer &amp; Merchant Apps</td>
+              <td>Autocomplete search when customers type building, apartment, society, or street names.</td>
+            </tr>
+            <tr>
+              <td><div class="row-title">Geocoding &amp; Reverse Geocoding</div></td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Map Pin Screen</td>
+              <td>Converts GPS marker coordinates (lat/lng) into structured flat/street/pincode addresses.</td>
+            </tr>
+            <tr>
+              <td><div class="row-title">Maps SDK for Android &amp; iOS</div></td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>Mobile Native Maps</td>
+              <td>Renders interactive vector Google Maps inside React Native apps for visual address confirmation.</td>
+            </tr>
+            <tr>
+              <td><div class="row-title">Distance Matrix API</div></td>
+              <td><span class="badge badge-rec">Recommended</span></td>
+              <td>Delivery Zone Engine</td>
+              <td>Calculates road distance between customer and assigned store to verify serviceability and delivery fees.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warn">
+          <span>⚠️</span>
+          <div><strong>Security Restriction:</strong> Android key restricted by Package Name + SHA-1 fingerprint; iOS key restricted by Bundle Identifier (<span class="mono">com.monthlygrocerymobile</span>).</div>
+        </div>
+      </div>
+
+      <!-- SECTION 3: GOOGLE PLAY STORE -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">🤖</span>
+            <div>
+              <h2>3. Google Play Store Deployment (Android)</h2>
+              <p>Prerequisites to publish Customer App &amp; Merchant Partner App on Google Play</p>
+            </div>
+          </div>
+          <span class="badge badge-req">Required</span>
+        </div>
+
+        <div class="items-grid">
+          <div class="item-card">
+            <h4>1. Google Play Console ($25 One-time)</h4>
+            <p>Developer account with verified legal identity proof (Govt ID + Business Address proof).</p>
+          </div>
+          <div class="item-card">
+            <h4>2. 20-Tester Closed Testing (14 Days)</h4>
+            <p>Google mandate for accounts created post-Nov 2023: 20 opted-in testers active for 14 continuous days.</p>
+          </div>
+          <div class="item-card">
+            <h4>3. Release Keystore &amp; App Signing</h4>
+            <p>Secure production <span class="mono">.keystore</span> file, alias, passwords, and Google Play App Signing SHA-256 fingerprint.</p>
+          </div>
+          <div class="item-card">
+            <h4>4. Store Graphic Assets</h4>
+            <p>512x512 PNG App Icon, 1024x500 Feature Graphic banner, and minimum 4 phone screenshots per app.</p>
+          </div>
+          <div class="item-card">
+            <h4>5. Data Safety Form</h4>
+            <p>Declarations for phone number (auth), precise location (delivery), and device identifiers in Play Console.</p>
+          </div>
+          <div class="item-card">
+            <h4>6. Account Deletion Compliance</h4>
+            <p>In-app account deletion workflow + Public web account deletion URL (already implemented in project).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 4: APPLE APP STORE -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">🍎</span>
+            <div>
+              <h2>4. Apple App Store Deployment (iOS)</h2>
+              <p>Prerequisites to publish iOS Customer &amp; Partner apps on App Store Connect</p>
+            </div>
+          </div>
+          <span class="badge badge-req">Required</span>
+        </div>
+
+        <div class="items-grid">
+          <div class="item-card">
+            <h4>1. Apple Developer Program ($99/yr)</h4>
+            <p>Organization or Individual enrollment with valid international payment method.</p>
+          </div>
+          <div class="item-card">
+            <h4>2. D-U-N-S Number (Organization)</h4>
+            <p>Free 9-digit business legal entity identifier from Dun &amp; Bradstreet (required for company accounts).</p>
+          </div>
+          <div class="item-card">
+            <h4>3. Demo Review Credentials</h4>
+            <p>Working demo mobile number + bypass OTP provided in App Review Information for Apple test team.</p>
+          </div>
+          <div class="item-card">
+            <h4>4. App Privacy Nutrition Labels</h4>
+            <p>Disclosures for Location (order delivery), Contact Info (phone OTP), and usage telemetry.</p>
+          </div>
+          <div class="item-card">
+            <h4>5. iOS Display Screenshot Sets</h4>
+            <p>6.7-inch (iPhone 16 Pro Max) &amp; 6.5-inch display screenshots capturing home, cart, slot &amp; basket flows.</p>
+          </div>
+          <div class="item-card">
+            <h4>6. iOS Distribution Certificate</h4>
+            <p>Production <span class="mono">.p12</span> Distribution Certificate and App Store provisioning profiles configured in Xcode.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>Monthly Grocery Platform • Services &amp; Deployment Blueprint</span>
+      <span>Page 2 of 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 3: SMS/DLT, PHASE 1 SCOPE & DEFERRED SERVICES ==================== -->
+  <div class="page-container">
+    <div class="page-body">
+      
+      <!-- SECTION 5: SMS & DLT COMPLIANCE -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">💬</span>
+            <div>
+              <h2>5. SMS OTP &amp; DLT Compliance (India Telecom)</h2>
+              <p>Mandatory regulatory setup to deliver customer login &amp; order OTPs</p>
+            </div>
+          </div>
+          <span class="badge badge-req">Required</span>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 27%;">Service / Item</th>
+              <th style="width: 24%;">Provider Options</th>
+              <th style="width: 14%;">Requirement</th>
+              <th style="width: 35%;">Details &amp; Setup Steps</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="row-title">DLT Entity Registration</div><div class="row-sub">TRAI Mandate</div></td>
+              <td>Jio DLT / Airtel / Vilpower</td>
+              <td><span class="badge badge-req">Mandatory</span></td>
+              <td>Register company entity with PAN, GST, and Certificate of Incorporation (~₹5,000 + GST).</td>
+            </tr>
+            <tr>
+              <td><div class="row-title">SMS Sender ID (Header)</div><div class="row-sub">e.g. MNTHGR / INNSH</div></td>
+              <td>DLT Telecom Portal</td>
+              <td><span class="badge badge-req">Mandatory</span></td>
+              <td>6-character registered header approved for transactional OTP SMS delivery.</td>
+            </tr>
+            <tr>
+              <td><div class="row-title">SMS Gateway API</div><div class="row-sub">Fast Delivery Gateway</div></td>
+              <td>Fast2SMS / MSG91 / Twilio</td>
+              <td><span class="badge badge-req">Required</span></td>
+              <td>API Key plugged into <span class="mono">express-backend/src/routes/auth.ts</span> to send 6-digit OTPs in &lt;3s.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 6: PAYMENT GATEWAY (DEFERRED) -->
+      <div class="section-block deferred">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">💳</span>
+            <div>
+              <h2>6. Payment Gateway Integration</h2>
+              <p>Online Payment Processing (UPI, Cards, NetBanking, AutoPay)</p>
+            </div>
+          </div>
+          <span class="badge badge-def">🚫 NOT IN SCOPE FOR PHASE 1 (Deferred to Phase 2)</span>
+        </div>
+
+        <div class="callout note">
+          <span>📋</span>
+          <div>
+            <strong>Phase 1 Operating Model (Cash on Delivery / Direct Store Settlement):</strong><br/>
+            For the <strong>Phase 1 Initial Launch</strong>, online payment aggregator integration (Razorpay / PhonePe / Cashfree) is <strong>NOT in scope</strong>. 
+            Orders will be processed using <strong>Cash on Delivery (COD) / Pay on Delivery / Direct Store Settlement</strong>. 
+            No payment gateway business KYC, merchant aggregator accounts, or webhook secrets are required for Phase 1 deployment.
+          </div>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 28%;">Phase 2 Target Service</th>
+              <th style="width: 25%;">Supported Modes</th>
+              <th style="width: 15%;">Phase 1 Status</th>
+              <th style="width: 32%;">Phase 2 Roadmap</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="row-title">Razorpay / PhonePe / Cashfree</div>
+                <div class="row-sub">Payment Aggregator</div>
+              </td>
+              <td>UPI Intent, Cards, NetBanking, AutoPay</td>
+              <td><span class="badge badge-def">Not in Phase 1</span></td>
+              <td>Will be activated in <strong>Phase 2</strong> with merchant KYC (GST, Current Account, Cancelled Cheque) and automated webhook callbacks.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- SECTION 7: PUSH NOTIFICATIONS (DEFERRED) -->
+      <div class="section-block deferred">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">🔔</span>
+            <div>
+              <h2>7. Push Notifications &amp; Background Alerts</h2>
+              <p>Mobile Background Push Notifications for Order Updates &amp; Basket Reminders</p>
+            </div>
+          </div>
+          <span class="badge badge-def">🚫 NOT IN SCOPE FOR PHASE 1 (Deferred to Phase 2)</span>
+        </div>
+
+        <div class="callout note">
+          <span>📋</span>
+          <div>
+            <strong>Phase 1 Notification Strategy:</strong><br/>
+            For the <strong>Phase 1 Initial Launch</strong>, mobile push notification infrastructure (FCM &amp; APNs) is <strong>NOT in scope</strong>. 
+            Customers and merchants will track orders via <strong>In-App Live Order Status Tracking</strong> and <strong>SMS Transactional Alerts</strong>. 
+            Firebase Cloud Messaging (FCM) v1 service keys and APNs Auth Keys (<span class="mono">.p8</span>) will be configured in <strong>Phase 2</strong>.
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 8: EMAIL & SUPPORT -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">✉️</span>
+            <div>
+              <h2>8. Transactional Email &amp; Customer Support</h2>
+              <p>PDF Invoice Delivery, Merchant Statements &amp; Help Desk</p>
+            </div>
+          </div>
+          <span class="badge badge-rec">Recommended</span>
+        </div>
+
+        <table class="pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 28%;">Service Type</th>
+              <th style="width: 25%;">Recommended Provider</th>
+              <th style="width: 15%;">Requirement</th>
+              <th style="width: 32%;">Key Deliverables</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="row-title">Amazon SES / Resend</div><div class="row-sub">Transactional SMTP</div></td>
+              <td>Amazon SES or Resend.com</td>
+              <td><span class="badge badge-rec">Recommended</span></td>
+              <td>Automated delivery of Order Summary PDF Invoices and Monthly Merchant Settlement reports. Requires SPF, DKIM, DMARC DNS setup.</td>
+            </tr>
+            <tr>
+              <td><div class="row-title">Help Desk / WhatsApp Support</div><div class="row-sub">Customer Helpline</div></td>
+              <td>WhatsApp Business / Email</td>
+              <td><span class="badge badge-con">Optional</span></td>
+              <td>Support helpline button inside mobile app pointing to company support email or WhatsApp helpline.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>Monthly Grocery Platform • Services &amp; Deployment Blueprint</span>
+      <span>Page 3 of 4</span>
+    </div>
+  </div>
+
+  <!-- ==================== PAGE 4: LEGAL COMPLIANCE, COSTS & ROADMAP ==================== -->
+  <div class="page-container">
+    <div class="page-body">
+      
+      <!-- SECTION 9: LEGAL POLICIES -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">⚖️</span>
+            <div>
+              <h2>9. Mandatory Legal Policies &amp; Store URLs</h2>
+              <p>Must be published on live public web URLs before submitting apps to App Store &amp; Play Store</p>
+            </div>
+          </div>
+          <span class="badge badge-req">Required for Store Approval</span>
+        </div>
+
+        <div class="items-grid">
+          <div class="item-card">
+            <h4>1. Privacy Policy Webpage</h4>
+            <p>Discloses data collection (phone number, GPS location for grocery delivery, device telemetry, analytics).</p>
+          </div>
+          <div class="item-card">
+            <h4>2. Terms &amp; Conditions (EULA)</h4>
+            <p>Defines minimum order thresholds (₹3,000 limit), recurring monthly basket rules, and delivery commitments.</p>
+          </div>
+          <div class="item-card">
+            <h4>3. Return, Refund &amp; Cancellation</h4>
+            <p>Specifies rules for damaged perishable items, wrong product deliveries, and refund turnaround timelines.</p>
+          </div>
+          <div class="item-card">
+            <h4>4. Shipping &amp; Delivery Policy</h4>
+            <p>Details operational delivery slot windows (Morning 7-10 AM, Evening 5-9 PM) and serviceable areas.</p>
+          </div>
+          <div class="item-card" style="grid-column: span 2;">
+            <h4>5. Public Web Account Deletion Request URL (Mandatory by Apple &amp; Google)</h4>
+            <p>Live webpage where registered users can request account &amp; data deletion without installing the mobile app.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 10: COST & PROCUREMENT ROADMAP -->
+      <div class="section-block">
+        <div class="section-heading">
+          <div class="section-heading-text">
+            <span class="section-icon">📊</span>
+            <div>
+              <h2>10. Estimated Budget &amp; Step-by-Step Procurement Roadmap</h2>
+              <p>Actionable roadmap for the management and procurement team</p>
+            </div>
+          </div>
+          <span class="badge badge-req">Action Plan</span>
+        </div>
+
+        <div class="cost-grid-pdf">
+          <div class="cost-card-pdf">
+            <div class="c-title">One-Time Registrations</div>
+            <div class="c-amount">₹15,000 - ₹20,000</div>
+            <div class="c-note">Play Console + Apple Dev + DLT + Domain</div>
+          </div>
+          <div class="cost-card-pdf">
+            <div class="c-title">AWS Cloud Hosting</div>
+            <div class="c-amount">₹3,500 - ₹8,000 /mo</div>
+            <div class="c-note">EC2, RDS PostgreSQL, S3 (Free tier applies)</div>
+          </div>
+          <div class="cost-card-pdf">
+            <div class="c-title">Google Maps Platform</div>
+            <div class="c-amount">₹0 - ₹2,000 /mo</div>
+            <div class="c-note">Google provides $200 free monthly credit</div>
+          </div>
+          <div class="cost-card-pdf">
+            <div class="c-title">Phase 1 Payment Model</div>
+            <div class="c-amount">COD (₹0 Gateway Fee)</div>
+            <div class="c-note">Online PG deferred to Phase 2</div>
+          </div>
+        </div>
+
+        <div class="stepper-pdf">
+          <div class="step-box-pdf">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <h4>Create Master Cloud Accounts</h4>
+              <p>Register <strong>AWS Root Account</strong> (linked to business card) &amp; <strong>Google Cloud Console Account</strong> (for Maps APIs). Register domain (<span class="mono">monthlygrocery.in</span>).</p>
+            </div>
+          </div>
+
+          <div class="step-box-pdf">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <h4>Apply for Developer &amp; DLT Accounts</h4>
+              <p>Obtain D-U-N-S number, register <strong>Google Play Console</strong> ($25) and <strong>Apple Developer</strong> ($99/yr). Submit DLT entity registration on Jio/Airtel DLT portal for SMS OTPs.</p>
+            </div>
+          </div>
+
+          <div class="step-box-pdf">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <h4>Publish Legal Compliance Pages</h4>
+              <p>Host Privacy Policy, Terms &amp; Conditions, Return/Refund Policy, and Account Deletion Request webpage on the live domain.</p>
+            </div>
+          </div>
+
+          <div class="step-box-pdf">
+            <div class="step-num">4</div>
+            <div class="step-text">
+              <h4>Hand Over Keys to Deployment Team</h4>
+              <p>Provide AWS IAM credentials, Google Maps API Keys, DLT Sender ID, and Apple/Play store access to the deployment engineering team to build release bundles.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <span>Monthly Grocery Platform • Services &amp; Deployment Blueprint</span>
+      <span>Page 4 of 4</span>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         success: false,
         error:
-          'Cannot reach server. Start the backend and run: adb reverse tcp:8001 tcp:8001',
+          'Unable to reach server. Please check your internet connection and try again.',
       };
     }
   };
@@ -148,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {
         success: false,
         error:
-          'Cannot reach server. Start the backend and run: adb reverse tcp:8001 tcp:8001',
+          'Unable to reach server. Please check your internet connection and try again.',
       };
     }
   };

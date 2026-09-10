@@ -78,6 +78,16 @@
       "stock": 0,
       "available": true,
       "status": "approved"
+    },
+    {
+      "id": "sp-1788952329170-5h5wfva1p",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "product_id": "175d2c28-6a33-4e68-a6ee-67112b6c72ef",
+      "selling_price": 2600,
+      "discount_percentage": 10,
+      "stock": 0,
+      "available": false,
+      "status": "approved"
     }
   ],
   "categories": [

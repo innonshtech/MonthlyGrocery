@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monthly Grocery - Complete Step-by-Step AWS Migration Guide (Vercel & Supabase to AWS)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  
+  <style>
+    :root {
+      --aws-orange: #ff9900;
+      --aws-squid: #232f3e;
+      --aws-blue: #0073bb;
+      --primary: #10b981;
+      --primary-dark: #059669;
+      --primary-light: #ecfdf5;
+      
+      --bg-dark: #0b0f19;
+      --bg-card: #111827;
+      --bg-card-subtle: #1f293d;
+      --bg-code: #0a0e17;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --border: #1e293b;
+      --border-accent: #334155;
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 10% 5%, rgba(255, 153, 0, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 90%, rgba(99, 102, 241, 0.05) 0%, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    code, pre, .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Top Navigation / Hero */
+    header.hero-header {
+      padding: 50px 24px 35px;
+      max-width: 1400px;
+      margin: 0 auto;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(255, 153, 0, 0.12);
+      border: 1px solid rgba(255, 153, 0, 0.3);
+      color: var(--aws-orange);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    h1.hero-title {
+      font-size: clamp(2rem, 3.8vw, 3rem);
+      font-weight: 800;
+      line-height: 1.18;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #ffffff 40%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 14px;
+    }
+
+    p.hero-subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 950px;
+      margin-bottom: 24px;
+    }
+
+    /* Architecture Flow Comparison */
+    .migration-banner {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .migration-banner {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+    }
+
+    .arch-card {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+    }
+
+    .arch-card.current {
+      border-left: 4px solid #ef4444;
+    }
+
+    .arch-card.target {
+      border-left: 4px solid var(--aws-orange);
+    }
+
+    .arch-card .arch-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .arch-card.current .arch-title { color: #f87171; }
+    .arch-card.target .arch-title { color: var(--aws-orange); }
+
+    .arch-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.88rem;
+    }
+
+    .arch-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-main);
+    }
+
+    .arch-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--aws-orange);
+      font-weight: 800;
+      font-size: 1.5rem;
+    }
+
+    /* Main Container */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 35px 24px 80px;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 32px;
+    }
+
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      .sidebar-nav {
+        position: static !important;
+      }
+    }
+
+    /* Sidebar Navigation */
+    .sidebar-nav {
+      position: sticky;
+      top: 24px;
+      height: fit-content;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .sidebar-nav h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 14px;
+    }
+
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-item a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.86rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-item a:hover, .nav-item a.active {
+      color: var(--aws-orange);
+      background: var(--bg-card-subtle);
+      border-left-color: var(--aws-orange);
+    }
+
+    .nav-step-badge {
+      font-size: 0.72rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--bg-dark);
+      color: var(--text-dim);
+    }
+
+    /* Content Area */
+    .content-area {
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 30px;
+      position: relative;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .step-num-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 153, 0, 0.12);
+      border: 1px solid rgba(255, 153, 0, 0.3);
+      color: var(--aws-orange);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+
+    .step-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.01em;
+    }
+
+    .step-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .badge-aws {
+      background: rgba(255, 153, 0, 0.15);
+      color: var(--aws-orange);
+      border: 1px solid rgba(255, 153, 0, 0.3);
+    }
+
+    .badge-db {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .badge-s3 {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Sub-Steps */
+    .substep-block {
+      margin: 20px 0;
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+    }
+
+    .substep-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .substep-title .badge-num {
+      background: var(--aws-orange);
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .substep-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .substep-desc strong {
+      color: #ffffff;
+    }
+
+    .ui-click-guide {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      margin: 10px 0;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+    }
+
+    .ui-click-guide ol {
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ui-click-guide li strong {
+      color: var(--aws-orange);
+    }
+
+    /* Code Blocks */
+    .code-box {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin: 12px 0;
+      overflow: hidden;
+    }
+
+    .code-box-header {
+      background: #131b2e;
+      padding: 7px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border-accent);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: var(--aws-orange);
+      color: #000;
+      border-color: var(--aws-orange);
+    }
+
+    pre.code-content {
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      line-height: 1.45;
+    }
+
+    pre.code-content .comment { color: #64748b; }
+    pre.code-content .keyword { color: #f43f5e; font-weight: 600; }
+    pre.code-content .string { color: #a3e635; }
+    pre.code-content .highlight { color: #fbbf24; font-weight: bold; }
+
+    /* Callouts */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin: 16px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.88rem;
+    }
+
+    .callout-box.info {
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #93c5fd;
+    }
+
+    .callout-box.warn {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fde68a;
+    }
+
+    .callout-box.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #a7f3d0;
+    }
+
+    .callout-box strong { color: #ffffff; }
+
+    /* Interactive Verification Checkbox */
+    .verify-box {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .verify-box input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .verify-box label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #ecfdf5;
+      cursor: pointer;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 35px 24px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Hero Banner -->
+  <header class="hero-header">
+    <div class="brand-badge">
+      ☁️ Master AWS Cloud Migration Manual
+    </div>
+    <h1 class="hero-title">Migrating Monthly Grocery from Vercel &amp; Supabase to AWS</h1>
+    <p class="hero-subtitle">
+      A zero-jargon, click-by-click engineering guide to migrate your entire production ecosystem — <strong>PostgreSQL Database</strong>, <strong>Express Backend API</strong>, <strong>Next.js Web Admin</strong>, and <strong>S3 Media Storage</strong> — into a fully dedicated AWS cloud environment.
+    </p>
+
+    <!-- Migration Flow Overview -->
+    <div class="migration-banner">
+      <div class="arch-card current">
+        <div class="arch-title">📍 Current Architecture</div>
+        <ul class="arch-list">
+          <li>🌐 <strong>Web Admin:</strong> Vercel (Next.js 16)</li>
+          <li>⚡ <strong>Backend API:</strong> Vercel Serverless / Local</li>
+          <li>🐘 <strong>Database:</strong> Supabase Cloud PostgreSQL</li>
+          <li>📁 <strong>Storage:</strong> Supabase Storage / Local</li>
+        </ul>
+      </div>
+
+      <div class="arch-arrow">
+        ➔
+        <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;">Direct Move</span>
+      </div>
+
+      <div class="arch-card target">
+        <div class="arch-title">🚀 Target AWS Architecture</div>
+        <ul class="arch-list">
+          <li>🖥️ <strong>Backend Server:</strong> AWS EC2 (Ubuntu 24.04 + PM2 + Nginx)</li>
+          <li>🐘 <strong>Database:</strong> Amazon RDS PostgreSQL (db.t4g.micro)</li>
+          <li>📦 <strong>Storage:</strong> Amazon S3 + CloudFront CDN</li>
+          <li>🌐 <strong>Web Admin:</strong> AWS Amplify or Same EC2 (Port 3000)</li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="main-container">
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar-nav">
+      <h3>Migration Steps</h3>
+      <ul class="nav-list">
+        <li class="nav-item"><a href="#step-1">1. AWS Account &amp; VPC Setup <span class="nav-step-badge">Step 1</span></a></li>
+        <li class="nav-item"><a href="#step-2">2. Supabase ➔ RDS Database <span class="nav-step-badge">Step 2</span></a></li>
+        <li class="nav-item"><a href="#step-3">3. Amazon S3 Media Bucket <span class="nav-step-badge">Step 3</span></a></li>
+        <li class="nav-item"><a href="#step-4">4. Deploy EC2 Backend API <span class="nav-step-badge">Step 4</span></a></li>
+        <li class="nav-item"><a href="#step-5">5. Nginx &amp; Free SSL Setup <span class="nav-step-badge">Step 5</span></a></li>
+        <li class="nav-item"><a href="#step-6">6. Deploy Next.js Web Admin <span class="nav-step-badge">Step 6</span></a></li>
+        <li class="nav-item"><a href="#step-7">7. Mobile App API Cutover <span class="nav-step-badge">Step 7</span></a></li>
+        <li class="nav-item"><a href="#step-8">8. DNS &amp; Live Verification <span class="nav-step-badge">Step 8</span></a></li>
+      </ul>
+
+      <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border);">
+        <button onclick="window.print()" style="width: 100%; padding: 9px; background: var(--aws-orange); color: #000; font-weight: 700; border: none; border-radius: 6px; cursor: pointer;">
+          🖨️ Print / Save Guide as PDF
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="content-area">
+
+      <!-- ==================== STEP 1: AWS ACCOUNT & SECURITY GROUPS ==================== -->
+      <section id="step-1" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">1</div>
+            <div>
+              <h2 class="step-title">AWS Account Setup &amp; Security Firewall</h2>
+              <p class="step-desc">Establish your AWS foundation and configure ports for HTTP, HTTPS, SSH, and Database</p>
+            </div>
+          </div>
+          <span class="badge badge-aws">AWS Core</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">1.1</span> Select AWS Region &amp; Create Security Group</h3>
+          <p class="substep-desc">
+            For Indian grocery customers, always select the <strong>Asia Pacific (Mumbai) <code>ap-south-1</code></strong> region for the lowest latency (~20ms).
+          </p>
+
+          <div class="ui-click-guide">
+            <strong>Console Steps:</strong>
+            <ol>
+              <li>Log in to the <strong>AWS Management Console</strong> (console.aws.amazon.com).</li>
+              <li>In the top-right header, verify the Region is set to <strong>Mumbai (ap-south-1)</strong>.</li>
+              <li>Search for <strong>EC2</strong> in the top search bar &gt; Click <strong>Security Groups</strong> (under Network &amp; Security on the left menu).</li>
+              <li>Click <strong>Create security group</strong> &gt; Name it: <code class="mono">monthlygrocery-ec2-sg</code>.</li>
+              <li>Add the following <strong>Inbound rules</strong>:</li>
+            </ol>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: #1e293b; color: #94a3b8; text-align: left;">
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Type</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Protocol</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Port Range</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Source</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><strong>SSH</strong></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">TCP</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">22</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><code class="mono">My IP</code> (or 0.0.0.0/0)</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">Server terminal access</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><strong>HTTP</strong></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">TCP</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">80</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><code class="mono">0.0.0.0/0</code></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">Standard web traffic &amp; SSL verification</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><strong>HTTPS</strong></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">TCP</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">443</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><code class="mono">0.0.0.0/0</code></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">Encrypted API &amp; Web Admin traffic</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-1" onchange="saveProgress()" />
+          <label for="v-1">✓ Step 1 Complete: AWS Region (ap-south-1) confirmed &amp; Security Group created</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 2: SUPABASE TO AWS RDS POSTGRESQL ==================== -->
+      <section id="step-2" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">2</div>
+            <div>
+              <h2 class="step-title">Migrate Supabase PostgreSQL ➔ AWS RDS</h2>
+              <p class="step-desc">Export all tables, sequences, orders, products, and profiles to a managed Amazon RDS database</p>
+            </div>
+          </div>
+          <span class="badge badge-db">Database Migration</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">2.1</span> Create Amazon RDS PostgreSQL Instance</h3>
+          
+          <div class="ui-click-guide">
+            <strong>Console Steps:</strong>
+            <ol>
+              <li>Go to <strong>RDS</strong> in AWS Console &gt; Click <strong>Create database</strong>.</li>
+              <li>Choose <strong>Standard create</strong> &gt; Engine: <strong>PostgreSQL</strong> (Version: 16 or 15).</li>
+              <li>Template: <strong>Free tier</strong> (or Dev/Test).</li>
+              <li>DB instance identifier: <code class="mono">monthlygrocery-prod-db</code>.</li>
+              <li>Master username: <code class="mono">postgres</code> (or <code class="mono">mgadmin</code>).</li>
+              <li>Master password: <em>Set a strong 20-character password and save it securely!</em></li>
+              <li>Instance configuration: <strong>db.t4g.micro</strong> (Burstable class).</li>
+              <li>Storage: <strong>20 GB General Purpose SSD (gp3)</strong> with auto-scaling enabled.</li>
+              <li>Connectivity:
+                <ul>
+                  <li>VPC: <strong>Default VPC</strong>.</li>
+                  <li>Public access: <strong>Yes</strong> (temporarily for data migration, then set to No).</li>
+                  <li>VPC security group: Select the <code class="mono">monthlygrocery-ec2-sg</code>.</li>
+                </ul>
+              </li>
+              <li>Click <strong>Create database</strong> (takes ~5-7 minutes to become "Available").</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">2.2</span> Export Data from Supabase</h3>
+          <p class="substep-desc">
+            Run this command on your local machine to dump all tables (<code class="mono">products</code>, <code class="mono">shops</code>, <code class="mono">orders</code>, <code class="mono">profiles</code>, <code class="mono">delivery_slots</code>, <code class="mono">coupons</code>) from Supabase:
+          </p>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Command Prompt / Terminal (Local Machine)</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment"># 1. Export schema and data from your Supabase PostgreSQL DB</span>
+pg_dump -h db.xlnebedclqcmgfbfqkbm.supabase.co -U postgres -p 5432 -d postgres --clean --if-exists --no-owner --no-privileges -f monthlygrocery_backup.sql</pre>
+          </div>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">2.3</span> Import Data into Amazon RDS</h3>
+          <p class="substep-desc">
+            Copy the Endpoint URL from your RDS Dashboard (e.g. <code class="mono">monthlygrocery-prod-db.c3xxx.ap-south-1.rds.amazonaws.com</code>) and run:
+          </p>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Command Prompt / Terminal (Local Machine)</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment"># 2. Restore all data into your new AWS RDS PostgreSQL database</span>
+psql -h monthlygrocery-prod-db.c3xxx.ap-south-1.rds.amazonaws.com -U postgres -d postgres -f monthlygrocery_backup.sql</pre>
+          </div>
+
+          <div class="callout-box success">
+            <span>✅</span>
+            <div><strong>Verification:</strong> Log in with <code>psql</code> and run <code>\dt</code>. You will see all 8+ core tables transferred cleanly with zero data loss.</div>
+          </div>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-2" onchange="saveProgress()" />
+          <label for="v-2">✓ Step 2 Complete: Database migrated from Supabase to AWS RDS PostgreSQL</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 3: AMAZON S3 STORAGE ==================== -->
+      <section id="step-3" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">3</div>
+            <div>
+              <h2 class="step-title">Create Amazon S3 Bucket for Media &amp; Images</h2>
+              <p class="step-desc">Stores product photos, merchant banners, user avatars, and Excel catalog uploads</p>
+            </div>
+          </div>
+          <span class="badge badge-s3">Storage Setup</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">3.1</span> Create S3 Bucket</h3>
+          <div class="ui-click-guide">
+            <strong>Console Steps:</strong>
+            <ol>
+              <li>Go to <strong>Amazon S3</strong> &gt; Click <strong>Create bucket</strong>.</li>
+              <li>Bucket name: <code class="mono">monthlygrocery-prod-assets-2026</code> (Must be globally unique).</li>
+              <li>Region: <strong>Asia Pacific (Mumbai) ap-south-1</strong>.</li>
+              <li>Object Ownership: <strong>ACLs enabled</strong> (or Bucket owner preferred).</li>
+              <li>Block Public Access: Uncheck <em>"Block all public access"</em> so product images can be viewed publicly by customer apps.</li>
+              <li>Click <strong>Create bucket</strong>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">3.2</span> Generate IAM Access Keys for Backend</h3>
+          <div class="ui-click-guide">
+            <strong>Console Steps:</strong>
+            <ol>
+              <li>Go to <strong>IAM</strong> &gt; <strong>Users</strong> &gt; Click <strong>Create user</strong>.</li>
+              <li>User name: <code class="mono">monthlygrocery-backend-uploader</code>.</li>
+              <li>Attach policies directly &gt; Select <strong>AmazonS3FullAccess</strong>.</li>
+              <li>Click <strong>Create user</strong> &gt; Go to the user &gt; <strong>Security credentials</strong> tab.</li>
+              <li>Click <strong>Create access key</strong> &gt; Select <em>"Application running outside AWS"</em>.</li>
+              <li>Copy and save your <strong>Access Key ID</strong> and <strong>Secret Access Key</strong>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-3" onchange="saveProgress()" />
+          <label for="v-3">✓ Step 3 Complete: S3 Bucket created and IAM upload credentials generated</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 4: EC2 BACKEND DEPLOYMENT ==================== -->
+      <section id="step-4" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">4</div>
+            <div>
+              <h2 class="step-title">Launch AWS EC2 Virtual Server &amp; Deploy Backend API</h2>
+              <p class="step-desc">Set up Ubuntu 24.04 LTS, Node.js 20/22, PM2 daemon, and run the Express server 24/7</p>
+            </div>
+          </div>
+          <span class="badge badge-aws">Compute &amp; API</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">4.1</span> Launch EC2 Instance</h3>
+          <div class="ui-click-guide">
+            <strong>Console Steps:</strong>
+            <ol>
+              <li>Go to <strong>EC2</strong> &gt; Click <strong>Launch instance</strong>.</li>
+              <li>Name: <code class="mono">MonthlyGrocery-Production-Server</code>.</li>
+              <li>OS: <strong>Ubuntu Server 24.04 LTS (HVM), SSD Volume Type</strong>.</li>
+              <li>Instance type: <strong>t4g.small</strong> (or <strong>t3.small / t3.medium</strong>).</li>
+              <li>Key pair: Click <em>Create new key pair</em> &gt; Name: <code class="mono">monthlygrocery-key</code> &gt; Format: <code class="mono">.pem</code> (Save to your PC).</li>
+              <li>Network settings: Select existing Security Group: <code class="mono">monthlygrocery-ec2-sg</code>.</li>
+              <li>Storage: <strong>30 GB gp3</strong> root volume.</li>
+              <li>Click <strong>Launch instance</strong>.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">4.2</span> SSH into Server &amp; Install Node.js + PM2</h3>
+          
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>Terminal / PowerShell</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment"># 1. Connect to your EC2 instance</span>
+ssh -i "monthlygrocery-key.pem" ubuntu@YOUR_EC2_PUBLIC_IP
+
+<span class="comment"># 2. Update system packages</span>
+sudo apt update && sudo apt upgrade -y
+
+<span class="comment"># 3. Install Node.js 20 LTS and Git</span>
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs git build-essential nginx
+
+<span class="comment"># 4. Install PM2 Process Manager globally (to keep API alive 24/7)</span>
+sudo npm install -g pm2 typescript</pre>
+          </div>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">4.3</span> Clone Project &amp; Configure Production .env</h3>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>EC2 Terminal</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment"># 1. Clone repository into /var/www</span>
+sudo mkdir -p /var/www && sudo chown -R ubuntu:ubuntu /var/www
+cd /var/www
+git clone https://github.com/your-org/MonthlyGrocery.git
+cd MonthlyGrocery/express-backend
+
+<span class="comment"># 2. Install dependencies & build TypeScript</span>
+npm install
+npm run build
+
+<span class="comment"># 3. Create production .env file</span>
+nano .env</pre>
+          </div>
+
+          <p class="substep-desc" style="margin-top: 10px;">Paste the following configuration into your server's <code class="mono">.env</code>:</p>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>/var/www/MonthlyGrocery/express-backend/.env</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content">PORT=8001
+NODE_ENV=production
+
+# AWS RDS PostgreSQL Connection
+DATABASE_URL=postgresql://postgres:YOUR_RDS_PASSWORD@monthlygrocery-prod-db.c3xxx.ap-south-1.rds.amazonaws.com:5432/postgres
+
+# Security Secrets
+JWT_SECRET=super-secure-production-jwt-random-key-2026-mg
+DEV_OTP_BYPASS=false
+
+# AWS S3 Storage
+AWS_ACCESS_KEY_ID=YOUR_IAM_ACCESS_KEY
+AWS_SECRET_ACCESS_KEY=YOUR_IAM_SECRET_KEY
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET=monthlygrocery-prod-assets-2026
+
+# Business Constraints
+MIN_ORDER_LIMIT=3000</pre>
+          </div>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>EC2 Terminal - Launch Backend with PM2</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment"># Start the backend server</span>
+pm2 start dist/server.js --name "monthlygrocery-api"
+
+<span class="comment"># Save PM2 state to auto-restart on server reboot</span>
+pm2 startup
+<span class="comment"># (Copy & run the command outputted by pm2 startup, then run:)</span>
+pm2 save</pre>
+          </div>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-4" onchange="saveProgress()" />
+          <label for="v-4">✓ Step 4 Complete: Backend running 24/7 on EC2 with PM2</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 5: NGINX & SSL ==================== -->
+      <section id="step-5" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">5</div>
+            <div>
+              <h2 class="step-title">Configure Nginx Reverse Proxy &amp; Free HTTPS SSL</h2>
+              <p class="step-desc">Routes domain traffic (api.monthlygrocery.in) to port 8001 with Let's Encrypt SSL</p>
+            </div>
+          </div>
+          <span class="badge badge-aws">Nginx &amp; SSL</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">5.1</span> Configure Nginx for API Subdomain</h3>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>EC2 Terminal</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content">sudo nano /etc/nginx/sites-available/monthlygrocery-api</pre>
+          </div>
+
+          <p class="substep-desc">Paste this Nginx server block:</p>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>/etc/nginx/sites-available/monthlygrocery-api</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content">server {
+    listen 80;
+    server_name api.monthlygrocery.in;
+
+    location / {
+        proxy_pass http://127.0.0.1:8001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        client_max_body_size 50M;
+    }
+}</pre>
+          </div>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>EC2 Terminal - Enable Nginx Site &amp; Issue Free SSL</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment"># Enable config</span>
+sudo ln -s /etc/nginx/sites-available/monthlygrocery-api /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+<span class="comment"># Install Certbot and generate SSL certificate</span>
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d api.monthlygrocery.in</pre>
+          </div>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-5" onchange="saveProgress()" />
+          <label for="v-5">✓ Step 5 Complete: Nginx reverse proxy enabled with automated HTTPS SSL</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 6: WEB ADMIN DEPLOYMENT ==================== -->
+      <section id="step-6" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">6</div>
+            <div>
+              <h2 class="step-title">Deploy Next.js 16 Web Admin Portal</h2>
+              <p class="step-desc">Host the Super Admin dashboard on AWS (via AWS Amplify or on EC2)</p>
+            </div>
+          </div>
+          <span class="badge badge-aws">Frontend Web Admin</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">Option A (Recommended)</span> Deploy via AWS Amplify (Zero Server Maintenance)</h3>
+          
+          <div class="ui-click-guide">
+            <strong>Console Steps:</strong>
+            <ol>
+              <li>Go to <strong>AWS Amplify</strong> in AWS Console &gt; Click <strong>Create new app</strong>.</li>
+              <li>Select <strong>GitHub</strong> &gt; Connect your repository &gt; Select branch <code class="mono">main</code>.</li>
+              <li>App root directory: set to <code class="mono">web-admin</code>.</li>
+              <li>Environment variables: Add <code class="mono">NEXT_PUBLIC_API_URL = https://api.monthlygrocery.in/api</code>.</li>
+              <li>Click <strong>Save and deploy</strong>.</li>
+              <li>In Domain management &gt; Add custom domain: <code class="mono">admin.monthlygrocery.in</code> (Amplify automatically creates free SSL!).</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">Option B</span> Deploy on Same EC2 Instance via PM2 (All-in-One)</h3>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>EC2 Terminal</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content">cd /var/www/MonthlyGrocery/web-admin
+npm install
+npm run build
+
+<span class="comment"># Run Next.js production server on port 3000 with PM2</span>
+pm2 start npm --name "web-admin" -- start -- -p 3000
+pm2 save</pre>
+          </div>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-6" onchange="saveProgress()" />
+          <label for="v-6">✓ Step 6 Complete: Web Admin deployed and live on custom domain</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 7: MOBILE APPS UPDATE ==================== -->
+      <section id="step-7" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">7</div>
+            <div>
+              <h2 class="step-title">Update React Native Mobile Apps (Customer &amp; Merchant)</h2>
+              <p class="step-desc">Switch API endpoints from local/Vercel URLs to your new production AWS server</p>
+            </div>
+          </div>
+          <span class="badge badge-aws">Mobile Apps Cutover</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">7.1</span> Update API Base URL in React Native</h3>
+          <p class="substep-desc">
+            In both <code class="mono">mobile-app</code> and <code class="mono">merchant-app</code>, update your config file (e.g. <code class="mono">src/config/api.ts</code>):
+          </p>
+
+          <div class="code-box">
+            <div class="code-box-header">
+              <span>mobile-app/src/config/api.ts &amp; merchant-app/src/config/api.ts</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <pre class="code-content"><span class="comment">// Production AWS Live API Endpoint</span>
+export const API_BASE_URL = __DEV__
+  ? 'http://10.0.2.2:8001/api'          <span class="comment">// Android emulator local debug</span>
+  : 'https://api.monthlygrocery.in/api'; <span class="comment">// AWS Production Server</span></pre>
+          </div>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-7" onchange="saveProgress()" />
+          <label for="v-7">✓ Step 7 Complete: Mobile apps configured with production AWS URL</label>
+        </div>
+      </section>
+
+      <!-- ==================== STEP 8: DNS & POST-MIGRATION CHECKLIST ==================== -->
+      <section id="step-8" class="step-card">
+        <div class="step-header">
+          <div class="step-title-wrap">
+            <div class="step-num-icon">8</div>
+            <div>
+              <h2 class="step-title">DNS Cutover &amp; Final Live Verification</h2>
+              <p class="step-desc">Point your domain records to AWS and verify end-to-end grocery ordering</p>
+            </div>
+          </div>
+          <span class="badge badge-aws">Live Launch</span>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">8.1</span> Update DNS Records (Cloudflare / GoDaddy / Namecheap)</h3>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: #1e293b; color: #94a3b8; text-align: left;">
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Type</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Name / Host</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">Value / Target</th>
+                <th style="padding: 8px 12px; border: 1px solid var(--border);">TTL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><strong>A Record</strong></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><code class="mono">api</code></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">YOUR_EC2_ELASTIC_IP</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">Auto / 300s</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><strong>CNAME Record</strong></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);"><code class="mono">admin</code></td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">YOUR_AMPLIFY_DOMAIN.amplifyapp.com</td>
+                <td style="padding: 8px 12px; border: 1px solid var(--border);">Auto / 300s</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="substep-block">
+          <h3 class="substep-title"><span class="badge-num">8.2</span> Live System Health Checklist</h3>
+
+          <ul style="padding-left: 20px; font-size: 0.88rem; display: flex; flex-direction: column; gap: 8px; color: var(--text-main);">
+            <li>🧪 <strong>Health Check:</strong> Visit <code class="mono">https://api.monthlygrocery.in/health</code> or test an auth API call.</li>
+            <li>📱 <strong>Customer App Test:</strong> Open Customer app &gt; Log in with OTP &gt; Add items to Monthly Basket &gt; Select Delivery Slot &gt; Place COD Order.</li>
+            <li>🏪 <strong>Merchant Partner App Test:</strong> Open Merchant app &gt; Verify incoming order notification &gt; Change order status to "Out for Delivery".</li>
+            <li>💻 <strong>Web Admin Portal Test:</strong> Open <code class="mono">admin.monthlygrocery.in</code> &gt; Check orders dashboard, inventory quantities, and revenue analytics.</li>
+          </ul>
+        </div>
+
+        <div class="verify-box">
+          <input type="checkbox" id="v-8" onchange="saveProgress()" />
+          <label for="v-8">✓ Step 8 Complete: DNS active, all health checks passed, platform is 100% live on AWS!</label>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>Monthly Grocery Project • AWS Production Migration Blueprint • Innonsh Tech</p>
+    <p style="margin-top: 6px; font-size: 0.78rem;">Node.js Express • PostgreSQL on RDS • S3 Media Storage • Next.js 16 Web Admin</p>
+  </footer>
+
+  <script>
+    function saveProgress() {
+      const state = {};
+      for (let i = 1; i <= 8; i++) {
+        const el = document.getElementById('v-' + i);
+        if (el) state['v-' + i] = el.checked;
+      }
+      localStorage.setItem('aws_migration_progress', JSON.stringify(state));
+    }
+
+    function loadProgress() {
+      const saved = localStorage.getItem('aws_migration_progress');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          Object.keys(state).forEach(k => {
+            const el = document.getElementById(k);
+            if (el) el.checked = state[k];
+          });
+        } catch(e) {}
+      }
+    }
+
+    function copyCode(btn) {
+      const pre = btn.parentElement.nextElementSibling;
+      if (pre) {
+        navigator.clipboard.writeText(pre.innerText).then(() => {
+          btn.innerText = 'Copied!';
+          setTimeout(() => btn.innerText = 'Copy', 2000);
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadProgress();
+
+      document.querySelectorAll('.nav-item a').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          e.preventDefault();
+          const targetId = this.getAttribute('href');
+          const targetSection = document.querySelector(targetId);
+          if (targetSection) {
+            targetSection.scrollIntoView({ behavior: 'smooth' });
+            document.querySelectorAll('.nav-item a').forEach(a => a.classList.remove('active'));
+            this.classList.add('active');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
