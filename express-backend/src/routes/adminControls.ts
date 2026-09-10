@@ -3,6 +3,7 @@ import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct, AreaNotifyRequest } from '../config/localDb';
 import { supabase } from '../config/supabase';
 import { packUnitPayloadFromInput, resolvePackUnitLabel, toSupabaseProductRow } from '../utils/packUnit';
+import { parseProductMedia, enrichProductWithMedia } from '../utils/productMedia';
 
 const router = Router();
 
@@ -1555,17 +1556,20 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
 
     const joined = shopProds.map(sp => {
       const p = products?.find((prod: any) => prod.id === sp.product_id);
+      const media = parseProductMedia(p || {});
       return {
         ...sp,
         name: p?.name || 'Unknown Product',
         sku: p?.sku || '',
         brand: p?.brand || '',
         primary_category: p?.primary_category || '',
-        image_url: p?.image_url || '',
+        image_url: media.primary_image_url || p?.image_url || '',
+        images: media.images,
+        video_url: media.video_url,
         mrp: p?.mrp || 0,
         unit: resolvePackUnitLabel(p || {}) || p?.unit || '',
         short_description: p?.short_description || '',
-        description: p?.description || '',
+        description: media.clean_description,
       };
     });
 

@@ -65,8 +65,26 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
   const groupedList: any[] = [];
 
   for (const [, siblings] of familyMap.entries()) {
+    // 1. Extract family-level media fallback (from any sibling that has images or video)
+    const familyImages: string[] = [];
+    let familyVideoUrl: string | null = null;
+
+    for (const s of siblings) {
+      const parsed = parseProductMedia(s);
+      if (familyImages.length === 0 && Array.isArray(parsed.images) && parsed.images.length > 0) {
+        familyImages.push(...parsed.images);
+      }
+      if (!familyVideoUrl && parsed.video_url) {
+        familyVideoUrl = parsed.video_url;
+      }
+    }
+
     const fullVariants = siblings.map((s) => {
       const media = parseProductMedia(s);
+      const finalImages = media.images && media.images.length > 0 ? media.images : familyImages;
+      const finalImageUrl = media.primary_image_url || (familyImages.length > 0 ? familyImages[0] : '');
+      const finalVideoUrl = media.video_url || familyVideoUrl;
+
       return {
         id: s.id,
         shop_id: s.shop_id,
@@ -84,9 +102,9 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
         stock: s.stock,
         available: s.available !== false,
         discount_percent: s.discount_percent || 0,
-        image_url: media.primary_image_url,
-        images: media.images,
-        video_url: media.video_url,
+        image_url: finalImageUrl,
+        images: finalImages,
+        video_url: finalVideoUrl,
         description: media.clean_description,
         is_veg: s.is_veg,
         featured: s.featured,
@@ -125,12 +143,15 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
 
     const rep = sorted[0];
     const repMedia = parseProductMedia(rep);
+    const repImages = repMedia.images && repMedia.images.length > 0 ? repMedia.images : familyImages;
+    const repImageUrl = repMedia.primary_image_url || (familyImages.length > 0 ? familyImages[0] : '');
+    const repVideoUrl = repMedia.video_url || familyVideoUrl;
 
     groupedList.push({
       ...rep,
-      image_url: repMedia.primary_image_url,
-      images: repMedia.images,
-      video_url: repMedia.video_url,
+      image_url: repImageUrl,
+      images: repImages,
+      video_url: repVideoUrl,
       description: repMedia.clean_description,
       variants: fullVariants,
       variant_count: siblings.length,
@@ -383,9 +404,44 @@ router.get('/master', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    // Build family image map
+    const familyMediaMap = new Map<string, { images: string[]; video_url: string | null }>();
+    (products || []).forEach((p: any) => {
+      const key = getProductFamilyKey(p);
+      const media = parseProductMedia(p);
+      if (!familyMediaMap.has(key)) {
+        familyMediaMap.set(key, { images: [], video_url: null });
+      }
+      const existing = familyMediaMap.get(key)!;
+      if (existing.images.length === 0 && media.images.length > 0) {
+        existing.images = media.images;
+      }
+      if (!existing.video_url && media.video_url) {
+        existing.video_url = media.video_url;
+      }
+    });
+
+    const enriched = (products || []).map((p: any) => {
+      const withPack = enrichProductPackFields(p);
+      const media = parseProductMedia(withPack);
+      const key = getProductFamilyKey(p);
+      const family = familyMediaMap.get(key);
+      const finalImages = media.images && media.images.length > 0 ? media.images : (family?.images || []);
+      const finalImageUrl = media.primary_image_url || (family?.images?.[0] || '');
+      const finalVideoUrl = media.video_url || family?.video_url || null;
+
+      return {
+        ...withPack,
+        image_url: finalImageUrl,
+        images: finalImages,
+        video_url: finalVideoUrl,
+        description: media.clean_description,
+      };
+    });
+
     return res.json({
       success: true,
-      products: (products || []).map((p: any) => enrichProductWithMedia(enrichProductPackFields(p))),
+      products: enriched,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
