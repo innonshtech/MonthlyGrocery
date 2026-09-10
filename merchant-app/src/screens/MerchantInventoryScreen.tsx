@@ -22,6 +22,7 @@ import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
 import SafeProductImage from '../components/SafeProductImage';
 import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
+import { findSiblingVariants, getPackUnitLabel, getDisplayBaseName } from '../utils/productFamily';
 
 export default function MerchantInventoryScreen() {
   const { token } = useMerchantAuth();
@@ -269,6 +270,9 @@ export default function MerchantInventoryScreen() {
       : (item.image_url ? [item.image_url] : []);
     const hasMultipleAngles = images.length > 1;
     const hasVideo = Boolean(item.video_url);
+    const packUnit = getPackUnitLabel(item) || item.unit || '';
+    const siblings = findSiblingVariants(item, products);
+    const hasSiblingVariants = siblings.length > 1;
 
     return (
       <View style={[styles.productCard, isOutOfStock && styles.productCardOOS]}>
@@ -296,11 +300,54 @@ export default function MerchantInventoryScreen() {
           <View style={styles.productDetails}>
             <View style={styles.nameRow}>
               <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+              {packUnit ? (
+                <View style={styles.cardUnitBadge}>
+                  <Text style={styles.cardUnitBadgeText}>{packUnit}</Text>
+                </View>
+              ) : null}
             </View>
             <Text style={styles.skuText}>
               SKU: {item.sku || 'N/A'} • {item.primary_category}
-              {item.unit ? ` • ${item.unit}` : ''}
             </Text>
+
+            {/* Sibling Variants Quick Chips */}
+            {hasSiblingVariants && (
+              <View style={styles.cardSiblingRow}>
+                <Text style={styles.cardSiblingLabel}>Pack Sizes ({siblings.length}):</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.cardSiblingList}
+                >
+                  {siblings.map((sib) => {
+                    const isCurrent = sib.product_id === item.product_id;
+                    const sibOOS = !sib.available || sib.stock <= 0;
+                    const sibUnit = getPackUnitLabel(sib) || sib.unit || 'Pack';
+                    return (
+                      <TouchableOpacity
+                        key={sib.product_id || sib.id}
+                        style={[
+                          styles.cardSiblingChip,
+                          isCurrent && styles.cardSiblingChipCurrent,
+                          !isCurrent && sibOOS && styles.cardSiblingChipOOS,
+                        ]}
+                        onPress={() => handleOpenEditModal(sib)}
+                      >
+                        <Text
+                          style={[
+                            styles.cardSiblingChipText,
+                            isCurrent && styles.cardSiblingChipTextCurrent,
+                            !isCurrent && sibOOS && styles.cardSiblingChipTextOOS,
+                          ]}
+                        >
+                          {sibUnit} {sibOOS ? '• OOS' : `• ₹${sib.selling_price}`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Media Indicators */}
             {(hasMultipleAngles || hasVideo) && (
@@ -489,6 +536,81 @@ export default function MerchantInventoryScreen() {
 
             {editingProduct && (
               <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Sibling Pack Variant Switcher inside Modal */}
+                {(() => {
+                  const modalSiblings = findSiblingVariants(editingProduct, products);
+                  if (modalSiblings.length <= 1) return null;
+
+                  return (
+                    <View style={styles.modalSiblingContainer}>
+                      <View style={styles.modalSiblingHeaderRow}>
+                        <Text style={styles.modalSiblingTitle}>📦 Pack Variants ({modalSiblings.length})</Text>
+                        <Text style={styles.modalSiblingSubtitle}>Tap any pack size to switch & edit</Text>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.modalSiblingScroll}
+                      >
+                        {modalSiblings.map((sib) => {
+                          const isSelected = sib.product_id === editingProduct.product_id;
+                          const sibOOS = !sib.available || sib.stock <= 0;
+                          const sibUnit = getPackUnitLabel(sib) || sib.unit || 'Pack';
+
+                          return (
+                            <TouchableOpacity
+                              key={sib.product_id || sib.id}
+                              style={[
+                                styles.modalSiblingChip,
+                                isSelected && styles.modalSiblingChipActive,
+                                !isSelected && sibOOS && styles.modalSiblingChipOOS,
+                              ]}
+                              onPress={() => {
+                                if (sib.product_id !== editingProduct.product_id) {
+                                  handleOpenEditModal(sib);
+                                }
+                              }}
+                            >
+                              <View style={styles.modalSiblingChipHeader}>
+                                <Text
+                                  style={[
+                                    styles.modalSiblingChipUnit,
+                                    isSelected && styles.modalSiblingChipUnitActive,
+                                  ]}
+                                >
+                                  {sibUnit}
+                                </Text>
+                                {isSelected && (
+                                  <View style={styles.modalActiveBadge}>
+                                    <Text style={styles.modalActiveBadgeText}>Active</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.modalSiblingChipPrice,
+                                  isSelected && styles.modalSiblingChipPriceActive,
+                                ]}
+                              >
+                                ₹{sib.selling_price}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.modalSiblingChipStock,
+                                  isSelected && styles.modalSiblingChipStockActive,
+                                  sibOOS && styles.modalSiblingChipStockOOS,
+                                ]}
+                              >
+                                {sibOOS ? 'Out of Stock' : `${sib.stock} units`}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  );
+                })()}
+
                 <Text style={styles.modalProductName}>{editingProduct.name}</Text>
                 <Text style={styles.modalProductSku}>SKU: {editingProduct.sku || 'N/A'}</Text>
                 {editingProduct.unit ? (
@@ -1148,5 +1270,153 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.6,
+  },
+  cardUnitBadge: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 6,
+  },
+  cardUnitBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  cardSiblingRow: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  cardSiblingLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    marginBottom: 3,
+    letterSpacing: 0.3,
+  },
+  cardSiblingList: {
+    gap: 6,
+  },
+  cardSiblingChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardSiblingChipCurrent: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#22C55E',
+  },
+  cardSiblingChipOOS: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
+    opacity: 0.8,
+  },
+  cardSiblingChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  cardSiblingChipTextCurrent: {
+    color: '#15803D',
+    fontWeight: '700',
+  },
+  cardSiblingChipTextOOS: {
+    color: '#DC2626',
+  },
+  modalSiblingContainer: {
+    marginBottom: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalSiblingHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalSiblingTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  modalSiblingSubtitle: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  modalSiblingScroll: {
+    gap: 8,
+  },
+  modalSiblingChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    minWidth: 95,
+  },
+  modalSiblingChipActive: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  modalSiblingChipOOS: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+  },
+  modalSiblingChipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+    marginBottom: 3,
+  },
+  modalSiblingChipUnit: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  modalSiblingChipUnitActive: {
+    color: '#15803D',
+  },
+  modalActiveBadge: {
+    backgroundColor: '#22C55E',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  modalActiveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  modalSiblingChipPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  modalSiblingChipPriceActive: {
+    color: '#16A34A',
+  },
+  modalSiblingChipStock: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  modalSiblingChipStockActive: {
+    color: '#15803D',
+    fontWeight: '600',
+  },
+  modalSiblingChipStockOOS: {
+    color: '#DC2626',
   },
 });

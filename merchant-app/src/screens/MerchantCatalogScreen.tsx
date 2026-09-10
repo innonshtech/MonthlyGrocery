@@ -21,6 +21,7 @@ import { API_BASE } from '../config/api';
 import { PACK_UNIT_OPTIONS, formatPackUnit } from '../config/packUnits';
 import SafeProductImage from '../components/SafeProductImage';
 import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
+import { findSiblingVariants, getPackUnitLabel, getDisplayBaseName } from '../utils/productFamily';
 
 interface MasterProduct {
   id: string;
@@ -509,6 +510,9 @@ export default function MerchantCatalogScreen() {
       : (item.image_url ? [item.image_url] : []);
     const hasMultipleAngles = images.length > 1;
     const hasVideo = Boolean(item.video_url);
+    const packUnit = getPackUnitLabel(item) || item.unit || '';
+    const siblings = findSiblingVariants(item, masterProducts);
+    const hasSiblingVariants = siblings.length > 1;
 
     return (
       <View style={styles.card}>
@@ -544,11 +548,58 @@ export default function MerchantCatalogScreen() {
           </TouchableOpacity>
 
           <View style={styles.headerTextContainer}>
-            <Text style={styles.productTitle} numberOfLines={2}>{item.name}</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.productTitle} numberOfLines={2}>{item.name}</Text>
+              {packUnit ? (
+                <View style={styles.cardUnitBadge}>
+                  <Text style={styles.cardUnitBadgeText}>{packUnit}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={styles.categorySub}>{item.primary_category} • {item.brand || 'Unbranded'}</Text>
             <Text style={styles.mrpText}>
-              {item.unit ? `${item.unit} · ` : ''}Base MRP: ₹{item.mrp} | Default: ₹{item.price}
+              Base MRP: ₹{item.mrp} | Default: ₹{item.price}
             </Text>
+
+            {/* Sibling Pack Variants Bar */}
+            {hasSiblingVariants && (
+              <View style={styles.cardSiblingRow}>
+                <Text style={styles.cardSiblingLabel}>Pack Sizes ({siblings.length}):</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.cardSiblingList}
+                >
+                  {siblings.map((sib) => {
+                    const sibMapping = shopProducts.find((sp) => sp.product_id === sib.id);
+                    const isCurrent = sib.id === item.id;
+                    const inStore = Boolean(sibMapping);
+                    const sibUnit = getPackUnitLabel(sib) || sib.unit || 'Pack';
+                    return (
+                      <TouchableOpacity
+                        key={sib.id}
+                        style={[
+                          styles.cardSiblingChip,
+                          isCurrent && styles.cardSiblingChipCurrent,
+                          inStore && styles.cardSiblingChipInStore,
+                        ]}
+                        onPress={() => handleOpenConfigModal(sib, sibMapping)}
+                      >
+                        <Text
+                          style={[
+                            styles.cardSiblingChipText,
+                            isCurrent && styles.cardSiblingChipTextCurrent,
+                            inStore && styles.cardSiblingChipTextInStore,
+                          ]}
+                        >
+                          {sibUnit} {inStore && sibMapping ? `✓ ₹${sibMapping.selling_price}` : `· ₹${sib.price || sib.mrp}`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Photo angles & Video badges */}
             {(hasMultipleAngles || hasVideo) && (
@@ -783,6 +834,85 @@ export default function MerchantCatalogScreen() {
 
               {selectedProduct && (
                 <>
+                  {/* Sibling Pack Variant Switcher inside Modal */}
+                  {(() => {
+                    const modalSiblings = findSiblingVariants(selectedProduct, masterProducts);
+                    if (modalSiblings.length <= 1) return null;
+
+                    return (
+                      <View style={styles.modalSiblingContainer}>
+                        <View style={styles.modalSiblingHeaderRow}>
+                          <Text style={styles.modalSiblingTitle}>📦 Pack Sizes in this Brand Family ({modalSiblings.length})</Text>
+                          <Text style={styles.modalSiblingSubtitle}>Tap any pack size to configure</Text>
+                        </View>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.modalSiblingScroll}
+                        >
+                          {modalSiblings.map((sib) => {
+                            const isSelected = sib.id === selectedProduct.id;
+                            const sibMapping = shopProducts.find((sp) => sp.product_id === sib.id);
+                            const inStore = Boolean(sibMapping);
+                            const sibUnit = getPackUnitLabel(sib) || sib.unit || 'Pack';
+
+                            return (
+                              <TouchableOpacity
+                                key={sib.id}
+                                style={[
+                                  styles.modalSiblingChip,
+                                  isSelected && styles.modalSiblingChipActive,
+                                  !isSelected && inStore && styles.modalSiblingChipInStore,
+                                ]}
+                                onPress={() => {
+                                  if (sib.id !== selectedProduct.id) {
+                                    handleOpenConfigModal(sib, sibMapping);
+                                  }
+                                }}
+                              >
+                                <View style={styles.modalSiblingChipHeader}>
+                                  <Text
+                                    style={[
+                                      styles.modalSiblingChipUnit,
+                                      isSelected && styles.modalSiblingChipUnitActive,
+                                    ]}
+                                  >
+                                    {sibUnit}
+                                  </Text>
+                                  {isSelected ? (
+                                    <View style={styles.modalActiveBadge}>
+                                      <Text style={styles.modalActiveBadgeText}>Active</Text>
+                                    </View>
+                                  ) : inStore ? (
+                                    <View style={styles.modalInStoreBadge}>
+                                      <Text style={styles.modalInStoreBadgeText}>In Shop</Text>
+                                    </View>
+                                  ) : null}
+                                </View>
+                                <Text
+                                  style={[
+                                    styles.modalSiblingChipPrice,
+                                    isSelected && styles.modalSiblingChipPriceActive,
+                                  ]}
+                                >
+                                  {inStore && sibMapping ? `₹${sibMapping.selling_price}` : `MRP ₹${sib.mrp}`}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.modalSiblingChipSub,
+                                    isSelected && styles.modalSiblingChipSubActive,
+                                  ]}
+                                >
+                                  {inStore ? (sibMapping?.available ? '✓ Live' : '✕ Inactive') : '+ Add to Shop'}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    );
+                  })()}
+
                   <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
                   
                   {/* Photo Gallery Preview */}
@@ -1633,5 +1763,166 @@ const styles = StyleSheet.create({
   },
   unitPillTextActive: {
     color: '#FFFFFF',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  cardUnitBadge: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  cardUnitBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  cardSiblingRow: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  cardSiblingLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    marginBottom: 3,
+    letterSpacing: 0.3,
+  },
+  cardSiblingList: {
+    gap: 6,
+  },
+  cardSiblingChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardSiblingChipCurrent: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#22C55E',
+  },
+  cardSiblingChipInStore: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+  },
+  cardSiblingChipText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  cardSiblingChipTextCurrent: {
+    color: '#15803D',
+    fontWeight: '700',
+  },
+  cardSiblingChipTextInStore: {
+    color: '#16A34A',
+    fontWeight: '600',
+  },
+  modalSiblingContainer: {
+    marginBottom: 14,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalSiblingHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalSiblingTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  modalSiblingSubtitle: {
+    fontSize: 10,
+    color: '#64748B',
+  },
+  modalSiblingScroll: {
+    gap: 8,
+  },
+  modalSiblingChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    minWidth: 95,
+  },
+  modalSiblingChipActive: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  modalSiblingChipInStore: {
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
+  },
+  modalSiblingChipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+    marginBottom: 3,
+  },
+  modalSiblingChipUnit: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  modalSiblingChipUnitActive: {
+    color: '#15803D',
+  },
+  modalActiveBadge: {
+    backgroundColor: '#22C55E',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  modalActiveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  modalInStoreBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  modalInStoreBadgeText: {
+    color: '#16A34A',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  modalSiblingChipPrice: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  modalSiblingChipPriceActive: {
+    color: '#16A34A',
+  },
+  modalSiblingChipSub: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  modalSiblingChipSubActive: {
+    color: '#15803D',
+    fontWeight: '600',
   },
 });

@@ -3,7 +3,8 @@ import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct, AreaNotifyRequest } from '../config/localDb';
 import { supabase } from '../config/supabase';
 import { packUnitPayloadFromInput, resolvePackUnitLabel, toSupabaseProductRow } from '../utils/packUnit';
-import { parseProductMedia, enrichProductWithMedia } from '../utils/productMedia';
+import { parseProductMedia, enrichProductWithMedia, formatProductDescriptionWithMedia } from '../utils/productMedia';
+import { getProductFamilyKey } from './products';
 
 const router = Router();
 
@@ -1554,18 +1555,41 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
       return res.status(500).json({ success: false, error: error.message });
     }
 
+    // Build family media map for sibling fallback
+    const familyMediaMap = new Map<string, { images: string[]; video_url: string | null }>();
+    (products || []).forEach((p: any) => {
+      const key = getProductFamilyKey(p);
+      const media = parseProductMedia(p);
+      if (!familyMediaMap.has(key)) {
+        familyMediaMap.set(key, { images: [], video_url: null });
+      }
+      const existing = familyMediaMap.get(key)!;
+      if (existing.images.length === 0 && media.images.length > 0) {
+        existing.images = media.images;
+      }
+      if (!existing.video_url && media.video_url) {
+        existing.video_url = media.video_url;
+      }
+    });
+
     const joined = shopProds.map(sp => {
       const p = products?.find((prod: any) => prod.id === sp.product_id);
       const media = parseProductMedia(p || {});
+      const key = getProductFamilyKey(p || {});
+      const family = familyMediaMap.get(key);
+      const finalImages = media.images && media.images.length > 0 ? media.images : (family?.images || []);
+      const finalImageUrl = media.primary_image_url || p?.image_url || (family?.images?.[0] || '');
+      const finalVideoUrl = media.video_url || family?.video_url || null;
+
       return {
         ...sp,
         name: p?.name || 'Unknown Product',
         sku: p?.sku || '',
         brand: p?.brand || '',
         primary_category: p?.primary_category || '',
-        image_url: media.primary_image_url || p?.image_url || '',
-        images: media.images,
-        video_url: media.video_url,
+        image_url: finalImageUrl,
+        images: finalImages,
+        video_url: finalVideoUrl,
         mrp: p?.mrp || 0,
         unit: resolvePackUnitLabel(p || {}) || p?.unit || '',
         short_description: p?.short_description || '',
@@ -1710,7 +1734,19 @@ router.post('/shop-products/product-content', authMiddleware, requireRole(['admi
       updatePayload.short_description = String(short_description).trim() || null;
     }
     if (description !== undefined) {
-      updatePayload.description = String(description).trim() || null;
+      const { data: existingProd } = await supabase
+        .from('products')
+        .select('description, image_url, images, video_url')
+        .eq('id', product_id)
+        .maybeSingle();
+
+      const existingMedia = parseProductMedia(existingProd || {});
+      const mergedDesc = formatProductDescriptionWithMedia(
+        description,
+        existingMedia.images,
+        existingMedia.video_url,
+      );
+      updatePayload.description = mergedDesc || null;
     }
     if (mrp !== undefined) {
       const mrpVal = parseFloat(mrp);
