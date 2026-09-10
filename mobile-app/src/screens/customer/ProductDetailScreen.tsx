@@ -46,6 +46,30 @@ export default function ProductDetailScreen({ route, navigation }: any) {
   const [fetchError, setFetchError] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
+  // Build multi-media items list (Images + SVG + Demo Video) at top level
+  const mediaList = useMemo(() => {
+    if (!product) return [];
+    const list: Array<{ id: string; type: 'image' | 'video'; url: string; isSvg?: boolean }> = [];
+
+    const rawImages: string[] = Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : product.image_url ? [product.image_url] : [];
+
+    rawImages.forEach((img, idx) => {
+      if (typeof img === 'string' && img.trim()) {
+        const clean = img.trim();
+        const isSvg = clean.toLowerCase().endsWith('.svg') || clean.toLowerCase().split('?')[0].endsWith('.svg');
+        list.push({ id: `img-${idx}`, type: 'image', url: clean, isSvg });
+      }
+    });
+
+    if (product.video_url && typeof product.video_url === 'string' && product.video_url.trim()) {
+      list.push({ id: 'video-0', type: 'video', url: product.video_url.trim() });
+    }
+
+    return list;
+  }, [product]);
+
   // Reset active media slide on product change
   useEffect(() => {
     setActiveMediaIndex(0);
@@ -179,30 +203,6 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     const cartItem = items.find((i) => i.product?.id === product.id);
     const qty = cartItem ? cartItem.quantity : 0;
 
-    // Build multi-media items list (Images + SVG + Demo Video)
-    const mediaList = useMemo(() => {
-      if (!product) return [];
-      const list: Array<{ id: string; type: 'image' | 'video'; url: string; isSvg?: boolean }> = [];
-
-      const rawImages: string[] = Array.isArray(product.images) && product.images.length > 0
-        ? product.images
-        : product.image_url ? [product.image_url] : [];
-
-      rawImages.forEach((img, idx) => {
-        if (typeof img === 'string' && img.trim()) {
-          const clean = img.trim();
-          const isSvg = clean.toLowerCase().endsWith('.svg') || clean.toLowerCase().includes('.svg');
-          list.push({ id: `img-${idx}`, type: 'image', url: clean, isSvg });
-        }
-      });
-
-      if (product.video_url && typeof product.video_url === 'string' && product.video_url.trim()) {
-        list.push({ id: 'video-0', type: 'video', url: product.video_url.trim() });
-      }
-
-      return list;
-    }, [product]);
-
     // Weight variant options: dynamically from backend product family variants
     const weightOptions =
       variants.length > 1
@@ -280,7 +280,12 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                       </TouchableOpacity>
                     ) : item.isSvg ? (
                       <View style={styles.svgWrapper}>
-                        <SvgUri uri={item.url} width={screenWidth * 0.75} height={220} />
+                        <SvgUri
+                          uri={item.url}
+                          width={screenWidth * 0.75}
+                          height={220}
+                          onError={() => {}}
+                        />
                       </View>
                     ) : (
                       <Image
@@ -339,7 +344,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                           <AppIcon name="play" size={16} color={isActive ? '#1E7A46' : '#64748B'} />
                         </View>
                       ) : item.isSvg ? (
-                        <SvgUri uri={item.url} width={34} height={34} />
+                        <SvgUri uri={item.url} width={34} height={34} onError={() => {}} />
                       ) : (
                         <Image
                           source={{ uri: item.url }}
