@@ -131,9 +131,15 @@ export interface ConsumerOrder {
   payment_method?: string;
   payment_method_label?: string;
   delivery_partner_name?: string;
+  delivery_partner_phone?: string;
   refund_message?: string;
   cancelled_by?: string | null;
   cancelled_at?: string;
+  confirmed_at?: string;
+  packed_at?: string;
+  dispatched_at?: string;
+  out_for_delivery_at?: string;
+  delivered_at?: string;
   created_at: string;
   order_items?: OrderItem[];
   item_count?: number;
@@ -145,16 +151,21 @@ export interface ConsumerOrder {
 }
 
 export function formatOrdersTemplate(
-  template: string,
-  vars: Record<string, string | number>,
+  template?: string | null,
+  vars: Record<string, string | number | null | undefined> = {},
 ): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? ''));
+  if (!template || typeof template !== 'string') return '';
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    const val = vars ? vars[key] : undefined;
+    return val !== undefined && val !== null ? String(val) : '';
+  });
 }
 
 export const formatInr = (n: number) =>
-  `₹${Math.round(n).toLocaleString('en-IN')}`;
+  `₹${Math.round(Number(n) || 0).toLocaleString('en-IN')}`;
 
-export function getOrderDisplayId(order: ConsumerOrder): string {
+export function getOrderDisplayId(order?: ConsumerOrder | null): string {
+  if (!order) return '';
   if (order.display_id) {
     const d = String(order.display_id).replace(/^#/, '');
     return d.startsWith('MG') ? `#${d}` : `#MG${d}`;
@@ -234,12 +245,14 @@ export function canConsumerCancelOrder(order: ConsumerOrder): boolean {
 
 export function getTimelineStepLabel(
   key: string,
-  config: OrderDetailScreenConfig,
+  config?: OrderDetailScreenConfig | null,
 ): string {
   const labels: Record<string, string> = {
-    confirmed: config.timeline_confirmed,
-    packed: config.timeline_packed,
-    delivered: config.timeline_delivered,
+    confirmed: config?.timeline_confirmed || 'Order confirmed',
+    packed: config?.timeline_packed || 'Packed at your store',
+    dispatched: config?.timeline_dispatched || 'Dispatched',
+    out_for_delivery: config?.timeline_out_for_delivery || 'Out for delivery',
+    delivered: config?.timeline_delivered || 'Delivered',
   };
   return labels[key] || key;
 }

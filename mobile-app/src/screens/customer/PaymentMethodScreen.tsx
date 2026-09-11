@@ -9,7 +9,7 @@ import {
   StatusBar,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
@@ -27,7 +27,7 @@ import {
 import { normalizePincode, validateAddressPincode } from '../../utils/locationParams';
 
 /** Figma E5 Payment canvas background */
-const SCREEN_BG = '#FBFAF6';
+const SCREEN_BG = '#F8FAF8';
 
 const formatInr = (n: number) =>
   `₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -74,6 +74,7 @@ function mapOrderItemsForBasket(orderItems: any[]) {
 }
 
 export default function PaymentMethodScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { token, city, area, pincode: areaPincode } = useAuth();
   const { items, clearCart } = useCart();
   const cartSubtotal = items.reduce(
@@ -186,6 +187,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           arriving: order?.delivery_slot || slotLabel,
           deliverTo: order?.deliver_to_label || deliverToLabel || shippingAddress,
           paymentMethod: order?.payment_method_label || order?.payment_method || 'Cash on Delivery',
+          deliveryOtp: order?.delivery_otp,
           orderItems: orderItemsSnapshot,
         });
       } else {
@@ -219,6 +221,8 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
     }
   };
 
+  const bottomPadding = Math.max(insets.bottom, 16);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
@@ -229,7 +233,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
           style={styles.backBtn}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <CheckoutBackIcon size={24} />
+          <CheckoutBackIcon size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Payment</Text>
       </View>
@@ -245,7 +249,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.methodsSection}>
-          <Text style={styles.sectionLabel}>payment METHODS</Text>
+          <Text style={styles.sectionLabel}>PAYMENT METHODS</Text>
 
           <TouchableOpacity
             style={styles.paymentCard}
@@ -253,7 +257,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
             activeOpacity={0.85}
           >
             <View style={styles.iconBox}>
-              <PaymentCodIcon size={20} />
+              <PaymentCodIcon size={22} />
             </View>
             <View style={styles.cardDetails}>
               <Text style={styles.methodTitle}>Cash on delivery</Text>
@@ -268,22 +272,20 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={styles.payBtn}
-            onPress={handlePlaceOrder}
-            disabled={processing || !codSelected}
-            activeOpacity={0.85}
-          >
-            {processing ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.payBtnText}>Pay On Delivery</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={[styles.bottomBar, { paddingBottom: bottomPadding }]}>
+        <TouchableOpacity
+          style={styles.payBtn}
+          onPress={handlePlaceOrder}
+          disabled={processing || !codSelected}
+          activeOpacity={0.85}
+        >
+          {processing ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.payBtnText}>Pay On Delivery</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -296,11 +298,11 @@ const styles = StyleSheet.create({
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingLeft: 16,
-    paddingRight: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: SCREEN_BG,
   },
   backBtn: {
     width: 36,
@@ -310,16 +312,16 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     ...FONTS.muktaBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#111827',
   },
   scrollArea: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 24,
     gap: 16,
   },
@@ -327,87 +329,87 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.green100,
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
+    backgroundColor: '#E2F2E7',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
   },
   payableLabelText: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
     lineHeight: 20,
-    color: COLORS.green800,
+    color: '#1E7A46',
   },
   payableAmountVal: {
-    ...FONTS.balooSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 18,
     lineHeight: 24,
-    color: COLORS.green800,
+    color: '#1E7A46',
   },
   methodsSection: {
-    gap: 10,
+    gap: 8,
   },
   sectionLabel: {
     ...FONTS.muktaBold,
-    fontSize: 12,
+    fontSize: 11.5,
     lineHeight: 16,
-    letterSpacing: 1.44,
-    color: COLORS.ink500,
+    letterSpacing: 0.8,
+    color: '#64748B',
     textTransform: 'uppercase',
   },
   paymentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 14,
   },
   iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: COLORS.muted,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F4F1',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardDetails: {
     flex: 1,
-    gap: 1,
+    gap: 2,
   },
   methodTitle: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 15,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   methodSubtitle: {
-    ...FONTS.muktaMedium,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink500,
-  },
-  bottomSafe: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderTopWidth: 1.5,
-    borderTopColor: COLORS.line,
+    ...FONTS.muktaRegular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#64748B',
+    marginTop: 2,
   },
   bottomBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EBEFEB',
     paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingTop: 16,
   },
   payBtn: {
-    backgroundColor: COLORS.green700,
-    borderRadius: 14,
-    height: 49,
+    backgroundColor: '#1E7A46',
+    borderRadius: 16,
+    height: 52,
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
   payBtnText: {
-    ...FONTS.balooSemiBold,
-    fontSize: 15,
-    lineHeight: 16,
+    ...FONTS.muktaBold,
+    fontSize: 16,
+    lineHeight: 22,
     color: '#FFFFFF',
   },
 });

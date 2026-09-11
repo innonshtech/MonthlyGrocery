@@ -7,11 +7,9 @@ import {
   ScrollView,
   StatusBar,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { API_BASE } from '../../config/api';
 import { COLORS, FONTS } from '../../constants/theme';
@@ -28,7 +26,7 @@ import {
   TrackTruckIcon,
 } from '../../components/CheckoutFigmaIcons';
 
-const SCREEN_BG = '#FBFAF6';
+const SCREEN_BG = '#F8FAF8';
 
 const formatInr = (n: number) =>
   `₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -40,32 +38,48 @@ type OrderSummary = {
   arriving: string;
   deliverTo: string;
   paymentMethod: string;
+  deliveryOtp?: string | null;
   orderItems: any[];
 };
 
 function mapApiOrder(order: any): OrderSummary {
+  if (!order) {
+    return {
+      orderId: '',
+      total: 0,
+      savings: 0,
+      arriving: '',
+      deliverTo: '',
+      paymentMethod: 'Cash on Delivery',
+      deliveryOtp: null,
+      orderItems: [],
+    };
+  }
+  const items = Array.isArray(order.order_items) ? order.order_items.filter(Boolean) : [];
   return {
     orderId: getOrderDisplayId({ display_id: order.display_id, id: order.id } as any),
     total: Number(order.total_amount) || 0,
     savings: Number(order.total_savings) ||
       Number(order.product_savings || 0) + Number(order.discount_amount || 0),
-    arriving: order.delivery_slot || '',
+    arriving: typeof order.delivery_slot === 'string' ? order.delivery_slot : '',
     deliverTo: order.deliver_to_label || order.shipping_address || '',
     paymentMethod: order.payment_method_label || order.payment_method || 'Cash on Delivery',
-    orderItems: (order.order_items || []).map((oi: any) => {
-      const name = (oi.product_name || oi.name || '').trim();
+    deliveryOtp: order.delivery_otp || null,
+    orderItems: items.map((oi: any) => {
+      const name = (oi?.product_name || oi?.name || '').trim();
       return {
-        id: oi.product_id || oi.id,
+        id: oi?.product_id || oi?.id || '',
         name,
-        price: oi.unit_price || oi.price || 0,
-        qty: oi.quantity || oi.qty || 1,
-        unit: oi.unit || '1 unit',
+        price: Number(oi?.unit_price ?? oi?.price) || 0,
+        qty: Number(oi?.quantity ?? oi?.qty) || 1,
+        unit: oi?.unit || '1 unit',
       };
     }),
   };
 }
 
 export default function OrderSuccessScreen({ route, navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { token } = useAuth();
   const params = route?.params || {};
 
@@ -86,6 +100,7 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
               : ''),
           deliverTo: params.deliverTo || '',
           paymentMethod: params.paymentMethod || 'Cash on Delivery',
+          deliveryOtp: params.deliveryOtp || null,
           orderItems: params.orderItems || [],
         }
       : null,
@@ -173,6 +188,7 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
   }
 
   const paidViaLabel = `${summary.paymentMethod} · ${formatInr(summary.total)}`;
+  const bottomPadding = Math.max(insets.bottom, 16);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -185,13 +201,13 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
       >
         <View style={styles.badgeWrapper}>
           <View style={styles.successIconCircle}>
-            <SuccessCheckIcon size={52} />
+            <SuccessCheckIcon size={44} />
           </View>
-          <View style={[styles.confettiDot, styles.dotOrange, { top: 20, left: 6 }]} />
-          <View style={[styles.confettiDot, styles.dotGreen, { top: 30, right: 6 }]} />
-          <View style={[styles.confettiDot, styles.dotTeal, { bottom: 24, left: 16 }]} />
-          <View style={[styles.confettiDot, styles.dotGrey, { bottom: 20, right: 8 }]} />
-          <View style={[styles.confettiDot, styles.dotTeal, { top: 2, left: 60 }]} />
+          <View style={[styles.confettiDot, styles.dotOrange, { top: 12, left: 4 }]} />
+          <View style={[styles.confettiDot, styles.dotGreen, { top: 20, right: 4 }]} />
+          <View style={[styles.confettiDot, styles.dotYellow, { bottom: 18, left: 10 }]} />
+          <View style={[styles.confettiDot, styles.dotTeal, { bottom: 14, right: 8 }]} />
+          <View style={[styles.confettiDot, styles.dotOrange, { top: 0, left: 52 }]} />
         </View>
 
         <View style={styles.titleBlock}>
@@ -222,12 +238,18 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
             <Text style={styles.detailLabel}>Paid via</Text>
             <Text style={styles.detailVal}>{paidViaLabel}</Text>
           </View>
+          {summary.deliveryOtp ? (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Delivery OTP</Text>
+              <Text style={styles.detailValOtp}>{summary.deliveryOtp}</Text>
+            </View>
+          ) : null}
         </View>
 
         {summary.savings > 0 && (
           <View style={styles.savingsPill}>
             <SavingsCoinIcon size={16} />
-            <Text style={styles.savingsPillTxt}>
+            <Text style={styles.savingsPillTxt} numberOfLines={1}>
               You saved {formatInr(summary.savings)} on this order
             </Text>
           </View>
@@ -254,25 +276,23 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={styles.trackBtn}
-            onPress={() => navigation.replace('Orders')}
-            activeOpacity={0.85}
-          >
-            <TrackTruckIcon size={18} />
-            <Text style={styles.trackBtnText}>Track order</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.continueBtn}
-            onPress={() => navigation.replace('Shop')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.continueBtnText}>Continue shopping</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={[styles.bottomBar, { paddingBottom: bottomPadding }]}>
+        <TouchableOpacity
+          style={styles.trackBtn}
+          onPress={() => navigation.replace('Orders')}
+          activeOpacity={0.85}
+        >
+          <TrackTruckIcon size={18} />
+          <Text style={styles.trackBtnText}>Track order</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.continueBtn}
+          onPress={() => navigation.replace('Shop')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.continueBtnText}>Continue shopping</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -289,11 +309,6 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 24,
   },
-  loadingText: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    color: COLORS.ink500,
-  },
   errorText: {
     ...FONTS.muktaMedium,
     fontSize: 14,
@@ -305,82 +320,78 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 28,
     paddingBottom: 24,
     alignItems: 'center',
-    gap: 16,
   },
   badgeWrapper: {
-    width: 130,
-    height: 130,
+    width: 114,
+    height: 114,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    marginBottom: 16,
   },
   successIconCircle: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: COLORS.green700,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#1E7A46',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.green900,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    elevation: 8,
   },
   confettiDot: {
     position: 'absolute',
     borderRadius: 999,
   },
   dotOrange: {
-    width: 10,
-    height: 10,
-    backgroundColor: COLORS.marigold500,
+    width: 9,
+    height: 9,
+    backgroundColor: '#F59E0B',
   },
   dotGreen: {
     width: 8,
     height: 8,
-    backgroundColor: COLORS.green600,
+    backgroundColor: '#22C55E',
   },
   dotTeal: {
-    width: 7,
-    height: 7,
-    backgroundColor: COLORS.green500,
+    width: 8,
+    height: 8,
+    backgroundColor: '#10B981',
   },
-  dotGrey: {
-    width: 9,
-    height: 9,
-    backgroundColor: COLORS.ink300,
+  dotYellow: {
+    width: 8,
+    height: 8,
+    backgroundColor: '#FBBF24',
   },
   titleBlock: {
     width: '100%',
     alignItems: 'center',
-    gap: 6,
+    marginBottom: 20,
   },
   successTitle: {
-    ...FONTS.balooBold,
-    fontSize: 26,
-    lineHeight: 32,
-    letterSpacing: -0.26,
-    color: COLORS.ink900,
+    ...FONTS.muktaBold,
+    fontSize: 24,
+    lineHeight: 30,
+    color: '#111827',
     textAlign: 'center',
+    marginBottom: 6,
   },
   successSubtitle: {
     ...FONTS.muktaRegular,
-    fontSize: 16,
-    lineHeight: 24,
-    color: COLORS.ink500,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#475569',
     textAlign: 'center',
   },
   detailsCard: {
     width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     gap: 12,
+    marginBottom: 14,
   },
   detailRow: {
     flexDirection: 'row',
@@ -389,51 +400,66 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   detailLabel: {
-    ...FONTS.muktaMedium,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    ...FONTS.muktaRegular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#64748B',
   },
   detailVal: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.ink900,
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: '#111827',
     textAlign: 'right',
     flexShrink: 1,
+  },
+  detailValOtp: {
+    ...FONTS.balooBold,
+    fontSize: 16,
+    color: '#925700',
+    backgroundColor: '#FEF3DD',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 6,
+    letterSpacing: 1.5,
   },
   savingsPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.marigold100,
-    borderRadius: 999,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FDF0DC',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 2,
+    marginBottom: 16,
+    alignSelf: 'center',
   },
   savingsPillTxt: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.marigold700,
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#8A5200',
+    flexShrink: 0,
   },
   basketCard: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: COLORS.green100,
-    borderWidth: 1.5,
-    borderColor: '#CDE9D6',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    backgroundColor: '#EAF5EE',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#D4ECD9',
   },
   basketIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 11,
-    backgroundColor: COLORS.green700,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#1E7A46',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -442,72 +468,71 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   basketTitle: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
     lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#111827',
   },
   basketSub: {
-    ...FONTS.muktaMedium,
-    fontSize: 12,
+    ...FONTS.muktaRegular,
+    fontSize: 12.5,
     lineHeight: 16,
-    color: COLORS.ink700,
+    color: '#475569',
+    marginTop: 2,
   },
   saveBtn: {
     borderWidth: 1.5,
-    borderColor: COLORS.green700,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    backgroundColor: COLORS.surface,
+    borderColor: '#1E7A46',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
   },
   saveBtnDone: {
-    borderColor: COLORS.ink300,
-    backgroundColor: COLORS.muted,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F1F5F2',
   },
   saveBtnTxt: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 13,
-    lineHeight: 16,
-    color: COLORS.green700,
+    color: '#1E7A46',
   },
   saveBtnTxtDone: {
-    color: COLORS.ink500,
-  },
-  bottomSafe: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderTopWidth: 1.5,
-    borderTopColor: COLORS.line,
+    color: '#64748B',
   },
   bottomBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EBEFEB',
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    gap: 4,
+    paddingTop: 16,
   },
   trackBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: COLORS.green700,
-    borderRadius: 14,
-    height: 49,
+    backgroundColor: '#1E7A46',
+    borderRadius: 16,
+    height: 52,
+    width: '100%',
   },
   trackBtnText: {
-    ...FONTS.balooSemiBold,
-    fontSize: 15,
-    lineHeight: 16,
+    ...FONTS.muktaBold,
+    fontSize: 16,
+    lineHeight: 22,
     color: '#FFFFFF',
   },
   continueBtn: {
     alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 4,
+    justifyContent: 'center',
+    marginTop: 14,
+    paddingVertical: 4,
   },
   continueBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 13,
-    lineHeight: 16,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: '#1E7A46',
   },
 });

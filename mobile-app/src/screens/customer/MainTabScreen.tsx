@@ -59,7 +59,7 @@ export default function MainTabScreen({ route, navigation }: any) {
       case 'Categories':
         return '#FBFAF6';
       case 'Account':
-        return '#F9F9F7';
+        return '#F8FAF8';
       default:
         return '#F9F9F7';
     }
