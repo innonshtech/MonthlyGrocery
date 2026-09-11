@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,10 +11,26 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
+import { API_BASE } from '../config/api';
 
 export default function StoreSettingsScreen() {
   const navigation = useNavigation<any>();
-  const { user, logout } = useMerchantAuth();
+  const { token, user, logout } = useMerchantAuth();
+  const [shop, setShop] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_BASE}/shops/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.shop) {
+          setShop(data.shop);
+        }
+      })
+      .catch(() => {});
+  }, [token]);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to log out from the Merchant Partner console?', [
@@ -29,6 +45,8 @@ export default function StoreSettingsScreen() {
       Alert.alert('Support', 'Please contact admin support at: support@monthlygrocery.in or +91 8830480015');
     });
   };
+
+  const storeIdDisplay = shop?.id ? `#${shop.id.slice(0, 8).toUpperCase()}` : '';
 
   return (
     <View style={styles.safeArea}>
@@ -45,9 +63,18 @@ export default function StoreSettingsScreen() {
             <Text style={{ fontSize: 32 }}>🏪</Text>
           </View>
           <View style={styles.storeInfo}>
-            <Text style={styles.storeRoleBadge}>AUTHORIZED STORE PARTNER</Text>
-            <Text style={styles.storeName}>{user?.name || 'Local Kirana Partner'}</Text>
+            <View style={styles.badgeRow}>
+              <Text style={styles.storeRoleBadge}>AUTHORIZED STORE PARTNER</Text>
+              {storeIdDisplay ? (
+                <Text style={styles.storeIdBadge}>{storeIdDisplay}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.storeName}>{shop?.shop_name || user?.name || 'Local Kirana Partner'}</Text>
+            <Text style={styles.storeOwner}>👤 {user?.name || 'Store Owner'}</Text>
             <Text style={styles.storePhone}>📞 +91 {user?.mobile ? user.mobile.slice(-10) : 'N/A'}</Text>
+            {shop?.city ? (
+              <Text style={styles.storeTerritory}>📍 {shop.city.toUpperCase()}{shop.district_name ? ` · ${shop.district_name}` : ''}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -175,16 +202,46 @@ const styles = StyleSheet.create({
     color: '#16A34A',
     letterSpacing: 0.5,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  storeIdBadge: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    fontFamily: 'monospace',
+  },
   storeName: {
     fontSize: 17,
     fontWeight: 'bold',
     color: '#0F172A',
+    marginTop: 3,
+  },
+  storeOwner: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
     marginTop: 2,
   },
   storePhone: {
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
+  },
+  storeTerritory: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+    marginTop: 3,
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',

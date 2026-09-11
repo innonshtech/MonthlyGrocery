@@ -200,6 +200,7 @@ export interface FranchiseRequest {
 
 export interface PlatformOrder {
   id: string;
+  display_id?: string;
   total_amount: string;
   status: string;
   created_at: string;

@@ -950,15 +950,22 @@ router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_ad
     const db = readDb();
     if (!db.orders) db.orders = [];
 
-    const orderIdx = db.orders.findIndex((o: any) => o.id === order_id);
+    const orderIdx = db.orders.findIndex(
+      (o: any) =>
+        o.id === order_id ||
+        o.display_id === order_id ||
+        String(o.display_id || '').replace(/^#/, '') === String(order_id || '').replace(/^#/, ''),
+    );
     if (orderIdx !== -1 && db.orders[orderIdx].shop_id !== shop.id) {
       return res.status(403).json({ success: false, error: 'You can only update orders for your shop' });
     }
 
+    const matchedOrderId = orderIdx !== -1 ? db.orders[orderIdx].id : order_id;
+
     const { data: supaOrder } = await supabase
       .from('orders')
       .select('id, shop_id')
-      .eq('id', order_id)
+      .eq('id', matchedOrderId)
       .maybeSingle();
 
     if (supaOrder && supaOrder.shop_id !== shop.id) {
@@ -985,7 +992,7 @@ router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_ad
     await supabase
       .from('orders')
       .update({ status: normalizedStatus })
-      .eq('id', order_id);
+      .eq('id', matchedOrderId);
 
     return res.json({
       success: true,

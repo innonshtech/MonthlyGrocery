@@ -4,6 +4,7 @@ import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseReque
 import { supabase } from '../config/supabase';
 import { packUnitPayloadFromInput, resolvePackUnitLabel, toSupabaseProductRow } from '../utils/packUnit';
 import { parseProductMedia, enrichProductWithMedia, formatProductDescriptionWithMedia } from '../utils/productMedia';
+import { enrichConsumerOrder, resolveStoredDisplayId } from '../utils/orderEnrichment';
 import { getProductFamilyKey } from './products';
 
 const router = Router();
@@ -2564,19 +2565,38 @@ router.delete('/coupons/:id', authMiddleware, requireRole(['super_admin']), asyn
 router.get('/orders/all', authMiddleware, requireRole(['super_admin', 'admin']), async (req: AuthRequest, res) => {
   try {
     const db = readDb();
-    let ordersQuery = supabase
-      .from('orders')
-      .select('*, order_items(*, products(*)), shops(name, city, area_name), profiles(name, mobile)')
-      .order('created_at', { ascending: false });
+    const localOrders = (db as any).orders || [];
 
-    const { data: orders, error } = await ordersQuery;
+    let supaOrders: any[] = [];
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*, order_items(*, products(*)), shops(name, city, area_name), profiles(name, mobile)')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      const localOrders = (db as any).orders || [];
-      return res.json({ success: true, orders: localOrders });
+      if (!error && data) {
+        supaOrders = data;
+      }
+    } catch {
+      /* fallback to localDb orders */
     }
 
-    return res.json({ success: true, orders: orders || [] });
+    const mergedMap = new Map<string, any>();
+    for (const lo of localOrders) {
+      mergedMap.set(lo.id, enrichConsumerOrder(lo));
+    }
+
+    for (const so of supaOrders) {
+      if (!mergedMap.has(so.id)) {
+        mergedMap.set(so.id, enrichConsumerOrder(so));
+      }
+    }
+
+    const finalOrders = Array.from(mergedMap.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+
+    return res.json({ success: true, orders: finalOrders });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -2593,18 +2613,37 @@ router.patch('/orders/:id/status', authMiddleware, requireRole(['super_admin', '
   }
 
   try {
+    const db = readDb() as any;
+    if (!db.orders) db.orders = [];
+
+    const orderIdx = db.orders.findIndex(
+      (o: any) =>
+        o.id === id ||
+        o.display_id === id ||
+        String(o.display_id || '').replace(/^#/, '') === String(id || '').replace(/^#/, ''),
+    );
+
+    const matchedOrderId = orderIdx !== -1 ? db.orders[orderIdx].id : id;
+
+    if (orderIdx !== -1) {
+      db.orders[orderIdx].status = status;
+      writeDb(db);
+    }
+
     const { data, error } = await supabase
       .from('orders')
       .update({ status })
-      .eq('id', id)
+      .eq('id', matchedOrderId)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) {
+    if (error && orderIdx === -1) {
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    return res.json({ success: true, message: `Order status updated to ${status}`, order: data });
+    const returnedOrder = orderIdx !== -1 ? enrichConsumerOrder(db.orders[orderIdx]) : data || { id: matchedOrderId, status };
+
+    return res.json({ success: true, message: `Order status updated to ${status}`, order: returnedOrder });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

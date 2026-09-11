@@ -4,6 +4,44 @@ import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 
 const router = Router();
 
+// 0. GET /me & /my: Retrieve logged-in merchant's shop profile
+const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
+  try {
+    const { data: shop, error } = await supabase
+      .from('shops')
+      .select('id, shop_name, status, owner_id, created_at')
+      .eq('owner_id', req.user!.id)
+      .maybeSingle();
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    if (!shop) {
+      return res.status(404).json({ success: false, error: 'Merchant store not found.' });
+    }
+
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const territory = (db.shop_territories || []).find((t: any) => t.shop_id === shop.id);
+
+    return res.json({
+      success: true,
+      shop: {
+        ...shop,
+        state_name: territory?.state_name || null,
+        district_name: territory?.district_name || null,
+        city: territory?.city || null,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+};
+
+router.get('/me', authMiddleware, requireRole(['admin', 'super_admin']), handleGetMyMerchantShop);
+router.get('/my', authMiddleware, requireRole(['admin', 'super_admin']), handleGetMyMerchantShop);
+
 // 1. GET /all: List all shops (Super Admin only)
 router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {

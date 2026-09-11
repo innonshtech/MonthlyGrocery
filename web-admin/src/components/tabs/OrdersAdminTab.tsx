@@ -11,6 +11,19 @@ export interface OrdersAdminTabProps {
   handleUpdateOrderStatus: (orderId: string, status: string) => void;
 }
 
+function getOrderDisplayId(order: { id?: string; display_id?: string }): string {
+  if (order.display_id) {
+    const d = String(order.display_id).replace(/^#/, '');
+    return d.startsWith('MG') ? `#${d}` : `#MG${d}`;
+  }
+  const raw = String(order.id || '');
+  if (!raw) return '';
+  if (raw.startsWith('MG')) return `#${raw}`;
+  const compact = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (!compact) return '';
+  return `#MG${compact.slice(-5)}`;
+}
+
 export const OrdersAdminTab: React.FC<OrdersAdminTabProps> = ({
   allOrdersList,
   orderStatusFilter,
@@ -61,7 +74,7 @@ export const OrdersAdminTab: React.FC<OrdersAdminTabProps> = ({
               .map((ord) => (
                 <tr key={ord.id} className="hover:bg-slate-800/10">
                   <td className="p-3">
-                    <p className="font-bold text-white font-mono">#{ord.id.slice(0, 8)}</p>
+                    <p className="font-bold text-white font-mono">{getOrderDisplayId(ord)}</p>
                     <p className="text-[10px] text-slate-500">{new Date(ord.created_at).toLocaleDateString('en-IN')}</p>
                   </td>
                   <td className="p-3">

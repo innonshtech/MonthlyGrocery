@@ -77,6 +77,20 @@ function resolveItemImage(item: any): string {
   return item.products?.image_url || item.image_url || '';
 }
 
+function getOrderDisplayId(order: any): string {
+  if (!order) return '';
+  if (order.display_id) {
+    const d = String(order.display_id).replace(/^#/, '');
+    return d.startsWith('MG') ? `#${d}` : `#MG${d}`;
+  }
+  const raw = String(order.id || '');
+  if (!raw) return '';
+  if (raw.startsWith('MG')) return `#${raw}`;
+  const compact = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (!compact) return '';
+  return `#MG${compact.slice(-5)}`;
+}
+
 export default function OrdersDashboard() {
   const { token } = useMerchantAuth();
   const [orders, setOrders] = useState<any[]>([]);
@@ -193,7 +207,7 @@ export default function OrdersDashboard() {
         {/* Top summary row */}
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.orderIdText}>Order #{item.id.slice(0, 8).toUpperCase()}</Text>
+            <Text style={styles.orderIdText}>{getOrderDisplayId(item)}</Text>
             <Text style={styles.dateText}>{formattedDate}</Text>
           </View>
           <View style={[styles.badgePill, { backgroundColor: badge.bg, borderColor: badge.border }]}>
