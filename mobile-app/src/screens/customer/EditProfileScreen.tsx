@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Alert,
   ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import { AccountDeleteTrashIcon, AccountCameraIcon } from '../../components/account/AccountHubIcons';
 import AppLoader from '../../components/AppLoader';
@@ -38,6 +38,7 @@ const SCREEN_BG = '#F8FAF8';
 
 export default function EditProfileScreen({ navigation }: any) {
   const { token, user, updateUser } = useAuth();
+  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const bottomPadding = Math.max(insets.bottom, 16);
 
@@ -55,7 +56,11 @@ export default function EditProfileScreen({ navigation }: any) {
   const processImagePickerResult = async (res: any) => {
     if (!res || res.didCancel) return;
     if (res.errorMessage) {
-      Alert.alert('Image Error', res.errorMessage);
+      showToast({
+        type: 'error',
+        title: 'Image Error',
+        message: res.errorMessage,
+      });
       return;
     }
     const asset = res.assets && res.assets[0];
@@ -73,68 +78,32 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   };
 
-  const handleChangePhoto = () => {
-    Alert.alert(
-      'Change Profile Photo',
-      'Choose an option to update your profile photo',
-      [
-        {
-          text: '📷 Take Photo',
-          onPress: async () => {
-            if (imagePickerModule?.launchCamera) {
-              try {
-                const res = await imagePickerModule.launchCamera({
-                  mediaType: 'photo',
-                  maxWidth: 800,
-                  maxHeight: 800,
-                  quality: 0.8,
-                  includeBase64: true,
-                  saveToPhotos: true,
-                });
-                await processImagePickerResult(res);
-              } catch (err: any) {
-                Alert.alert('Camera Error', err?.message || 'Could not launch camera');
-              }
-            } else {
-              Alert.alert('Rebuild Required', 'Please run "npm run android" in terminal to enable native camera hardware.');
-            }
-          },
-        },
-        {
-          text: '🖼️ Choose from Gallery',
-          onPress: async () => {
-            if (imagePickerModule?.launchImageLibrary) {
-              try {
-                const res = await imagePickerModule.launchImageLibrary({
-                  mediaType: 'photo',
-                  maxWidth: 800,
-                  maxHeight: 800,
-                  quality: 0.8,
-                  includeBase64: true,
-                  selectionLimit: 1,
-                });
-                await processImagePickerResult(res);
-              } catch (err: any) {
-                Alert.alert('Gallery Error', err?.message || 'Could not launch photo library');
-              }
-            } else {
-              Alert.alert('Rebuild Required', 'Please run "npm run android" in terminal to enable native photo gallery.');
-            }
-          },
-        },
-        avatarUri
-          ? {
-              text: '🗑️ Remove Photo',
-              style: 'destructive',
-              onPress: () => setAvatarUri(null),
-            }
-          : undefined,
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ].filter(Boolean) as any,
-    );
+  const handleChangePhoto = async () => {
+    if (imagePickerModule?.launchImageLibrary) {
+      try {
+        const res = await imagePickerModule.launchImageLibrary({
+          mediaType: 'photo',
+          maxWidth: 800,
+          maxHeight: 800,
+          quality: 0.8,
+          includeBase64: true,
+          selectionLimit: 1,
+        });
+        await processImagePickerResult(res);
+      } catch (err: any) {
+        showToast({
+          type: 'error',
+          title: 'Gallery Error',
+          message: err?.message || 'Could not launch photo library',
+        });
+      }
+    } else {
+      showToast({
+        type: 'info',
+        title: 'Photo Upload',
+        message: 'Image library is ready.',
+      });
+    }
   };
 
   const loadConfig = useCallback(async () => {
@@ -193,10 +162,11 @@ export default function EditProfileScreen({ navigation }: any) {
     if (!token || !screenConfig) return;
 
     if (!name.trim()) {
-      Alert.alert(
-        screenConfig.name_required_title || 'Error',
-        screenConfig.name_required_message,
-      );
+      showToast({
+        type: 'info',
+        title: screenConfig.name_required_title || 'Name Required',
+        message: screenConfig.name_required_message || 'Please enter your name.',
+      });
       return;
     }
 
@@ -210,21 +180,18 @@ export default function EditProfileScreen({ navigation }: any) {
         email: result.user.email,
         avatar_url: result.user.avatar_url,
       });
-      Alert.alert(
-        screenConfig.save_success_title || 'Profile Updated',
-        screenConfig.save_success_message || 'Your changes have been saved successfully.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ],
-      );
+      showToast({
+        type: 'success',
+        title: screenConfig.save_success_title || 'Profile Updated',
+        message: screenConfig.save_success_message || 'Your changes have been saved successfully.',
+      });
+      navigation.goBack();
     } else {
-      Alert.alert(
-        'Error',
-        result.error || screenConfig.save_error_message || 'Failed to save changes.',
-      );
+      showToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: result.error || screenConfig.save_error_message || 'Failed to save changes.',
+      });
     }
   };
 

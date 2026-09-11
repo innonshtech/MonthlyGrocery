@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
   CheckoutPlusIcon,
@@ -35,6 +35,7 @@ const SCREEN_BG = '#FBFAF6';
 
 export default function SavedAddressesScreen({ navigation, route }: any) {
   const { token } = useAuth();
+  const { showToast } = useToast();
   const isSelectMode =
     route?.name === 'DeliveryAddress' || typeof route?.params?.onSelect === 'function' || route?.params?.fromCheckout;
 
@@ -42,9 +43,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
   const [configLoading, setConfigLoading] = useState(true);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedId, setSelectedId] = useState<string>(
-    route?.params?.selectedAddress?.id || '',
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -54,40 +53,28 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
     return config;
   }, []);
 
-  const loadStoredAddresses = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!token) {
       setAddresses([]);
       setLoading(false);
       return;
     }
-
     setLoading(true);
-    try {
-      const list = await fetchUserAddresses(token);
-      setAddresses(list);
-      await cacheAddressesLocally(list);
+    const list = await fetchUserAddresses(token);
+    setAddresses(list);
+    await cacheAddressesLocally(list);
 
-      const incomingId = route?.params?.selectedAddress?.id;
-      if (incomingId && list.some((a) => a.id === incomingId)) {
-        setSelectedId(incomingId);
-      } else if (list.length > 0) {
-        const def = list.find((a) => a.isDefault) || list[0];
-        setSelectedId(def.id);
-      } else {
-        setSelectedId('');
-      }
-    } catch {
-      setAddresses([]);
-      setSelectedId('');
-    } finally {
-      setLoading(false);
+    if (list.length > 0) {
+      const defaultAddr = list.find((a) => a.isDefault) || list[0];
+      setSelectedId(defaultAddr.id);
     }
-  }, [token, route?.params?.selectedAddress?.id]);
+    setLoading(false);
+  }, [token]);
 
   useFocusEffect(
     useCallback(() => {
-      loadConfig().then(() => loadStoredAddresses());
-    }, [loadConfig, loadStoredAddresses]),
+      loadConfig().then(() => loadData());
+    }, [loadConfig, loadData]),
   );
 
   const formatLine = (addr: AddressItem) =>
@@ -95,9 +82,14 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
       .filter(Boolean)
       .join(', ');
 
+  const handleSelect = (id: string) => {
+    setSelectedId(id);
+  };
+
   const handleOpenAdd = () => {
     navigation.navigate('AddAddress', {
       fromCheckout: route?.params?.fromCheckout,
+      onSave: route?.params?.onSelect,
     });
   };
 
@@ -108,16 +100,15 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
     });
   };
 
+  const handleAddNew = handleOpenAdd;
+  const handleEdit = handleOpenEdit;
+
+  const isDeliverDisabled = addresses.length === 0 || !selectedId;
+
   const handleDeliver = () => {
-    if (!screenConfig) return;
+    if (isDeliverDisabled || !screenConfig) return;
     const addr = addresses.find((a) => a.id === selectedId);
-    if (!addr) {
-      Alert.alert(
-        screenConfig.select_alert_title || 'Select Address',
-        screenConfig.select_alert_message || 'Please select a delivery address.',
-      );
-      return;
-    }
+    if (!addr) return;
 
     if (route?.params?.onSelect) {
       route.params.onSelect(addr);
@@ -164,7 +155,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header section matching Figma 537:704 */}
+      {/* Header section matching Figma 537:704 / 543:780 */}
       <View style={styles.topHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -189,9 +180,11 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
           </View>
         ) : addresses.length === 0 ? (
           <View style={styles.emptyWrap}>
-            <Text style={styles.emptyTitle}>{screenConfig.empty_title || 'No saved addresses'}</Text>
+            <Text style={styles.emptyTitle}>
+              {screenConfig.empty_title || 'No saved addresses yet'}
+            </Text>
             <Text style={styles.emptySub}>
-              {screenConfig.empty_message || 'Add a delivery address to proceed with your orders.'}
+              {screenConfig.empty_message || 'Add your delivery address to continue checkout.'}
             </Text>
           </View>
         ) : (
@@ -250,11 +243,20 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
         <SafeAreaView edges={['bottom']} style={styles.bottomSafe}>
           <View style={styles.bottomBar}>
             <TouchableOpacity
-              style={styles.deliverBtn}
+              style={[
+                styles.deliverBtn,
+                isDeliverDisabled && styles.deliverBtnDisabled,
+              ]}
               onPress={handleDeliver}
-              activeOpacity={0.85}
+              disabled={isDeliverDisabled}
+              activeOpacity={isDeliverDisabled ? 1 : 0.85}
             >
-              <Text style={styles.deliverBtnText}>
+              <Text
+                style={[
+                  styles.deliverBtnText,
+                  isDeliverDisabled && styles.deliverBtnTextDisabled,
+                ]}
+              >
                 {screenConfig.deliver_button_label || 'Deliver to this address'}
               </Text>
             </TouchableOpacity>
@@ -429,10 +431,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  deliverBtnDisabled: {
+    backgroundColor: '#F3F3EE',
+  },
   deliverBtnText: {
     ...FONTS.muktaBold,
     fontSize: 16,
     lineHeight: 22,
     color: '#FFFFFF',
+  },
+  deliverBtnTextDisabled: {
+    ...FONTS.muktaMedium,
+    color: '#9CA3AF',
   },
 });

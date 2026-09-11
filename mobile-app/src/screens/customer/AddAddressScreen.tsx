@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
   MapPinLargeIcon,
@@ -53,6 +54,7 @@ function defaultPhoneFromUser(mobile?: string): string {
 
 export default function AddAddressScreen({ navigation, route }: any) {
   const { token, user, pincode: areaPincode } = useAuth();
+  const { showToast } = useToast();
   const editingAddress = route?.params?.editingAddress as AddressItem | undefined;
   const fromCheckout = route?.params?.fromCheckout;
 
@@ -123,28 +125,41 @@ export default function AddAddressScreen({ navigation, route }: any) {
   const handleSave = async () => {
     if (!screenConfig || !token) {
       if (screenConfig) {
-        Alert.alert(
-          screenConfig.login_required_title,
-          screenConfig.login_required_message,
-        );
+        showToast({
+          type: 'info',
+          title: screenConfig.login_required_title,
+          message: screenConfig.login_required_message,
+        });
       }
       return;
     }
 
     if (!flat.trim() || !street.trim() || !pincode.trim()) {
-      Alert.alert(screenConfig.incomplete_title, screenConfig.incomplete_message);
+      showToast({
+        type: 'info',
+        title: screenConfig.incomplete_title,
+        message: screenConfig.incomplete_message,
+      });
       return;
     }
 
     const normalizedPin = normalizePincode(pincode);
     if (!isValidIndianPincode(normalizedPin)) {
-      Alert.alert(screenConfig.incomplete_title, 'Please enter a valid 6-digit pincode.');
+      showToast({
+        type: 'error',
+        title: screenConfig.incomplete_title,
+        message: 'Please enter a valid 6-digit pincode.',
+      });
       return;
     }
 
     const pinCheck = validateAddressPincode(normalizedPin, areaPincode);
     if (!pinCheck.valid) {
-      Alert.alert(screenConfig.incomplete_title, pinCheck.message || 'Invalid pincode.');
+      showToast({
+        type: 'error',
+        title: screenConfig.incomplete_title,
+        message: pinCheck.message || 'Invalid pincode.',
+      });
       return;
     }
 
@@ -163,6 +178,12 @@ export default function AddAddressScreen({ navigation, route }: any) {
 
       await cacheAddressesLocally(addresses);
 
+      showToast({
+        type: 'success',
+        title: 'Address Saved',
+        message: 'Your address has been saved successfully.',
+      });
+
       if (fromCheckout) {
         navigation.navigate({
           name: 'Checkout',
@@ -174,10 +195,11 @@ export default function AddAddressScreen({ navigation, route }: any) {
 
       navigation.goBack();
     } catch (err: any) {
-      Alert.alert(
-        screenConfig.save_error_title,
-        err.message || screenConfig.load_error_message,
-      );
+      showToast({
+        type: 'error',
+        title: screenConfig.save_error_title,
+        message: err.message || screenConfig.load_error_message,
+      });
     } finally {
       setSaving(false);
     }

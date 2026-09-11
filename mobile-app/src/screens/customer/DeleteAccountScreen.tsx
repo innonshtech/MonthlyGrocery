@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import {
   DeleteAccountBookmarkIcon,
@@ -52,6 +52,7 @@ function getItemIcon(label: string) {
 export default function DeleteAccountScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { token, logout } = useAuth();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<DeleteAccountScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -77,10 +78,11 @@ export default function DeleteAccountScreen({ navigation }: any) {
     if (!screenConfig || !token) return;
 
     if (!agreed) {
-      Alert.alert(
-        screenConfig.agreement_required_title || 'Confirmation Required',
-        screenConfig.agreement_required_message || 'Please confirm that you understand this action cannot be undone.',
-      );
+      showToast({
+        type: 'info',
+        title: screenConfig.agreement_required_title || 'Confirmation Required',
+        message: screenConfig.agreement_required_message || 'Please confirm that you understand this action cannot be undone.',
+      });
       return;
     }
 
@@ -89,7 +91,11 @@ export default function DeleteAccountScreen({ navigation }: any) {
     setDeleting(false);
 
     if (!result.success) {
-      Alert.alert(screenConfig.delete_error_message || 'Failed to delete account');
+      showToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: screenConfig.delete_error_message || 'Failed to delete account',
+      });
       return;
     }
 

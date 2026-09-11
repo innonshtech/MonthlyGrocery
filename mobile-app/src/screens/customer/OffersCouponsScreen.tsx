@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +15,7 @@ import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastContext';
 import {
   CheckoutBackIcon,
   CheckoutPercentIcon,
@@ -35,27 +35,27 @@ const SCREEN_BG = '#FBFAF6';
 export type { CouponItem };
 
 export default function OffersCouponsScreen({ navigation, route }: any) {
+  const { showToast } = useToast();
   const [screenConfig, setScreenConfig] = useState<OffersCouponsScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
 
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(true);
+  const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
   const [applyingManual, setApplyingManual] = useState(false);
-  const [expandedCouponId, setExpandedCouponId] = useState<string | null>(null);
 
   const { token } = useAuth();
-  const { setAppliedCoupon } = useCart();
-  const cartAmount = route.params?.currentTotal || route.params?.cartAmount || 0;
+  const { appliedCoupon, setAppliedCoupon, totalAmount: cartAmount } = useCart();
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
-    const result = await fetchOffersCouponsScreenConfigWithStatus();
-    setScreenConfig(result.config);
-    setConfigError(result.error);
+    setConfigError(false);
+    const { config, error } = await fetchOffersCouponsScreenConfigWithStatus();
+    setScreenConfig(config);
+    setConfigError(error);
     setConfigLoading(false);
-    return result;
   }, []);
 
   const loadCoupons = useCallback(async () => {
@@ -67,31 +67,34 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
 
   useEffect(() => {
     loadConfig();
-  }, [loadConfig]);
+    loadCoupons();
+  }, [loadConfig, loadCoupons]);
 
-  useEffect(() => {
-    if (!configError && screenConfig) {
-      loadCoupons();
-    }
-  }, [configError, screenConfig, loadCoupons]);
+  const applyCouponAndReturn = (coupon: CouponItem) => {
+    const calculatedDiscount =
+      coupon.discount_type === 'fixed'
+        ? coupon.discount_value
+        : (cartAmount * (coupon.discount_value / 100));
+    const finalDiscount = coupon.max_discount
+      ? Math.min(calculatedDiscount, coupon.max_discount)
+      : calculatedDiscount;
 
-  const applyCouponAndReturn = (coupon: CouponItem & { discount_amount?: number }) => {
-    if (route.params?.onSelectCoupon) {
-      route.params.onSelectCoupon(coupon);
-      navigation.goBack();
-      return;
-    }
+    setAppliedCoupon({
+      id: coupon.id,
+      code: coupon.code,
+      title: coupon.title,
+      discount_type: coupon.discount_type,
+      discount_value: coupon.discount_value,
+      discount_amount: finalDiscount,
+      min_order_amount: coupon.min_order_amount || 0,
+      max_discount: coupon.max_discount,
+    });
 
-    setAppliedCoupon(coupon);
-
-    if (route.params?.fromCheckout) {
-      navigation.navigate({
-        name: 'Checkout',
-        params: { appliedCoupon: coupon },
-        merge: true,
-      });
-      return;
-    }
+    showToast({
+      type: 'success',
+      title: 'Coupon Applied',
+      message: `${coupon.code} applied successfully!`,
+    });
 
     navigation.goBack();
   };
@@ -100,13 +103,14 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
     if (!screenConfig) return;
 
     if (cartAmount > 0 && cartAmount < (coupon.min_order_amount || 0)) {
-      Alert.alert(
-        screenConfig.min_order_alert_title,
-        formatOffersTemplate(screenConfig.min_order_alert_template, {
+      showToast({
+        type: 'info',
+        title: screenConfig.min_order_alert_title || 'Minimum Order Required',
+        message: formatOffersTemplate(screenConfig.min_order_alert_template, {
           amount: ((coupon.min_order_amount || 0) - cartAmount).toLocaleString('en-IN'),
           code: coupon.code,
         }),
-      );
+      });
       return;
     }
 
@@ -120,10 +124,11 @@ export default function OffersCouponsScreen({ navigation, route }: any) {
     if (result.success && result.coupon) {
       applyCouponAndReturn(result.coupon);
     } else {
-      Alert.alert(
-        screenConfig.invalid_coupon_alert_title,
-        result.error || screenConfig.apply_failed_fallback,
-      );
+      showToast({
+        type: 'error',
+        title: screenConfig.invalid_coupon_alert_title || 'Invalid Coupon',
+        message: result.error || screenConfig.apply_failed_fallback,
+      });
     }
     setApplyingManual(false);
   };

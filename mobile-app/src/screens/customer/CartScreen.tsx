@@ -6,13 +6,13 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastContext';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
@@ -59,16 +59,25 @@ export default function CartScreen({
   navigation: any;
   setActiveTab?: (tab: 'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account') => void;
 }) {
-  const { token, city, area } = useAuth();
   const insets = useSafeAreaInsets();
-  const { items, minOrderLimit, updateQuantity, addToCart, appliedCoupon, setAppliedCoupon } = useCart();
+  const {
+    items,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    minOrderLimit,
+    appliedCoupon,
+    clearAppliedCoupon,
+    setAppliedCoupon,
+  } = useCart();
+  const { city, area, token } = useAuth();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<CartScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
-
   const [authGateVisible, setAuthGateVisible] = useState(false);
-  const [authGateType, setAuthGateType] = useState<AuthGateType>('checkout');
+  const [authGateType, setAuthGateType] = useState<AuthGateType>('save_basket');
 
   useEffect(() => {
     if (route?.params?.appliedCoupon) {
@@ -78,6 +87,7 @@ export default function CartScreen({
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
+    setConfigError(false);
     const result = await fetchCartScreenConfigWithStatus();
     setScreenConfig(result.config);
     setConfigError(result.error);
@@ -89,29 +99,36 @@ export default function CartScreen({
     loadConfig();
   }, [loadConfig]);
 
-  const minLimit = minOrderLimit || 0;
-
-  const itemTotalMrp = items.reduce((sum, item) => {
-    const mrp = parseFloat(String(item.product.mrp)) || parseFloat(String(item.product.price)) || 0;
-    return sum + mrp * item.quantity;
-  }, 0);
-
-  const itemTotalPrice = items.reduce((sum, item) => {
-    return sum + (parseFloat(String(item.product.price)) || 0) * item.quantity;
-  }, 0);
-
-  const couponDiscount = useMemo(
-    () => calculateCouponDiscount(appliedCoupon, itemTotalPrice),
-    [appliedCoupon, itemTotalPrice],
+  const subtotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + (Number(item.product.price) || 0) * item.quantity,
+        0,
+      ),
+    [items],
   );
 
-  const rawSavings = Math.max(0, itemTotalMrp - itemTotalPrice);
-  const totalSavings = rawSavings + couponDiscount;
-  const toPay = Math.max(0, itemTotalPrice - couponDiscount);
-  const isBelowMin = minLimit > 0 && toPay < minLimit;
-  const amountNeeded = Math.max(0, minLimit - toPay);
-  const totalItemCount = items.reduce((s, i) => s + i.quantity, 0);
-  const progressPct = minLimit > 0 ? Math.min(100, Math.round((toPay / minLimit) * 100)) : 100;
+  const mrpTotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + (Number(item.product.mrp || item.product.price) || 0) * item.quantity,
+        0,
+      ),
+    [items],
+  );
+
+  const itemTotalPrice = subtotal;
+  const itemTotalMrp = mrpTotal;
+  const productSavings = Math.max(0, mrpTotal - subtotal);
+  const couponDiscount = calculateCouponDiscount(appliedCoupon, subtotal);
+  const totalSavings = productSavings + couponDiscount;
+  const toPay = Math.max(0, subtotal - couponDiscount);
+  const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  const minLimit = minOrderLimit || 2500;
+  const isBelowMin = subtotal < minLimit && subtotal > 0;
+  const amountNeeded = Math.max(0, minLimit - subtotal);
+  const progressPct = minLimit > 0 ? Math.min(100, Math.round((subtotal / minLimit) * 100)) : 100;
 
   const headerCountLabel =
     totalItemCount === 1
@@ -120,28 +137,26 @@ export default function CartScreen({
         ? formatCartTemplate(screenConfig.cart_items_template, { count: totalItemCount })
         : '';
 
-  const emptyPreviewImages = getEmptyPreviewImages(screenConfig);
-
   const handleCheckout = () => {
     if (!city?.trim() || !area?.trim()) {
-      Alert.alert(
-        'Delivery Location Required',
-        'Please select your delivery city and area before proceeding to checkout.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Select Location', onPress: () => navigation.navigate('CitySelection') },
-        ],
-      );
+      showToast({
+        type: 'info',
+        title: 'Location Required',
+        message: 'Please select your delivery city and area before proceeding to checkout.',
+        actionLabel: 'Select',
+        onAction: () => navigation.navigate('CitySelection'),
+      });
       return;
     }
     if (isBelowMin && screenConfig) {
-      Alert.alert(
-        'Minimum order value',
-        formatCartTemplate(screenConfig.min_order_alert_template, {
+      showToast({
+        type: 'info',
+        title: 'Minimum order value',
+        message: formatCartTemplate(screenConfig.min_order_alert_template, {
           amount: amountNeeded.toLocaleString('en-IN'),
           minimum: minLimit.toLocaleString('en-IN'),
         }),
-      );
+      });
       return;
     }
     if (!token) {

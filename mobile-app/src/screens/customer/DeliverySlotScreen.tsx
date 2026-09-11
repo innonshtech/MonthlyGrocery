@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -18,6 +17,7 @@ import {
 import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS } from '../../constants/theme';
 import { API_BASE } from '../../config/api';
+import { useToast } from '../../context/ToastContext';
 
 const SCREEN_BG = '#F8FAF8';
 
@@ -39,59 +39,54 @@ type DayOption = {
   windows: SlotWindow[];
 };
 
-export default function DeliverySlotScreen({ route, navigation }: any) {
+export default function DeliverySlotScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
-  const currentSlot = route?.params?.selectedSlot;
-  const shopId = route?.params?.shopId;
-  const pincode = route?.params?.pincode;
-  const city = route?.params?.city;
-  const area = route?.params?.area;
-
-  const [resolvedShopId, setResolvedShopId] = useState<string | undefined>(shopId);
+  const { showToast } = useToast();
+  const { currentSlot, shopId, pincode, city, area } = route.params || {};
 
   const [days, setDays] = useState<DayOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedDateId, setSelectedDateId] = useState('day-0');
+  const [selectedDateId, setSelectedDateId] = useState<string>('');
   const [selectedWindowId, setSelectedWindowId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [resolvedShopId, setResolvedShopId] = useState<string | null>(null);
 
   const loadSlots = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ days: '4' });
-      if (shopId) params.set('shop_id', shopId);
-      if (pincode) params.set('pincode', pincode);
-      if (city) params.set('city', city);
-      if (area) params.set('area', area);
+      const q = new URLSearchParams();
+      if (shopId) q.set('shop_id', shopId);
+      if (pincode) q.set('pincode', pincode);
+      if (city) q.set('city', city);
+      if (area) q.set('area', area);
 
-      const res = await fetch(`${API_BASE}/delivery-slots?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/delivery-slots?${q.toString()}`);
       const data = await res.json();
+      const list: DayOption[] = data.days || [];
+      setDays(list);
+      if (data.shop_id) setResolvedShopId(data.shop_id);
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to load slots');
-      }
-
-      if (data.shop_id) {
-        setResolvedShopId(data.shop_id);
-      }
-
-      const loadedDays: DayOption[] = data.days || [];
-      setDays(loadedDays);
-
-      const matchDate =
-        loadedDays.find((d) => d.label === currentSlot?.dateLabel)?.id ||
-        loadedDays.find((d) => d.date === currentSlot?.date)?.id ||
-        loadedDays[0]?.id;
-      setSelectedDateId(matchDate || 'day-0');
-
-      const dayForWindow =
-        loadedDays.find((d) => d.id === matchDate) || loadedDays[0];
+      const matchDay =
+        list.find((d) => d.label === currentSlot?.dateLabel || d.date === currentSlot?.date) ||
+        list[0];
       const matchWindow =
-        dayForWindow?.windows.find((w) => w.label === currentSlot?.timeWindow)?.id ||
+        matchDay?.windows.find((w) => w.label === currentSlot?.timeWindow)?.id ||
+        null;
+
+      const defaultDay = matchDay || list[0];
+      setSelectedDateId(defaultDay?.id || '');
+
+      const dayForWindow = defaultDay || list[0];
+      const resolvedWindow =
+        matchWindow ||
         dayForWindow?.windows.find((w) => !w.disabled)?.id ||
         dayForWindow?.windows[0]?.id;
-      setSelectedWindowId(matchWindow || null);
+      setSelectedWindowId(resolvedWindow || null);
     } catch (err: any) {
-      Alert.alert('Could not load slots', err.message || 'Please check your connection and try again.');
+      showToast({
+        type: 'error',
+        title: 'Slots unavailable',
+        message: err.message || 'Please check your connection and try again.',
+      });
     } finally {
       setLoading(false);
     }
@@ -117,7 +112,11 @@ export default function DeliverySlotScreen({ route, navigation }: any) {
 
   const handleConfirmSlot = () => {
     if (!selectedDate || !selectedWindow || selectedWindow.disabled) {
-      Alert.alert('Select a slot', 'Please choose an available delivery window.');
+      showToast({
+        type: 'error',
+        title: 'Select a slot',
+        message: 'Please choose an available delivery window.',
+      });
       return;
     }
 

@@ -7,13 +7,28 @@ type IconProps = { size?: number; color?: string };
 
 const HERO_BADGE_XML = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 1.25L8.625 5.4375L12.8125 6.5625L8.625 7.6875L7.5 11.875L6.375 7.6875L2.1875 6.5625L6.375 5.4375L7.5 1.25Z" fill="#F5A524"/></svg>`;
 
-const ONE_CLICK_XML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 2.75L12.375 7.5625L17.25 8.875L12.375 10.1875L11 15L9.625 10.1875L4.75 8.875L9.625 7.5625L11 2.75Z" fill="white"/><path d="M17.875 4.125L18.5625 6.0625L20.5 6.75L18.5625 7.4375L17.875 9.5L17.1875 7.4375L15.25 6.75L17.1875 6.0625L17.875 4.125Z" fill="white"/></svg>`;
+const ONE_CLICK_XML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M10 2L12.2 7.8L18 10L12.2 12.2L10 18L7.8 12.2L2 10L7.8 7.8L10 2Z" fill="#1E7A46"/>
+  <path d="M18 13L19.2 16.3L22.5 17.5L19.2 18.7L18 22L16.8 18.7L13.5 17.5L16.8 16.3L18 13Z" fill="#1E7A46"/>
+</svg>`;
 
-const COPY_XML = `<svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.188 10.5C17.188 14.227 14.227 17.188 10.5 17.188C6.773 17.188 3.813 14.227 3.813 10.5C3.813 6.773 6.773 3.813 10.5 3.813C12.652 3.813 14.684 4.698 15.938 6.188" stroke="#1E7A46" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.938 2.188V5.938H12.188" stroke="#1E7A46" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const COPY_XML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M19 12C19 15.866 15.866 19 12 19C8.13401 19 5 15.866 5 12C5 8.13401 8.13401 5 12 5C14.28 5 16.31 6.09 17.6 7.78" stroke="#1E7A46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18 3V8H13" stroke="#1E7A46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 
-const SAVED_XML = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 2.5H15V17.5L10 14.1667L5 17.5V2.5Z" stroke="#1E7A46" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const SAVED_XML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M6 3H18C18.5523 3 19 3.44772 19 4V21L12 17.5L5 21V4C5 3.44772 5.44772 3 6 3Z" stroke="#1E7A46" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
 
-const BUILD_XML = `<svg width="21" height="21" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 4.5H14.5V16.5H6.5V4.5Z" stroke="#1E7A46" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.5 7.5H12.5M8.5 10.5H12.5M8.5 13.5H11" stroke="#1E7A46" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+const BUILD_XML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="9" y1="6" x2="20" y2="6" stroke="#6B7772" stroke-width="2" stroke-linecap="round"/>
+  <line x1="9" y1="12" x2="20" y2="12" stroke="#6B7772" stroke-width="2" stroke-linecap="round"/>
+  <line x1="9" y1="18" x2="20" y2="18" stroke="#6B7772" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="4" cy="6" r="1.5" fill="#6B7772"/>
+  <circle cx="4" cy="12" r="1.5" fill="#6B7772"/>
+  <circle cx="4" cy="18" r="1.5" fill="#6B7772"/>
+</svg>`;
 
 export function HubHeroBadgeIcon({ size = 15 }: IconProps) {
   return <SvgXml xml={HERO_BADGE_XML} width={size} height={size} />;
@@ -38,3 +53,4 @@ export function HubBuildIcon({ size = 21 }: IconProps) {
 export function HubChevronIcon({ size = 20, color = COLORS.ink300 }: IconProps) {
   return <OnboardingChevronRightIcon size={size} color={color} />;
 }
+

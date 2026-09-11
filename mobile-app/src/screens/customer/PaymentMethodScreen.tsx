@@ -7,11 +7,11 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastContext';
 import { API_BASE } from '../../config/api';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
@@ -77,6 +77,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { token, city, area, pincode: areaPincode } = useAuth();
   const { items, clearCart } = useCart();
+  const { showToast } = useToast();
   const cartSubtotal = items.reduce(
     (sum, i) => sum + (Number(i.product.price) || 0) * (i.quantity || 1),
     0,
@@ -96,30 +97,50 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
 
   const handlePlaceOrder = async () => {
     if (!codSelected) {
-      Alert.alert('Select payment', 'Please select cash on delivery to continue.');
+      showToast({
+        type: 'info',
+        title: 'Select payment',
+        message: 'Please select cash on delivery to continue.',
+      });
       return;
     }
 
     if (!selectedAddress) {
-      Alert.alert('Address required', 'Please select a delivery address before placing the order.');
+      showToast({
+        type: 'error',
+        title: 'Address required',
+        message: 'Please select a delivery address before placing the order.',
+      });
       return;
     }
 
     const shippingAddress = buildShippingAddress(selectedAddress);
     if (!shippingAddress) {
-      Alert.alert('Address incomplete', 'Please complete your delivery address before placing the order.');
+      showToast({
+        type: 'error',
+        title: 'Address incomplete',
+        message: 'Please complete your delivery address before placing the order.',
+      });
       return;
     }
 
     if (!selectedSlot?.dateLabel || !selectedSlot?.timeWindow) {
-      Alert.alert('Delivery slot required', 'Please select a delivery slot before placing the order.');
+      showToast({
+        type: 'error',
+        title: 'Delivery slot required',
+        message: 'Please select a delivery slot before placing the order.',
+      });
       return;
     }
 
     const addressPin = normalizePincode(selectedAddress.pincode);
     const pinCheck = validateAddressPincode(addressPin, areaPincode);
     if (!pinCheck.valid) {
-      Alert.alert('Invalid pincode', pinCheck.message || 'Please check your delivery pincode.');
+      showToast({
+        type: 'error',
+        title: 'Invalid pincode',
+        message: pinCheck.message || 'Please check your delivery pincode.',
+      });
       return;
     }
 

@@ -17,11 +17,13 @@ import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import { useToast } from '../../context/ToastContext';
 import {
   CheckoutBackIcon,
   SlotInfoIcon,
   BasketSaveIcon,
 } from '../../components/CheckoutFigmaIcons';
+import { SvgXml } from 'react-native-svg';
 import {
   fetchOneClickCartBasket,
   fetchOneClickCartScreenConfig,
@@ -33,7 +35,9 @@ import {
   OneClickCartScreenConfig,
 } from '../../services/oneClickCartApi';
 
-const SCREEN_BG = '#FBFAF6';
+const SPARKLE_GOLD_XML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="#F59E0B"/></svg>`;
+
+const BAG_ICON_XML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 6H21" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 type LocalGroup = OneClickCartGroup;
 
@@ -63,6 +67,7 @@ export default function OneClickCartScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { token, city, area, pincode } = useAuth();
   const { addToCart } = useCart();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<OneClickCartScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -170,19 +175,15 @@ export default function OneClickCartScreen({ navigation }: any) {
       }
     }
 
-    Alert.alert(
-      screenConfig.add_all_success_title,
-      formatOneClickTemplate(screenConfig.add_all_success_message_template, {
+    showToast({
+      type: 'cart',
+      title: screenConfig.add_all_success_title || 'Monthly basket added',
+      message: formatOneClickTemplate(screenConfig.add_all_success_message_template, {
         count: totalItemCount,
       }),
-      [
-        { text: screenConfig.keep_browsing_label, style: 'cancel' },
-        {
-          text: screenConfig.view_cart_label,
-          onPress: () => navigation.navigate('Cart'),
-        },
-      ],
-    );
+      actionLabel: screenConfig.view_cart_label || 'View Cart',
+      onAction: () => navigation.navigate('Cart'),
+    });
   };
 
   if (configLoading) {
@@ -238,12 +239,26 @@ export default function OneClickCartScreen({ navigation }: any) {
 
       {generating ? (
         <View style={styles.generatingWrap}>
-          <AppLoader message={screenConfig.generating_title} />
-          <Text style={styles.generatingSub}>{screenConfig.generating_subtitle}</Text>
+          {/* Circular Progress Ring matching Figma node 156-345 */}
+          <View style={styles.ringOuter}>
+            <View style={styles.ringInner}>
+              <SvgXml xml={SPARKLE_GOLD_XML} width={28} height={28} />
+            </View>
+          </View>
+          <Text style={styles.generatingTitle}>Building your basket</Text>
+          <Text style={styles.generatingSub}>
+            Looking at what your home buys every month..
+          </Text>
           <View style={styles.skeletonStack}>
-            <View style={styles.skeletonCard} />
-            <View style={[styles.skeletonCard, { width: '92%' }]} />
-            <View style={[styles.skeletonCard, { width: '88%' }]} />
+            {[1, 2, 3].map((k) => (
+              <View key={`skel-${k}`} style={styles.skeletonCard}>
+                <View style={styles.skelThumb} />
+                <View style={styles.skelLines}>
+                  <View style={styles.skelLine1} />
+                  <View style={styles.skelLine2} />
+                </View>
+              </View>
+            ))}
           </View>
         </View>
       ) : loadError ? (
@@ -281,8 +296,11 @@ export default function OneClickCartScreen({ navigation }: any) {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
+            {/* Top Insight Card (Figma node 149-278) */}
             <View style={styles.insightCard}>
-              <SlotInfoIcon size={20} />
+              <View style={styles.insightIconCircle}>
+                <SvgXml xml={SPARKLE_GOLD_XML} width={18} height={18} />
+              </View>
               <View style={styles.insightText}>
                 <Text style={styles.insightTitle}>{insightTitle}</Text>
                 <Text style={styles.insightSub}>{insightSubtitle}</Text>
@@ -332,8 +350,7 @@ export default function OneClickCartScreen({ navigation }: any) {
               disabled={totalItemCount === 0}
               activeOpacity={0.85}
             >
-              <BasketSaveIcon size={18} />
-              <Text style={styles.addAllBtnText}>{screenConfig.add_all_label}</Text>
+              <Text style={styles.addAllBtnText}>{screenConfig.add_all_label || 'Add all to cart'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -363,10 +380,12 @@ function ProductRow({
 
   return (
     <View style={[styles.productRow, !isLast && styles.productRowBorder]}>
-      <View style={[styles.thumb, !item.image_url && styles.thumbEmpty]}>
+      <View style={styles.thumb}>
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
-        ) : null}
+        ) : (
+          <SvgXml xml={BAG_ICON_XML} width={22} height={22} />
+        )}
       </View>
       <View style={styles.productText}>
         <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
@@ -391,7 +410,7 @@ function ProductRow({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  safe: { flex: 1, backgroundColor: '#F8FAF7' },
   flex: { flex: 1 },
   centered: {
     flex: 1,
@@ -403,7 +422,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 48,
+    paddingTop: 8,
+    paddingBottom: 10,
     gap: 8,
   },
   backBtn: {
@@ -413,181 +433,193 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.muktaBold,
+    ...FONTS.balooBold,
     fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    color: '#17251E',
   },
   generatingWrap: {
     flex: 1,
-    paddingHorizontal: 40,
+    paddingHorizontal: 24,
     paddingTop: 48,
     alignItems: 'center',
   },
-  progressRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+  ringOuter: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     borderWidth: 4,
-    borderColor: COLORS.green600,
+    borderColor: '#EAF5EE',
+    borderTopColor: '#1E7A46',
+    borderRightColor: '#1E7A46',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    position: 'relative',
+    marginBottom: 20,
   },
-  goldDot: {
-    position: 'absolute',
-    top: 4,
-    right: 8,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.marigold500,
+  ringInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FEF3DD',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   generatingTitle: {
     ...FONTS.balooBold,
     fontSize: 20,
-    color: COLORS.ink900,
-    marginBottom: 8,
+    color: '#17251E',
+    marginBottom: 6,
   },
   generatingSub: {
     ...FONTS.muktaRegular,
-    fontSize: 14,
-    color: COLORS.ink500,
+    fontSize: 13.5,
+    color: '#6B7772',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 32,
+    lineHeight: 18,
+    marginBottom: 36,
   },
   skeletonStack: { width: '100%', gap: 12 },
   skeletonCard: {
     width: '100%',
-    height: 62,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.muted,
+    height: 64,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
   },
+  skelThumb: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    marginRight: 12,
+  },
+  skelLines: { flex: 1, gap: 6 },
+  skelLine1: { width: '75%', height: 10, borderRadius: 5, backgroundColor: '#F3F4F6' },
+  skelLine2: { width: '45%', height: 8, borderRadius: 4, backgroundColor: '#F3F4F6' },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 28,
   },
   insightCard: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    backgroundColor: COLORS.green50,
-    borderWidth: 1,
-    borderColor: COLORS.green100,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    minHeight: 61,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     marginBottom: 16,
+    borderWidth: 0,
+  },
+  insightIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FEF3DD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   insightText: { flex: 1 },
   insightTitle: {
     ...FONTS.balooBold,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.green700,
-    marginBottom: 2,
+    fontSize: 14.5,
+    color: '#17251E',
+    marginBottom: 1,
   },
   insightSub: {
     ...FONTS.muktaRegular,
     fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink700,
+    color: '#6B7772',
   },
   groupSection: { marginBottom: 16 },
   sectionLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    color: COLORS.ink500,
-    letterSpacing: 0.8,
+    fontSize: 11.5,
+    color: '#8E9E94',
+    letterSpacing: 1,
     marginBottom: 8,
-    paddingLeft: 2,
+    marginLeft: 4,
   },
   groupCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 0,
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    minHeight: 68,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   productRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    borderBottomColor: '#F3F4F6',
   },
   thumb: {
-    width: 46,
-    height: 46,
-    borderRadius: RADIUS.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#EAF5EE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    overflow: 'hidden',
   },
-  thumbEmpty: {
-    backgroundColor: COLORS.muted,
-  },
-  thumbImg: { width: 38, height: 38 },
+  thumbImg: { width: 36, height: 36 },
   productText: { flex: 1, paddingRight: 8 },
   productName: {
-    ...FONTS.balooBold,
-    fontSize: 13,
-    lineHeight: 18,
-    color: COLORS.ink900,
+    ...FONTS.muktaBold,
+    fontSize: 14,
+    color: '#17251E',
     marginBottom: 2,
   },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   productPrice: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
-    color: COLORS.ink700,
+    fontSize: 12.5,
+    color: '#6B7772',
   },
   wasPrice: {
     ...FONTS.muktaRegular,
     fontSize: 11,
-    color: COLORS.ink300,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
   },
   unavailableText: {
-    ...FONTS.muktaRegular,
+    ...FONTS.muktaMedium,
     fontSize: 12,
-    color: COLORS.error,
+    color: '#DC2626',
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.pill,
-    height: 30,
-    paddingHorizontal: 4,
-    minWidth: 63,
+    backgroundColor: '#1E7A46',
+    borderRadius: 16,
+    height: 32,
+    paddingHorizontal: 6,
+    minWidth: 70,
+    justifyContent: 'space-between',
   },
   stepperBtn: {
-    width: 28,
-    height: 30,
+    width: 20,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepperBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
     lineHeight: 18,
+    ...FONTS.muktaBold,
   },
   stepperCount: {
     ...FONTS.muktaBold,
     fontSize: 13,
     color: '#FFFFFF',
-    minWidth: 14,
     textAlign: 'center',
+    paddingHorizontal: 4,
   },
   bottomBar: {
     flexDirection: 'row',
@@ -595,30 +627,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: COLORS.line,
+    borderTopColor: '#F0F4F1',
   },
   bottomCount: {
     ...FONTS.muktaMedium,
     fontSize: 12,
-    color: COLORS.ink500,
-    lineHeight: 14,
+    color: '#6B7772',
+    marginBottom: 1,
   },
   bottomPrice: {
     ...FONTS.balooBold,
     fontSize: 20,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    color: '#17251E',
   },
   addAllBtn: {
-    flexDirection: 'row',
+    backgroundColor: '#1E7A46',
+    paddingHorizontal: 26,
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORS.green700,
-    paddingHorizontal: 20,
-    height: 48,
-    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
   },
   addAllBtnDisabled: { opacity: 0.45 },
   addAllBtnText: {
@@ -629,30 +659,29 @@ const styles = StyleSheet.create({
   emptyTitle: {
     ...FONTS.balooBold,
     fontSize: 18,
-    color: COLORS.ink900,
+    color: '#17251E',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySub: {
     ...FONTS.muktaRegular,
-    fontSize: 14,
-    color: COLORS.ink500,
+    fontSize: 13.5,
+    color: '#6B7772',
     textAlign: 'center',
     marginBottom: 20,
-    lineHeight: 20,
   },
   errorText: {
     ...FONTS.muktaRegular,
     fontSize: 14,
-    color: COLORS.ink500,
+    color: '#DC2626',
     textAlign: 'center',
     marginBottom: 16,
   },
   retryBtn: {
-    backgroundColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: RADIUS.pill,
+    borderRadius: 12,
   },
   retryBtnText: {
     ...FONTS.muktaBold,

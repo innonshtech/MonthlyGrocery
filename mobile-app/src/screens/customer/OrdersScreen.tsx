@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji, THUMB_BG } from '../../components/CheckoutFigmaIcons';
@@ -37,6 +38,8 @@ const TRUCK_ICON_XML = `<svg width="16" height="16" viewBox="0 0 16 16" fill="no
 const CHECK_ICON_XML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 3L4.5 8.5L2 6" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const DELIVERED_CHECK_XML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="9" fill="#EAF5EE"/><path d="M12.5 6.5L7.5 11.5L5.5 9.5" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const CANCELLED_CROSS_XML = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="9" fill="#FDF2F2"/><path d="M11.5 6.5L6.5 11.5M6.5 6.5l5 5" stroke="#DC2626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 function OrderProgressBar({ status }: { status?: string }) {
   const s = (status || '').toLowerCase();
@@ -119,37 +122,41 @@ export default function OrdersScreen({
 }) {
   const { token } = useAuth();
   const { addToCart } = useCart();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<OrdersScreenConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
   const [configError, setConfigError] = useState(false);
   const [orders, setOrders] = useState<ConsumerOrder[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
+    setConfigLoading(true);
+    setConfigError(false);
     const config = await fetchOrdersScreenConfig();
     setScreenConfig(config);
     setConfigError(!config);
-    return config;
+    setConfigLoading(false);
   }, []);
 
   const loadOrders = useCallback(async () => {
     if (!token) {
       setOrders([]);
-      setLoading(false);
+      setOrdersLoading(false);
       return;
     }
-    setLoading(true);
+    setOrdersLoading(true);
     setOrdersError(false);
-    const { orders: list, error } = await fetchMyOrders(token);
-    if (error) {
+    const res = await fetchMyOrders(token);
+    if (res.error) {
       setOrdersError(true);
       setOrders([]);
     } else {
-      setOrders(list);
+      setOrders(res.orders);
     }
-    setLoading(false);
+    setOrdersLoading(false);
   }, [token]);
 
   useEffect(() => {
@@ -169,22 +176,22 @@ export default function OrdersScreen({
         addToCart,
         screenConfig.default_product_name,
       );
-      Alert.alert(
-        screenConfig.reorder_success_title,
-        formatOrdersTemplate(screenConfig.reorder_success_message_template, {
+      showToast({
+        type: 'cart',
+        title: screenConfig.reorder_success_title || 'Items added to cart',
+        message: formatOrdersTemplate(screenConfig.reorder_success_message_template, {
           count: addedCount,
           order_id: getOrderDisplayId(order),
         }),
-        [
-          { text: screenConfig.reorder_keep_browsing_label, style: 'cancel' },
-          {
-            text: screenConfig.reorder_view_cart_label,
-            onPress: () => navigation.navigate('Cart'),
-          },
-        ],
-      );
+        actionLabel: screenConfig.reorder_view_cart_label || 'View Cart',
+        onAction: () => navigation.navigate('Cart'),
+      });
     } catch {
-      Alert.alert(screenConfig.error_alert_title, screenConfig.reorder_error_message);
+      showToast({
+        type: 'error',
+        title: screenConfig.error_alert_title || 'Error',
+        message: screenConfig.reorder_error_message || 'Could not reorder items.',
+      });
     } finally {
       setReorderingId(null);
     }
@@ -220,7 +227,7 @@ export default function OrdersScreen({
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{screenConfig?.title || 'My orders'}</Text>
+        <Text style={styles.headerTitle}>Your orders</Text>
       </View>
 
       {!token ? (
@@ -238,7 +245,7 @@ export default function OrdersScreen({
             <Text style={styles.primaryBtnTxt}>{screenConfig.guest_cta_label || 'Sign In'}</Text>
           </TouchableOpacity>
         </View>
-      ) : loading ? (
+      ) : ordersLoading ? (
         <View style={styles.centered}>
           <AppLoader message="Loading orders..." />
         </View>
@@ -352,10 +359,10 @@ export default function OrdersScreen({
 
                   <TouchableOpacity
                     style={styles.trackBtn}
-                    onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+                    onPress={() => navigation.navigate('TrackOrder', { orderId: order.id, order })}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.trackBtnTxt}>{screenConfig?.track_button_label || 'Track'}</Text>
+                    <Text style={styles.trackBtnTxt}>Track</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -368,25 +375,23 @@ export default function OrdersScreen({
               {pastOrders.map((order) => {
                 if (!order) return null;
                 const isDelivered = (order.status || '').toLowerCase() === 'delivered';
-                let dateLabel = order.status || '';
-                if (isDelivered) {
-                  let formattedDate = '';
-                  try {
-                    formattedDate = order.created_at
-                      ? new Date(order.created_at).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                        })
-                      : '';
-                  } catch {
-                    formattedDate = '';
-                  }
-                  dateLabel = formatOrdersTemplate(
-                    screenConfig?.delivered_status_template || 'Delivered on {date}',
-                    { date: formattedDate },
-                  );
+                const isCancelled = (order.status || '').toLowerCase() === 'cancelled';
+                let formattedDate = '';
+                try {
+                  formattedDate = order.created_at
+                    ? new Date(order.created_at).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                    : '';
+                } catch {
+                  formattedDate = '';
                 }
+
+                let dateLabel = isCancelled
+                  ? `Cancelled · ${formattedDate}`
+                  : `Delivered · ${formattedDate}`;
 
                 const itemsList = Array.isArray(order.order_items) ? order.order_items.filter(Boolean) : [];
                 const itemCount = Number(order.item_count) || itemsList.length || 0;
@@ -395,13 +400,24 @@ export default function OrdersScreen({
                   <TouchableOpacity
                     key={order.id}
                     style={styles.pastCard}
-                    onPress={() => navigation.navigate('OrderDetail', { orderId: order.id })}
+                    onPress={() => navigation.navigate('OrderDetail', { orderId: order.id, order })}
                     activeOpacity={0.9}
                   >
                     <View style={styles.pastTop}>
                       <View style={styles.pastStatusWrap}>
-                        <SvgXml xml={DELIVERED_CHECK_XML} width={18} height={18} />
-                        <Text style={styles.pastStatus}>{dateLabel}</Text>
+                        <SvgXml
+                          xml={isCancelled ? CANCELLED_CROSS_XML : DELIVERED_CHECK_XML}
+                          width={18}
+                          height={18}
+                        />
+                        <Text
+                          style={[
+                            styles.pastStatus,
+                            isCancelled && { color: '#DC2626' },
+                          ]}
+                        >
+                          {dateLabel}
+                        </Text>
                       </View>
                       <Text style={styles.pastAmount}>
                         {formatInr(Number(order.total_amount) || 0)}
@@ -472,8 +488,8 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   headerTitle: {
-    ...FONTS.muktaBold,
-    fontSize: 24,
+    ...FONTS.balooBold,
+    fontSize: 22,
     color: '#17251E',
   },
   centered: {

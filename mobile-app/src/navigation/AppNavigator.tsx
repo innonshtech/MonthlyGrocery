@@ -22,6 +22,7 @@ import OrderSuccessScreen from '../screens/customer/OrderSuccessScreen';
 import CartScreen from '../screens/customer/CartScreen';
 import OrdersScreen from '../screens/customer/OrdersScreen';
 import OrderDetailScreen from '../screens/customer/OrderDetailScreen';
+import TrackOrderScreen from '../screens/customer/TrackOrderScreen';
 import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
 import EditProfileScreen from '../screens/customer/EditProfileScreen';
@@ -76,6 +77,7 @@ export default function AppNavigator() {
           <Stack.Screen name="Cart" component={CartScreen} />
           <Stack.Screen name="Orders" component={OrdersScreen} />
           <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
+          <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
           <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
           <Stack.Screen name="DeliveryAddress" component={SavedAddressesScreen} />
           <Stack.Screen name="AddAddress" component={AddAddressScreen} />

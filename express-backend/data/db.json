@@ -182,6 +182,263 @@
   ],
   "orders": [
     {
+      "id": "order-active-to-cancel",
+      "display_id": "MG20499",
+      "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
+      "consumer_name": "918830480015",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 2748,
+      "discount_amount": 100,
+      "product_savings": 340,
+      "total_savings": 440,
+      "coupon_code": "MONTHLY100",
+      "shipping_address": "Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "deliver_to_label": "Home · Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "delivery_slot": "Today, 4:00 – 8:00 PM",
+      "delivery_slot_date": "2026-09-11",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "7391",
+      "payment_method": "UPI",
+      "payment_method_label": "Google Pay",
+      "status": "confirmed",
+      "created_at": "2026-09-11T11:45:00.000Z",
+      "confirmed_at": "2026-09-11T11:46:00.000Z",
+      "order_items": [
+        {
+          "product_id": "p1",
+          "product_name": "Aashirvaad Select Atta 5kg",
+          "name": "Aashirvaad Select Atta 5kg",
+          "quantity": 2,
+          "unit_price": 255,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        },
+        {
+          "product_id": "p2",
+          "product_name": "India Gate Basmati Rice 5kg",
+          "name": "India Gate Basmati Rice 5kg",
+          "quantity": 2,
+          "unit_price": 525,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+        },
+        {
+          "product_id": "p3",
+          "product_name": "Fortune Sunflower Oil 5L",
+          "name": "Fortune Sunflower Oil 5L",
+          "quantity": 1,
+          "unit_price": 720,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+        },
+        {
+          "product_id": "p4",
+          "product_name": "Tata Sampann Toor Dal 1kg",
+          "name": "Tata Sampann Toor Dal 1kg",
+          "quantity": 4,
+          "unit_price": 142,
+          "unit": "1 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+        }
+      ]
+    },
+    {
+      "id": "order-cancelled-demo-590-780",
+      "display_id": "MG20488",
+      "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
+      "consumer_name": "918830480015",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 2748,
+      "discount_amount": 100,
+      "product_savings": 340,
+      "total_savings": 440,
+      "coupon_code": "MONTHLY100",
+      "shipping_address": "Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "deliver_to_label": "Home · Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "delivery_slot": "12 Jul 2026, 4:00 – 8:00 PM",
+      "delivery_slot_date": "2026-09-11",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "4821",
+      "payment_method": "UPI",
+      "payment_method_label": "Google Pay",
+      "status": "cancelled",
+      "is_cancelled": true,
+      "cancelled_by": "you",
+      "cancelled_at": "2026-09-11T09:40:00.000Z",
+      "refund_message": "Refund of ₹2,748 initiated. Back to Google Pay in 3–5 business days",
+      "created_at": "2026-09-11T09:30:00.000Z",
+      "order_items": [
+        {
+          "product_id": "p1",
+          "product_name": "Aashirvaad Select Atta 5kg",
+          "name": "Aashirvaad Select Atta 5kg",
+          "quantity": 2,
+          "unit_price": 255,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        },
+        {
+          "product_id": "p2",
+          "product_name": "India Gate Basmati Rice 5kg",
+          "name": "India Gate Basmati Rice 5kg",
+          "quantity": 2,
+          "unit_price": 525,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+        },
+        {
+          "product_id": "p3",
+          "product_name": "Fortune Sunflower Oil 5L",
+          "name": "Fortune Sunflower Oil 5L",
+          "quantity": 1,
+          "unit_price": 720,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+        },
+        {
+          "product_id": "p4",
+          "product_name": "Tata Sampann Toor Dal 1kg",
+          "name": "Tata Sampann Toor Dal 1kg",
+          "quantity": 4,
+          "unit_price": 142,
+          "unit": "1 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+        }
+      ]
+    },
+    {
+      "id": "order-cancelled-demo-ed293bb7",
+      "display_id": "MG20488",
+      "consumer_id": "ed293bb7-e302-4c67-81df-84149048024c",
+      "consumer_name": "911234567890",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 2748,
+      "discount_amount": 100,
+      "product_savings": 340,
+      "total_savings": 440,
+      "coupon_code": "MONTHLY100",
+      "shipping_address": "Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "deliver_to_label": "Home · Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "delivery_slot": "12 Jul 2026, 4:00 – 8:00 PM",
+      "delivery_slot_date": "2026-09-11",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "4821",
+      "payment_method": "UPI",
+      "payment_method_label": "Google Pay",
+      "status": "cancelled",
+      "is_cancelled": true,
+      "cancelled_by": "you",
+      "cancelled_at": "2026-09-11T09:40:00.000Z",
+      "refund_message": "Refund of ₹2,748 initiated. Back to Google Pay in 3–5 business days",
+      "created_at": "2026-09-11T09:30:00.000Z",
+      "order_items": [
+        {
+          "product_id": "p1",
+          "product_name": "Aashirvaad Select Atta 5kg",
+          "name": "Aashirvaad Select Atta 5kg",
+          "quantity": 2,
+          "unit_price": 255,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        },
+        {
+          "product_id": "p2",
+          "product_name": "India Gate Basmati Rice 5kg",
+          "name": "India Gate Basmati Rice 5kg",
+          "quantity": 2,
+          "unit_price": 525,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+        },
+        {
+          "product_id": "p3",
+          "product_name": "Fortune Sunflower Oil 5L",
+          "name": "Fortune Sunflower Oil 5L",
+          "quantity": 1,
+          "unit_price": 720,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+        },
+        {
+          "product_id": "p4",
+          "product_name": "Tata Sampann Toor Dal 1kg",
+          "name": "Tata Sampann Toor Dal 1kg",
+          "quantity": 4,
+          "unit_price": 142,
+          "unit": "1 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+        }
+      ]
+    },
+    {
+      "id": "order-cancelled-demo-1cd19f3a",
+      "display_id": "MG20488",
+      "consumer_id": "1cd19f3a-02da-4a01-be8d-82e2c2512a17",
+      "consumer_name": "1234537890",
+      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
+      "shop_name": "MonthlyGrocery",
+      "total_amount": 2748,
+      "discount_amount": 100,
+      "product_savings": 340,
+      "total_savings": 440,
+      "coupon_code": "MONTHLY100",
+      "shipping_address": "Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "deliver_to_label": "Home · Flat 402, Green Meadows, Kothrud, Pune 411038",
+      "delivery_slot": "12 Jul 2026, 4:00 – 8:00 PM",
+      "delivery_slot_date": "2026-09-11",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "4821",
+      "payment_method": "UPI",
+      "payment_method_label": "Google Pay",
+      "status": "cancelled",
+      "is_cancelled": true,
+      "cancelled_by": "you",
+      "cancelled_at": "2026-09-11T09:40:00.000Z",
+      "refund_message": "Refund of ₹2,748 initiated. Back to Google Pay in 3–5 business days",
+      "created_at": "2026-09-11T09:30:00.000Z",
+      "order_items": [
+        {
+          "product_id": "p1",
+          "product_name": "Aashirvaad Select Atta 5kg",
+          "name": "Aashirvaad Select Atta 5kg",
+          "quantity": 2,
+          "unit_price": 255,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+        },
+        {
+          "product_id": "p2",
+          "product_name": "India Gate Basmati Rice 5kg",
+          "name": "India Gate Basmati Rice 5kg",
+          "quantity": 2,
+          "unit_price": 525,
+          "unit": "5 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+        },
+        {
+          "product_id": "p3",
+          "product_name": "Fortune Sunflower Oil 5L",
+          "name": "Fortune Sunflower Oil 5L",
+          "quantity": 1,
+          "unit_price": 720,
+          "unit": "5 L",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+        },
+        {
+          "product_id": "p4",
+          "product_name": "Tata Sampann Toor Dal 1kg",
+          "name": "Tata Sampann Toor Dal 1kg",
+          "quantity": 4,
+          "unit_price": 142,
+          "unit": "1 kg",
+          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+        }
+      ]
+    },
+    {
       "id": "6d2416cd-ae4e-4618-b47b-cd8ede57b0ef",
       "display_id": "MG99912",
       "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
@@ -1134,8 +1391,8 @@
       },
       {
         "id": "faq-edit-cancel",
-        "question": "Can I edit or cancel a placed order?",
-        "answer": "Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket."
+        "question": "How can I cancel my order?",
+        "answer": "To cancel your order, please chat with us on WhatsApp or call our support team using the options above. Our store partner will review your concern and cancel the order for you."
       },
       {
         "id": "faq-baskets",

@@ -17,6 +17,7 @@ import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
+import { useToast } from '../../context/ToastContext';
 import {
   CheckoutBackIcon,
   SlotInfoIcon,
@@ -61,6 +62,7 @@ export default function CopyLastMonthScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { token, city, area, pincode } = useAuth();
   const { addToCart } = useCart();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<CopyLastMonthScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -158,19 +160,15 @@ export default function CopyLastMonthScreen({ navigation }: any) {
       }
     }
 
-    Alert.alert(
-      screenConfig.add_success_title,
-      formatCopyTemplate(screenConfig.add_success_message_template, {
+    showToast({
+      type: 'cart',
+      title: screenConfig.add_success_title || 'Items added to cart',
+      message: formatCopyTemplate(screenConfig.add_success_message_template, {
         count: totalAvailableCount,
       }),
-      [
-        { text: screenConfig.keep_browsing_label, style: 'cancel' },
-        {
-          text: screenConfig.view_cart_label,
-          onPress: () => navigation.navigate('Cart'),
-        },
-      ],
-    );
+      actionLabel: screenConfig.view_cart_label || 'View Cart',
+      onAction: () => navigation.navigate('Cart'),
+    });
   };
 
   if (configLoading) {
@@ -393,7 +391,7 @@ function ProductRow({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  safe: { flex: 1, backgroundColor: '#F8FAF7' },
   flex: { flex: 1 },
   centered: {
     flex: 1,
@@ -405,7 +403,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 48,
+    paddingTop: 8,
+    paddingBottom: 10,
     gap: 8,
   },
   backBtn: {
@@ -415,113 +414,104 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.muktaBold,
+    ...FONTS.balooBold,
     fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    color: '#17251E',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 28,
   },
   insightCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
     marginBottom: 12,
     gap: 12,
+    borderWidth: 0,
   },
   insightIconWrap: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: COLORS.green50,
+    backgroundColor: '#EAF5EE',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
   insightText: { flex: 1 },
   insightTitle: {
     ...FONTS.balooBold,
-    fontSize: 15,
-    lineHeight: 20,
-    color: COLORS.ink900,
+    fontSize: 14.5,
+    color: '#17251E',
   },
   insightSub: {
     ...FONTS.muktaRegular,
     fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    color: '#6B7772',
     marginTop: 1,
   },
   changesBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.marigold100,
-    borderWidth: 1,
-    borderColor: COLORS.marigold200,
-    borderRadius: RADIUS.md,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 12,
     gap: 8,
+    borderWidth: 0,
   },
   changesText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaMedium,
     fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.marigold700,
+    color: '#374151',
     flex: 1,
   },
   listCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    borderWidth: 0,
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 68,
+    paddingVertical: 12,
   },
   productRowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.line,
+    borderBottomColor: '#F3F4F6',
   },
   thumb: {
-    width: 46,
-    height: 46,
-    borderRadius: RADIUS.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#EAF5EE',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-    overflow: 'hidden',
   },
   thumbEmpty: {
-    backgroundColor: COLORS.muted,
+    backgroundColor: '#EAF5EE',
   },
   thumbImg: {
-    width: 28,
-    height: 28,
+    width: 36,
+    height: 36,
   },
   productText: {
     flex: 1,
     paddingRight: 8,
   },
   productName: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.ink900,
+    color: '#17251E',
   },
   productNameMuted: {
-    color: COLORS.ink500,
+    color: '#9CA3AF',
   },
   priceRow: {
     flexDirection: 'row',
@@ -530,16 +520,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   productPrice: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink700,
+    ...FONTS.muktaMedium,
+    fontSize: 12.5,
+    color: '#6B7772',
   },
   wasPrice: {
     ...FONTS.muktaRegular,
     fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.ink500,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
   },
   unavailableRow: {
     flexDirection: 'row',
@@ -548,42 +537,42 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   unavailableText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaMedium,
     fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.error,
+    color: '#DC2626',
   },
   viewSimilar: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 11.5,
+    color: '#1E7A46',
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.green700,
-    borderRadius: RADIUS.pill,
-    height: 30,
-    paddingHorizontal: 4,
+    backgroundColor: '#1E7A46',
+    borderRadius: 16,
+    height: 32,
+    paddingHorizontal: 6,
+    minWidth: 70,
+    justifyContent: 'space-between',
   },
   stepperBtn: {
-    width: 28,
-    height: 30,
+    width: 20,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepperBtnText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    ...FONTS.muktaBold,
+    lineHeight: 18,
   },
   stepperCount: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '800',
-    paddingHorizontal: 6,
-    minWidth: 20,
+    ...FONTS.muktaBold,
+    paddingHorizontal: 4,
     textAlign: 'center',
   },
   bottomBar: {
@@ -592,75 +581,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: COLORS.line,
+    borderTopColor: '#F0F4F1',
     gap: 12,
   },
   bottomCount: {
-    ...FONTS.muktaRegular,
+    ...FONTS.muktaMedium,
     fontSize: 12,
-    lineHeight: 14,
-    color: COLORS.ink500,
+    color: '#6B7772',
+    marginBottom: 1,
   },
   bottomPrice: {
     ...FONTS.balooBold,
-    fontSize: 22,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 20,
+    color: '#17251E',
   },
   addCartBtn: {
-    flex: 1,
-    flexDirection: 'row',
+    backgroundColor: '#1E7A46',
+    paddingHorizontal: 26,
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: COLORS.green700,
-    height: 48,
-    borderRadius: RADIUS.pill,
-    maxWidth: 294,
   },
   addCartBtnDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
   addCartBtnText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 14,
-    lineHeight: 16,
     color: '#FFFFFF',
   },
   emptyTitle: {
     ...FONTS.balooBold,
     fontSize: 18,
-    color: COLORS.ink900,
+    color: '#17251E',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySub: {
     ...FONTS.muktaRegular,
-    fontSize: 13,
-    color: COLORS.ink500,
+    fontSize: 13.5,
+    color: '#6B7772',
     textAlign: 'center',
-    lineHeight: 18,
     marginBottom: 20,
   },
   errorText: {
     ...FONTS.muktaRegular,
     fontSize: 14,
-    color: COLORS.ink700,
+    color: '#DC2626',
     textAlign: 'center',
     marginBottom: 16,
   },
   retryBtn: {
-    backgroundColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
     paddingHorizontal: 24,
-    height: 44,
-    borderRadius: RADIUS.pill,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   retryBtnText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 14,
     color: '#FFFFFF',
   },
