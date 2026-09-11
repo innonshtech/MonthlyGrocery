@@ -16,6 +16,7 @@ import AppLoader from '../../components/AppLoader';
 import { FONTS } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastContext';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import {
   CouponItem,
@@ -34,11 +35,13 @@ const INFO_ICON_XML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="non
 export default function MyCouponsScreen({ navigation }: any) {
   const { token } = useAuth();
   const { setAppliedCoupon } = useCart();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<MyCouponsScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -57,9 +60,8 @@ export default function MyCouponsScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      loadConfig().then((config) => {
-        if (config) loadCoupons();
-      });
+      loadConfig();
+      loadCoupons();
     }, [loadConfig, loadCoupons]),
   );
 
@@ -72,13 +74,13 @@ export default function MyCouponsScreen({ navigation }: any) {
       code: coupon.code,
     });
 
-    Alert.alert(screenConfig.copy_alert_title, message, [
-      {
-        text: screenConfig.copy_alert_go_cart_label,
-        onPress: () => navigation.navigate('Cart'),
-      },
-      { text: screenConfig.copy_alert_ok_label },
-    ]);
+    showToast({
+      type: 'success',
+      title: screenConfig.copy_alert_title || 'Coupon Applied',
+      message: message,
+      actionLabel: screenConfig.copy_alert_go_cart_label || 'Go to Cart',
+      onAction: () => navigation.navigate('Cart'),
+    });
   };
 
   if (configLoading) {

@@ -194,8 +194,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start Server (Only when not running as Vercel serverless function)
 if (!process.env.VERCEL) {
-  app.listen(PORT, async () => {
-    console.log(`Node.js Express Server listening on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', async () => {
+    console.log(`Node.js Express Server listening on http://0.0.0.0:${PORT}`);
     await seedDatabase();
   });
 }

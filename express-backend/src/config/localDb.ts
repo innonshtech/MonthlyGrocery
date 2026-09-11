@@ -1664,9 +1664,9 @@ const defaultDb: LocalDbSchema = {
       },
       {
         id: 'faq-edit-cancel',
-        question: 'Can I edit or cancel a placed order?',
+        question: 'How can I cancel my order?',
         answer:
-          'Yes, you can edit item quantities or cancel your order anytime before the local hub begins packing your basket.',
+          'To cancel your order, please chat with us on WhatsApp or call our support team using the options above. Our store partner will review your concern and cancel the order for you.',
       },
       {
         id: 'faq-baskets',

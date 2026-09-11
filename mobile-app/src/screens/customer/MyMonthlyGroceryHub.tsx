@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import AppLoader from '../../components/AppLoader';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import { CheckoutBackIcon, SavingsCoinIcon } from '../../components/CheckoutFigmaIcons';
 import {
@@ -36,6 +37,7 @@ const SCREEN_BG = '#FBFAF6';
 
 export default function MyMonthlyGroceryHub({ navigation }: any) {
   const { token } = useAuth();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<MonthlyGroceryHubScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -106,11 +108,13 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
 
   const handleCopyLastMonth = () => {
     if (!summary?.has_last_order) {
-      Alert.alert(
-        screenConfig?.no_last_order_title || 'No past order yet',
-        screenConfig?.no_last_order_message ||
+      showToast({
+        type: 'info',
+        title: screenConfig?.no_last_order_title || 'No past order yet',
+        message:
+          screenConfig?.no_last_order_message ||
           'Place your first monthly grocery order to copy it next time.',
-      );
+      });
       return;
     }
     navigation.navigate('CopyLastMonth');
@@ -222,7 +226,7 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             onPress={() => navigation.navigate('OneClickCart')}
             activeOpacity={0.85}
           >
-            <View style={[styles.iconCircle, styles.iconCirclePrimary]}>
+            <View style={[styles.iconCircle, styles.iconCircleSoft]}>
               <HubOneClickIcon size={22} />
             </View>
             <View style={styles.cardInfo}>
@@ -267,7 +271,7 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
           </TouchableOpacity>
 
           <View style={[styles.actionCard, styles.actionCardDisabled]}>
-            <View style={[styles.iconCircle, styles.iconCircleSoft]}>
+            <View style={[styles.iconCircle, styles.iconCircleMuted]}>
               <HubBuildIcon size={21} />
             </View>
             <View style={styles.cardInfo}>
@@ -291,7 +295,7 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  safe: { flex: 1, backgroundColor: '#F8FAF7' },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -302,8 +306,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 4,
-    height: 48,
+    paddingTop: 8,
+    paddingBottom: 10,
     gap: 8,
   },
   backBtn: {
@@ -313,37 +317,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.muktaBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    ...FONTS.balooBold,
+    fontSize: 20,
+    color: '#17251E',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
+    paddingHorizontal: 16,
+    paddingTop: 6,
     paddingBottom: 36,
   },
   heroCard: {
-    backgroundColor: COLORS.green800,
-    borderRadius: RADIUS.lg,
+    backgroundColor: '#155A38',
+    borderRadius: 20,
     paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 18,
-    minHeight: 206,
-    marginBottom: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    marginBottom: 16,
+    borderWidth: 0,
   },
   heroBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   heroBadge: {
     ...FONTS.muktaBold,
     fontSize: 11,
-    color: COLORS.marigold500,
-    letterSpacing: 0.6,
-    lineHeight: 16,
+    color: '#FEF3DD',
+    letterSpacing: 0.8,
   },
   heroTitle: {
     ...FONTS.balooBold,
@@ -355,9 +357,9 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     ...FONTS.muktaRegular,
     fontSize: 13,
-    color: '#D1FAE5',
-    lineHeight: 20,
-    marginBottom: 14,
+    color: '#E4F3EA',
+    lineHeight: 19,
+    marginBottom: 16,
   },
   heroLoader: { alignSelf: 'flex-start' },
   heroSavingsPill: {
@@ -365,17 +367,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     gap: 6,
-    backgroundColor: COLORS.marigold500,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: RADIUS.pill,
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
   heroSavingsText: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    color: COLORS.ink900,
-    letterSpacing: 0.2,
-    lineHeight: 14,
+    fontSize: 12,
+    color: '#17251E',
   },
   metricsErrorRow: {
     alignSelf: 'flex-start',
@@ -390,59 +390,58 @@ const styles = StyleSheet.create({
   metricsRetryText: {
     ...FONTS.muktaBold,
     fontSize: 12,
-    color: COLORS.marigold500,
+    color: '#F59E0B',
   },
   actionCardsWrap: { gap: 12 },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
-    paddingVertical: 15,
-    minHeight: 74,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 0,
   },
   actionCardTall: {
-    minHeight: 85,
-    paddingVertical: 20,
+    paddingVertical: 18,
   },
-  actionCardDisabled: { opacity: 0.92 },
+  actionCardDisabled: { opacity: 0.9 },
   iconCircle: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
+    marginRight: 14,
   },
-  iconCirclePrimary: { backgroundColor: COLORS.green700 },
-  iconCircleSoft: { backgroundColor: COLORS.green50 },
+  iconCircleSoft: {
+    backgroundColor: '#EAF5EE',
+  },
+  iconCircleMuted: {
+    backgroundColor: '#F3F4F6',
+  },
   cardInfo: { flex: 1, paddingRight: 8 },
   cardTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   cardTitle: {
     ...FONTS.balooBold,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.ink900,
-    marginBottom: 3,
+    fontSize: 15.5,
+    color: '#17251E',
+    marginBottom: 2,
   },
   cardTitleInline: { marginBottom: 0 },
   cardSub: {
     ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink500,
-    lineHeight: 16,
+    fontSize: 12.5,
+    color: '#6B7772',
+    lineHeight: 17,
   },
   soonBadge: {
-    backgroundColor: COLORS.marigold100,
+    backgroundColor: '#F3F4F6',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -450,22 +449,21 @@ const styles = StyleSheet.create({
   soonBadgeText: {
     ...FONTS.muktaBold,
     fontSize: 10,
-    color: COLORS.marigold700,
+    color: '#6B7280',
     letterSpacing: 0.4,
-    lineHeight: 14,
   },
   errorText: {
     ...FONTS.muktaRegular,
     fontSize: 14,
-    color: COLORS.ink500,
+    color: '#6B7772',
     textAlign: 'center',
     marginBottom: 16,
   },
   retryBtn: {
-    backgroundColor: COLORS.green700,
+    backgroundColor: '#1E7A46',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: RADIUS.pill,
+    borderRadius: 12,
   },
   retryBtnText: {
     ...FONTS.muktaBold,

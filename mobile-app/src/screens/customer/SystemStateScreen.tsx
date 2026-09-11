@@ -5,12 +5,12 @@ import {
   Text,
   TouchableOpacity,
   StatusBar,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   SYSTEM_STATE_ICON_SIZES,
   SystemStateErrorIcon,
@@ -102,6 +102,7 @@ export default function SystemStateScreen({
   onRetry: propOnRetry,
 }: SystemStateProps) {
   const { city, area, user } = useAuth();
+  const { showToast } = useToast();
   const stateType: SystemStateType = propType || route?.params?.type || 'offline';
   const areaName =
     route?.params?.areaName?.trim() || area?.trim() || 'this area';
@@ -142,7 +143,11 @@ export default function SystemStateScreen({
     if (!screenConfig) return;
     const unserviceable = screenConfig.unserviceable;
     if (!cityName || !areaName || areaName === 'this area') {
-      Alert.alert(unserviceable.notify_error_message);
+      showToast({
+        type: 'info',
+        title: 'Location required',
+        message: unserviceable.notify_error_message || 'Please specify a location first.',
+      });
       return;
     }
 
@@ -151,9 +156,17 @@ export default function SystemStateScreen({
     setNotifyLoading(false);
 
     if (result.success) {
-      Alert.alert('', unserviceable.notify_success_message);
+      showToast({
+        type: 'success',
+        title: 'Notification Set',
+        message: unserviceable.notify_success_message || "We'll notify you when we launch here!",
+      });
     } else {
-      Alert.alert(result.error || unserviceable.notify_error_message);
+      showToast({
+        type: 'error',
+        title: 'Request Failed',
+        message: result.error || unserviceable.notify_error_message || 'Failed to submit request.',
+      });
     }
   };
 

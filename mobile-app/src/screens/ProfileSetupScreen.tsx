@@ -22,6 +22,7 @@ import {
 } from '../components/onboarding/OnboardingUI';
 import { useOnboardingLayout } from '../components/onboarding/onboardingLayout';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { COLORS, RADIUS, FONTS } from '../constants/theme';
 import {
   ProfileSetupConfig,
@@ -38,6 +39,7 @@ const EMAIL_KEY = '@user_email';
  */
 export default function ProfileSetupScreen({ route, navigation }: any) {
   const { token, user, updateUser } = useAuth();
+  const { showToast } = useToast();
   const { bottomPadding, insets, keyboardBehavior } = useOnboardingLayout();
 
   const [name, setName] = useState('');
@@ -77,14 +79,21 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
 
   const handlePhotoPress = () => {
     if (config?.photo_unavailable_message) {
-      Alert.alert('', config.photo_unavailable_message);
+      showToast({
+        type: 'info',
+        message: config.photo_unavailable_message,
+      });
     }
   };
 
   const handleSave = async () => {
     if (!config) return;
     if (!name.trim()) {
-      Alert.alert(config.name_required_title, config.name_required_message);
+      showToast({
+        type: 'error',
+        title: config.name_required_title,
+        message: config.name_required_message,
+      });
       return;
     }
 
@@ -100,7 +109,11 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
       if (token) {
         const res = await updateProfile(token, name.trim(), email.trim() || undefined);
         if (!res.success) {
-          Alert.alert('Error', res.error || config.save_error_message);
+          showToast({
+            type: 'error',
+            title: 'Error',
+            message: res.error || config.save_error_message,
+          });
           setSaving(false);
           return;
         }
@@ -118,9 +131,19 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
         await updateUser({ name: name.trim() });
       }
 
+      showToast({
+        type: 'success',
+        title: 'Profile Saved',
+        message: 'Welcome to MonthlyGrocery!',
+      });
+
       navigation.replace(redirectTarget);
     } catch {
-      Alert.alert('Error', config.save_error_message);
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: config.save_error_message,
+      });
     } finally {
       setSaving(false);
     }

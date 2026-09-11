@@ -18,15 +18,15 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
   CheckoutBackIcon,
   BasketSaveIcon,
 } from '../../components/CheckoutFigmaIcons';
-import { HubSavedIcon } from '../../components/monthlyGrocery/MonthlyGroceryHubIcons';
+import { SvgXml } from 'react-native-svg';
 import {
   basketFromCartItems,
   buildBasketSummary,
@@ -43,12 +43,13 @@ import {
   SavedBasketsScreenConfig,
 } from '../../services/savedBasketsApi';
 
-const SCREEN_BG = '#FBFAF6';
+const BAG_ICON_XML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2L3 6V20C3 20.5304 3.21071 21.0391 3.58579 21.4142C3.96086 21.7893 4.46957 22 5 22H19C19.5304 22 20.0391 21.7893 20.4142 21.4142C20.7893 21.0391 21 20.5304 21 20V6L18 2H6Z" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 6H21" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 10C16 11.0609 15.5786 12.0783 14.8284 12.8284C14.0783 13.5786 13.0609 14 12 14C10.9391 14 9.92172 13.5786 9.17157 12.8284C8.42143 12.0783 8 11.0609 8 10" stroke="#1E7A46" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 export default function SavedBasketsScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { token, city, area } = useAuth();
   const { items: cartItems, addToCart } = useCart();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<SavedBasketsScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -138,7 +139,11 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
   const openNewBasketSheet = () => {
     if (!cartItems.length) {
       if (screenConfig) {
-        Alert.alert(screenConfig.empty_cart_title, screenConfig.empty_cart_message);
+        showToast({
+          type: 'info',
+          title: screenConfig.empty_cart_title,
+          message: screenConfig.empty_cart_message,
+        });
       }
       return;
     }
@@ -164,7 +169,11 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
     );
 
     if (!newBasket) {
-      Alert.alert(screenConfig.empty_cart_title, screenConfig.empty_cart_message);
+      showToast({
+        type: 'info',
+        title: screenConfig.empty_cart_title,
+        message: screenConfig.empty_cart_message,
+      });
       return;
     }
 
@@ -180,7 +189,11 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
     if (!screenConfig || !token) return;
 
     if (!city || !area) {
-      Alert.alert(screenConfig.no_location_title, screenConfig.no_location_message);
+      showToast({
+        type: 'error',
+        title: screenConfig.no_location_title,
+        message: screenConfig.no_location_message,
+      });
       return;
     }
 
@@ -207,7 +220,10 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
     setAddingBasketId(null);
 
     if (error) {
-      Alert.alert(screenConfig.load_error_message);
+      showToast({
+        type: 'error',
+        message: screenConfig.load_error_message,
+      });
       return;
     }
 
@@ -215,7 +231,10 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
     const skipped = reconciled.length - available.length;
 
     if (!available.length) {
-      Alert.alert(screenConfig.unavailable_skip_message);
+      showToast({
+        type: 'error',
+        message: screenConfig.unavailable_skip_message,
+      });
       return;
     }
 
@@ -235,31 +254,15 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
       }
     }
 
-    const buttons: Array<{ text: string; style?: 'cancel'; onPress?: () => void }> = [
-      { text: screenConfig.keep_browsing_label, style: 'cancel' },
-      {
-        text: screenConfig.view_cart_label,
-        onPress: () => navigation.navigate('Cart'),
-      },
-    ];
-
-    if (skipped > 0) {
-      Alert.alert(
-        screenConfig.add_success_title,
-        `${formatSavedBasketsTemplate(screenConfig.add_success_message_template, {
-          name: basket.name,
-        })} ${screenConfig.unavailable_skip_message}`,
-        buttons,
-      );
-    } else {
-      Alert.alert(
-        screenConfig.add_success_title,
-        formatSavedBasketsTemplate(screenConfig.add_success_message_template, {
-          name: basket.name,
-        }),
-        buttons,
-      );
-    }
+    showToast({
+      type: 'cart',
+      title: screenConfig.add_success_title || 'Basket added',
+      message: `${formatSavedBasketsTemplate(screenConfig.add_success_message_template, {
+        name: basket.name,
+      })}${skipped > 0 ? ` · ${screenConfig.unavailable_skip_message}` : ''}`,
+      actionLabel: screenConfig.view_cart_label || 'View Cart',
+      onAction: () => navigation.navigate('Cart'),
+    });
   };
 
   if (configLoading) {
@@ -436,34 +439,35 @@ function BasketCard({
   adding: boolean;
   onAdd: () => void;
 }) {
-  const previewItems = basket.items
-    .filter((item) => item.image_url?.trim())
-    .slice(0, screenConfig.preview_name_count);
+  const previewItems = basket.items.slice(0, 4);
   const summary = buildBasketSummary(basket, screenConfig.items_summary_template);
+  const slots = [0, 1, 2, 3];
 
   return (
     <View style={styles.basketCard}>
       <View style={styles.cardTopRow}>
-        <View style={styles.titleRow}>
-          <HubSavedIcon size={16} />
-          <Text style={styles.basketName} numberOfLines={1}>{basket.name}</Text>
-        </View>
+        <Text style={styles.basketName} numberOfLines={1}>{basket.name}</Text>
         <Text style={styles.basketPrice}>{formatInr(basket.total_amount)}</Text>
       </View>
 
-      {previewItems.length > 0 ? (
-        <View style={styles.thumbRow}>
-          {previewItems.map((item) => (
-            <View key={`${basket.id}-${item.product_id}`} style={styles.thumb}>
-              <Image
-                source={{ uri: item.image_url }}
-                style={styles.thumbImg}
-                resizeMode="contain"
-              />
+      <View style={styles.thumbRow}>
+        {slots.map((idx) => {
+          const item = previewItems[idx];
+          return (
+            <View key={`slot-${basket.id}-${idx}`} style={styles.thumb}>
+              {item?.image_url ? (
+                <Image
+                  source={{ uri: item.image_url }}
+                  style={styles.thumbImg}
+                  resizeMode="contain"
+                />
+              ) : (
+                <SvgXml xml={BAG_ICON_XML} width={20} height={20} />
+              )}
             </View>
-          ))}
-        </View>
-      ) : null}
+          );
+        })}
+      </View>
 
       <View style={styles.cardBottomRow}>
         <Text style={styles.summaryText} numberOfLines={1}>{summary}</Text>
@@ -474,9 +478,9 @@ function BasketCard({
           activeOpacity={0.85}
         >
           {adding ? (
-            <ActivityIndicator size="small" color={COLORS.green700} />
+            <ActivityIndicator size="small" color="#1E7A46" />
           ) : (
-            <Text style={styles.outlinedBtnText}>{screenConfig.add_to_cart_label}</Text>
+            <Text style={styles.outlinedBtnText}>{screenConfig.add_to_cart_label || 'Add to cart'}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -485,7 +489,7 @@ function BasketCard({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: SCREEN_BG },
+  safe: { flex: 1, backgroundColor: '#F8FAF7' },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -496,7 +500,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 48,
+    paddingTop: 8,
+    paddingBottom: 10,
     gap: 8,
   },
   backBtn: {
@@ -506,10 +511,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    ...FONTS.muktaBold,
+    ...FONTS.balooBold,
     fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    color: '#17251E',
     flex: 1,
   },
   newBtn: {
@@ -517,23 +521,21 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   newBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
-    lineHeight: 16,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    color: '#1E7A46',
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 28,
     gap: 12,
   },
   basketCard: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: RADIUS.md,
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 0,
+    borderRadius: 16,
+    padding: 16,
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -541,43 +543,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  basketName: {
+    ...FONTS.balooBold,
+    fontSize: 15.5,
+    color: '#17251E',
     flex: 1,
     paddingRight: 8,
   },
-  basketName: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 15,
-    lineHeight: 20,
-    color: COLORS.ink900,
-    flex: 1,
-  },
   basketPrice: {
     ...FONTS.balooBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: COLORS.ink900,
+    fontSize: 17,
+    color: '#17251E',
   },
   thumbRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
   },
   thumb: {
-    width: 46,
-    height: 46,
-    borderRadius: RADIUS.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    backgroundColor: COLORS.muted,
+    backgroundColor: '#EAF5EE',
   },
   thumbImg: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
   },
   cardBottomRow: {
     flexDirection: 'row',
@@ -587,52 +581,51 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     ...FONTS.muktaRegular,
-    fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    fontSize: 12.5,
+    color: '#6B7772',
     flex: 1,
   },
   outlinedBtn: {
     borderWidth: 1.5,
-    borderColor: COLORS.green700,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 18,
-    height: 36,
-    minWidth: 99,
+    borderColor: '#1E7A46',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    height: 32,
+    minWidth: 92,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   outlinedBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 13,
-    lineHeight: 16,
-    color: COLORS.green700,
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    color: '#1E7A46',
   },
   emptyTitle: {
     ...FONTS.balooBold,
     fontSize: 18,
-    color: COLORS.ink900,
+    color: '#17251E',
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySub: {
     ...FONTS.muktaRegular,
     fontSize: 13,
-    color: COLORS.ink500,
+    color: '#6B7772',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 20,
   },
   primaryBtn: {
-    backgroundColor: COLORS.green700,
-    height: 48,
-    borderRadius: RADIUS.pill,
+    backgroundColor: '#1E7A46',
+    height: 46,
+    borderRadius: 14,
     paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   primaryBtnText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 14,
     color: '#FFFFFF',
   },
@@ -645,9 +638,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
   },
@@ -656,31 +649,28 @@ const styles = StyleSheet.create({
   },
   sheetHandle: {
     width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: COLORS.line,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E5E7EB',
     alignSelf: 'center',
     marginBottom: 16,
   },
   sheetTitle: {
     ...FONTS.balooBold,
     fontSize: 20,
-    lineHeight: 28,
-    color: COLORS.ink900,
+    color: '#17251E',
     marginBottom: 4,
   },
   sheetSub: {
     ...FONTS.muktaRegular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.ink500,
+    fontSize: 13.5,
+    color: '#6B7772',
     marginBottom: 16,
   },
   fieldLabel: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    lineHeight: 16,
-    color: COLORS.ink500,
+    ...FONTS.muktaBold,
+    fontSize: 11.5,
+    color: '#6B7772',
     letterSpacing: 0.5,
     marginBottom: 8,
   },
@@ -688,38 +678,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: COLORS.green700,
-    borderRadius: RADIUS.md,
-    height: 52,
+    borderColor: '#1E7A46',
+    borderRadius: 12,
+    height: 50,
     paddingHorizontal: 14,
     marginBottom: 12,
   },
   sheetInput: {
     flex: 1,
     ...FONTS.muktaRegular,
-    fontSize: 15,
-    color: COLORS.ink900,
+    fontSize: 14.5,
+    color: '#17251E',
   },
   inputCheck: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.green700,
+    color: '#1E7A46',
   },
   willSaveRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: COLORS.green50,
-    borderRadius: RADIUS.md,
+    backgroundColor: '#EAF5EE',
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 20,
   },
   willSaveText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaBold,
     fontSize: 12,
-    lineHeight: 16,
-    color: COLORS.green700,
+    color: '#1E7A46',
     flex: 1,
   },
   sheetPrimaryBtn: {
@@ -727,24 +715,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   successIcon: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: COLORS.green700,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#1E7A46',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   successTick: {
-    fontSize: 32,
+    fontSize: 28,
     color: '#FFFFFF',
-    fontWeight: '900',
   },
   successMessage: {
     ...FONTS.muktaRegular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: COLORS.ink500,
+    fontSize: 13.5,
+    color: '#6B7772',
     textAlign: 'center',
     marginBottom: 20,
     paddingHorizontal: 8,
@@ -754,8 +740,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   doneBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 14,
-    color: COLORS.ink500,
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    color: '#6B7772',
   },
 });
+

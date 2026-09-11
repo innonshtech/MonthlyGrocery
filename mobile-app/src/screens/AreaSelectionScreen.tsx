@@ -9,11 +9,11 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../context/ToastContext';
 import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
@@ -53,6 +53,7 @@ function formatUnserviceableSubtitle(
 export default function AreaSelectionScreen({ route, navigation }: any) {
   const { setCityAndArea, user, token, city: currentCity, area: currentArea } = useAuth();
   const { items, clearCart } = useCart();
+  const { showToast } = useToast();
   const cityName = route.params?.cityName?.trim() || '';
   const { bottomPadding } = useOnboardingLayout();
 
@@ -98,36 +99,23 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
       (currentArea && currentArea.toLowerCase() !== area.name.toLowerCase()),
     );
 
-    const proceed = async () => {
-      setSelectedAreaId(area.id);
-      await setCityAndArea(cityName, area.name, area.pincode || null);
-      if (token && user?.name) {
-        navigation.navigate('Shop');
-      } else {
-        navigation.navigate('ProfileSetup');
-      }
-    };
+    setSelectedAreaId(area.id);
 
     if (items.length > 0 && isDifferentArea) {
-      Alert.alert(
-        'Change Delivery Location?',
-        'Changing your area will update item availability and pricing. Your cart will be cleared for this area.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Change Area & Clear Cart',
-            style: 'destructive',
-            onPress: async () => {
-              clearCart();
-              await proceed();
-            },
-          },
-        ],
-      );
-      return;
+      clearCart();
+      showToast({
+        type: 'info',
+        title: 'Area Changed',
+        message: 'Your area was updated and cart refreshed for this location.',
+      });
     }
 
-    await proceed();
+    await setCityAndArea(cityName, area.name, area.pincode || null);
+    if (token && user?.name) {
+      navigation.navigate('Shop');
+    } else {
+      navigation.navigate('ProfileSetup');
+    }
   };
 
   const handleNotifyMe = async () => {
@@ -140,10 +128,18 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
     );
     setNotifyLoading(false);
     if (res.success) {
-      Alert.alert('', config.notify_success_message);
+      showToast({
+        type: 'success',
+        title: 'Notification Set',
+        message: config.notify_success_message || 'We will notify you once we launch in your area!',
+      });
       setSearchQuery('');
     } else {
-      Alert.alert('Error', res.error || config?.notify_error_message || '');
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: res.error || config?.notify_error_message || 'Could not save notification request.',
+      });
     }
   };
 

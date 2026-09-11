@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import AppLoader from '../../components/AppLoader';
 import { API_BASE } from '../../config/api';
 import { COLORS, FONTS } from '../../constants/theme';
@@ -31,7 +32,15 @@ const SCREEN_BG = '#F8FAF8';
 const formatInr = (n: number) =>
   `₹${Math.round(n).toLocaleString('en-IN')}`;
 
-type OrderSummary = {
+export interface SuccessOrderItem {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+  unit: string;
+}
+
+export interface OrderSummary {
   orderId: string;
   total: number;
   savings: number;
@@ -39,10 +48,10 @@ type OrderSummary = {
   deliverTo: string;
   paymentMethod: string;
   deliveryOtp?: string | null;
-  orderItems: any[];
-};
+  orderItems: SuccessOrderItem[];
+}
 
-function mapApiOrder(order: any): OrderSummary {
+function parseOrderToSummary(order: any): OrderSummary {
   if (!order) {
     return {
       orderId: '',
@@ -81,6 +90,7 @@ function mapApiOrder(order: any): OrderSummary {
 export default function OrderSuccessScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { token } = useAuth();
+  const { showToast } = useToast();
   const params = route?.params || {};
 
   const [loading, setLoading] = useState(Boolean(params.backendOrderId || params.orderId));
@@ -122,7 +132,7 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
       });
       const data = await res.json();
       if (res.ok && data.success && data.order) {
-        setSummary(mapApiOrder(data.order));
+        setSummary(parseOrderToSummary(data.order));
       }
     } catch {
       /* keep navigation params if fetch fails */
@@ -138,7 +148,11 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
   const handleSaveBasket = async () => {
     if (basketSaved || !summary) return;
     if (!summary.orderItems?.length) {
-      Alert.alert('Cannot save', 'Order items are not available to save.');
+      showToast({
+        type: 'info',
+        title: 'Cannot save',
+        message: 'Order items are not available to save.',
+      });
       return;
     }
 
@@ -150,15 +164,27 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
         summary.orderItems,
       );
       if (!newBasket) {
-        Alert.alert('Cannot save', 'Order items are not available to save.');
+        showToast({
+          type: 'info',
+          title: 'Cannot save',
+          message: 'Order items are not available to save.',
+        });
         return;
       }
       const list = await loadSavedBaskets();
       await persistSavedBaskets([newBasket, ...list]);
       setBasketSaved(true);
-      Alert.alert('Saved', 'This order is saved as your monthly basket.');
+      showToast({
+        type: 'success',
+        title: 'Saved',
+        message: 'This order is saved as your monthly basket.',
+      });
     } catch {
-      Alert.alert('Error', 'Could not save basket. Please try again.');
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Could not save basket. Please try again.',
+      });
     } finally {
       setSaving(false);
     }

@@ -7,7 +7,6 @@ import {
   ScrollView,
   StatusBar,
   Modal,
-  Alert,
   ActivityIndicator,
   Pressable,
   Image,
@@ -15,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import AppLoader from '../../components/AppLoader';
 import {
@@ -68,6 +68,7 @@ function MenuRow({ icon, label, onPress, badge, isLast }: MenuRowProps) {
 export default function AccountScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { user, token, logout, city, area } = useAuth();
+  const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<AccountScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -247,10 +248,11 @@ export default function AccountScreen({ navigation }: any) {
                 icon={<AccountMenuAboutIcon size={20} />}
                 label={screenConfig.menu_about_terms}
                 onPress={() =>
-                  Alert.alert(
-                    screenConfig.about_alert_title,
-                    screenConfig.about_alert_message,
-                  )
+                  showToast({
+                    type: 'info',
+                    title: screenConfig.about_alert_title || 'About & Terms',
+                    message: screenConfig.about_alert_message || 'Monthly Grocery v1.0.0',
+                  })
                 }
                 isLast
               />
@@ -307,10 +309,11 @@ export default function AccountScreen({ navigation }: any) {
                 icon={<AccountMenuAboutIcon size={20} />}
                 label={screenConfig.menu_about_terms}
                 onPress={() =>
-                  Alert.alert(
-                    screenConfig.about_alert_title,
-                    screenConfig.about_alert_message,
-                  )
+                  showToast({
+                    type: 'info',
+                    title: screenConfig.about_alert_title || 'About & Terms',
+                    message: screenConfig.about_alert_message || 'Monthly Grocery v1.0.0',
+                  })
                 }
                 isLast
               />

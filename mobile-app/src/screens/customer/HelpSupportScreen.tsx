@@ -16,6 +16,7 @@ import { SvgXml } from 'react-native-svg';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import AppLoader from '../../components/AppLoader';
 import { FONTS } from '../../constants/theme';
+import { useToast } from '../../context/ToastContext';
 import {
   HelpSupportScreenConfig,
   buildTelUrl,
@@ -32,7 +33,10 @@ const CALL_XML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xm
 
 const CHEVRON_DOWN_XML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9l6 6 6-6" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-export default function HelpSupportScreen({ navigation }: any) {
+export default function HelpSupportScreen({ route, navigation }: any) {
+  const { showToast } = useToast();
+  const orderDisplayId = route?.params?.orderDisplayId;
+
   const [screenConfig, setScreenConfig] = useState<HelpSupportScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -53,15 +57,19 @@ export default function HelpSupportScreen({ navigation }: any) {
 
   const handleChatWhatsApp = () => {
     if (!screenConfig) return;
+    const customMsg = orderDisplayId
+      ? `Hi MonthlyGrocery Support, I need help regarding my order ${orderDisplayId}.`
+      : screenConfig.whatsapp_message;
     const url = buildWhatsAppUrl(
       screenConfig.whatsapp_phone,
-      screenConfig.whatsapp_message,
+      customMsg,
     );
     Linking.openURL(url).catch(() => {
-      Alert.alert(
-        screenConfig.chat_fallback_alert_title,
-        screenConfig.chat_fallback_alert_message,
-      );
+      showToast({
+        type: 'info',
+        title: screenConfig.chat_fallback_alert_title || 'WhatsApp Unavailable',
+        message: screenConfig.chat_fallback_alert_message || 'Please use call support or email.',
+      });
     });
   };
 
@@ -75,10 +83,11 @@ export default function HelpSupportScreen({ navigation }: any) {
           hours: screenConfig.call_subtitle,
         },
       );
-      Alert.alert(
-        screenConfig.call_fallback_alert_title,
-        fallbackMessage || screenConfig.call_fallback_alert_message,
-      );
+      showToast({
+        type: 'info',
+        title: screenConfig.call_fallback_alert_title || 'Call Support',
+        message: fallbackMessage || screenConfig.call_fallback_alert_message || `Call us at ${screenConfig.phone_number}`,
+      });
     });
   };
 
@@ -123,6 +132,14 @@ export default function HelpSupportScreen({ navigation }: any) {
           <CheckoutBackIcon size={22} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{screenConfig.title || 'Help & support'}</Text>
+        {orderDisplayId ? (
+          <>
+            <View style={{ flex: 1 }} />
+            <View style={styles.orderPill}>
+              <Text style={styles.orderPillTxt}>{orderDisplayId}</Text>
+            </View>
+          </>
+        ) : null}
       </View>
 
       <ScrollView
@@ -231,6 +248,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 26,
     color: '#111827',
+  },
+  orderPill: {
+    backgroundColor: '#EAF5EE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  orderPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    color: '#1E7A46',
   },
   scrollArea: {
     flex: 1,

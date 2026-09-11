@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import {
   fetchUserAddresses,
@@ -41,6 +42,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { items, minOrderLimit = 2500, appliedCoupon, setAppliedCoupon } = useCart();
   const { token, city, area, pincode: areaPincode } = useAuth();
+  const { showToast } = useToast();
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
 
@@ -188,14 +190,13 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
   const handleProceedToPayment = () => {
     if (!city?.trim() || !area?.trim()) {
-      Alert.alert(
-        'Delivery Location Required',
-        'Please select your delivery city and area before proceeding.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Select Location', onPress: () => navigation.navigate('CitySelection') },
-        ],
-      );
+      showToast({
+        type: 'info',
+        title: 'Location Required',
+        message: 'Please select your delivery city and area before proceeding.',
+        actionLabel: 'Select',
+        onAction: () => navigation.navigate('CitySelection'),
+      });
       return;
     }
     if (!selectedAddress) {
@@ -210,10 +211,11 @@ export default function CheckoutScreen({ route, navigation }: any) {
       return;
     }
     if (isBelowMin) {
-      Alert.alert(
-        'Minimum order not met',
-        `Please add ₹${amountNeeded} more to reach the ₹${minLimit} minimum order value.`,
-      );
+      showToast({
+        type: 'info',
+        title: 'Minimum order not met',
+        message: `Please add ₹${amountNeeded} more to reach the ₹${minLimit} minimum order value.`,
+      });
       return;
     }
     navigation.navigate('PaymentMethod', {
@@ -429,21 +431,33 @@ export default function CheckoutScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {/* Sticky bottom bar — Figma height ~74, shows TO PAY & Proceed to pay */}
+      {/* Sticky bottom bar — Figma height ~74, shows TO PAY & Proceed to pay, or disabled full-width button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-        <View style={styles.paymentRow}>
-          <View style={styles.payableSummary}>
-            <Text style={styles.payableLabel}>TO PAY</Text>
-            <Text style={styles.payableAmount}>{formatInr(toPay)}</Text>
+        {!selectedAddress || !selectedSlot ? (
+          <View style={styles.disabledBottomBtn}>
+            <Text style={styles.disabledBottomBtnText}>
+              {!selectedAddress && !selectedSlot
+                ? 'Add address & slot to continue'
+                : !selectedAddress
+                ? 'Add delivery address to continue'
+                : 'Select delivery slot to continue'}
+            </Text>
           </View>
-          <TouchableOpacity
-            style={styles.proceedPayBtn}
-            onPress={handleProceedToPayment}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.proceedPayBtnText}>Proceed to pay</Text>
-          </TouchableOpacity>
-        </View>
+        ) : (
+          <View style={styles.paymentRow}>
+            <View style={styles.payableSummary}>
+              <Text style={styles.payableLabel}>TO PAY</Text>
+              <Text style={styles.payableAmount}>{formatInr(toPay)}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.proceedPayBtn}
+              onPress={handleProceedToPayment}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.proceedPayBtnText}>Proceed to pay</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -795,5 +809,19 @@ const styles = StyleSheet.create({
     fontSize: 15.5,
     lineHeight: 20,
     color: '#FFFFFF',
+  },
+  disabledBottomBtn: {
+    backgroundColor: '#F3F3EE',
+    borderRadius: 16,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  disabledBottomBtnText: {
+    ...FONTS.muktaMedium,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: '#9CA3AF',
   },
 });
