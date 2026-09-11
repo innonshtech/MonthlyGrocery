@@ -35,6 +35,26 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs access to your photo library so you can select a profile picture.</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Mukta-ExtraBold.ttf</string>
+		<string>Baloo2-Bold.ttf</string>
+		<string>Baloo2-SemiBold.ttf</string>
+		<string>Mukta-SemiBold.ttf</string>
+		<string>Mukta-Bold.ttf</string>
+		<string>Mukta-ExtraLight.ttf</string>
+		<string>Mukta-Light.ttf</string>
+		<string>Baloo2-Regular.ttf</string>
+		<string>Baloo2-Medium.ttf</string>
+		<string>Baloo2[wght].ttf</string>
+		<string>Mukta-Medium.ttf</string>
+		<string>Mukta-Regular.ttf</string>
+		<string>Baloo2-ExtraBold.ttf</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -54,38 +74,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>UIAppFonts</key>
-	<array>
-		<string>Baloo 2 Bold.ttf</string>
-		<string>Baloo 2 Medium.ttf</string>
-		<string>Baloo 2 Regular.ttf</string>
-		<string>Baloo 2 SemiBold.ttf</string>
-		<string>Baloo 2-Bold.ttf</string>
-		<string>Baloo 2-Medium.ttf</string>
-		<string>Baloo 2-Regular.ttf</string>
-		<string>Baloo 2-SemiBold.ttf</string>
-		<string>Baloo 2.ttf</string>
-		<string>Baloo 2_Bold.ttf</string>
-		<string>Baloo 2_SemiBold.ttf</string>
-		<string>Baloo2-Bold.ttf</string>
-		<string>Baloo2-ExtraBold.ttf</string>
-		<string>Baloo2-Medium.ttf</string>
-		<string>Baloo2-Regular.ttf</string>
-		<string>Baloo2-SemiBold.ttf</string>
-		<string>Baloo2.ttf</string>
-		<string>Baloo2_Bold.ttf</string>
-		<string>Mukta Bold.ttf</string>
-		<string>Mukta Medium.ttf</string>
-		<string>Mukta Regular.ttf</string>
-		<string>Mukta SemiBold.ttf</string>
-		<string>Mukta-Bold.ttf</string>
-		<string>Mukta-Medium.ttf</string>
-		<string>Mukta-Regular.ttf</string>
-		<string>Mukta-SemiBold.ttf</string>
-		<string>Mukta.ttf</string>
-		<string>Mukta_Bold.ttf</string>
-		<string>Mukta_Medium.ttf</string>
-		<string>Mukta_SemiBold.ttf</string>
-	</array>
 </dict>
 </plist>

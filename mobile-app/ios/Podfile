@@ -14,6 +14,52 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+# Hermes is compiled from source by the "[RN] [2] Build Hermes" script phase on the
+# hermes-engine pod target. CMake writes an Info.plist for hermesvm.framework that has
+# no MinimumOSVersion, which App Store Connect rejects at upload validation. The plist
+# is produced during the Xcode build - long after `pod install` - so it has to be
+# patched by a build phase, not by post_install. This phase is appended to
+# hermes-engine, which finishes building before the app target's
+# "[CP] Embed Pods Frameworks" phase copies and code-signs the framework, so the
+# signature covers the patched plist.
+HERMES_INFO_PLIST_PATCH = <<~'SCRIPT'
+  set -e
+
+  MIN_OS_VERSION="${IPHONEOS_DEPLOYMENT_TARGET:-15.1}"
+
+  case "$PLATFORM_NAME" in
+    iphoneos)        SUPPORTED_PLATFORM="iPhoneOS" ;;
+    iphonesimulator) SUPPORTED_PLATFORM="iPhoneSimulator" ;;
+    *)
+      echo "note: hermesvm Info.plist patch skipped for platform '${PLATFORM_NAME}'"
+      exit 0
+      ;;
+  esac
+
+  patch_info_plist() {
+    plist="$1/Info.plist"
+    [ -f "$plist" ] || return 0
+
+    /usr/libexec/PlistBuddy -c "Delete :MinimumOSVersion" "$plist" >/dev/null 2>&1 || true
+    /usr/libexec/PlistBuddy -c "Add :MinimumOSVersion string ${MIN_OS_VERSION}" "$plist" >/dev/null
+
+    # CMake leaves CFBundleName empty, which trips other bundle validation checks.
+    /usr/libexec/PlistBuddy -c "Delete :CFBundleName" "$plist" >/dev/null 2>&1 || true
+    /usr/libexec/PlistBuddy -c "Add :CFBundleName string hermesvm" "$plist" >/dev/null
+
+    /usr/libexec/PlistBuddy -c "Delete :CFBundleSupportedPlatforms" "$plist" >/dev/null 2>&1 || true
+    /usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms array" "$plist" >/dev/null
+    /usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms:0 string ${SUPPORTED_PLATFORM}" "$plist" >/dev/null
+
+    echo "note: patched ${plist} (MinimumOSVersion=${MIN_OS_VERSION}, CFBundleSupportedPlatforms=${SUPPORTED_PLATFORM})"
+  }
+
+  # The framework that "[CP] Embed Pods Frameworks" actually copies into the .app.
+  patch_info_plist "${PODS_ROOT}/hermes-engine/destroot/Library/Frameworks/ios/hermesvm.framework"
+  # The CMake build output it was copied from, kept in sync so a re-copy stays patched.
+  patch_info_plist "${PODS_ROOT}/hermes-engine/build/${PLATFORM_NAME}/lib/hermesvm.framework"
+SCRIPT
+
 target 'MonthlyGroceryMobile' do
   config = use_native_modules!
 
@@ -30,5 +76,50 @@ target 'MonthlyGroceryMobile' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    installer.pods_project.targets.each do |target|
+      if target.name == 'hermes-engine'
+        target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+      end
+    end
+
+    installer.generated_projects.each do |project|
+      project.targets.each do |target|
+        if target.name == 'hermes-engine'
+          target.build_configurations.each do |config|
+            config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+          end
+        end
+      end
+    end
+
+    installer.aggregate_targets.each do |aggregate_target|
+      aggregate_target.user_project.native_targets.each do |target|
+        target.build_configurations.each do |config|
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1'
+        end
+      end
+    end
+
+    # Append the Info.plist patch phase to hermes-engine, in every project that
+    # declares the target, so it runs right after "[RN] [2] Build Hermes".
+    phase_name = '[RN] [3] Patch hermesvm Info.plist'
+    projects = [installer.pods_project].compact + installer.generated_projects
+    projects.uniq.each do |project|
+      project.targets.each do |target|
+        next unless target.name == 'hermes-engine'
+
+        phase = target.shell_script_build_phases.find { |p| p.name == phase_name }
+        phase ||= target.new_shell_script_build_phase(phase_name)
+        phase.shell_path = '/bin/sh'
+        phase.shell_script = HERMES_INFO_PLIST_PATCH
+        # No output files, so Xcode runs it on every build.
+        phase.input_paths = []
+        phase.output_paths = []
+        Pod::UI.puts "Added '#{phase_name}' to hermes-engine".green
+      end
+    end
   end
 end
