@@ -227,7 +227,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <AppIcon name="arrow-left" size={22} color={COLORS.ink900} />
+          <AppIcon name="chevron-left" size={24} color={COLORS.ink900} />
         </TouchableOpacity>
 
         <TouchableOpacity

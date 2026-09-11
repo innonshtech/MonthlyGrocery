@@ -20,8 +20,11 @@ export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
       onPress={onPress}
       style={styles.backBtn}
       hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
     >
-      <OnboardingBackIcon size={22} />
+      <OnboardingBackIcon size={24} />
     </TouchableOpacity>
   );
 }
@@ -143,14 +146,11 @@ export function OnboardingSectionLabel({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.line,
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: -4,
   },
   categoryBadge: {
     alignSelf: 'flex-start',

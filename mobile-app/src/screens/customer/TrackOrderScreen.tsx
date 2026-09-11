@@ -37,7 +37,7 @@ const SCREEN_BG = '#F8FAF7';
 
 /* Exact SVG Icons matching Figma node 578-779 */
 const BACK_ARROW_XML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M15 19l-7-7 7-7" stroke="#17251E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M15 18L9 12L15 6" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 const TRUCK_GRAPHIC_XML = `<svg width="32" height="32" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">

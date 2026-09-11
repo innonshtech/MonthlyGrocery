@@ -950,7 +950,7 @@ export default function AppIcon({ name, size = 26, color = '#1E7A46', badge }: A
           <Path
             d="M15 18L9 12L15 6"
             stroke={color}
-            strokeWidth={2.4}
+            strokeWidth={2.2}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

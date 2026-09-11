@@ -17,6 +17,7 @@ import { useCart, Product } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
+import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
 import { COLORS, FONTS } from '../../constants/theme';
 import { getProductDiscountPercent } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
@@ -516,11 +517,13 @@ export default function ProductDetailScreen({ route, navigation }: any) {
         {/* Back Button */}
         <TouchableOpacity
           onPress={() => navigation.goBack()}
-          style={styles.circularBtn}
-          activeOpacity={0.85}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <AppIcon name="chevron-left" size={18} color="#1A1A1A" />
+          <CheckoutBackIcon size={24} />
         </TouchableOpacity>
 
         {/* Right Actions: Share & Cart */}
@@ -608,6 +611,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   circularBtn: {
     width: 40,

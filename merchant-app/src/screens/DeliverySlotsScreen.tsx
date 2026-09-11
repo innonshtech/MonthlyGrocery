@@ -11,6 +11,7 @@ import {
   Switch,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { SvgXml } from 'react-native-svg';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
 import AppIcon from '../components/AppIcon';
@@ -119,8 +120,12 @@ export default function DeliverySlotsScreen() {
     <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={{ fontSize: 22, color: '#0F172A' }}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <SvgXml
+            xml={`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18L9 12L15 6" stroke="#0F172A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`}
+            width={24}
+            height={24}
+          />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Delivery Slots</Text>

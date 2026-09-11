@@ -654,6 +654,19 @@
       "isDefault": true,
       "created_at": "2026-09-09T05:22:59.627Z",
       "updated_at": "2026-09-09T05:22:59.627Z"
+    },
+    {
+      "id": "addr-1789124111664",
+      "consumer_id": "84ab8452-f5d6-4c75-9ad5-b8984160e3f4",
+      "tag": "Work",
+      "flat": "a203 nandan spractra",
+      "street": "Baner",
+      "landmark": "Balewadi highstreet",
+      "pincode": "000000",
+      "phone": "9176203011",
+      "isDefault": true,
+      "created_at": "2026-09-11T10:55:11.664Z",
+      "updated_at": "2026-09-11T10:55:20.978Z"
     }
   ],
   "onboarding": {
