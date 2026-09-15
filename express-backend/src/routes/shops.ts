@@ -1,24 +1,21 @@
 import { Router } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
+import { getMerchantShopForUser } from '../services/shopResolution';
 
 const router = Router();
 
 // 0. GET /me & /my: Retrieve logged-in merchant's shop profile
 const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
   try {
-    const { data: shop, error } = await supabase
-      .from('shops')
-      .select('id, shop_name, status, owner_id, created_at')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
-
-    if (error) {
-      return res.status(500).json({ success: false, error: error.message });
-    }
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
     if (!shop) {
-      return res.status(404).json({ success: false, error: 'Merchant store not found.' });
+      return res.status(404).json({ success: false, error: 'Merchant store not found.', shop_not_found: true });
     }
 
     const { readDb } = require('../config/localDb');
@@ -61,15 +58,16 @@ router.get('/my', authMiddleware, requireRole(['admin', 'super_admin']), handleG
 // 0.1 PUT /me/settings: Update merchant's store location, delivery radius, and open/closed status
 router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
-    const { data: shop, error } = await supabase
-      .from('shops')
-      .select('id, shop_name')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (error || !shop) {
-      return res.status(404).json({ success: false, error: 'Merchant store not found' });
+    if (!shop) {
+      return res.status(404).json({ success: false, error: 'Merchant store not found', shop_not_found: true });
     }
+
 
     const {
       latitude,

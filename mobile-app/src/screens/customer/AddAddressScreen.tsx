@@ -30,6 +30,7 @@ import {
   saveUserAddress,
   cacheAddressesLocally,
   reverseGeocodeLocation,
+  forwardGeocodeLocation,
   checkAddressServiceability,
 } from '../../services/addressApi';
 import {
@@ -134,7 +135,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
     setDetectingLocation(true);
     try {
       const nav = (globalThis as any)?.navigator;
-      if (nav && nav.geolocation) {
+      if (nav && nav.geolocation && typeof nav.geolocation.getCurrentPosition === 'function') {
         nav.geolocation.getCurrentPosition(
           async (pos: any) => {
             const lat = pos.coords.latitude;
@@ -152,33 +153,47 @@ export default function AddAddressScreen({ navigation, route }: any) {
             }
             setDetectingLocation(false);
           },
-          () => {
-            showToast({
-              type: 'info',
-              title: 'Location Unavailable',
-              message: 'Could not detect device GPS. Please enter your address manually.',
-            });
-            setDetectingLocation(false);
+          async () => {
+            await fallbackLocationFromArea();
           },
-          { timeout: 8000, enableHighAccuracy: true }
+          { timeout: 6000, enableHighAccuracy: true }
         );
       } else {
-        showToast({
-          type: 'info',
-          title: 'Location Unavailable',
-          message: 'GPS geolocation is not supported on this device. Please enter address manually.',
-        });
-        setDetectingLocation(false);
+        await fallbackLocationFromArea();
       }
     } catch {
-      showToast({
-        type: 'error',
-        title: 'Location Error',
-        message: 'Failed to access device location. Please type your address.',
-      });
-      setDetectingLocation(false);
+      await fallbackLocationFromArea();
     }
   };
+
+  const fallbackLocationFromArea = async () => {
+    const query = area || authArea
+      ? `${area || authArea}, ${city || authCity || ''}`
+      : (city || authCity || pincode || areaPincode || 'Maharashtra');
+
+    const details = await forwardGeocodeLocation(query);
+    if (details) {
+      if (details.latitude != null) setLatitude(details.latitude);
+      if (details.longitude != null) setLongitude(details.longitude);
+      if (details.pincode && !pincode) setPincode(details.pincode);
+      if (details.city && !city) setCity(details.city);
+      if (details.state && !stateName) setStateName(details.state);
+      if (details.area && !area) setArea(details.area);
+      showToast({
+        type: 'info',
+        title: 'Location Set',
+        message: `Set location to ${query}. You can edit any field if needed.`,
+      });
+    } else {
+      showToast({
+        type: 'info',
+        title: 'Location Unavailable',
+        message: 'Could not detect device GPS. Please enter your address details below.',
+      });
+    }
+    setDetectingLocation(false);
+  };
+
 
   const handleSave = async () => {
     if (!screenConfig || !token) {

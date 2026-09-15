@@ -272,3 +272,28 @@ export async function checkAddressServiceability(params: {
     };
   }
 }
+
+export async function forwardGeocodeLocation(query: string): Promise<{
+  latitude?: number;
+  longitude?: number;
+  area?: string;
+  city?: string;
+  district?: string;
+  state?: string;
+  pincode?: string;
+  formatted_address?: string;
+} | null> {
+  try {
+    const res = await fetch(`${API_BASE}/addresses/forward-geocode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.location) {
+      return data.location;
+    }
+  } catch {}
+  return null;
+}
+

@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { readDb, writeDb } from '../config/localDb';
-import { reverseGeocodeCoordinates } from '../services/geocodingService';
+import { reverseGeocodeCoordinates, forwardGeocodeAddress } from '../services/geocodingService';
 
 const router = Router();
 
@@ -43,6 +43,28 @@ router.post('/reverse-geocode', async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, error: err.message || 'Reverse geocoding failed' });
   }
 });
+
+// POST & GET /forward-geocode — Convert address/area/pincode query to coordinates
+const handleForwardGeocode = async (req: AuthRequest, res: Response) => {
+  try {
+    const query = String(req.body?.query || req.query?.query || '').trim();
+    if (!query) {
+      return res.status(400).json({ success: false, error: 'Query string is required' });
+    }
+
+    const geoResult = await forwardGeocodeAddress(query);
+    if (!geoResult) {
+      return res.status(404).json({ success: false, error: 'Coordinates not found for given location' });
+    }
+    return res.json({ success: true, location: geoResult });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Forward geocoding failed' });
+  }
+};
+
+router.post('/forward-geocode', handleForwardGeocode);
+router.get('/forward-geocode', handleForwardGeocode);
+
 
 // GET /check-serviceability — Verify whether a pincode, area, or coordinates are serviceable
 router.get('/check-serviceability', async (req: AuthRequest, res: Response) => {

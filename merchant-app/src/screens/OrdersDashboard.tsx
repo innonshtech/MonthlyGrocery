@@ -92,13 +92,14 @@ function getOrderDisplayId(order: any): string {
 }
 
 export default function OrdersDashboard() {
-  const { token } = useMerchantAuth();
+  const { token, user } = useMerchantAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [shopName, setShopName] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [shopNotFound, setShopNotFound] = useState(false);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
@@ -113,7 +114,9 @@ export default function OrdersDashboard() {
     } else if (mode === 'initial') {
       setLoading(true);
     }
-    if (mode !== 'poll') setError('');
+    if (mode !== 'poll') {
+      setError('');
+    }
     try {
       const res = await fetch(`${API_BASE}/orders/merchant/all`, {
         headers: {
@@ -124,6 +127,11 @@ export default function OrdersDashboard() {
       if (res.ok && data.success) {
         setOrders(data.orders || []);
         setShopName(data.shop_name || '');
+        setShopNotFound(false);
+      } else if (data.shop_not_found || (data.error && data.error.toLowerCase().includes('not found'))) {
+        setShopNotFound(true);
+        setOrders([]);
+        setShopName('');
       } else if (mode !== 'poll') {
         setError(data.error || 'Failed to fetch incoming orders');
       }
@@ -136,6 +144,7 @@ export default function OrdersDashboard() {
       if (mode === 'refresh') setRefreshing(false);
     }
   }, [token]);
+
 
   useEffect(() => {
     fetchOrders('initial');
@@ -472,6 +481,25 @@ export default function OrdersDashboard() {
           <ActivityIndicator size="large" color="#22C55E" />
           <Text style={styles.loadingText}>Fetching incoming orders...</Text>
         </View>
+      ) : shopNotFound ? (
+        <View style={styles.centerContainer}>
+          <View style={styles.pendingCard}>
+            <Text style={{ fontSize: 44, textAlign: 'center', marginBottom: 12 }}>🏪</Text>
+            <Text style={styles.pendingTitle}>Store Registration Pending</Text>
+            <Text style={styles.pendingSub}>
+              Your merchant phone number (+91 {user?.mobile ? user.mobile.slice(-10) : '...'}) is logged in, but your Kirana Store has not been registered/approved by Super Admin yet.
+            </Text>
+            <View style={styles.pendingGuideBox}>
+              <Text style={styles.pendingGuideHeading}>📋 Store Activation Steps:</Text>
+              <Text style={styles.pendingGuideText}>1. Open the Web Admin Portal (Store Approvals tab).</Text>
+              <Text style={styles.pendingGuideText}>2. Register your store with mobile number: +91 {user?.mobile ? user.mobile.slice(-10) : '...'}</Text>
+              <Text style={styles.pendingGuideText}>3. Click "Approve" on the store row.</Text>
+            </View>
+            <TouchableOpacity style={styles.refreshPendingBtn} onPress={() => fetchOrders('initial')}>
+              <Text style={styles.refreshPendingBtnText}>🔄 Refresh Order Dashboard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       ) : error ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
@@ -479,6 +507,7 @@ export default function OrdersDashboard() {
             <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
+
       ) : filteredOrders.length === 0 ? (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyIcon}>📥</Text>
@@ -928,4 +957,64 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingVertical: 6,
   },
+  pendingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginHorizontal: 16,
+  },
+  pendingTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  pendingSub: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  pendingGuideBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    width: '100%',
+    marginVertical: 16,
+    gap: 6,
+  },
+  pendingGuideHeading: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  pendingGuideText: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  refreshPendingBtn: {
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  refreshPendingBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
 });
+

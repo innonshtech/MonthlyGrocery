@@ -266,3 +266,83 @@ export function resolveShopIdForLocationOrThrow(input: ShopResolutionInput): str
   }
   return shopId;
 }
+
+/**
+ * Resolves the merchant shop record for the authenticated user.
+ * Checks:
+ * 1. Direct owner_id match in Supabase shops table
+ * 2. Profile phone matching owner_id in Supabase
+ * 3. Local JSON DB shops
+ * 4. Super Admin fallback to the first active approved shop for console operation
+ */
+export async function getMerchantShopForUser(user: { id: string; role?: string; mobile?: string }): Promise<any | null> {
+  if (!user || !user.id) return null;
+
+  // 1. Check direct owner_id in Supabase
+  try {
+    const { data: shop, error } = await supabase
+      .from('shops')
+      .select('id, shop_name, status, owner_id, created_at')
+      .eq('owner_id', user.id)
+      .maybeSingle();
+
+    if (!error && shop) return shop;
+  } catch (err) {
+    console.warn('[getMerchantShopForUser] Supabase query error:', err);
+  }
+
+  // 2. Check if user's phone matches owner's profile
+  try {
+    const rawMobile = user.mobile || '';
+    const cleanMobile = rawMobile.replace(/[^\d]/g, '');
+    if (cleanMobile) {
+      const normalized = cleanMobile.length === 10 ? '91' + cleanMobile : cleanMobile;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', normalized)
+        .maybeSingle();
+
+      if (profile && profile.id !== user.id) {
+        const { data: shopByPhone } = await supabase
+          .from('shops')
+          .select('id, shop_name, status, owner_id, created_at')
+          .eq('owner_id', profile.id)
+          .maybeSingle();
+
+        if (shopByPhone) return shopByPhone;
+      }
+    }
+  } catch (err) {
+    console.warn('[getMerchantShopForUser] Profile phone check error:', err);
+  }
+
+  // 3. Check local JSON DB
+  try {
+    const db = readDb() as any;
+    const localShop = (db.shops || []).find((s: any) => s.owner_id === user.id);
+    if (localShop) return localShop;
+  } catch {}
+
+  // 4. Super Admin fallback: If logged in as super_admin, provide the first approved shop
+  if (user.role === 'super_admin') {
+    try {
+      const { data: firstShop } = await supabase
+        .from('shops')
+        .select('id, shop_name, status, owner_id, created_at')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (firstShop) return firstShop;
+    } catch {}
+
+    const db = readDb() as any;
+    const firstLocal = (db.shops || []).find((s: any) => s.status === 'approved' || !s.status);
+    if (firstLocal) return firstLocal;
+  }
+
+  return null;
+}
+

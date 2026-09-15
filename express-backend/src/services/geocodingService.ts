@@ -167,3 +167,95 @@ export async function reverseGeocodeCoordinates(
     longitude: lng,
   };
 }
+
+/**
+ * Forward Geocoding: Converts an address, landmark, area, or pincode string into GPS coordinates.
+ */
+export async function forwardGeocodeAddress(query: string): Promise<StructuredAddressDetails | null> {
+  const cleanQuery = String(query || '').trim();
+  if (!cleanQuery) return null;
+
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (googleApiKey) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanQuery)}&key=${googleApiKey}`;
+      const res = await fetch(url);
+      const data = (await res.json()) as any;
+      if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
+        const top = data.results[0];
+        const lat = top.geometry?.location?.lat;
+        const lng = top.geometry?.location?.lng;
+        if (lat != null && lng != null) {
+          let area = '';
+          let city = '';
+          let district = '';
+          let state = '';
+          let pincode = '';
+          for (const comp of top.address_components || []) {
+            const types: string[] = comp.types || [];
+            if (types.includes('postal_code')) pincode = comp.long_name;
+            if (types.includes('administrative_area_level_1')) state = comp.long_name;
+            if (types.includes('administrative_area_level_2')) district = comp.long_name;
+            if (types.includes('locality')) city = comp.long_name;
+            if (!city && types.includes('administrative_area_level_3')) city = comp.long_name;
+            if (types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('neighborhood')) {
+              if (!area) area = comp.long_name;
+            }
+          }
+          return {
+            latitude: lat,
+            longitude: lng,
+            area: area || city,
+            city: city || district,
+            district,
+            state,
+            pincode,
+            formatted_address: top.formatted_address,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Google Maps forward geocoding request error:', err);
+    }
+  }
+
+  // OpenStreetMap Nominatim fallback
+  try {
+    const osmUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&countrycodes=in&limit=1&addressdetails=1`;
+    const res = await fetch(osmUrl, {
+      headers: {
+        'User-Agent': 'MonthlyGroceryApp/1.0',
+      },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      if (Array.isArray(data) && data.length > 0) {
+        const top = data[0];
+        const lat = parseFloat(top.lat);
+        const lng = parseFloat(top.lon);
+        const addr = top.address || {};
+        const area = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.city_district || '';
+        const city = addr.city || addr.town || addr.village || addr.municipality || '';
+        const district = addr.county || addr.state_district || '';
+        const state = addr.state || '';
+        const pincode = addr.postcode || '';
+
+        return {
+          latitude: lat,
+          longitude: lng,
+          area: area || city,
+          city: city || district,
+          district,
+          state,
+          pincode,
+          formatted_address: top.display_name || '',
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Fallback forward geocode error:', err);
+  }
+
+  return null;
+}
+

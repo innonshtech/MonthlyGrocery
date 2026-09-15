@@ -11,7 +11,7 @@ import {
   resolveMerchantOrderStatus,
   MERCHANT_ORDER_STATUSES,
 } from '../utils/orderEnrichment';
-import { resolveShopIdForLocation } from '../services/shopResolution';
+import { resolveShopIdForLocation, getMerchantShopForUser } from '../services/shopResolution';
 import { calculateHaversineDistanceKm } from '../services/geocodingService';
 
 const router = Router();
@@ -843,19 +843,20 @@ router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response)
 // 3. GET /merchant/all: Merchant incoming orders list (scoped to merchant shop)
 router.get('/merchant/all', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .select('id, shop_name')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (shopError || !shop) {
-      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    if (!shop) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found', shop_not_found: true });
     }
 
     const { readDb } = require('../config/localDb');
     const db = readDb();
     const localOrders = (db.orders || []).filter((o: any) => o.shop_id === shop.id);
+
 
     const mergedMap = new Map<string, any>();
     for (const o of localOrders) {
@@ -977,15 +978,16 @@ router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_ad
   }
 
   try {
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .select('id')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (shopError || !shop) {
-      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    if (!shop) {
+      return res.status(404).json({ success: false, error: 'Merchant shop not found', shop_not_found: true });
     }
+
 
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb();

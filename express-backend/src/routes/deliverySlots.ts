@@ -5,18 +5,15 @@ import {
   buildSlotsForShop,
   upsertSlotConfig,
 } from '../services/deliverySlots';
-import { resolveShopIdForLocation } from '../services/shopResolution';
+import { resolveShopIdForLocation, getMerchantShopForUser } from '../services/shopResolution';
 
 const router = Router();
 
-async function getMerchantShopId(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('shops')
-    .select('id')
-    .eq('owner_id', userId)
-    .maybeSingle();
-  return data?.id || null;
+async function getMerchantShopId(user: { id: string; role?: string; mobile?: string }): Promise<string | null> {
+  const shop = await getMerchantShopForUser(user);
+  return shop?.id || null;
 }
+
 
 // GET / — Public availability for customer app
 router.get('/', async (req, res) => {
@@ -51,9 +48,13 @@ router.get('/', async (req, res) => {
 // GET /merchant — Merchant view (same data, scoped to their shop)
 router.get('/merchant', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
-    const shopId = await getMerchantShopId(req.user!.id);
+    const shopId = await getMerchantShopId({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
     if (!shopId) {
-      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+      return res.status(404).json({ success: false, error: 'Merchant shop not found', shop_not_found: true });
     }
     const days = Math.min(parseInt(String(req.query.days || '4'), 10) || 4, 14);
     const payload = buildSlotsForShop(shopId, days);
@@ -72,10 +73,15 @@ router.put('/merchant', authMiddleware, requireRole(['admin', 'super_admin']), a
   }
 
   try {
-    const shopId = await getMerchantShopId(req.user!.id);
+    const shopId = await getMerchantShopId({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
     if (!shopId) {
-      return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+      return res.status(404).json({ success: false, error: 'Merchant shop not found', shop_not_found: true });
     }
+
 
     const updates: Record<string, unknown> = {};
     if (max_capacity !== undefined) {

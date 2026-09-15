@@ -10,6 +10,8 @@ import {
   StatusBar,
   Switch,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
@@ -19,12 +21,21 @@ export default function StoreSettingsScreen() {
   const navigation = useNavigation<any>();
   const { token, user, logout } = useMerchantAuth();
   const [shop, setShop] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(true);
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [locatingGps, setLocatingGps] = useState(false);
 
+  // Custom Coordinates & Geocoding Modal
+  const [modalVisible, setModalVisible] = useState(false);
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchingLocation, setSearchingLocation] = useState(false);
+
   const fetchShopProfile = () => {
     if (!token) return;
+    setLoading(true);
     fetch(`${API_BASE}/shops/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -33,9 +44,18 @@ export default function StoreSettingsScreen() {
         if (data.success && data.shop) {
           setShop(data.shop);
           setIsOpen(data.shop.is_open !== false);
+          if (data.shop.latitude != null) setManualLat(String(data.shop.latitude));
+          if (data.shop.longitude != null) setManualLng(String(data.shop.longitude));
+        } else {
+          setShop(null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setShop(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -73,30 +93,97 @@ export default function StoreSettingsScreen() {
     setLocatingGps(true);
     try {
       const nav = (globalThis as any)?.navigator;
-      if (nav && nav.geolocation) {
+      if (nav && nav.geolocation && typeof nav.geolocation.getCurrentPosition === 'function') {
         nav.geolocation.getCurrentPosition(
           async (pos: any) => {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
             await saveGpsCoordinates(lat, lng);
           },
-          () => {
-            Alert.alert(
-              'Location Unavailable',
-              'Could not access exact device GPS. Please turn on device location and try again.',
-            );
-            setLocatingGps(false);
+          async () => {
+            // If device hardware GPS failed or timed out, attempt automatic area geocoding
+            await fallbackGeocodeStore();
           },
-          { timeout: 8000, enableHighAccuracy: true }
+          { timeout: 6000, enableHighAccuracy: true }
         );
       } else {
-        Alert.alert('Notice', 'Geolocation is not available on this device.');
-        setLocatingGps(false);
+        // Fallback to backend geocoding using store territory info
+        await fallbackGeocodeStore();
       }
     } catch {
-      Alert.alert('Error', 'Failed to detect GPS location');
-      setLocatingGps(false);
+      await fallbackGeocodeStore();
     }
+  };
+
+  const fallbackGeocodeStore = async () => {
+    const targetQuery = shop?.area_name
+      ? `${shop.area_name}, ${shop.city || ''}`
+      : (shop?.city || shop?.district_name || 'Maharashtra, India');
+
+    try {
+      const res = await fetch(`${API_BASE}/addresses/forward-geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: targetQuery }),
+      });
+      const data = await res.json();
+      if (data.success && data.location?.latitude && data.location?.longitude) {
+        const lat = data.location.latitude;
+        const lng = data.location.longitude;
+        await saveGpsCoordinates(lat, lng);
+        Alert.alert(
+          'GPS Coordinates Pinned',
+          `Pinned to ${targetQuery} coordinates: (${lat.toFixed(4)}, ${lng.toFixed(4)}).\nYou can adjust coordinates anytime in "Edit Coordinates".`,
+        );
+      } else {
+        setLocatingGps(false);
+        setModalVisible(true);
+      }
+    } catch {
+      setLocatingGps(false);
+      setModalVisible(true);
+    }
+  };
+
+  const handleSearchAndPin = async () => {
+    if (!searchQuery.trim()) {
+      Alert.alert('Search Area', 'Please type a city, area name, or pincode (e.g. Ravet, Pune).');
+      return;
+    }
+    setSearchingLocation(true);
+    try {
+      const res = await fetch(`${API_BASE}/addresses/forward-geocode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery.trim() }),
+      });
+      const data = await res.json();
+      if (data.success && data.location?.latitude && data.location?.longitude) {
+        const lat = data.location.latitude;
+        const lng = data.location.longitude;
+        setManualLat(String(lat));
+        setManualLng(String(lng));
+        await saveGpsCoordinates(lat, lng);
+        setModalVisible(false);
+      } else {
+        Alert.alert('Location Not Found', 'Could not locate coordinates for this search. You can enter Latitude and Longitude manually below.');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to search location.');
+    } finally {
+      setSearchingLocation(false);
+    }
+  };
+
+  const handleSaveManualCoordinates = async () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      Alert.alert('Invalid Coordinates', 'Please enter valid numbers for Latitude (-90 to 90) and Longitude (-180 to 180).');
+      return;
+    }
+    await saveGpsCoordinates(lat, lng);
+    setModalVisible(false);
   };
 
   const saveGpsCoordinates = async (lat: number, lng: number, customRadius?: number) => {
@@ -117,6 +204,8 @@ export default function StoreSettingsScreen() {
       const data = await res.json();
       if (res.ok && data.success) {
         setShop(data.shop);
+        setManualLat(String(lat));
+        setManualLng(String(lng));
         if (customRadius != null) {
           Alert.alert('Updated', `Delivery radius updated to ${customRadius} km`);
         } else {
@@ -129,6 +218,15 @@ export default function StoreSettingsScreen() {
       Alert.alert('Error', 'Failed to save store settings');
     } finally {
       setLocatingGps(false);
+    }
+  };
+
+  const handleOpenGoogleMaps = () => {
+    if (shop?.latitude != null && shop?.longitude != null) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${shop.latitude},${shop.longitude}`;
+      Linking.openURL(url).catch(() => {
+        Alert.alert('Error', 'Could not open Google Maps');
+      });
     }
   };
 
@@ -157,177 +255,220 @@ export default function StoreSettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Store Open / Closed Status Toggle */}
-        <View style={[styles.statusToggleCard, isOpen ? styles.statusOpen : styles.statusClosed]}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statusToggleHeading}>
-              {isOpen ? '🟢 STORE IS ONLINE' : '🔴 STORE IS OFFLINE'}
-            </Text>
-            <Text style={styles.statusToggleSub}>
-              {isOpen ? 'Accepting incoming customer grocery orders' : 'Orders paused — turn on to resume'}
-            </Text>
+        {loading ? (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#22C55E" />
+            <Text style={{ marginTop: 12, color: '#64748B', fontWeight: '600' }}>Loading store settings...</Text>
           </View>
-          {togglingStatus ? (
-            <ActivityIndicator size="small" color="#22C55E" />
-          ) : (
-            <Switch
-              value={isOpen}
-              onValueChange={handleToggleStoreStatus}
-              trackColor={{ false: '#EF4444', true: '#22C55E' }}
-              thumbColor="#FFFFFF"
-            />
-          )}
-        </View>
-
-        {/* Store Profile Card */}
-        <View style={styles.storeCard}>
-          <View style={styles.storeIconBox}>
-            <Text style={{ fontSize: 32 }}>🏪</Text>
-          </View>
-          <View style={styles.storeInfo}>
-            <View style={styles.badgeRow}>
-              <Text style={styles.storeRoleBadge}>AUTHORIZED STORE PARTNER</Text>
-              {storeIdDisplay ? (
-                <Text style={styles.storeIdBadge}>{storeIdDisplay}</Text>
-              ) : null}
+        ) : !shop ? (
+          /* Store Pending / Not Whitelisted Card */
+          <View style={styles.pendingCard}>
+            <Text style={{ fontSize: 44, textAlign: 'center', marginBottom: 12 }}>🏪</Text>
+            <Text style={styles.pendingTitle}>Store Whitelisting Pending</Text>
+            <Text style={styles.pendingSub}>
+              Your account (+91 {user?.mobile ? user.mobile.slice(-10) : '...'}) is logged in, but has not yet been assigned to an approved Kirana Store.
+            </Text>
+            <View style={styles.pendingGuideBox}>
+              <Text style={styles.pendingGuideHeading}>📋 Store Onboarding Instructions:</Text>
+              <Text style={styles.pendingGuideText}>1. Open the Web Admin Portal (Store Approvals tab).</Text>
+              <Text style={styles.pendingGuideText}>2. Register your store with mobile number: +91 {user?.mobile ? user.mobile.slice(-10) : '...'}</Text>
+              <Text style={styles.pendingGuideText}>3. Click "Approve" to activate this store partner.</Text>
             </View>
-            <Text style={styles.storeName}>{shop?.shop_name || user?.name || 'Local Kirana Partner'}</Text>
-            <Text style={styles.storeOwner}>👤 {user?.name || 'Store Owner'}</Text>
-            <Text style={styles.storePhone}>📞 +91 {user?.mobile ? user.mobile.slice(-10) : 'N/A'}</Text>
-            {shop?.city ? (
-              <Text style={styles.storeTerritory}>📍 {shop.city.toUpperCase()}{shop.district_name ? ` · ${shop.district_name}` : ''}</Text>
-            ) : null}
+            <TouchableOpacity style={styles.refreshPendingBtn} onPress={fetchShopProfile}>
+              <Text style={styles.refreshPendingBtnText}>🔄 Refresh Store Profile</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        ) : (
+          <>
+            {/* Store Open / Closed Status Toggle */}
+            <View style={[styles.statusToggleCard, isOpen ? styles.statusOpen : styles.statusClosed]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.statusToggleHeading}>
+                  {isOpen ? '🟢 STORE IS ONLINE' : '🔴 STORE IS OFFLINE'}
+                </Text>
+                <Text style={styles.statusToggleSub}>
+                  {isOpen ? 'Accepting incoming customer grocery orders' : 'Orders paused — turn on to resume'}
+                </Text>
+              </View>
+              {togglingStatus ? (
+                <ActivityIndicator size="small" color="#22C55E" />
+              ) : (
+                <Switch
+                  value={isOpen}
+                  onValueChange={handleToggleStoreStatus}
+                  trackColor={{ false: '#EF4444', true: '#22C55E' }}
+                  thumbColor="#FFFFFF"
+                />
+              )}
+            </View>
 
-        {/* Location & Geospatial Settings */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>GEOSPATIAL & DELIVERY RADIUS</Text>
-
-          <View style={styles.locRow}>
-            <Text style={styles.locLabel}>GPS Coordinates:</Text>
-            <Text style={styles.locValue}>
-              {shop?.latitude != null && shop?.longitude != null
-                ? `${shop.latitude.toFixed(4)}, ${shop.longitude.toFixed(4)}`
-                : 'Not pinned yet'}
-            </Text>
-          </View>
-
-          <View style={styles.locRow}>
-            <Text style={styles.locLabel}>Operational Radius:</Text>
-            <Text style={styles.locValue}>{shop?.delivery_radius_km || 5.0} km</Text>
-          </View>
-
-          {/* Quick Dynamic Radius Selector */}
-          <View style={styles.radiusSelectorRow}>
-            {[3, 5, 7, 10, 15, 20].map((r) => {
-              const active = Math.round(shop?.delivery_radius_km || 5) === r;
-              return (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.radiusChip, active && styles.radiusChipActive]}
-                  onPress={() => saveGpsCoordinates(shop?.latitude || 18.5204, shop?.longitude || 73.8567, r)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.radiusChipText, active && styles.radiusChipTextActive]}>
-                    {r} km
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <View style={styles.locRow}>
-            <Text style={styles.locLabel}>Base Area:</Text>
-            <Text style={styles.locValue}>{shop?.area_name || shop?.city || 'Assigned Base Area'}</Text>
-          </View>
-
-          {shop?.assigned_locations && Array.isArray(shop.assigned_locations) && shop.assigned_locations.length > 0 ? (
-            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
-              <Text style={[styles.locLabel, { marginBottom: 6, color: '#0F172A', fontWeight: '700' }]}>
-                🎯 Assigned Serviceable Localities ({shop.assigned_locations.length}):
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                {shop.assigned_locations.map((loc: any) => (
-                  <View
-                    key={loc.id}
-                    style={{
-                      backgroundColor: '#F0FDF4',
-                      borderColor: '#BBF7D0',
-                      borderWidth: 1,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 8,
-                    }}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
-                      📍 {loc.area_name} {loc.pincode ? `(${loc.pincode})` : ''}
-                    </Text>
-                  </View>
-                ))}
+            {/* Store Profile Card */}
+            <View style={styles.storeCard}>
+              <View style={styles.storeIconBox}>
+                <Text style={{ fontSize: 32 }}>🏪</Text>
+              </View>
+              <View style={styles.storeInfo}>
+                <View style={styles.badgeRow}>
+                  <Text style={styles.storeRoleBadge}>AUTHORIZED STORE PARTNER</Text>
+                  {storeIdDisplay ? (
+                    <Text style={styles.storeIdBadge}>{storeIdDisplay}</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.storeName}>{shop?.shop_name || user?.name || 'Local Kirana Partner'}</Text>
+                <Text style={styles.storeOwner}>👤 {user?.name || 'Store Owner'}</Text>
+                <Text style={styles.storePhone}>📞 +91 {user?.mobile ? user.mobile.slice(-10) : 'N/A'}</Text>
+                {shop?.city ? (
+                  <Text style={styles.storeTerritory}>📍 {shop.city.toUpperCase()}{shop.district_name ? ` · ${shop.district_name}` : ''}</Text>
+                ) : null}
               </View>
             </View>
-          ) : null}
 
-          <TouchableOpacity
-            style={styles.gpsUpdateBtn}
-            onPress={handleUpdateStoreGps}
-            disabled={locatingGps}
-            activeOpacity={0.85}
-          >
-            {locatingGps ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.gpsUpdateBtnText}>📍 Pin Store to Device GPS</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+            {/* Location & Geospatial Settings */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>GEOSPATIAL & DELIVERY RADIUS</Text>
 
-        {/* Operational Guidelines */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>PARTNER OPERATIONS GUIDE</Text>
+              <View style={styles.locRow}>
+                <Text style={styles.locLabel}>GPS Coordinates:</Text>
+                <Text style={styles.locValue}>
+                  {shop?.latitude != null && shop?.longitude != null
+                    ? `${shop.latitude.toFixed(4)}, ${shop.longitude.toFixed(4)}`
+                    : 'Not pinned yet'}
+                </Text>
+              </View>
 
-          <View style={styles.guideRow}>
-            <Text style={styles.guideIcon}>⏱️</Text>
-            <View style={styles.guideTextCol}>
-              <Text style={styles.guideHeading}>Fast Order Acceptance</Text>
-              <Text style={styles.guideDesc}>Accept incoming customer orders within 15 minutes to maintain 100% store rating.</Text>
+              {shop?.latitude != null && shop?.longitude != null ? (
+                <TouchableOpacity style={styles.mapLinkBtn} onPress={handleOpenGoogleMaps} activeOpacity={0.8}>
+                  <Text style={styles.mapLinkText}>🗺️ View Store Location on Google Maps ➔</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <View style={styles.locRow}>
+                <Text style={styles.locLabel}>Operational Radius:</Text>
+                <Text style={styles.locValue}>{shop?.delivery_radius_km || 5.0} km</Text>
+              </View>
+
+              {/* Quick Dynamic Radius Selector */}
+              <View style={styles.radiusSelectorRow}>
+                {[3, 5, 7, 10, 15, 20].map((r) => {
+                  const active = Math.round(shop?.delivery_radius_km || 5) === r;
+                  return (
+                    <TouchableOpacity
+                      key={r}
+                      style={[styles.radiusChip, active && styles.radiusChipActive]}
+                      onPress={() => saveGpsCoordinates(shop?.latitude || 18.5204, shop?.longitude || 73.8567, r)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.radiusChipText, active && styles.radiusChipTextActive]}>
+                        {r} km
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.locRow}>
+                <Text style={styles.locLabel}>Base Area:</Text>
+                <Text style={styles.locValue}>{shop?.area_name || shop?.city || 'Assigned Base Area'}</Text>
+              </View>
+
+              {shop?.assigned_locations && Array.isArray(shop.assigned_locations) && shop.assigned_locations.length > 0 ? (
+                <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+                  <Text style={[styles.locLabel, { marginBottom: 6, color: '#0F172A', fontWeight: '700' }]}>
+                    🎯 Assigned Serviceable Localities ({shop.assigned_locations.length}):
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {shop.assigned_locations.map((loc: any) => (
+                      <View
+                        key={loc.id}
+                        style={{
+                          backgroundColor: '#F0FDF4',
+                          borderColor: '#BBF7D0',
+                          borderWidth: 1,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
+                          📍 {loc.area_name} {loc.pincode ? `(${loc.pincode})` : ''}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={[styles.gpsUpdateBtn, { flex: 1 }]}
+                  onPress={handleUpdateStoreGps}
+                  disabled={locatingGps}
+                  activeOpacity={0.85}
+                >
+                  {locatingGps ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.gpsUpdateBtnText}>📍 Auto-Pin GPS</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.gpsEditBtn, { flex: 1 }]}
+                  onPress={() => setModalVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.gpsEditBtnText}>✏️ Set Coordinates</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.guideRow}>
-            <Text style={styles.guideIcon}>📦</Text>
-            <View style={styles.guideTextCol}>
-              <Text style={styles.guideHeading}>Live Stock Updates</Text>
-              <Text style={styles.guideDesc}>Toggle Out of Stock immediately if an item runs out to avoid customer order cancellations.</Text>
+            {/* Operational Guidelines */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>PARTNER OPERATIONS GUIDE</Text>
+
+              <View style={styles.guideRow}>
+                <Text style={styles.guideIcon}>⏱️</Text>
+                <View style={styles.guideTextCol}>
+                  <Text style={styles.guideHeading}>Fast Order Acceptance</Text>
+                  <Text style={styles.guideDesc}>Accept incoming customer orders within 15 minutes to maintain 100% store rating.</Text>
+                </View>
+              </View>
+
+              <View style={styles.guideRow}>
+                <Text style={styles.guideIcon}>📦</Text>
+                <View style={styles.guideTextCol}>
+                  <Text style={styles.guideHeading}>Live Stock Updates</Text>
+                  <Text style={styles.guideDesc}>Toggle Out of Stock immediately if an item runs out to avoid customer order cancellations.</Text>
+                </View>
+              </View>
+
+              <View style={styles.guideRow}>
+                <Text style={styles.guideIcon}>🛵</Text>
+                <View style={styles.guideTextCol}>
+                  <Text style={styles.guideHeading}>Scheduled Delivery Slots</Text>
+                  <Text style={styles.guideDesc}>Ensure dispatch matches the customer's chosen Morning, Afternoon, or Evening slot.</Text>
+                </View>
+              </View>
             </View>
-          </View>
 
-          <View style={styles.guideRow}>
-            <Text style={styles.guideIcon}>🛵</Text>
-            <View style={styles.guideTextCol}>
-              <Text style={styles.guideHeading}>Scheduled Delivery Slots</Text>
-              <Text style={styles.guideDesc}>Ensure dispatch matches the customer's chosen Morning, Afternoon, or Evening slot.</Text>
+            {/* Delivery slot management */}
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>DELIVERY OPERATIONS</Text>
+
+              <TouchableOpacity
+                style={styles.actionRow}
+                onPress={() => navigation.navigate('DeliverySlots')}
+              >
+                <Text style={styles.actionIcon}>🕐</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.actionTitle}>Manage Delivery Slots</Text>
+                  <Text style={styles.actionSub}>Set capacity, mark full, recommended windows</Text>
+                </View>
+                <Text style={styles.actionArrow}>➔</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-        </View>
-
-        {/* Delivery slot management */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>DELIVERY OPERATIONS</Text>
-
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => navigation.navigate('DeliverySlots')}
-          >
-            <Text style={styles.actionIcon}>🕐</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.actionTitle}>Manage Delivery Slots</Text>
-              <Text style={styles.actionSub}>Set capacity, mark full, recommended windows</Text>
-            </View>
-            <Text style={styles.actionArrow}>➔</Text>
-          </TouchableOpacity>
-        </View>
+          </>
+        )}
 
         {/* Support & Contacts */}
         <View style={styles.sectionCard}>
@@ -353,6 +494,76 @@ export default function StoreSettingsScreen() {
           <Text style={styles.logoutText}>Log Out from Store Console</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Manual GPS / Geocode Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📍 Store GPS Coordinates</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Option A: Search Area / Landmark */}
+              <Text style={styles.modalSectionLabel}>1. Search Area / Landmark / Pincode</Text>
+              <View style={styles.searchRow}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="e.g. Ravet, Pune or 412101"
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                <TouchableOpacity
+                  style={styles.searchBtn}
+                  onPress={handleSearchAndPin}
+                  disabled={searchingLocation}
+                >
+                  {searchingLocation ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.searchBtnText}>Search</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Option B: Manual Coordinates */}
+              <Text style={[styles.modalSectionLabel, { marginTop: 16 }]}>2. Or Enter Exact Latitude & Longitude</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Latitude</Text>
+                  <TextInput
+                    style={styles.coordInput}
+                    placeholder="e.g. 18.6476"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={manualLat}
+                    onChangeText={setManualLat}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.inputLabel}>Longitude</Text>
+                  <TextInput
+                    style={styles.coordInput}
+                    placeholder="e.g. 73.7431"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="numeric"
+                    value={manualLng}
+                    onChangeText={setManualLng}
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.saveCoordBtn} onPress={handleSaveManualCoordinates}>
+                <Text style={styles.saveCoordBtnText}>Save Coordinates ✓</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -379,6 +590,64 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
     gap: 16,
+  },
+  pendingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  pendingTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  pendingSub: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 20,
+  },
+  pendingGuideBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    width: '100%',
+    marginVertical: 16,
+    gap: 6,
+  },
+  pendingGuideHeading: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  pendingGuideText: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
+  },
+  refreshPendingBtn: {
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  refreshPendingBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   statusToggleCard: {
     padding: 16,
@@ -501,18 +770,46 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
   },
+  mapLinkBtn: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    marginVertical: 2,
+  },
+  mapLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
   gpsUpdateBtn: {
     backgroundColor: '#0284C7',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
   },
   gpsUpdateBtnText: {
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  gpsEditBtn: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gpsEditBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#334155',
   },
   guideRow: {
     flexDirection: 'row',
@@ -608,5 +905,92 @@ const styles = StyleSheet.create({
   },
   radiusChipTextActive: {
     color: '#15803D',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 36,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalCloseText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#64748B',
+    padding: 4,
+  },
+  modalSectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  searchBtn: {
+    backgroundColor: '#0284C7',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  inputLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  coordInput: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  saveCoordBtn: {
+    backgroundColor: '#16A34A',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  saveCoordBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

@@ -1456,7 +1456,23 @@
     "load_error_message": "Could not load system state screen. Please try again.",
     "retry_label": "Retry"
   },
-  "shop_territories": [],
+  "shop_territories": [
+    {
+      "shop_id": "b2383119-dc7d-4633-afee-99a30b96465f",
+      "state_id": "state-1789466786523",
+      "state_name": "Maharashtra",
+      "district_id": "dist-1789466795551",
+      "district_name": "pune",
+      "city": "Ravet",
+      "area_name": "",
+      "address_line": "",
+      "pincode": "",
+      "latitude": null,
+      "longitude": null,
+      "delivery_radius_km": 5,
+      "is_open": true
+    }
+  ],
   "subcategories": [
     {
       "id": "sub-1",

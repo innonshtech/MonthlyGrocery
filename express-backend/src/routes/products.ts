@@ -15,6 +15,7 @@ import {
   formatProductDescriptionWithMedia,
   enrichProductWithMedia,
 } from '../utils/productMedia';
+import { getMerchantShopForUser } from '../services/shopResolution';
 
 const router = Router();
 const upload = multer({
@@ -1018,14 +1019,14 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
 // 5. GET /mine: Retrieve all products belonging to the active merchant's shop
 router.get('/mine', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .select('*')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (shopError || !shop) {
-      return res.status(400).json({ success: false, error: 'Merchant shop not found.' });
+    if (!shop) {
+      return res.status(400).json({ success: false, error: 'Merchant shop not found.', shop_not_found: true });
     }
 
     const { data: products, error } = await supabase
@@ -1051,15 +1052,16 @@ router.put('/:product_id', authMiddleware, requireRole(['admin', 'super_admin'])
   const data = req.body;
 
   try {
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .select('*')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (shopError || !shop) {
-      return res.status(400).json({ success: false, error: 'Merchant shop not found.' });
+    if (!shop) {
+      return res.status(400).json({ success: false, error: 'Merchant shop not found.', shop_not_found: true });
     }
+
 
     // Verify the product belongs to this merchant
     const { data: product, error: findError } = await supabase
