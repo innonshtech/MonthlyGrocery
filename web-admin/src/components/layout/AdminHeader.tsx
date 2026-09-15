@@ -46,7 +46,7 @@ export default function AdminHeader({
   const allNavItems = [
     {
       id: 'shops' as TabType,
-      label: 'Store Approvals',
+      label: 'Stores & Delivery Network',
       icon: Store,
       badge: shops.filter((s) => s.status === 'pending').length || undefined
     },
@@ -69,8 +69,7 @@ export default function AdminHeader({
       badge: masterProductsList.length || undefined
     },
     { id: 'categories-admin' as TabType, label: 'Manage Categories', icon: Tag },
-    { id: 'cities-areas' as TabType, label: 'Cities & Localities', icon: MapPin },
-    { id: 'locations' as TabType, label: 'Localities Mapping', icon: MapPin },
+    { id: 'cities-areas' as TabType, label: 'Cities & Localities Directory', icon: MapPin },
     { id: 'coupons-admin' as TabType, label: 'Manage Coupons', icon: Ticket },
     { id: 'banners' as TabType, label: 'Festive Campaigns', icon: ImageIcon },
     { id: 'home-screen' as TabType, label: 'App Screen Copy', icon: Home },

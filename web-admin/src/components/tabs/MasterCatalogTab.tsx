@@ -16,6 +16,7 @@ import {
   Sparkles,
   Tag,
   RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   PACK_UNIT_OPTIONS,
@@ -119,6 +120,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
   handleSavePackSize,
   token,
 }) => {
+  const [catalogTab, setCatalogTab] = useState<'inventory' | 'create'>('inventory');
   const [catalogViewMode, setCatalogViewMode] = useState<'grouped' | 'flat'>('grouped');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
@@ -468,53 +470,112 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans">
-      {/* 1. TOP METRIC STATS BAR */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-            <Package className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Product Families</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{stats.totalFamilies}</p>
-          </div>
+      {/* 1. TOP NAVIGATION BAR / VIEW SWITCHER */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-xl shadow-xl">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Tab 1: Master Inventory */}
+          <button
+            type="button"
+            onClick={() => setCatalogTab('inventory')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              catalogTab === 'inventory'
+                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>📦 Master Inventory ({stats.totalSkus})</span>
+          </button>
+
+          {/* Tab 2: Add Master Product */}
+          <button
+            type="button"
+            onClick={() => setCatalogTab('create')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              catalogTab === 'create'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20'
+                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>➕ Add Master Product</span>
+          </button>
         </div>
 
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
-          <div className="w-11 h-11 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pack SKUs</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{stats.totalSkus}</p>
-          </div>
-        </div>
-
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-            <Tag className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Categories</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{stats.totalCategories}</p>
-          </div>
-        </div>
-
-        <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
-          <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active & In-Stock</p>
-            <p className="text-xl font-extrabold text-white mt-0.5">{stats.inStock}</p>
-          </div>
+        {/* Top Summary Stats & Refresh */}
+        <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-300">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            Families: <strong className="text-white font-bold">{stats.totalFamilies}</strong>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-400" />
+            In-Stock: <strong className="text-teal-400 font-bold">{stats.inStock}</strong>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            Categories: <strong className="text-amber-400 font-bold">{stats.totalCategories}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            <span>Refresh</span>
+          </button>
         </div>
       </div>
 
-      {/* 2. MAIN WORKSPACE GRID: CATALOG TABLE (SPAN 3) + CREATE FORM (SPAN 1) */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-        {/* PRODUCTS TABLE SECTION (SPAN 3) */}
-        <section className="xl:col-span-3 bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-5">
+      {/* 2. TOP METRIC STATS CARDS (Active on Inventory Tab) */}
+      {catalogTab === 'inventory' && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+              <Package className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Product Families</p>
+              <p className="text-xl font-extrabold text-white mt-0.5">{stats.totalFamilies}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
+            <div className="w-11 h-11 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pack SKUs</p>
+              <p className="text-xl font-extrabold text-white mt-0.5">{stats.totalSkus}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
+            <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+              <Tag className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Categories</p>
+              <p className="text-xl font-extrabold text-white mt-0.5">{stats.totalCategories}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 backdrop-blur-xl flex items-center gap-3.5 shadow-lg">
+            <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Active & In-Stock</p>
+              <p className="text-xl font-extrabold text-white mt-0.5">{stats.inStock}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. MAIN WORKSPACE VIEW: INVENTORY TABLE OR CREATE PRODUCT */}
+      {catalogTab === 'inventory' ? (
+        <section className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-5">
           {/* Header & Controls Toolbar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
             <div>
@@ -533,7 +594,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
               </div>
             </div>
 
-            {/* Actions: View Toggle + Search + Filter + Refresh */}
+            {/* Actions: View Toggle + Search + Filter + Add Master Product Quick Action */}
             <div className="flex flex-wrap items-center gap-2.5">
               {/* Segmented View Mode Toggle */}
               <div className="bg-slate-950/80 p-1 rounded-xl border border-slate-800 flex items-center gap-1">
@@ -594,6 +655,15 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                 )}
               </div>
 
+              {/* Add Master Product Quick Action Button */}
+              <button
+                type="button"
+                onClick={() => setCatalogTab('create')}
+                className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-950/40 flex items-center gap-1.5 cursor-pointer h-[34px]"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Master Product
+              </button>
+
               {/* Refresh Button */}
               <button
                 type="button"
@@ -606,8 +676,8 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
             </div>
           </div>
 
-          {/* Table Container */}
-          <div className="overflow-x-auto max-h-[640px] overflow-y-auto pr-1">
+          {/* Table Container (Full Width) */}
+          <div className="overflow-x-auto max-h-[680px] overflow-y-auto pr-1">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -886,190 +956,227 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
             </table>
           </div>
         </section>
-
-        {/* 3. CREATE PRODUCT PANEL (SPAN 1 - STICKY) */}
-        <section className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl sticky top-6 space-y-5">
-          <div className="flex items-center gap-2.5 pb-4 border-b border-slate-800/80">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Plus className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Add Master Product</h2>
-              <p className="text-xs text-slate-400">Create new base product & pack variants</p>
+      ) : (
+        /* DEDICATED FULL-PAGE CREATE PRODUCT WORKSPACE */
+        <div className="space-y-6">
+          {/* Top Header Card with Back Button */}
+          <div className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCatalogTab('inventory')}
+                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Catalogue</span>
+              </button>
+              <div>
+                <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                  <Package className="w-5 h-5 text-emerald-400" /> Add Master Product
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Create new global base product and pack size SKU variants available across all partner stores.
+                </p>
+              </div>
             </div>
           </div>
 
-          <form onSubmit={handleCreateProduct} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Product Base Name *
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Fortune Soya Health Oil"
-                value={newProdName}
-                onChange={(e) => setNewProdName(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
-              />
-            </div>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await handleCreateProduct(e);
+              setCatalogTab('inventory');
+            }}
+            className="space-y-6"
+          >
+            {/* Multi-Card Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Card 1: Identity & Classification (7 cols) */}
+              <div className="lg:col-span-7 bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                  <Tag className="w-4 h-4 text-emerald-400" /> Product Identity & Classification
+                </h3>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Brand
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Fortune"
-                  value={newProdBrand}
-                  onChange={(e) => setNewProdBrand(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Company
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Adani Wilmar"
-                  value={newProdCompany}
-                  onChange={(e) => setNewProdCompany(e.target.value)}
-                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Category *
-                </label>
-                <select
-                  required
-                  value={newProdCategory}
-                  onChange={(e) => {
-                    setNewProdCategory(e.target.value);
-                    setNewProdSubcategory('');
-                  }}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-                >
-                  <option value="">-- Choose --</option>
-                  {categoriesList.map((cat) => (
-                    <option key={cat.id} value={cat.name}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Subcategory
-                </label>
-                <select
-                  value={newProdSubcategory}
-                  onChange={(e) => setNewProdSubcategory(e.target.value)}
-                  disabled={!newProdCategory}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50"
-                >
-                  <option value="">-- Optional --</option>
-                  {getSubcategoriesForCategoryName(newProdCategory).map((sub) => (
-                    <option key={sub.id} value={sub.name}>{sub.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Multi-Image Gallery & Video URL in Create Product */}
-            <div className="space-y-3 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/70">
-              <div className="flex items-center justify-between">
-                <label className="block text-[10px] font-bold text-slate-300 uppercase tracking-wider">
-                  Product Gallery Images (PNG, JPG, WebP, SVG)
-                </label>
-                <span className="text-[10px] font-semibold text-emerald-400">
-                  {newProdImageFiles.length} selected
-                </span>
-              </div>
-
-              {/* Thumbnails preview grid */}
-              {newProdImagePreviews.length > 0 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {newProdImagePreviews.map((preview, idx) => (
-                    <div key={idx} className="relative group rounded-xl bg-slate-900 border border-slate-700 p-1 flex items-center justify-center h-16">
-                      <img
-                        src={preview}
-                        alt={`preview-${idx}`}
-                        className="max-h-full max-w-full object-contain"
-                      />
-                      {idx === 0 && (
-                        <span className="absolute bottom-1 left-1 bg-emerald-500 text-[8px] font-bold text-slate-950 px-1 rounded shadow">
-                          Cover
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newFiles = newProdImageFiles.filter((_, i) => i !== idx);
-                          const newPrev = newProdImagePreviews.filter((_, i) => i !== idx);
-                          setNewProdImageFiles(newFiles);
-                          setNewProdImagePreviews(newPrev);
-                        }}
-                        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500/90 text-white text-[10px] flex items-center justify-center hover:bg-red-600 transition-colors"
-                        title="Remove image"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Product Base Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Fortune Sunlite Refined Sunflower Oil"
+                    value={newProdName}
+                    onChange={(e) => setNewProdName(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  />
                 </div>
-              )}
 
-              <label className="block cursor-pointer">
-                <div className="w-full bg-slate-900 border border-dashed border-slate-700 hover:border-emerald-500 rounded-xl px-3 py-2.5 text-xs text-slate-300 hover:text-white transition-all text-center flex items-center justify-center gap-2">
-                  <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>
-                    {newProdImageUploading
-                      ? '⏳ Uploading...'
-                      : newProdImageFiles.length > 0
-                      ? '📁 Add More Images'
-                      : '📁 Select Multiple Images (PNG/JPG/SVG)'}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Brand Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Fortune"
+                      value={newProdBrand}
+                      onChange={(e) => setNewProdBrand(e.target.value)}
+                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Company / Manufacturer
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Adani Wilmar"
+                      value={newProdCompany}
+                      onChange={(e) => setNewProdCompany(e.target.value)}
+                      className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Primary Category *
+                    </label>
+                    <select
+                      required
+                      value={newProdCategory}
+                      onChange={(e) => {
+                        setNewProdCategory(e.target.value);
+                        setNewProdSubcategory('');
+                      }}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="">-- Choose Category --</option>
+                      {categoriesList.map((cat) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                      Subcategory
+                    </label>
+                    <select
+                      value={newProdSubcategory}
+                      onChange={(e) => setNewProdSubcategory(e.target.value)}
+                      disabled={!newProdCategory}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50"
+                    >
+                      <option value="">-- Optional --</option>
+                      {getSubcategoriesForCategoryName(newProdCategory).map((sub) => (
+                        <option key={sub.id} value={sub.name}>{sub.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Media & Gallery (5 cols) */}
+              <div className="lg:col-span-5 bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-emerald-400" /> Multi-Media Gallery
+                  </h3>
+                  <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+                    {newProdImageFiles.length} photos selected
                   </span>
                 </div>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 0) {
-                      const updatedFiles = [...newProdImageFiles, ...files];
-                      const newPreviews = files.map((f) => URL.createObjectURL(f));
-                      setNewProdImageFiles(updatedFiles);
-                      setNewProdImagePreviews([...newProdImagePreviews, ...newPreviews]);
-                    }
-                  }}
-                />
-              </label>
 
-              <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
-                  Product Demo Video URL (Optional)
+                {/* Thumbnails preview grid */}
+                {newProdImagePreviews.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2.5">
+                    {newProdImagePreviews.map((preview, idx) => (
+                      <div key={idx} className="relative group rounded-xl bg-slate-950 border border-slate-700 p-1 flex items-center justify-center h-20">
+                        <img
+                          src={preview}
+                          alt={`preview-${idx}`}
+                          className="max-h-full max-w-full object-contain"
+                        />
+                        {idx === 0 && (
+                          <span className="absolute bottom-1 left-1 bg-emerald-500 text-[8px] font-bold text-slate-950 px-1 rounded shadow">
+                            Cover
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newFiles = newProdImageFiles.filter((_, i) => i !== idx);
+                            const newPrev = newProdImagePreviews.filter((_, i) => i !== idx);
+                            setNewProdImageFiles(newFiles);
+                            setNewProdImagePreviews(newPrev);
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/90 text-white text-[10px] flex items-center justify-center hover:bg-red-600 transition-colors shadow"
+                          title="Remove image"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <label className="block cursor-pointer">
+                  <div className="w-full bg-slate-950 border border-dashed border-slate-700 hover:border-emerald-500 rounded-2xl p-4 text-xs text-slate-300 hover:text-white transition-all text-center flex flex-col items-center justify-center gap-1.5">
+                    <Upload className="w-5 h-5 text-emerald-400" />
+                    <span className="font-bold text-sm">
+                      {newProdImageUploading
+                        ? '⏳ Uploading...'
+                        : newProdImageFiles.length > 0
+                        ? '📁 Add More Images'
+                        : '📁 Click to Upload Multiple Product Images'}
+                    </span>
+                    <span className="text-[10px] text-slate-500">Supports PNG, JPG, WebP, SVG</span>
+                  </div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 0) {
+                        const updatedFiles = [...newProdImageFiles, ...files];
+                        const newPreviews = files.map((f) => URL.createObjectURL(f));
+                        setNewProdImageFiles(updatedFiles);
+                        setNewProdImagePreviews([...newProdImagePreviews, ...newPreviews]);
+                      }
+                    }}
+                  />
                 </label>
-                <input
-                  type="url"
-                  placeholder="e.g. https://domain.com/demo.mp4"
-                  value={newProdVideoUrl}
-                  onChange={(e) => setNewProdVideoUrl(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
-                />
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    Product Demo Video URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="e.g. https://domain.com/demo.mp4"
+                    value={newProdVideoUrl}
+                    onChange={(e) => setNewProdVideoUrl(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Pack Size Variants Editor */}
-            <div className="border-t border-slate-800/80 pt-3 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Pack Size Variants</h3>
+            {/* Card 3: Pack Size Variants & SKU Pricing Builder (12 cols) */}
+            <div className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-400" /> Pack Size Variants & SKU Pricing
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Configure multiple package sizes (e.g. 1 L, 5 L, 500 ml) with custom MRP and SKU codes.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() =>
@@ -1078,28 +1185,33 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                       { sku: '', quantityValue: '', quantityUnit: 'kg', mrp: '', price: '' },
                     ])
                   }
-                  className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
-                  + Add Size
+                  <Plus className="w-4 h-4" /> Add Pack Size Variant
                 </button>
               </div>
 
-              <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {newProdVariants.map((item, idx) => (
-                  <div key={idx} className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/70 space-y-2 relative">
-                    {newProdVariants.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setNewProdVariants(newProdVariants.filter((_, i) => i !== idx))}
-                        className="absolute top-2 right-2 text-slate-500 hover:text-red-400 text-xs font-bold"
-                      >
-                        ✕
-                      </button>
-                    )}
+                  <div key={idx} className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 space-y-3 relative shadow-inner">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+                        Variant #{idx + 1}
+                      </span>
+                      {newProdVariants.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setNewProdVariants(newProdVariants.filter((_, i) => i !== idx))}
+                          className="text-slate-500 hover:text-red-400 text-xs font-bold px-2 py-1 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                        >
+                          ✕ Remove
+                        </button>
+                      )}
+                    </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2.5">
                       <div>
-                        <label className="block text-[9px] font-semibold text-slate-400 mb-1">Qty</label>
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Quantity *</label>
                         <input
                           type="number"
                           step="any"
@@ -1117,11 +1229,11 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                             }
                             setNewProdVariants(copy);
                           }}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-semibold text-slate-400 mb-1">Unit</label>
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Unit *</label>
                         <select
                           required
                           value={item.quantityUnit}
@@ -1135,7 +1247,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                             }
                             setNewProdVariants(copy);
                           }}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 cursor-pointer"
                         >
                           {PACK_UNIT_OPTIONS.map((opt) => (
                             <option key={opt.code} value={opt.code}>{opt.label}</option>
@@ -1143,8 +1255,8 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[9px] font-semibold text-slate-400 mb-1">Preview</label>
-                        <div className="h-[26px] flex items-center px-2 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-emerald-300 font-bold truncate">
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Preview Label</label>
+                        <div className="h-[34px] flex items-center px-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-emerald-300 font-bold truncate">
                           {item.quantityValue && item.quantityUnit
                             ? packUnitPayloadFromInput(item.quantityValue, item.quantityUnit).unit
                             : '—'}
@@ -1152,9 +1264,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2.5">
                       <div>
-                        <label className="block text-[9px] font-semibold text-slate-400 mb-1">MRP (₹) *</label>
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Master MRP (₹) *</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1166,11 +1278,11 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                             copy[idx].mrp = e.target.value;
                             setNewProdVariants(copy);
                           }}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                       <div>
-                        <label className="block text-[9px] font-semibold text-slate-400 mb-1">Price (₹) *</label>
+                        <label className="block text-[10px] font-semibold text-slate-400 mb-1">Selling Price (₹) *</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1182,12 +1294,13 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                             copy[idx].price = e.target.value;
                             setNewProdVariants(copy);
                           }}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
                     </div>
 
                     <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 mb-1">SKU Code *</label>
                       <input
                         type="text"
                         required
@@ -1198,7 +1311,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                           copy[idx].sku = e.target.value;
                           setNewProdVariants(copy);
                         }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono focus:outline-none focus:border-emerald-500"
                       />
                     </div>
                   </div>
@@ -1206,16 +1319,70 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={newProdImageUploading}
-              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" /> Save Product & Variants
-            </button>
+            {/* Card 4: Descriptions & Highlights */}
+            <div className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-slate-800/80 pb-3">
+                <Sparkles className="w-4 h-4 text-emerald-400" /> Descriptions & Product Highlights
+              </h3>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Short One-Line Description
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 100% refined sunflower oil enriched with vitamins A & D"
+                  value={newProdShortDescription}
+                  onChange={(e) => setNewProdShortDescription(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Detailed Description / Key Feature Bullets
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="e.g. • Light & easy to digest&#10;• High smoke point for Indian cooking&#10;• Fortified with Vitamin A & D"
+                  value={newProdDescription}
+                  onChange={(e) => setNewProdDescription(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Action Footer Bar */}
+            <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 backdrop-blur-xl shadow-xl flex items-center justify-between gap-4">
+              <button
+                type="button"
+                onClick={() => setCatalogTab('inventory')}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel (Go Back)
+              </button>
+
+              <button
+                type="submit"
+                disabled={newProdImageUploading}
+                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-emerald-950 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              >
+                {newProdImageUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Uploading Media & Creating...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    <span>Save & Publish Master Product</span>
+                  </>
+                )}
+              </button>
+            </div>
           </form>
-        </section>
-      </div>
+        </div>
+      )}
 
       {/* QUICK PACK SIZE EDIT MODAL */}
       {packEditProduct && (

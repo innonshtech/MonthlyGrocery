@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { apiFetch, clearAdminSession, API_BASE } from '../utils/api';
 import { packUnitPayloadFromInput, resolvePackUnitLabel } from '../lib/packUnits';
+import { validateIndianPincode } from '../utils/pincodeValidator';
 import {
   Shop,
   AdminState,
@@ -127,6 +128,11 @@ export default function DashboardPage() {
   const [regStateId, setRegStateId] = useState('');
   const [regDistrictId, setRegDistrictId] = useState('');
   const [regCity, setRegCity] = useState('');
+  const [regArea, setRegArea] = useState('');
+  const [regPincode, setRegPincode] = useState('');
+  const [regLat, setRegLat] = useState('');
+  const [regLng, setRegLng] = useState('');
+  const [regRadius, setRegRadius] = useState('5.0');
   const [adminStates, setAdminStates] = useState<AdminState[]>([]);
   const [adminDistricts, setAdminDistricts] = useState<AdminDistrict[]>([]);
   const [regDistrictOptions, setRegDistrictOptions] = useState<AdminDistrict[]>([]);
@@ -241,7 +247,7 @@ export default function DashboardPage() {
         setAdminDistricts(districtsData.districts || []);
       }
 
-      if (activeTab === 'locations' || activeTab === 'cities-areas') {
+      if (activeTab === 'shops' || activeTab === 'locations' || activeTab === 'cities-areas') {
         const dataCities = await apiFetch('/admin/cities');
         setCities(dataCities.cities || []);
 
@@ -373,6 +379,11 @@ export default function DashboardPage() {
       alert('Please fill out all location fields (including City name)');
       return;
     }
+    const pinVal = validateIndianPincode(locPin.trim());
+    if (!pinVal.isValid) {
+      alert(`Invalid PIN Code: ${pinVal.error}`);
+      return;
+    }
     if (!locShop) {
       alert('Please assign a merchant shop — orders from this area will go to that shopkeeper.');
       return;
@@ -383,7 +394,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           city: locCity.trim(),
           area_name: locArea.trim(),
-          pincode: locPin.trim(),
+          pincode: pinVal.formatted || locPin.trim(),
           shop_id: locShop,
         }),
       });
@@ -438,11 +449,16 @@ export default function DashboardPage() {
       alert('Please select or enter a 6-digit PIN code and select an approved shop.');
       return;
     }
+    const pinVal = validateIndianPincode(pincode.trim());
+    if (!pinVal.isValid) {
+      alert(`Invalid PIN Code: ${pinVal.error}`);
+      return;
+    }
     try {
       const data = await apiFetch('/admin/locations/assign-pincode', {
         method: 'POST',
         body: JSON.stringify({
-          pincode: pincode.trim(),
+          pincode: pinVal.formatted || pincode.trim(),
           shop_id: shopId,
           city: city ? city.trim() : undefined,
         }),
@@ -554,10 +570,14 @@ export default function DashboardPage() {
       alert('Please select a city and enter area name');
       return;
     }
-    const pin = newAreaPincode.replace(/\D/g, '').slice(0, 6);
-    if (pin && pin.length !== 6) {
-      alert('Please enter a valid 6-digit pincode, or leave it blank to set later in Localities.');
-      return;
+    let cleanPin: string | undefined = undefined;
+    if (newAreaPincode && newAreaPincode.trim()) {
+      const pinVal = validateIndianPincode(newAreaPincode.trim());
+      if (!pinVal.isValid) {
+        alert(`Invalid PIN Code: ${pinVal.error}`);
+        return;
+      }
+      cleanPin = pinVal.formatted;
     }
     try {
       const data = await apiFetch('/admin/areas', {
@@ -565,7 +585,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           city_id: selectedCityId,
           name: newAreaName.trim(),
-          pincode: pin || undefined,
+          pincode: cleanPin || undefined,
         }),
       });
       const refreshed = await apiFetch('/admin/areas');
@@ -1083,6 +1103,15 @@ export default function DashboardPage() {
       alert('Please select state, district, and enter the city for merchant access');
       return;
     }
+    let validatedPin: string | undefined = undefined;
+    if (regPincode && regPincode.trim()) {
+      const pinVal = validateIndianPincode(regPincode.trim());
+      if (!pinVal.isValid) {
+        alert(`Invalid PIN Code: ${pinVal.error}`);
+        return;
+      }
+      validatedPin = pinVal.formatted;
+    }
     try {
       await apiFetch('/shops/register', {
         method: 'POST',
@@ -1093,6 +1122,11 @@ export default function DashboardPage() {
           state_id: regStateId,
           district_id: regDistrictId,
           city: regCity.trim(),
+          area_name: regArea.trim() || undefined,
+          pincode: validatedPin || undefined,
+          latitude: regLat ? parseFloat(regLat) : undefined,
+          longitude: regLng ? parseFloat(regLng) : undefined,
+          delivery_radius_km: regRadius ? parseFloat(regRadius) : 5.0,
         }),
       });
       alert('Store and owner profile registered successfully!');
@@ -1102,6 +1136,11 @@ export default function DashboardPage() {
       setRegStateId('');
       setRegDistrictId('');
       setRegCity('');
+      setRegArea('');
+      setRegPincode('');
+      setRegLat('');
+      setRegLng('');
+      setRegRadius('5.0');
       fetchData();
     } catch (err: any) {
       alert(err.message || 'Failed to register store');
@@ -1287,6 +1326,31 @@ export default function DashboardPage() {
               setRegDistrictId={setRegDistrictId}
               regCity={regCity}
               setRegCity={setRegCity}
+              regArea={regArea}
+              setRegArea={setRegArea}
+              regPincode={regPincode}
+              setRegPincode={setRegPincode}
+              regLat={regLat}
+              setRegLat={setRegLat}
+              regLng={regLng}
+              setRegLng={setRegLng}
+              regRadius={regRadius}
+              setRegRadius={setRegRadius}
+              cities={cities}
+              areas={areas}
+              locations={locations}
+              locCity={locCity}
+              setLocCity={setLocCity}
+              locArea={locArea}
+              setLocArea={setLocArea}
+              locPin={locPin}
+              setLocPin={setLocPin}
+              locShop={locShop}
+              setLocShop={setLocShop}
+              handleAddLocation={handleAddLocation}
+              handleUpdateLocationShop={handleUpdateLocationShop}
+              handleBulkAssignPincode={handleBulkAssignPincode}
+              handleDeleteLocation={handleDeleteLocation}
               handleRegisterShop={handleRegisterShop}
               handleUpdateShopStatus={handleUpdateShopStatus}
               handleDeleteShop={handleDeleteShop}

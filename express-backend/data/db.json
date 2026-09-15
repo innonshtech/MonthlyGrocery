@@ -1,14 +1,5 @@
 {
-  "serviceable_locations": [
-    {
-      "id": "loc-1789467105750",
-      "city": "pune",
-      "area_name": "Ravet",
-      "pincode": "412101",
-      "is_serviceable": true,
-      "shop_id": "62deebf4-9d53-4915-a8c8-0157f743bdb3"
-    }
-  ],
+  "serviceable_locations": [],
   "promotional_banners": [
     {
       "id": "banner-promo-monthly",
@@ -74,14 +65,7 @@
       "name": "pune"
     }
   ],
-  "areas": [
-    {
-      "id": "area-1789467105749",
-      "city_id": "city-1789466949121",
-      "name": "Ravet",
-      "pincode": "412101"
-    }
-  ],
+  "areas": [],
   "shop_products": [],
   "categories": [
     {
@@ -1470,21 +1454,6 @@
       "latitude": null,
       "longitude": null,
       "delivery_radius_km": 5,
-      "is_open": true
-    },
-    {
-      "shop_id": "62deebf4-9d53-4915-a8c8-0157f743bdb3",
-      "state_id": "state-1789466786523",
-      "state_name": "Maharashtra",
-      "district_id": "dist-1789466795551",
-      "district_name": "pune",
-      "city": "Ravet",
-      "area_name": "",
-      "address_line": "",
-      "pincode": "",
-      "latitude": 18.643269,
-      "longitude": 73.7450557,
-      "delivery_radius_km": 7,
       "is_open": true
     }
   ],

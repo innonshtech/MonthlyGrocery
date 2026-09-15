@@ -6,6 +6,7 @@ import { packUnitPayloadFromInput, resolvePackUnitLabel, toSupabaseProductRow } 
 import { parseProductMedia, enrichProductWithMedia, formatProductDescriptionWithMedia } from '../utils/productMedia';
 import { enrichConsumerOrder, resolveStoredDisplayId } from '../utils/orderEnrichment';
 import { getProductFamilyKey } from './products';
+import { validateIndianPincode } from '../utils/pincodeValidator';
 
 const router = Router();
 
@@ -974,6 +975,11 @@ router.post('/locations', authMiddleware, requireRole(['super_admin']), async (r
     return res.status(400).json({ success: false, error: 'City, Area name, and PIN code are required' });
   }
 
+  const pinVal = validateIndianPincode(String(pincode));
+  if (!pinVal.isValid) {
+    return res.status(400).json({ success: false, error: pinVal.error });
+  }
+
   if (!shop_id && !id) {
     return res.status(400).json({
       success: false,
@@ -987,7 +993,7 @@ router.post('/locations', authMiddleware, requireRole(['super_admin']), async (r
     if (id) {
       // Update existing
       db.serviceable_locations = db.serviceable_locations.map(loc => 
-        loc.id === id ? { ...loc, city, area_name, pincode, is_serviceable: is_serviceable !== false, shop_id: shop_id || null } : loc
+        loc.id === id ? { ...loc, city, area_name, pincode: pinVal.formatted || pincode, is_serviceable: is_serviceable !== false, shop_id: shop_id || null } : loc
       );
     } else {
       // Add new
@@ -995,7 +1001,7 @@ router.post('/locations', authMiddleware, requireRole(['super_admin']), async (r
         id: `loc-${Date.now()}`,
         city,
         area_name,
-        pincode,
+        pincode: pinVal.formatted || pincode,
         is_serviceable: is_serviceable !== false,
         shop_id: shop_id || null
       };
@@ -1011,10 +1017,9 @@ router.post('/locations', authMiddleware, requireRole(['super_admin']), async (r
 
 // DELETE /locations/:id: Delete a zone (Super Admin only)
 router.delete('/locations/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { id } = req.params;
-
   try {
     const db = readDb();
+    const { id } = req.params;
     db.serviceable_locations = db.serviceable_locations.filter(loc => loc.id !== id);
     writeDb(db);
     return res.json({ success: true, locations: db.serviceable_locations });
@@ -1027,10 +1032,11 @@ router.delete('/locations/:id', authMiddleware, requireRole(['super_admin']), as
 router.post('/locations/assign-pincode', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   const { pincode, shop_id, city } = req.body;
 
-  const cleanPin = String(pincode || '').replace(/\D/g, '').slice(0, 6);
-  if (!cleanPin || cleanPin.length !== 6) {
-    return res.status(400).json({ success: false, error: 'A valid 6-digit PIN code is required' });
+  const pinVal = validateIndianPincode(String(pincode || ''));
+  if (!pinVal.isValid) {
+    return res.status(400).json({ success: false, error: pinVal.error });
   }
+  const cleanPin = pinVal.formatted!;
 
   if (!shop_id) {
     return res.status(400).json({ success: false, error: 'A valid shop_id is required' });
@@ -1560,7 +1566,15 @@ router.post('/areas', authMiddleware, requireRole(['super_admin']), async (req: 
       return res.status(400).json({ success: false, error: 'Area/locality is already registered under this city' });
     }
 
-    const cleanPin = pincode ? String(pincode).replace(/\D/g, '').slice(0, 6) : '';
+    let cleanPin = '';
+    if (pincode && String(pincode).trim()) {
+      const pinVal = validateIndianPincode(String(pincode));
+      if (!pinVal.isValid) {
+        return res.status(400).json({ success: false, error: pinVal.error });
+      }
+      cleanPin = pinVal.formatted || '';
+    }
+
     const newArea = {
       id: `area-${Date.now()}`,
       city_id,

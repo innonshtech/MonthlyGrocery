@@ -9,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -37,6 +38,7 @@ import {
   AreaSelectionConfig,
   fetchOnboardingConfig,
 } from '../services/onboardingApi';
+import { reverseGeocodeLocation } from '../services/addressApi';
 
 function formatUnserviceableSubtitle(
   template: string,
@@ -65,6 +67,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const [loadError, setLoadError] = useState(false);
   const [missingCity, setMissingCity] = useState(false);
   const [notifyLoading, setNotifyLoading] = useState(false);
+  const [gpsLocating, setGpsLocating] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -91,6 +94,106 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleUseCurrentGps = async () => {
+    setGpsLocating(true);
+    try {
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Location Permission',
+              message: 'MonthlyGrocery needs your location to find nearby serviceable areas and stores.',
+              buttonPositive: 'OK',
+              buttonNegative: 'Cancel',
+            },
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            showToast({
+              type: 'error',
+              title: 'Permission Denied',
+              message: 'Location permission was denied. You can search by area name or pincode.',
+            });
+            setGpsLocating(false);
+            return;
+          }
+        } catch {
+          // Continue if permission dialog fails
+        }
+      }
+
+      const nav = (globalThis as any)?.navigator;
+      if (nav && nav.geolocation && typeof nav.geolocation.getCurrentPosition === 'function') {
+        nav.geolocation.getCurrentPosition(
+          async (pos: any) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const details = await reverseGeocodeLocation(lat, lng);
+            if (details) {
+              if (details.pincode) {
+                setSearchQuery(details.pincode);
+                showToast({
+                  type: 'success',
+                  title: 'Location Detected',
+                  message: `Found PIN ${details.pincode}${details.area ? ` (${details.area})` : ''}. Showing areas & stores nearby!`,
+                });
+              } else if (details.area) {
+                setSearchQuery(details.area);
+                showToast({
+                  type: 'success',
+                  title: 'Location Detected',
+                  message: `Found ${details.area}. Showing nearby areas!`,
+                });
+              }
+            } else {
+              showToast({
+                type: 'info',
+                title: 'Location Found',
+                message: 'Could not resolve exact pincode. Please search your area or pincode.',
+              });
+            }
+            setGpsLocating(false);
+          },
+          async (err: any) => {
+            console.warn('GPS error in AreaSelection, trying fallback:', err?.message);
+            // Fallback: check city or first available area
+            if (areas.length > 0) {
+              const firstWithPin = areas.find((a) => a.pincode);
+              if (firstWithPin?.pincode) {
+                setSearchQuery(firstWithPin.pincode);
+                showToast({
+                  type: 'info',
+                  title: 'Default Location',
+                  message: `Showing areas in ${cityName} (PIN ${firstWithPin.pincode}).`,
+                });
+              }
+            } else {
+              showToast({
+                type: 'info',
+                title: 'Search Location',
+                message: 'GPS unavailable. Please search by area name or 6-digit pincode.',
+              });
+            }
+            setGpsLocating(false);
+          },
+          { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
+        );
+      } else {
+        if (areas.length > 0 && areas[0].pincode) {
+          setSearchQuery(areas[0].pincode);
+        }
+        showToast({
+          type: 'info',
+          title: 'Search Location',
+          message: 'GPS is not available on this device. Showing all areas.',
+        });
+        setGpsLocating(false);
+      }
+    } catch {
+      setGpsLocating(false);
+    }
+  };
 
   const handleAreaSelect = async (area: CityArea) => {
     if (!area.serviceable) return;
@@ -146,7 +249,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const filteredAreas = areas.filter(
     (a) =>
       a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.pincode.includes(searchQuery.trim()),
+      (a.pincode && a.pincode.includes(searchQuery.trim())),
   );
 
   const isUnserviceableSearch =
@@ -225,7 +328,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
             <OnboardingSearchIcon size={18} color={COLORS.ink300} />
             <TextInput
               style={styles.searchInput}
-              placeholder={config.search_placeholder}
+              placeholder={config.search_placeholder || 'Search area or 6-digit pincode...'}
               placeholderTextColor={COLORS.ink300}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -241,6 +344,29 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
               </TouchableOpacity>
             ) : null}
           </View>
+
+          <TouchableOpacity
+            style={[styles.gpsButton, gpsLocating && styles.gpsButtonLoading]}
+            onPress={handleUseCurrentGps}
+            disabled={gpsLocating}
+            activeOpacity={0.7}
+          >
+            {gpsLocating ? (
+              <ActivityIndicator size="small" color={COLORS.green700} />
+            ) : (
+              <View style={styles.gpsIconCircle}>
+                <OnboardingAreaPinIcon size={16} color={COLORS.green700} />
+              </View>
+            )}
+            <View style={styles.gpsTextCol}>
+              <Text style={styles.gpsTitle}>
+                {gpsLocating ? 'Detecting current location...' : 'Use my current location (GPS)'}
+              </Text>
+              <Text style={styles.gpsSubtitle}>
+                Auto-detect Pincode & nearby grocery stores
+              </Text>
+            </View>
+          </TouchableOpacity>
 
           <OnboardingSectionLabel label={config.section_label} />
 
@@ -268,12 +394,33 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
                     <OnboardingAreaPinIcon size={18} color={COLORS.green700} />
                   </View>
                   <View style={styles.rowTextCol}>
-                    <Text
-                      style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}
-                    >
-                      {item.name}
-                    </Text>
+                    <View style={styles.areaTitleRow}>
+                      <Text
+                        style={[styles.rowTitle, isSelected && styles.rowTitleSelected]}
+                      >
+                        {item.name}
+                      </Text>
+                      {item.pincode ? (
+                        <View style={styles.pinPill}>
+                          <Text style={styles.pinPillText}>{item.pincode}</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <Text style={styles.rowSubtitle}>{subtitle}</Text>
+                    {item.serviceable && item.shop_name ? (
+                      <View style={styles.shopBadgeRow}>
+                        <Text style={styles.shopBadgeIcon}>🏪</Text>
+                        <Text style={styles.shopBadgeText} numberOfLines={1}>
+                          {item.shop_name}
+                          {item.shop_count && item.shop_count > 1 ? ` (+${item.shop_count - 1} more)` : ''}
+                        </Text>
+                      </View>
+                    ) : item.serviceable ? (
+                      <View style={styles.shopBadgeRow}>
+                        <Text style={styles.shopBadgeIcon}>🏪</Text>
+                        <Text style={styles.shopBadgeText}>Delivering in this PIN</Text>
+                      </View>
+                    ) : null}
                   </View>
                   {item.serviceable ? (
                     <OnboardingRadio selected={isSelected} />
@@ -408,7 +555,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     height: 50,
     paddingHorizontal: 14,
-    marginBottom: 16,
+    marginBottom: 10,
     gap: 10,
   },
   searchInput: {
@@ -424,6 +571,43 @@ const styles = StyleSheet.create({
     color: COLORS.ink300,
     fontWeight: 'bold',
   },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.green50,
+    borderWidth: 1,
+    borderColor: COLORS.green100,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+    gap: 12,
+  },
+  gpsButtonLoading: {
+    opacity: 0.8,
+  },
+  gpsIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.green100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gpsTextCol: {
+    flex: 1,
+  },
+  gpsTitle: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 13.5,
+    color: COLORS.green800,
+  },
+  gpsSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 11.5,
+    color: COLORS.green600,
+    marginTop: 1,
+  },
   list: { gap: 0 },
   rowCard: {
     flexDirection: 'row',
@@ -433,8 +617,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.line,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
-    paddingVertical: 14,
-    minHeight: 65,
+    paddingVertical: 12,
+    minHeight: 68,
     marginBottom: 8,
   },
   rowDisabled: { opacity: 0.85 },
@@ -448,6 +632,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   rowTextCol: { flex: 1 },
+  areaTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
   rowTitle: {
     ...FONTS.muktaSemiBold,
     fontSize: 14,
@@ -455,12 +645,39 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   rowTitleSelected: { color: COLORS.green700 },
+  pinPill: {
+    backgroundColor: COLORS.green50,
+    borderWidth: 1,
+    borderColor: COLORS.green100,
+    borderRadius: RADIUS.xs,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  pinPillText: {
+    ...FONTS.muktaMedium,
+    fontSize: 11,
+    color: COLORS.green800,
+  },
   rowSubtitle: {
     ...FONTS.muktaRegular,
     fontSize: 12,
     color: COLORS.ink500,
     lineHeight: 16,
     marginTop: 1,
+  },
+  shopBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  shopBadgeIcon: {
+    fontSize: 11,
+  },
+  shopBadgeText: {
+    ...FONTS.muktaMedium,
+    fontSize: 11.5,
+    color: COLORS.green700,
   },
   comingSoonBadge: {
     backgroundColor: COLORS.muted,

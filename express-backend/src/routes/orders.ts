@@ -297,13 +297,27 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
     let targetShop: any = null;
     if (targetShopId) {
-      const { data } = await supabase
-        .from('shops')
-        .select('id, shop_name, status')
-        .eq('id', targetShopId)
-        .maybeSingle();
-      if (data && data.status === 'approved') {
-        targetShop = data;
+      try {
+        const { data } = await supabase
+          .from('shops')
+          .select('id, shop_name, status')
+          .eq('id', targetShopId)
+          .maybeSingle();
+        if (data && data.status === 'approved') {
+          targetShop = data;
+        }
+      } catch {}
+
+      if (!targetShop) {
+        const territory = (db.shop_territories || []).find((t: any) => t.shop_id === targetShopId);
+        const localShop = (db.shops || []).find((s: any) => s.id === targetShopId);
+        if (territory || localShop) {
+          targetShop = {
+            id: targetShopId,
+            shop_name: territory?.shop_name || localShop?.shop_name || 'Assigned Kirana Store',
+            status: 'approved',
+          };
+        }
       }
     }
 

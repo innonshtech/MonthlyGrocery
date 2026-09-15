@@ -53,7 +53,7 @@ export default function AdminSidebar({
       items: [
         {
           id: 'shops' as TabType,
-          label: 'Store Approvals',
+          label: 'Stores & Delivery Network',
           icon: Store,
           badge: shops.filter((s) => s.status === 'pending').length || undefined,
           badgeColor: 'bg-amber-500'
@@ -83,10 +83,9 @@ export default function AdminSidebar({
       ]
     },
     {
-      title: 'Territories & Delivery',
+      title: 'Territories & Master Data',
       items: [
-        { id: 'cities-areas' as TabType, label: 'Cities & Localities', icon: MapPin },
-        { id: 'locations' as TabType, label: 'Serviceable Locations (Shop Mapping)', icon: MapPin }
+        { id: 'cities-areas' as TabType, label: 'Cities & Localities Directory', icon: MapPin }
       ]
     },
     {

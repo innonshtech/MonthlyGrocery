@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { AdminState, AdminDistrict, City, Area, TabType } from '../../types/admin.types';
+import { validateIndianPincode } from '../../utils/pincodeValidator';
 
 interface CitiesAreasTabProps {
   adminStates: AdminState[];
@@ -79,6 +80,11 @@ export default function CitiesAreasTab({
   handleDeleteArea,
   setActiveTab
 }: CitiesAreasTabProps) {
+  const areaPinValidation = useMemo(() => {
+    if (!newAreaPincode || !newAreaPincode.trim()) return null;
+    return validateIndianPincode(newAreaPincode.trim());
+  }, [newAreaPincode]);
+
   return (
     <div className="space-y-6 w-full">
       {/* Top Overview Banner & Hierarchy Flow */}
@@ -94,10 +100,10 @@ export default function CitiesAreasTab({
           </div>
           <button
             type="button"
-            onClick={() => setActiveTab('locations')}
+            onClick={() => setActiveTab('shops')}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 rounded-xl text-xs font-bold transition-all w-fit cursor-pointer"
           >
-            Map to Merchant Shops →
+            Stores & Network →
           </button>
         </div>
 
@@ -426,12 +432,30 @@ export default function CitiesAreasTab({
                     inputMode="numeric"
                     maxLength={6}
                     placeholder="PIN (411045)"
-                    className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs sm:text-sm outline-none font-mono text-center transition-colors"
+                    className={`w-full h-10 px-3 bg-slate-950 border ${
+                      areaPinValidation && !areaPinValidation.isValid && newAreaPincode.length === 6
+                        ? 'border-rose-500 focus:border-rose-400'
+                        : areaPinValidation?.isValid
+                        ? 'border-emerald-500 focus:border-emerald-400'
+                        : 'border-slate-800 focus:border-emerald-500'
+                    } text-slate-200 rounded-xl text-xs sm:text-sm outline-none font-mono text-center transition-colors`}
                     value={newAreaPincode}
                     onChange={(e) => setNewAreaPincode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
                   />
                 </div>
               </div>
+
+              {newAreaPincode && newAreaPincode.length === 6 && areaPinValidation && !areaPinValidation.isValid && (
+                <p className="text-[11px] text-rose-400 font-semibold flex items-center gap-1">
+                  <span>❌</span> <span>{areaPinValidation.error}</span>
+                </p>
+              )}
+
+              {newAreaPincode && newAreaPincode.length === 6 && areaPinValidation && areaPinValidation.isValid && (
+                <p className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                  <span>✅</span> <span>Valid Indian Postal PIN ({areaPinValidation.formatted})</span>
+                </p>
+              )}
 
               <button
                 type="submit"

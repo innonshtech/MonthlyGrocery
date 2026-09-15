@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { readDb, writeDb } from '../config/localDb';
 import { reverseGeocodeCoordinates, forwardGeocodeAddress } from '../services/geocodingService';
+import { validateIndianPincode } from '../utils/pincodeValidator';
 
 const router = Router();
 
@@ -64,6 +65,57 @@ const handleForwardGeocode = async (req: AuthRequest, res: Response) => {
 
 router.post('/forward-geocode', handleForwardGeocode);
 router.get('/forward-geocode', handleForwardGeocode);
+
+// GET /google-maps-status — Check whether Google Maps API is active and functioning
+router.get('/google-maps-status', async (_req: AuthRequest, res: Response) => {
+  try {
+    const { getGoogleMapsApiStatus } = require('../services/geocodingService');
+    const status = await getGoogleMapsApiStatus();
+    return res.json({ success: true, ...status });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Status check failed' });
+  }
+});
+
+// GET & POST /places-autocomplete — Search places with Google Places API or fallback
+const handlePlacesAutocomplete = async (req: AuthRequest, res: Response) => {
+  try {
+    const { autocompletePlaces } = require('../services/geocodingService');
+    const input = String(req.body?.input || req.query?.input || req.query?.q || '').trim();
+    const city = String(req.body?.city || req.query?.city || '').trim();
+    if (!input) {
+      return res.json({ success: true, predictions: [] });
+    }
+    const predictions = await autocompletePlaces(input, city || undefined);
+    return res.json({ success: true, predictions });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Autocomplete failed' });
+  }
+};
+
+router.get('/places-autocomplete', handlePlacesAutocomplete);
+router.post('/places-autocomplete', handlePlacesAutocomplete);
+
+// POST /driving-distance — Calculate driving road distance & time with Google Distance Matrix
+router.post('/driving-distance', async (req: AuthRequest, res: Response) => {
+  try {
+    const { calculateDrivingDistanceMatrix } = require('../services/geocodingService');
+    const { origin_lat, origin_lng, dest_lat, dest_lng } = req.body;
+    const oLat = parseFloat(String(origin_lat));
+    const oLng = parseFloat(String(origin_lng));
+    const dLat = parseFloat(String(dest_lat));
+    const dLng = parseFloat(String(dest_lng));
+
+    if (isNaN(oLat) || isNaN(oLng) || isNaN(dLat) || isNaN(dLng)) {
+      return res.status(400).json({ success: false, error: 'Valid origin and destination coordinates required' });
+    }
+
+    const result = await calculateDrivingDistanceMatrix(oLat, oLng, dLat, dLng);
+    return res.json({ success: true, ...result });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Distance matrix failed' });
+  }
+});
 
 
 // GET /check-serviceability — Verify whether a pincode, area, or coordinates are serviceable
@@ -130,6 +182,14 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     return res.status(400).json({
       success: false,
       error: 'Flat/house, area/locality, and pincode are required',
+    });
+  }
+
+  const pinVal = validateIndianPincode(String(pincode));
+  if (!pinVal.isValid) {
+    return res.status(400).json({
+      success: false,
+      error: pinVal.error,
     });
   }
 

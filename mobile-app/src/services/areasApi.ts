@@ -5,27 +5,40 @@ export interface CityArea {
   name: string;
   pincode: string;
   serviceable: boolean;
+  shop_id?: string | null;
+  shop_name?: string | null;
+  shop_count?: number;
 }
 
 export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
   if (!cityName?.trim()) return [];
 
   try {
-    const [locationsRes, citiesRes, areasRes] = await Promise.all([
+    const [locationsRes, citiesRes, areasRes, shopsRes] = await Promise.all([
       fetch(`${API_BASE}/admin/locations`),
       fetch(`${API_BASE}/admin/cities`),
       fetch(`${API_BASE}/admin/areas`),
+      fetch(`${API_BASE}/shops/nearby?city=${encodeURIComponent(cityName)}`),
     ]);
 
     const locationsData = await locationsRes.json();
     const citiesData = await citiesRes.json();
     const areasData = await areasRes.json();
+    const shopsData = await shopsRes.json().catch(() => ({ shops: [] }));
 
     if (!citiesRes.ok || !citiesData.success || !Array.isArray(citiesData.cities)) {
       return [];
     }
     if (!areasRes.ok || !areasData.success || !Array.isArray(areasData.areas)) {
       return [];
+    }
+
+    const availableShops: any[] = Array.isArray(shopsData.shops) ? shopsData.shops : [];
+    const shopMap = new Map<string, string>();
+    for (const s of availableShops) {
+      if (s.id && s.shop_name) {
+        shopMap.set(s.id, s.shop_name);
+      }
     }
 
     const cityKey = cityName.trim().toLowerCase();
@@ -67,22 +80,40 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
     const merged: CityArea[] = masterAreas.map((area: { id: string; name: string; pincode?: string }) => {
       const loc = locationByArea.get(area.name.trim().toLowerCase());
       const isServiceable = loc ? (loc.is_serviceable !== false && Boolean(loc.shop_id)) : false;
+      const shopId = loc?.shop_id || null;
+      const shopName = shopId ? (shopMap.get(shopId) || 'Local Kirana Store') : null;
+
+      // Count all shops delivering to this area/pincode
+      const pin = loc?.pincode?.trim() || area.pincode?.trim() || '';
+      const matchingShopsCount = availableShops.filter(
+        (s) => (s.pincode && s.pincode === pin) || (s.area_name && s.area_name.toLowerCase() === area.name.toLowerCase()) || s.id === shopId
+      ).length;
+
       return {
         id: area.id,
         name: area.name,
-        pincode: loc?.pincode?.trim() || area.pincode?.trim() || '',
+        pincode: pin,
         serviceable: isServiceable,
+        shop_id: shopId,
+        shop_name: shopName,
+        shop_count: Math.max(isServiceable ? 1 : 0, matchingShopsCount),
       };
     });
 
     // Include legacy location-only zones not yet in master areas table
     locationByArea.forEach((loc, areaKey) => {
       if (!merged.some((a) => a.name.trim().toLowerCase() === areaKey)) {
+        const isServiceable = loc.is_serviceable !== false && Boolean(loc.shop_id);
+        const shopId = loc.shop_id || null;
+        const shopName = shopId ? (shopMap.get(shopId) || 'Local Kirana Store') : null;
         merged.push({
           id: loc.id || areaKey.replace(/\s+/g, '-'),
           name: loc.area_name,
           pincode: loc.pincode?.trim() || '',
-          serviceable: loc.is_serviceable !== false && Boolean(loc.shop_id),
+          serviceable: isServiceable,
+          shop_id: shopId,
+          shop_name: shopName,
+          shop_count: isServiceable ? 1 : 0,
         });
       }
     });

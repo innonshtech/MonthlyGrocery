@@ -259,3 +259,134 @@ export async function forwardGeocodeAddress(query: string): Promise<StructuredAd
   return null;
 }
 
+/**
+ * Google Distance Matrix API: Calculates actual driving road distance & duration.
+ * Falls back to straight-line Haversine distance when API key is not present or quota is exceeded.
+ */
+export async function calculateDrivingDistanceMatrix(
+  originLat: number,
+  originLng: number,
+  destLat: number,
+  destLng: number
+): Promise<{
+  distance_km: number;
+  duration_mins: number | null;
+  duration_text: string | null;
+  source: 'google_distance_matrix' | 'haversine_fallback';
+}> {
+  const straightLineKm = calculateHaversineDistanceKm(originLat, originLng, destLat, destLng);
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (googleApiKey) {
+    try {
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${originLat},${originLng}&destinations=${destLat},${destLng}&mode=driving&key=${googleApiKey}`;
+      const res = await fetch(url);
+      const data = (await res.json()) as any;
+
+      if (data.status === 'OK' && Array.isArray(data.rows) && data.rows.length > 0) {
+        const elements = data.rows[0].elements;
+        if (Array.isArray(elements) && elements.length > 0 && elements[0].status === 'OK') {
+          const meters = elements[0].distance?.value || 0;
+          const seconds = elements[0].duration?.value || 0;
+          const roadKm = Math.round((meters / 1000) * 100) / 100;
+          const mins = Math.round(seconds / 60);
+
+          return {
+            distance_km: roadKm,
+            duration_mins: mins,
+            duration_text: elements[0].duration?.text || `${mins} mins`,
+            source: 'google_distance_matrix',
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Google Distance Matrix error, falling back to Haversine:', err);
+    }
+  }
+
+  return {
+    distance_km: straightLineKm,
+    duration_mins: Math.round((straightLineKm / 25) * 60), // estimated 25 km/h driving speed
+    duration_text: `${Math.round((straightLineKm / 25) * 60)} mins (est.)`,
+    source: 'haversine_fallback',
+  };
+}
+
+/**
+ * Google Places Autocomplete: Returns address & landmark suggestions as user types.
+ */
+export async function autocompletePlaces(
+  input: string,
+  city?: string
+): Promise<Array<{ description: string; place_id: string; main_text: string; secondary_text: string }>> {
+  const cleanInput = String(input || '').trim();
+  if (!cleanInput) return [];
+
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (googleApiKey) {
+    try {
+      const q = city ? `${cleanInput}, ${city}` : cleanInput;
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&components=country:in&key=${googleApiKey}`;
+      const res = await fetch(url);
+      const data = (await res.json()) as any;
+
+      if (data.status === 'OK' && Array.isArray(data.predictions)) {
+        return data.predictions.map((p: any) => ({
+          description: p.description,
+          place_id: p.place_id,
+          main_text: p.structured_formatting?.main_text || p.description,
+          secondary_text: p.structured_formatting?.secondary_text || '',
+        }));
+      }
+    } catch (err) {
+      console.warn('Google Places Autocomplete error:', err);
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Check Google Maps API Key status and configuration.
+ */
+export async function getGoogleMapsApiStatus(): Promise<{
+  configured: boolean;
+  status: 'active' | 'missing' | 'error';
+  message: string;
+}> {
+  const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!googleApiKey || googleApiKey.trim() === '' || googleApiKey.includes('YourGoogleMapsApiKeyHere')) {
+    return {
+      configured: false,
+      status: 'missing',
+      message: 'GOOGLE_MAPS_API_KEY is not set in express-backend/.env. Running on OpenStreetMap & Haversine fallback.',
+    };
+  }
+
+  try {
+    const testUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=Pune&key=${googleApiKey}`;
+    const res = await fetch(testUrl);
+    const data = (await res.json()) as any;
+
+    if (data.status === 'OK') {
+      return {
+        configured: true,
+        status: 'active',
+        message: 'Google Maps API Key is active and verified!',
+      };
+    } else {
+      return {
+        configured: true,
+        status: 'error',
+        message: `Google Maps API returned status: ${data.status} - ${data.error_message || 'Check API key permissions'}`,
+      };
+    }
+  } catch (err: any) {
+    return {
+      configured: true,
+      status: 'error',
+      message: `Failed to connect to Google Maps API: ${err?.message || 'Network error'}`,
+    };
+  }
+}
+

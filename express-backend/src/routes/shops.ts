@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { getMerchantShopForUser } from '../services/shopResolution';
+import { validateIndianPincode } from '../utils/pincodeValidator';
 
 const router = Router();
 
@@ -84,6 +85,13 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
       extra_delivery_fee_per_km,
       is_open,
     } = req.body;
+
+    if (pincode && String(pincode).trim()) {
+      const pinVal = validateIndianPincode(String(pincode));
+      if (!pinVal.isValid) {
+        return res.status(400).json({ success: false, error: pinVal.error });
+      }
+    }
 
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb() as any;
@@ -327,10 +335,10 @@ router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: Aut
   }
 });
 
-// 2. POST /:shop_id/status: Approve/Reject a shop (Super Admin only)
+// 2. POST /:shop_id/status: Approve/Reject a shop with optional GPS verification (Super Admin only)
 router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   const { shop_id } = req.params;
-  const { status } = req.body;
+  const { status, latitude, longitude, delivery_radius_km, free_delivery_radius_km, extra_delivery_fee_per_km } = req.body;
 
   if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
     return res.status(400).json({ success: false, error: 'Invalid status value' });
@@ -372,13 +380,60 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
 
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb() as any;
-    if (db.shop_territories) {
-      const tIdx = db.shop_territories.findIndex((t: any) => t.shop_id === shop_id);
-      if (tIdx >= 0) {
-        db.shop_territories[tIdx].is_open = status === 'approved';
-      }
+    if (!db.shop_territories) db.shop_territories = [];
+    
+    let tIdx = db.shop_territories.findIndex((t: any) => t.shop_id === shop_id);
+    if (tIdx < 0) {
+      db.shop_territories.push({
+        shop_id,
+        is_open: status === 'approved',
+        delivery_radius_km: 5.0,
+      });
+      tIdx = db.shop_territories.length - 1;
     }
-    if (status === 'rejected' && db.serviceable_locations) {
+
+    db.shop_territories[tIdx].is_open = status === 'approved';
+    if (latitude != null && !isNaN(parseFloat(String(latitude)))) {
+      db.shop_territories[tIdx].latitude = parseFloat(String(latitude));
+    }
+    if (longitude != null && !isNaN(parseFloat(String(longitude)))) {
+      db.shop_territories[tIdx].longitude = parseFloat(String(longitude));
+    }
+    if (delivery_radius_km != null && !isNaN(parseFloat(String(delivery_radius_km)))) {
+      db.shop_territories[tIdx].delivery_radius_km = parseFloat(String(delivery_radius_km));
+    }
+    if (free_delivery_radius_km != null && !isNaN(parseFloat(String(free_delivery_radius_km)))) {
+      db.shop_territories[tIdx].free_delivery_radius_km = parseFloat(String(free_delivery_radius_km));
+    }
+    if (extra_delivery_fee_per_km != null && !isNaN(parseFloat(String(extra_delivery_fee_per_km)))) {
+      db.shop_territories[tIdx].extra_delivery_fee_per_km = parseFloat(String(extra_delivery_fee_per_km));
+    }
+
+    if (status === 'approved') {
+      const territory = db.shop_territories[tIdx];
+      if (!db.serviceable_locations) db.serviceable_locations = [];
+      if (territory && territory.city && territory.area_name) {
+        const existingLoc = db.serviceable_locations.find(
+          (loc: any) =>
+            String(loc.city || '').trim().toLowerCase() === String(territory.city || '').trim().toLowerCase() &&
+            String(loc.area_name || '').trim().toLowerCase() === String(territory.area_name || '').trim().toLowerCase()
+        );
+        if (existingLoc) {
+          existingLoc.shop_id = shop_id;
+          existingLoc.is_serviceable = true;
+          if (territory.pincode) existingLoc.pincode = territory.pincode;
+        } else {
+          db.serviceable_locations.push({
+            id: `loc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            city: territory.city.trim(),
+            area_name: territory.area_name.trim(),
+            pincode: territory.pincode || '000000',
+            is_serviceable: true,
+            shop_id: shop_id,
+          });
+        }
+      }
+    } else if (status === 'rejected' && db.serviceable_locations) {
       db.serviceable_locations = db.serviceable_locations.map((loc: any) => {
         if (loc.shop_id === shop_id) {
           return { ...loc, shop_id: null, is_serviceable: false };
@@ -388,7 +443,189 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
     }
     writeDb(db);
 
-    return res.json({ success: true, message: `Shop status updated to ${status}`, shop });
+    return res.json({ 
+      success: true, 
+      message: `Shop status updated to ${status}`, 
+      shop: {
+        ...shop,
+        ...db.shop_territories[tIdx]
+      }
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 2.1 PUT /:shop_id/location: Update shop coordinates and delivery radius directly (Super Admin only)
+router.put('/:shop_id/location', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { shop_id } = req.params;
+  const { latitude, longitude, delivery_radius_km, address_line, city, area_name, pincode } = req.body;
+
+  try {
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+    if (!db.shop_territories) db.shop_territories = [];
+
+    let tIdx = db.shop_territories.findIndex((t: any) => t.shop_id === shop_id);
+    if (tIdx < 0) {
+      db.shop_territories.push({ shop_id, is_open: true });
+      tIdx = db.shop_territories.length - 1;
+    }
+
+    if (latitude != null && !isNaN(parseFloat(String(latitude)))) {
+      db.shop_territories[tIdx].latitude = parseFloat(String(latitude));
+    }
+    if (longitude != null && !isNaN(parseFloat(String(longitude)))) {
+      db.shop_territories[tIdx].longitude = parseFloat(String(longitude));
+    }
+    if (delivery_radius_km != null && !isNaN(parseFloat(String(delivery_radius_km)))) {
+      db.shop_territories[tIdx].delivery_radius_km = parseFloat(String(delivery_radius_km));
+    }
+    if (address_line !== undefined) db.shop_territories[tIdx].address_line = String(address_line).trim();
+    if (city !== undefined) db.shop_territories[tIdx].city = String(city).trim();
+    if (area_name !== undefined) db.shop_territories[tIdx].area_name = String(area_name).trim();
+    if (pincode !== undefined) db.shop_territories[tIdx].pincode = String(pincode).trim();
+
+    writeDb(db);
+    return res.json({ success: true, message: 'Shop location updated successfully', territory: db.shop_territories[tIdx] });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+// 2.2 POST /self-register: Public Merchant Self-Registration with Live GPS Coordinates
+router.post('/self-register', async (req, res) => {
+  const {
+    shop_name,
+    owner_name,
+    owner_mobile,
+    city,
+    area_name,
+    address_line,
+    pincode,
+    state_name,
+    district_name,
+    latitude,
+    longitude,
+    delivery_radius_km,
+  } = req.body;
+
+  if (!shop_name?.trim() || !owner_name?.trim() || !owner_mobile) {
+    return res.status(400).json({ success: false, error: 'Store name, owner name, and mobile number are required' });
+  }
+
+  if (pincode && String(pincode).trim()) {
+    const pinVal = validateIndianPincode(String(pincode));
+    if (!pinVal.isValid) {
+      return res.status(400).json({ success: false, error: pinVal.error });
+    }
+  }
+
+  let cleanMobile = String(owner_mobile).replace(/[^\d]/g, '');
+  if (cleanMobile.length === 10) {
+    cleanMobile = '91' + cleanMobile;
+  }
+
+  try {
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+
+    let { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id, name, phone, role')
+      .eq('phone', cleanMobile)
+      .maybeSingle();
+
+    let ownerId: string;
+    if (existingProfile) {
+      ownerId = existingProfile.id;
+      // Check if user already has an active shop
+      const { data: existingShop } = await supabase
+        .from('shops')
+        .select('id, shop_name, status')
+        .eq('owner_id', ownerId)
+        .maybeSingle();
+
+      if (existingShop && existingShop.status === 'approved') {
+        return res.status(400).json({ success: false, error: 'A store with this mobile number is already approved and registered.' });
+      }
+      if (existingShop && existingShop.status === 'pending') {
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Your registration is already submitted and pending Admin approval.',
+          status: 'pending',
+          shop_id: existingShop.id
+        });
+      }
+    } else {
+      const { data: newProfile, error: profileErr } = await supabase
+        .from('profiles')
+        .insert({
+          phone: cleanMobile,
+          name: owner_name.trim(),
+          role: 'customer',
+        })
+        .select()
+        .single();
+
+      if (profileErr || !newProfile) {
+        return res.status(500).json({ success: false, error: profileErr?.message || 'Failed to create owner profile' });
+      }
+      ownerId = newProfile.id;
+    }
+
+    const parsedLat = latitude != null && !isNaN(parseFloat(String(latitude))) ? parseFloat(String(latitude)) : null;
+    const parsedLng = longitude != null && !isNaN(parseFloat(String(longitude))) ? parseFloat(String(longitude)) : null;
+    const radius = delivery_radius_km != null && !isNaN(parseFloat(String(delivery_radius_km))) ? parseFloat(String(delivery_radius_km)) : 5.0;
+
+    const { data: newShop, error: shopErr } = await supabase
+      .from('shops')
+      .insert({
+        owner_id: ownerId,
+        shop_name: shop_name.trim(),
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (shopErr || !newShop) {
+      return res.status(500).json({ success: false, error: shopErr?.message || 'Failed to submit store registration' });
+    }
+
+    if (!db.shop_territories) db.shop_territories = [];
+    db.shop_territories = db.shop_territories.filter((t: any) => t.shop_id !== newShop.id);
+    db.shop_territories.push({
+      shop_id: newShop.id,
+      state_name: state_name?.trim() || 'Maharashtra',
+      district_name: district_name?.trim() || 'Pune',
+      city: city?.trim() || 'Pune',
+      area_name: area_name?.trim() || '',
+      address_line: address_line?.trim() || '',
+      pincode: pincode?.trim() || '',
+      latitude: parsedLat,
+      longitude: parsedLng,
+      delivery_radius_km: radius,
+      free_delivery_radius_km: 5.0,
+      extra_delivery_fee_per_km: 10.0,
+      is_open: false,
+    });
+
+    writeDb(db);
+
+    return res.json({
+      success: true,
+      message: 'Store registration submitted successfully! Admin will review and approve your store.',
+      shop: {
+        id: newShop.id,
+        shop_name: newShop.shop_name,
+        status: 'pending',
+        latitude: parsedLat,
+        longitude: parsedLng,
+        city: city?.trim() || '',
+        area_name: area_name?.trim() || '',
+      }
+    });
 
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
@@ -565,6 +802,35 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
           is_serviceable: true,
           shop_id: newShop.id,
         });
+      }
+
+      // Also auto-assign all master areas in db.areas under this pincode if unassigned
+      if (cleanPin && cleanPin.length === 6) {
+        const matchingAreas = (db.areas || []).filter(
+          (a: any) => String(a.pincode || '').trim() === cleanPin
+        );
+        for (const area of matchingAreas) {
+          const areaLoc = db.serviceable_locations.find(
+            (loc: any) =>
+              String(loc.area_name || '').trim().toLowerCase() === area.name.trim().toLowerCase() &&
+              String(loc.pincode || '').trim() === cleanPin
+          );
+          if (areaLoc) {
+            if (!areaLoc.shop_id) {
+              areaLoc.shop_id = newShop.id;
+              areaLoc.is_serviceable = true;
+            }
+          } else {
+            db.serviceable_locations.push({
+              id: `loc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              city: cityName,
+              area_name: area.name.trim(),
+              pincode: cleanPin,
+              is_serviceable: true,
+              shop_id: newShop.id,
+            });
+          }
+        }
       }
     }
 

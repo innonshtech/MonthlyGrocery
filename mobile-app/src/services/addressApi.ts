@@ -297,3 +297,53 @@ export async function forwardGeocodeLocation(query: string): Promise<{
   return null;
 }
 
+export async function fetchPlacesAutocomplete(
+  input: string,
+  city?: string
+): Promise<Array<{ description: string; place_id: string; main_text: string; secondary_text: string }>> {
+  try {
+    const q = city ? `?input=${encodeURIComponent(input)}&city=${encodeURIComponent(city)}` : `?input=${encodeURIComponent(input)}`;
+    const res = await fetch(`${API_BASE}/addresses/places-autocomplete${q}`);
+    const data = await res.json();
+    if (res.ok && data.success && Array.isArray(data.predictions)) {
+      return data.predictions;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchDrivingDistanceMatrix(
+  originLat: number,
+  originLng: number,
+  destLat: number,
+  destLng: number
+): Promise<{
+  distance_km: number;
+  duration_mins: number | null;
+  duration_text: string | null;
+  source: 'google_distance_matrix' | 'haversine_fallback';
+} | null> {
+  try {
+    const res = await fetch(`${API_BASE}/addresses/driving-distance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        origin_lat: originLat,
+        origin_lng: originLng,
+        dest_lat: destLat,
+        dest_lng: destLng,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+
