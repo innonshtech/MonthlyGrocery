@@ -46,6 +46,7 @@
     }
   ],
   "franchise_requests": [],
+  "states": [],
   "districts": [],
   "cities": [],
   "areas": [],
@@ -1454,66 +1455,7 @@
     "load_error_message": "Could not load system state screen. Please try again.",
     "retry_label": "Retry"
   },
-  "states": [
-    {
-      "id": "state-mh",
-      "name": "Maharashtra"
-    },
-    {
-      "id": "state-dl",
-      "name": "Delhi NCR"
-    },
-    {
-      "id": "state-1788431720300",
-      "name": "Gujrat"
-    }
-  ],
-  "districts": [
-    {
-      "id": "dist-pune",
-      "state_id": "state-mh",
-      "name": "Pune"
-    },
-    {
-      "id": "dist-mumbai",
-      "state_id": "state-mh",
-      "name": "Mumbai"
-    },
-    {
-      "id": "dist-thane",
-      "state_id": "state-mh",
-      "name": "Thane"
-    },
-    {
-      "id": "dist-nashik",
-      "state_id": "state-mh",
-      "name": "Nashik"
-    },
-    {
-      "id": "dist-new-delhi",
-      "state_id": "state-dl",
-      "name": "New Delhi"
-    },
-    {
-      "id": "dist-gb-nagar",
-      "state_id": "state-dl",
-      "name": "Gautam Buddh Nagar"
-    }
-  ],
-  "shop_territories": [
-    {
-      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
-      "state_id": "state-mh",
-      "state_name": "Maharashtra",
-      "district_id": "dist-mh-pune",
-      "district_name": "Pune",
-      "city": "pune",
-      "latitude": 18.5204,
-      "longitude": 73.8567,
-      "delivery_radius_km": 7,
-      "is_open": true
-    }
-  ],
+  "shop_territories": [],
   "subcategories": [
     {
       "id": "sub-1",
