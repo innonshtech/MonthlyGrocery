@@ -22,6 +22,12 @@ const PORT = Number(process.env.PORT) || 8001;
 // Middlewares
 app.use(cors());
 
+// Request logger
+app.use((req, res, next) => {
+  console.log(`[API] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

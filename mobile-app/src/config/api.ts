@@ -4,7 +4,7 @@ import { NativeModules, Platform } from 'react-native';
  * Local IP / Host for Wireless & ADB Debugging
  * With `adb reverse tcp:8001 tcp:8001`, 127.0.0.1 connects directly through the ADB bridge!
  */
-export const DEV_MACHINE_IP = '192.168.1.14';
+export const DEV_MACHINE_IP = '192.168.1.15';
 
 function isAndroidEmulator(): boolean {
   if (Platform.OS !== 'android') return false;
@@ -26,7 +26,6 @@ function resolveApiHost(): string {
     if (isAndroidEmulator()) {
       return '10.0.2.2';
     }
-    // Physical device: use DEV_MACHINE_IP so it connects directly over Wi-Fi/LAN
     return DEV_MACHINE_IP;
   }
   return 'localhost';
