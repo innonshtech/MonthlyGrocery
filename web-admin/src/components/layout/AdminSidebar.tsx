@@ -86,7 +86,7 @@ export default function AdminSidebar({
       title: 'Territories & Delivery',
       items: [
         { id: 'cities-areas' as TabType, label: 'Cities & Localities', icon: MapPin },
-        { id: 'locations' as TabType, label: 'Localities Mapping', icon: MapPin }
+        { id: 'locations' as TabType, label: 'Serviceable Locations (Shop Mapping)', icon: MapPin }
       ]
     },
     {
