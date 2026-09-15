@@ -152,6 +152,11 @@ export default function ShopsTab({
                         <p className="text-xs text-slate-500">
                           {shop.district_name} · {shop.city || '—'}
                         </p>
+                        {shop.latitude != null && shop.longitude != null && (
+                          <p className="text-[11px] text-emerald-400 font-mono mt-0.5">
+                            📍 {shop.latitude.toFixed(2)}, {shop.longitude.toFixed(2)} ({shop.delivery_radius_km || 5} km)
+                          </p>
+                        )}
                       </>
                     ) : (
                       <span className="text-slate-500 italic text-xs">Not assigned</span>

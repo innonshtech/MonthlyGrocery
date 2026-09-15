@@ -12,6 +12,7 @@ import {
   MERCHANT_ORDER_STATUSES,
 } from '../utils/orderEnrichment';
 import { resolveShopIdForLocation } from '../services/shopResolution';
+import { calculateHaversineDistanceKm } from '../services/geocodingService';
 
 const router = Router();
 
@@ -160,7 +161,29 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     discount_amount,
     deliver_to_label,
     product_savings,
+    latitude,
+    longitude,
+    delivery_latitude,
+    delivery_longitude,
+    landmark,
+    delivery_landmark,
+    flat,
+    delivery_flat,
+    street,
+    delivery_street,
+    state,
+    delivery_state,
+    district,
+    delivery_district,
   } = req.body;
+
+  const finalLat = delivery_latitude != null ? parseFloat(String(delivery_latitude)) : (latitude != null ? parseFloat(String(latitude)) : null);
+  const finalLng = delivery_longitude != null ? parseFloat(String(delivery_longitude)) : (longitude != null ? parseFloat(String(longitude)) : null);
+  const finalLandmark = delivery_landmark || landmark || '';
+  const finalFlat = delivery_flat || flat || '';
+  const finalStreet = delivery_street || street || '';
+  const finalState = delivery_state || state || '';
+  const finalDistrict = delivery_district || district || '';
 
   const finalAddress = sanitizeOrderAddress(shipping_address || delivery_address);
 
@@ -262,6 +285,8 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       city,
       areaName: area_name,
       pincode,
+      latitude: finalLat,
+      longitude: finalLng,
     });
 
     let targetShop: any = null;
@@ -298,6 +323,23 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
         error: 'No active store is available to fulfill this order. Please register a store in Superadmin.',
         code: 'SHOP_NOT_FOUND',
       });
+    }
+
+    // Calculate distance between shop territory and customer coordinates if available
+    let distanceKm: number | null = null;
+    const territory = (db.shop_territories || []).find((t: any) => t.shop_id === targetShopId);
+    if (
+      finalLat != null &&
+      finalLng != null &&
+      territory?.latitude != null &&
+      territory?.longitude != null
+    ) {
+      distanceKm = calculateHaversineDistanceKm(
+        finalLat,
+        finalLng,
+        parseFloat(territory.latitude),
+        parseFloat(territory.longitude)
+      );
     }
 
     // Validate delivery slot availability (dynamic capacity from merchant config)
@@ -387,6 +429,17 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       coupon_code: coupon_code || null,
       shipping_address: finalAddress,
       deliver_to_label: deliverLabel,
+      delivery_flat: finalFlat,
+      delivery_street: finalStreet,
+      delivery_landmark: finalLandmark,
+      delivery_area: area_name || '',
+      delivery_city: city || '',
+      delivery_district: finalDistrict,
+      delivery_state: finalState,
+      delivery_pincode: pincode || '',
+      delivery_latitude: finalLat,
+      delivery_longitude: finalLng,
+      distance_km: distanceKm,
       delivery_slot: delivery_slot.trim(),
       delivery_slot_date: delivery_slot_date || null,
       delivery_slot_window_id: delivery_slot_window_id || null,

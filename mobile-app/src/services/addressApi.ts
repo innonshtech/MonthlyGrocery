@@ -7,8 +7,15 @@ export interface AddressItem {
   flat: string;
   street: string;
   landmark?: string;
+  area?: string;
+  city?: string;
+  district?: string;
+  state?: string;
   pincode: string;
   phone: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  formatted_address?: string;
   isDefault?: boolean;
 }
 
@@ -60,15 +67,23 @@ export interface AddAddressScreenConfig {
 
 export function buildShippingAddress(address: AddressItem | null | undefined): string {
   if (!address) return '';
-  return [address.flat, address.street, address.landmark, address.pincode]
-    .filter((p) => p && String(p).trim())
-    .join(', ');
+  const parts = [
+    address.flat,
+    address.street,
+    address.landmark,
+    address.area,
+    address.city,
+    address.state,
+    address.pincode,
+  ].filter((p) => p && String(p).trim());
+
+  return parts.join(', ');
 }
 
 export function buildDeliverToLabel(address: AddressItem | null | undefined): string {
   if (!address) return '';
   const tag = (address.tag || 'Home').trim();
-  const street = (address.street || '').trim();
+  const street = (address.street || address.area || '').trim();
   if (!street) return tag;
   const area = street.split(',')[0]?.trim() || street;
   return `${tag} · ${area}`;
@@ -93,7 +108,7 @@ const DEFAULT_ADD_ADDRESS_CONFIG: AddAddressScreenConfig = {
   edit_title: 'Edit Address',
   flat_label: 'House / Flat / Floor No.',
   flat_placeholder: 'e.g. 402, Block B',
-  street_label: 'Apartment / Road / Area',
+  street_label: 'Apartment / Road / Colony',
   street_placeholder: 'e.g. Sunrise Enclave, Main Road',
   landmark_label: 'Landmark (Optional)',
   landmark_placeholder: 'e.g. Near City Park',
@@ -143,6 +158,34 @@ export async function fetchAddAddressScreenConfig(): Promise<AddAddressScreenCon
     return DEFAULT_ADD_ADDRESS_CONFIG;
   } catch {
     return DEFAULT_ADD_ADDRESS_CONFIG;
+  }
+}
+
+export async function reverseGeocodeLocation(
+  latitude: number,
+  longitude: number,
+): Promise<{
+  area?: string;
+  city?: string;
+  district?: string;
+  state?: string;
+  pincode?: string;
+  formatted_address?: string;
+  street?: string;
+} | null> {
+  try {
+    const res = await fetch(`${API_BASE}/addresses/reverse-geocode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ latitude, longitude }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success && data.location) {
+      return data.location;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

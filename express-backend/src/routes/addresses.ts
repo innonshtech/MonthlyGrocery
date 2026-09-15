@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
 import { readDb, writeDb } from '../config/localDb';
+import { reverseGeocodeCoordinates } from '../services/geocodingService';
 
 const router = Router();
 
@@ -11,12 +12,37 @@ export interface UserAddressRecord {
   flat: string;
   street: string;
   landmark?: string;
+  area?: string;
+  city?: string;
+  district?: string;
+  state?: string;
   pincode: string;
   phone: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  formatted_address?: string;
   isDefault?: boolean;
   created_at?: string;
   updated_at?: string;
 }
+
+// POST /reverse-geocode — Convert lat/lng to structured location data (Google Maps / Fallback)
+router.post('/reverse-geocode', async (req: AuthRequest, res: Response) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const lat = parseFloat(String(latitude));
+    const lng = parseFloat(String(longitude));
+
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ success: false, error: 'Valid latitude and longitude are required' });
+    }
+
+    const geoResult = await reverseGeocodeCoordinates(lat, lng);
+    return res.json({ success: true, location: geoResult });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Reverse geocoding failed' });
+  }
+});
 
 // GET / — List saved addresses for logged-in consumer
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -33,7 +59,23 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
 // POST / — Create or update an address
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
-  const { id, tag, flat, street, landmark, pincode, phone, isDefault } = req.body;
+  const {
+    id,
+    tag,
+    flat,
+    street,
+    landmark,
+    area,
+    city,
+    district,
+    state,
+    pincode,
+    phone,
+    latitude,
+    longitude,
+    formatted_address,
+    isDefault,
+  } = req.body;
 
   if (!flat?.trim() || !street?.trim() || !pincode?.trim()) {
     return res.status(400).json({
@@ -41,6 +83,9 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       error: 'Flat/house, area/locality, and pincode are required',
     });
   }
+
+  const parsedLat = latitude != null && !isNaN(parseFloat(String(latitude))) ? parseFloat(String(latitude)) : null;
+  const parsedLng = longitude != null && !isNaN(parseFloat(String(longitude))) ? parseFloat(String(longitude)) : null;
 
   try {
     const db = readDb() as any;
@@ -63,8 +108,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         flat: flat.trim(),
         street: street.trim(),
         landmark: landmark?.trim() || '',
+        area: area?.trim() || db.user_addresses[idx].area || '',
+        city: city?.trim() || db.user_addresses[idx].city || '',
+        district: district?.trim() || db.user_addresses[idx].district || '',
+        state: state?.trim() || db.user_addresses[idx].state || '',
         pincode: pincode.trim(),
         phone: (phone || '').trim(),
+        latitude: parsedLat ?? db.user_addresses[idx].latitude ?? null,
+        longitude: parsedLng ?? db.user_addresses[idx].longitude ?? null,
+        formatted_address: formatted_address?.trim() || db.user_addresses[idx].formatted_address || '',
         isDefault: isDefault === true,
         updated_at: now,
       };
@@ -77,8 +129,15 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         flat: flat.trim(),
         street: street.trim(),
         landmark: landmark?.trim() || '',
+        area: area?.trim() || '',
+        city: city?.trim() || '',
+        district: district?.trim() || '',
+        state: state?.trim() || '',
         pincode: pincode.trim(),
         phone: (phone || '').trim(),
+        latitude: parsedLat,
+        longitude: parsedLng,
+        formatted_address: formatted_address?.trim() || '',
         isDefault: isDefault === true || db.user_addresses.filter(
           (a: UserAddressRecord) => a.consumer_id === consumerId,
         ).length === 0,

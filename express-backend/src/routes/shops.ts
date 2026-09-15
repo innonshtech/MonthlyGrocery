@@ -32,6 +32,13 @@ const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
         state_name: territory?.state_name || null,
         district_name: territory?.district_name || null,
         city: territory?.city || null,
+        area_name: territory?.area_name || null,
+        pincode: territory?.pincode || null,
+        address_line: territory?.address_line || null,
+        latitude: territory?.latitude != null ? parseFloat(territory.latitude) : null,
+        longitude: territory?.longitude != null ? parseFloat(territory.longitude) : null,
+        delivery_radius_km: territory?.delivery_radius_km || 5.0,
+        is_open: territory?.is_open !== false,
       },
     });
   } catch (error: any) {
@@ -41,6 +48,72 @@ const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
 
 router.get('/me', authMiddleware, requireRole(['admin', 'super_admin']), handleGetMyMerchantShop);
 router.get('/my', authMiddleware, requireRole(['admin', 'super_admin']), handleGetMyMerchantShop);
+
+// 0.1 PUT /me/settings: Update merchant's store location, delivery radius, and open/closed status
+router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  try {
+    const { data: shop, error } = await supabase
+      .from('shops')
+      .select('id, shop_name')
+      .eq('owner_id', req.user!.id)
+      .maybeSingle();
+
+    if (error || !shop) {
+      return res.status(404).json({ success: false, error: 'Merchant store not found' });
+    }
+
+    const {
+      latitude,
+      longitude,
+      address_line,
+      area_name,
+      city,
+      district_name,
+      state_name,
+      pincode,
+      delivery_radius_km,
+      is_open,
+    } = req.body;
+
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+    if (!db.shop_territories) db.shop_territories = [];
+
+    const idx = db.shop_territories.findIndex((t: any) => t.shop_id === shop.id);
+    const updatedTerritory = {
+      ...(idx >= 0 ? db.shop_territories[idx] : {}),
+      shop_id: shop.id,
+      latitude: latitude != null && !isNaN(parseFloat(String(latitude))) ? parseFloat(String(latitude)) : (idx >= 0 ? db.shop_territories[idx].latitude : null),
+      longitude: longitude != null && !isNaN(parseFloat(String(longitude))) ? parseFloat(String(longitude)) : (idx >= 0 ? db.shop_territories[idx].longitude : null),
+      address_line: address_line !== undefined ? String(address_line).trim() : (idx >= 0 ? db.shop_territories[idx].address_line : ''),
+      area_name: area_name !== undefined ? String(area_name).trim() : (idx >= 0 ? db.shop_territories[idx].area_name : ''),
+      city: city !== undefined ? String(city).trim() : (idx >= 0 ? db.shop_territories[idx].city : ''),
+      district_name: district_name !== undefined ? String(district_name).trim() : (idx >= 0 ? db.shop_territories[idx].district_name : ''),
+      state_name: state_name !== undefined ? String(state_name).trim() : (idx >= 0 ? db.shop_territories[idx].state_name : ''),
+      pincode: pincode !== undefined ? String(pincode).trim() : (idx >= 0 ? db.shop_territories[idx].pincode : ''),
+      delivery_radius_km: delivery_radius_km != null && !isNaN(parseFloat(String(delivery_radius_km))) ? parseFloat(String(delivery_radius_km)) : (idx >= 0 ? (db.shop_territories[idx].delivery_radius_km || 5.0) : 5.0),
+      is_open: is_open !== undefined ? is_open === true : (idx >= 0 ? db.shop_territories[idx].is_open !== false : true),
+    };
+
+    if (idx >= 0) {
+      db.shop_territories[idx] = updatedTerritory;
+    } else {
+      db.shop_territories.push(updatedTerritory);
+    }
+    writeDb(db);
+
+    return res.json({
+      success: true,
+      message: 'Store settings updated successfully',
+      shop: {
+        ...shop,
+        ...updatedTerritory,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
 
 // 1. GET /all: List all shops (Super Admin only)
 router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
@@ -74,6 +147,13 @@ router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: Aut
         state_name: territory?.state_name || null,
         district_name: territory?.district_name || null,
         city: territory?.city || null,
+        area_name: territory?.area_name || null,
+        pincode: territory?.pincode || null,
+        address_line: territory?.address_line || null,
+        latitude: territory?.latitude != null ? parseFloat(territory.latitude) : null,
+        longitude: territory?.longitude != null ? parseFloat(territory.longitude) : null,
+        delivery_radius_km: territory?.delivery_radius_km || 5.0,
+        is_open: territory?.is_open !== false,
       };
     });
 
@@ -93,7 +173,6 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
   }
 
   try {
-    // 1. Update the shop status
     const { data: shop, error } = await supabase
       .from('shops')
       .update({ status })
@@ -109,7 +188,6 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
       return res.status(404).json({ success: false, error: 'Shop not found' });
     }
 
-    // 2. If approved, elevate the owner profile to 'admin' (merchant)
     if (status === 'approved') {
       const { error: profileError } = await supabase
         .from('profiles')
@@ -130,7 +208,20 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
 
 // 3. POST /register: Create/Register a new shop and owner profile (Super Admin only)
 router.post('/register', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
-  const { shop_name, owner_name, owner_mobile, state_id, district_id, city } = req.body;
+  const {
+    shop_name,
+    owner_name,
+    owner_mobile,
+    state_id,
+    district_id,
+    city,
+    area_name,
+    address_line,
+    pincode,
+    latitude,
+    longitude,
+    delivery_radius_km,
+  } = req.body;
 
   if (!shop_name || !shop_name.trim() || !owner_name || !owner_name.trim() || !owner_mobile) {
     return res.status(400).json({ success: false, error: 'Shop name, owner name, and owner mobile number are required' });
@@ -140,7 +231,6 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
     return res.status(400).json({ success: false, error: 'State, district, and city are required for merchant access' });
   }
 
-  // Normalize phone (pure digits, 10 digit check)
   let cleanMobile = owner_mobile.replace(/[^\d]/g, '');
   if (cleanMobile.length === 10) {
     cleanMobile = '91' + cleanMobile;
@@ -160,8 +250,7 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
     }
 
     const cityName = city.trim();
-    // 1. Check if the owner profile already exists in public.profiles (case of returning consumer upgraded to merchant)
-    let { data: existingProfile, error: profileError } = await supabase
+    let { data: existingProfile } = await supabase
       .from('profiles')
       .select('id')
       .eq('phone', cleanMobile)
@@ -171,7 +260,6 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
 
     if (existingProfile) {
       ownerId = existingProfile.id;
-      // Upgrade role to admin if not already, and update name
       const { error: updateRoleError } = await supabase
         .from('profiles')
         .update({ role: 'admin', name: owner_name.trim() })
@@ -181,7 +269,6 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
         return res.status(500).json({ success: false, error: 'Failed to update owner profile role: ' + updateRoleError.message });
       }
     } else {
-      // Create a new auth user in Supabase Auth using Auth Admin API
       const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
         phone: cleanMobile,
         phone_confirm: true,
@@ -194,8 +281,7 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
 
       ownerId = newUser.user.id;
 
-      // Upsert profiles row
-      const { error: insertProfileError } = await supabase
+      await supabase
         .from('profiles')
         .upsert({
           id: ownerId,
@@ -203,14 +289,9 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
           role: 'admin',
           name: owner_name.trim()
         });
-
-      if (insertProfileError) {
-        console.error('Failed to create profile row:', insertProfileError.message);
-      }
     }
 
-    // 2. Check if this owner already owns a shop
-    let { data: existingShop, error: shopCheckError } = await supabase
+    let { data: existingShop } = await supabase
       .from('shops')
       .select('id')
       .eq('owner_id', ownerId)
@@ -220,7 +301,6 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
       return res.status(400).json({ success: false, error: 'This owner already has a registered shop.' });
     }
 
-    // 3. Create the new shop
     const shopPayload: Record<string, any> = {
       owner_id: ownerId,
       shop_name: shop_name.trim(),
@@ -252,6 +332,10 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
       return res.status(500).json({ success: false, error: createShopError?.message || 'Failed to create shop' });
     }
 
+    const parsedLat = latitude != null && !isNaN(parseFloat(String(latitude))) ? parseFloat(String(latitude)) : null;
+    const parsedLng = longitude != null && !isNaN(parseFloat(String(longitude))) ? parseFloat(String(longitude)) : null;
+    const radius = delivery_radius_km != null && !isNaN(parseFloat(String(delivery_radius_km))) ? parseFloat(String(delivery_radius_km)) : 5.0;
+
     if (!db.shop_territories) db.shop_territories = [];
     db.shop_territories = db.shop_territories.filter((t: any) => t.shop_id !== newShop.id);
     db.shop_territories.push({
@@ -261,6 +345,13 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
       district_id: district.id,
       district_name: district.name,
       city: cityName,
+      area_name: area_name?.trim() || '',
+      address_line: address_line?.trim() || '',
+      pincode: pincode?.trim() || '',
+      latitude: parsedLat,
+      longitude: parsedLng,
+      delivery_radius_km: radius,
+      is_open: true,
     });
     writeDb(db);
 
@@ -272,6 +363,13 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
         state_name: state.name,
         district_name: district.name,
         city: cityName,
+        area_name: area_name?.trim() || '',
+        address_line: address_line?.trim() || '',
+        pincode: pincode?.trim() || '',
+        latitude: parsedLat,
+        longitude: parsedLng,
+        delivery_radius_km: radius,
+        is_open: true,
       },
     });
 

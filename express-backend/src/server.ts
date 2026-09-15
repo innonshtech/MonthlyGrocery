@@ -17,7 +17,7 @@ import deliverySlotsRouter from './routes/deliverySlots';
 import addressesRouter from './routes/addresses';
 
 const app = express();
-const PORT = process.env.PORT || 8001;
+const PORT = Number(process.env.PORT) || 8001;
 
 // Middlewares
 app.use(cors());

@@ -106,14 +106,14 @@ export default function OrdersDashboard() {
   const [previewProduct, setPreviewProduct] = useState<ProductMediaItem | null>(null);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
 
-  const fetchOrders = useCallback(async (isRefresh = false) => {
+  const fetchOrders = useCallback(async (mode: 'initial' | 'refresh' | 'poll' = 'initial') => {
     if (!token) return;
-    if (isRefresh) {
+    if (mode === 'refresh') {
       setRefreshing(true);
-    } else {
+    } else if (mode === 'initial') {
       setLoading(true);
     }
-    setError('');
+    if (mode !== 'poll') setError('');
     try {
       const res = await fetch(`${API_BASE}/orders/merchant/all`, {
         headers: {
@@ -124,20 +124,45 @@ export default function OrdersDashboard() {
       if (res.ok && data.success) {
         setOrders(data.orders || []);
         setShopName(data.shop_name || '');
-      } else {
+      } else if (mode !== 'poll') {
         setError(data.error || 'Failed to fetch incoming orders');
       }
     } catch (err) {
-      setError('Connection error. Is the Express server running on port 8001?');
+      if (mode !== 'poll') {
+        setError('Connection error. Is the Express server running on port 8001?');
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (mode === 'initial') setLoading(false);
+      if (mode === 'refresh') setRefreshing(false);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrders('initial');
+    // Gap 4 solution: Real-time periodic polling every 15s
+    const pollTimer = setInterval(() => {
+      fetchOrders('poll');
+    }, 15000);
+    return () => clearInterval(pollTimer);
   }, [fetchOrders]);
+
+  const handleNavigateCustomer = (order: any) => {
+    const lat = order.delivery_latitude;
+    const lng = order.delivery_longitude;
+    const address = resolveDeliveryAddress(order);
+
+    if (lat != null && lng != null) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      Linking.openURL(url).catch(() => {
+        Alert.alert('Error', 'Could not open Google Maps navigation');
+      });
+    } else if (address) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+      Linking.openURL(url).catch(() => {
+        Alert.alert('Error', 'Could not open Google Maps navigation');
+      });
+    }
+  };
 
   const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
     setUpdatingId(orderId);
@@ -233,10 +258,25 @@ export default function OrdersDashboard() {
           )}
         </View>
 
-        {/* Delivery Address */}
+        {/* Delivery Address & Navigation */}
         <View style={styles.addressBox}>
-          <Text style={styles.addressLabel}>DELIVERY DESTINATION:</Text>
+          <View style={styles.addressHeaderRow}>
+            <Text style={styles.addressLabel}>DELIVERY DESTINATION:</Text>
+            {item.distance_km != null ? (
+              <Text style={styles.distanceText}>📍 {item.distance_km} km away</Text>
+            ) : null}
+          </View>
           <Text style={styles.addressText}>📍 {deliveryAddress}</Text>
+          {item.delivery_landmark ? (
+            <Text style={styles.landmarkText}>Landmark: {item.delivery_landmark}</Text>
+          ) : null}
+          <TouchableOpacity
+            style={styles.navigateBtn}
+            onPress={() => handleNavigateCustomer(item)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.navigateBtnText}>🗺️ Navigate to Customer</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Order Items List preview / toggle */}
@@ -398,7 +438,7 @@ export default function OrdersDashboard() {
             {shopName ? `${shopName} · ` : ''}Manage incoming customer orders & status updates
           </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchOrders(true)}>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchOrders('refresh')}>
           <Text style={styles.refreshText}>🔄 Refresh</Text>
         </TouchableOpacity>
       </View>
@@ -435,7 +475,7 @@ export default function OrdersDashboard() {
       ) : error ? (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchOrders()}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => fetchOrders('initial')}>
             <Text style={styles.retryBtnText}>Try Again</Text>
           </TouchableOpacity>
         </View>
@@ -457,7 +497,7 @@ export default function OrdersDashboard() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => fetchOrders(true)} colors={['#22C55E']} />
+            <RefreshControl refreshing={refreshing} onRefresh={() => fetchOrders('refresh')} colors={['#22C55E']} />
           }
         />
       )}
@@ -665,6 +705,16 @@ const styles = StyleSheet.create({
   },
   addressBox: {
     marginTop: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  addressHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   addressLabel: {
     fontSize: 9,
@@ -672,11 +722,40 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     letterSpacing: 0.5,
   },
+  distanceText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0284C7',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
   addressText: {
     fontSize: 12,
     color: '#334155',
-    marginTop: 2,
+    marginTop: 4,
     lineHeight: 16,
+    fontWeight: '600',
+  },
+  landmarkText: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+    fontStyle: 'italic',
+  },
+  navigateBtn: {
+    backgroundColor: '#0F172A',
+    borderRadius: 8,
+    paddingVertical: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  navigateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   itemsToggleRow: {
     flexDirection: 'row',
