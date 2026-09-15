@@ -211,11 +211,17 @@ export interface FranchiseRequest {
 export interface PlatformOrder {
   id: string;
   display_id?: string;
+  consumer_id?: string;
+  consumer_name?: string;
   total_amount: string;
   status: string;
   created_at: string;
   shop_id: string;
   delivery_address?: string;
+  shipping_address?: string;
+  delivery_landmark?: string;
+  delivery_latitude?: number | null;
+  delivery_longitude?: number | null;
   order_items?: any[];
   shops: {
     shop_name: string;

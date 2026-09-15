@@ -78,8 +78,23 @@ export const OrdersAdminTab: React.FC<OrdersAdminTabProps> = ({
                     <p className="text-[10px] text-slate-500">{new Date(ord.created_at).toLocaleDateString('en-IN')}</p>
                   </td>
                   <td className="p-3">
-                    <p className="font-bold text-slate-200">{ord.profiles?.name || 'Customer'}</p>
-                    <p className="text-[10px] text-slate-400">{ord.delivery_address || 'Address on file'}</p>
+                    <p className="font-bold text-slate-200">{ord.profiles?.name || ord.consumer_name || 'Customer'}</p>
+                    <p className="text-[11px] text-slate-300">{ord.delivery_address || ord.shipping_address || 'Address on file'}</p>
+                    {ord.delivery_landmark && (
+                      <p className="text-[10px] text-slate-400">Landmark: {ord.delivery_landmark}</p>
+                    )}
+                    <a
+                      href={
+                        ord.delivery_latitude != null && ord.delivery_longitude != null
+                          ? `https://www.google.com/maps/search/?api=1&query=${ord.delivery_latitude},${ord.delivery_longitude}`
+                          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ord.delivery_address || ord.shipping_address || '')}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline"
+                    >
+                      🗺️ Open in Google Maps
+                    </a>
                   </td>
                   <td className="p-3 text-slate-300">
                     {ord.order_items?.map((oi: any) => `${oi.products?.name || 'Item'} (x${oi.quantity})`).join(', ') || 'Grocery items'}
