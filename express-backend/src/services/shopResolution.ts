@@ -16,7 +16,8 @@ function normalize(value?: string | null): string {
 }
 
 /**
- * Finds the serviceable locality record matching the customer's pincode, city, or area.
+ * Finds the serviceable locality record matching the customer's area, pincode, or city.
+ * Hierarchical Rule: Specific Area match takes precedence over generic pincode hub.
  */
 export function findServiceableLocation(input: ShopResolutionInput) {
   const db = readDb();
@@ -25,15 +26,7 @@ export function findServiceableLocation(input: ShopResolutionInput) {
   const areaName = normalize(input.areaName);
   const pincode = String(input.pincode || '').replace(/\D/g, '').slice(0, 6);
 
-  // 1. Strict Priority: Exact Pincode match (One designated store center per pincode)
-  if (pincode && pincode.length === 6) {
-    const byPincode = locations.find(
-      (loc) => String(loc.pincode || '').trim() === pincode && loc.is_serviceable !== false && Boolean(loc.shop_id),
-    );
-    if (byPincode) return byPincode;
-  }
-
-  // 2. City + Area Name exact match
+  // 1. Highest Priority: Exact City + Area Name match with assigned shop
   if (city && areaName) {
     const exact = locations.find(
       (loc) =>
@@ -45,7 +38,19 @@ export function findServiceableLocation(input: ShopResolutionInput) {
     if (exact) return exact;
   }
 
-  // 3. Area Name match
+  // 2. Area Name + Pincode match with assigned shop
+  if (areaName && pincode) {
+    const areaPinMatch = locations.find(
+      (loc) =>
+        normalize(loc.area_name) === areaName &&
+        String(loc.pincode || '').trim() === pincode &&
+        loc.is_serviceable !== false &&
+        Boolean(loc.shop_id),
+    );
+    if (areaPinMatch) return areaPinMatch;
+  }
+
+  // 3. Area Name match with assigned shop
   if (areaName) {
     const byArea = locations.find(
       (loc) => normalize(loc.area_name) === areaName && loc.is_serviceable !== false && Boolean(loc.shop_id),
@@ -53,7 +58,15 @@ export function findServiceableLocation(input: ShopResolutionInput) {
     if (byArea) return byArea;
   }
 
-  // 4. Any serviceable record matching pincode even if shop_id is not yet assigned
+  // 4. Pincode match with assigned shop
+  if (pincode && pincode.length === 6) {
+    const byPincode = locations.find(
+      (loc) => String(loc.pincode || '').trim() === pincode && loc.is_serviceable !== false && Boolean(loc.shop_id),
+    );
+    if (byPincode) return byPincode;
+  }
+
+  // 5. Any serviceable record matching pincode even if shop_id is not yet assigned
   if (pincode && pincode.length === 6) {
     const byPincodeAny = locations.find(
       (loc) => String(loc.pincode || '').trim() === pincode && loc.is_serviceable !== false,
@@ -65,11 +78,12 @@ export function findServiceableLocation(input: ShopResolutionInput) {
 }
 
 /**
- * Resolve the merchant shop center that fulfills all customer orders for a pincode / area.
- * STRICT RULE: In MonthlyGrocery, each pincode/area has ONE dedicated center store.
- */
-/**
  * Strictly check if a given pincode, coordinates, or area is serviceable by any active kirana store.
+ * Supports:
+ * 1. Customer's explicit store selection (if store delivers to the area/pincode or within radius).
+ * 2. Granular Area-Level assigned shopkeeper (allowing different shops in different areas of the same pincode).
+ * 3. Pincode hub default assigned shopkeeper.
+ * 4. GPS delivery radius proximity.
  */
 export function checkLocationServiceability(input: ShopResolutionInput): {
   isServiceable: boolean;
@@ -84,7 +98,66 @@ export function checkLocationServiceability(input: ShopResolutionInput): {
   const locations = db.serviceable_locations || [];
   const territories = db.shop_territories || [];
 
-  // 1. Check exact pincode match in serviceable_locations
+  // 1. Explicit Customer Store Selection Priority
+  if (input.shopId) {
+    const shopTerritory = territories.find((t: any) => t.shop_id === input.shopId && t.is_open !== false);
+    // Also verify if assigned in serviceable locations
+    const assignedInLocation = locations.find(
+      (loc: any) => loc.shop_id === input.shopId && loc.is_serviceable !== false
+    );
+    if (shopTerritory || assignedInLocation) {
+      let dist: number | null = null;
+      if (input.latitude != null && input.longitude != null && shopTerritory?.latitude && shopTerritory?.longitude) {
+        dist = calculateHaversineDistanceKm(
+          input.latitude,
+          input.longitude,
+          parseFloat(shopTerritory.latitude),
+          parseFloat(shopTerritory.longitude),
+        );
+      }
+      return { isServiceable: true, shopId: input.shopId, distanceKm: dist };
+    }
+  }
+
+  // 2. Granular Area + City match in serviceable_locations (Area-level override)
+  if (city && areaName) {
+    const locByAreaCity = locations.find(
+      (loc: any) =>
+        normalize(loc.city) === city &&
+        normalize(loc.area_name) === areaName &&
+        loc.is_serviceable !== false &&
+        loc.shop_id,
+    );
+    if (locByAreaCity?.shop_id) {
+      return { isServiceable: true, shopId: locByAreaCity.shop_id, distanceKm: null };
+    }
+  }
+
+  // 3. Area Name + Pincode match in serviceable_locations
+  if (areaName && pincode) {
+    const locByAreaPin = locations.find(
+      (loc: any) =>
+        normalize(loc.area_name) === areaName &&
+        String(loc.pincode || '').trim() === pincode &&
+        loc.is_serviceable !== false &&
+        loc.shop_id,
+    );
+    if (locByAreaPin?.shop_id) {
+      return { isServiceable: true, shopId: locByAreaPin.shop_id, distanceKm: null };
+    }
+  }
+
+  // 4. Area Name only match
+  if (areaName) {
+    const locByArea = locations.find(
+      (loc: any) => normalize(loc.area_name) === areaName && loc.is_serviceable !== false && loc.shop_id,
+    );
+    if (locByArea?.shop_id) {
+      return { isServiceable: true, shopId: locByArea.shop_id, distanceKm: null };
+    }
+  }
+
+  // 5. Pincode Match (Pincode hub level)
   if (pincode && pincode.length === 6) {
     const locByPin = locations.find(
       (loc: any) => String(loc.pincode || '').trim() === pincode && loc.is_serviceable !== false && loc.shop_id,
@@ -101,22 +174,11 @@ export function checkLocationServiceability(input: ShopResolutionInput): {
     }
   }
 
-  // 2. Check Area + City match in serviceable_locations
-  if (city && areaName) {
-    const locByArea = locations.find(
-      (loc: any) =>
-        normalize(loc.city) === city &&
-        normalize(loc.area_name) === areaName &&
-        loc.is_serviceable !== false &&
-        loc.shop_id,
-    );
-    if (locByArea?.shop_id) {
-      return { isServiceable: true, shopId: locByArea.shop_id, distanceKm: null };
-    }
-  }
-
-  // 3. Check GPS Proximity (Customer coordinates vs Shop coordinates & delivery radius)
+  // 6. GPS Proximity (Customer coordinates vs Shop coordinates & delivery radius)
   if (input.latitude != null && input.longitude != null && !isNaN(input.latitude) && !isNaN(input.longitude)) {
+    let nearestShopId: string | null = null;
+    let minDistance: number = Infinity;
+
     for (const territory of territories) {
       if (territory.latitude != null && territory.longitude != null && territory.shop_id && territory.is_open !== false) {
         const dist = calculateHaversineDistanceKm(
@@ -126,18 +188,15 @@ export function checkLocationServiceability(input: ShopResolutionInput): {
           parseFloat(territory.longitude),
         );
         const radius = territory.delivery_radius_km != null ? parseFloat(territory.delivery_radius_km) : 5.0;
-        if (dist <= radius) {
-          return { isServiceable: true, shopId: territory.shop_id, distanceKm: dist };
+        if (dist <= radius && dist < minDistance) {
+          minDistance = dist;
+          nearestShopId = territory.shop_id;
         }
       }
     }
-  }
 
-  // If explicit shop was selected and is open
-  if (input.shopId) {
-    const shopTerritory = territories.find((t: any) => t.shop_id === input.shopId && t.is_open !== false);
-    if (shopTerritory) {
-      return { isServiceable: true, shopId: input.shopId, distanceKm: null };
+    if (nearestShopId) {
+      return { isServiceable: true, shopId: nearestShopId, distanceKm: minDistance };
     }
   }
 

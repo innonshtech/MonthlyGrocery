@@ -152,6 +152,12 @@ router.get('/nearby', async (req, res) => {
       let withinRadius = false;
       let matchedByPincode = false;
       let matchedByArea = false;
+      let isAreaPrimary = false;
+      let isPincodePrimary = false;
+
+      // Find all areas assigned to this shop in serviceable_locations
+      const shopLocations = serviceableLocations.filter((loc: any) => loc.shop_id === shop.id && loc.is_serviceable !== false);
+      const assignedAreas = shopLocations.map((loc: any) => loc.area_name);
 
       if (hasCustomerGps && shopLat != null && shopLng != null && !isNaN(shopLat) && !isNaN(shopLng)) {
         const { calculateHaversineDistanceKm } = require('../services/geocodingService');
@@ -160,31 +166,47 @@ router.get('/nearby', async (req, res) => {
         withinRadius = distanceKm != null && distanceKm <= effectiveRadius;
       }
 
-      // Check pincode serviceability
-      if (pincode && pincode.length === 6) {
-        if (territory?.pincode && String(territory.pincode).trim() === pincode) {
-          matchedByPincode = true;
-          withinRadius = true;
-        }
-        const locMatch = serviceableLocations.find(
-          (loc: any) => loc.shop_id === shop.id && String(loc.pincode || '').trim() === pincode && loc.is_serviceable !== false
+      // Check area match
+      if (area) {
+        const areaLoc = shopLocations.find(
+          (loc: any) => loc.area_name.trim().toLowerCase() === area && (!city || loc.city.trim().toLowerCase() === city)
         );
-        if (locMatch) {
-          matchedByPincode = true;
+        if (areaLoc) {
+          isAreaPrimary = true;
+          matchedByArea = true;
           withinRadius = true;
-        }
-      }
-
-      // Check area/city match
-      if (city && territory?.city && String(territory.city).trim().toLowerCase() === city) {
-        if (area && territory?.area_name && String(territory.area_name).trim().toLowerCase() === area) {
+        } else if (territory?.area_name && territory.area_name.trim().toLowerCase() === area) {
           matchedByArea = true;
           withinRadius = true;
         }
       }
 
-      // If no GPS provided and no specific pincode/city, allow all active shops
-      if (!hasCustomerGps && !pincode && !city) {
+      // Check pincode serviceability
+      if (pincode && pincode.length === 6) {
+        if (territory?.pincode && String(territory.pincode).trim() === pincode) {
+          isPincodePrimary = true;
+          matchedByPincode = true;
+          withinRadius = true;
+        }
+        const locMatch = shopLocations.find(
+          (loc: any) => String(loc.pincode || '').trim() === pincode
+        );
+        if (locMatch) {
+          isPincodePrimary = true;
+          matchedByPincode = true;
+          withinRadius = true;
+        }
+      }
+
+      // Check city match
+      if (city && territory?.city && String(territory.city).trim().toLowerCase() === city) {
+        if (!hasCustomerGps && !pincode && !area) {
+          withinRadius = true;
+        }
+      }
+
+      // If no filters provided, allow all active shops
+      if (!hasCustomerGps && !pincode && !city && !area) {
         withinRadius = true;
       }
 
@@ -204,12 +226,24 @@ router.get('/nearby', async (req, res) => {
         within_radius: withinRadius,
         matched_by_pincode: matchedByPincode,
         matched_by_area: matchedByArea,
+        is_area_primary: isAreaPrimary,
+        is_pincode_primary: isPincodePrimary,
+        assigned_areas: assignedAreas,
       };
     });
 
     const matchingShops = enriched
       .filter((s: any) => s.within_radius && s.is_open)
       .sort((a: any, b: any) => {
+        // Priority 1: Exact area primary shop
+        if (a.is_area_primary && !b.is_area_primary) return -1;
+        if (!a.is_area_primary && b.is_area_primary) return 1;
+
+        // Priority 2: Pincode primary shop
+        if (a.is_pincode_primary && !b.is_pincode_primary) return -1;
+        if (!a.is_pincode_primary && b.is_pincode_primary) return 1;
+
+        // Priority 3: Distance
         if (a.distance_km != null && b.distance_km != null) {
           return a.distance_km - b.distance_km;
         }

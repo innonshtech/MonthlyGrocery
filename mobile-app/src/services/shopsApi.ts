@@ -16,6 +16,9 @@ export interface NearbyShop {
   within_radius: boolean;
   matched_by_pincode?: boolean;
   matched_by_area?: boolean;
+  is_area_primary?: boolean;
+  is_pincode_primary?: boolean;
+  assigned_areas?: string[];
 }
 
 export interface NearbyShopsResponse {

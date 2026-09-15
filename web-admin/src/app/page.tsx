@@ -432,6 +432,28 @@ export default function DashboardPage() {
     }
   };
 
+  // Bulk assign all areas in a pincode to a shop
+  const handleBulkAssignPincode = async (pincode: string, shopId: string, city?: string) => {
+    if (!token || !pincode || !shopId) {
+      alert('Please select or enter a 6-digit PIN code and select an approved shop.');
+      return;
+    }
+    try {
+      const data = await apiFetch('/admin/locations/assign-pincode', {
+        method: 'POST',
+        body: JSON.stringify({
+          pincode: pincode.trim(),
+          shop_id: shopId,
+          city: city ? city.trim() : undefined,
+        }),
+      });
+      setLocations(data.locations || []);
+      alert(data.message || `Successfully mapped PIN code ${pincode} to shop!`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to bulk assign PIN code');
+    }
+  };
+
   // Franchise Lead Handlers
   const handleCreateFranchiseLead = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1291,6 +1313,7 @@ export default function DashboardPage() {
               setLocShop={setLocShop}
               handleAddLocation={handleAddLocation}
               handleUpdateLocationShop={handleUpdateLocationShop}
+              handleBulkAssignPincode={handleBulkAssignPincode}
               handleDeleteLocation={handleDeleteLocation}
             />
           )}

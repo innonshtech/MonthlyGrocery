@@ -604,6 +604,7 @@ export interface Area {
   id: string;
   city_id: string;
   name: string;
+  pincode?: string;
 }
 
 export interface AdminState {

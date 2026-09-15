@@ -1023,6 +1023,120 @@ router.delete('/locations/:id', authMiddleware, requireRole(['super_admin']), as
   }
 });
 
+// POST /locations/assign-pincode: Bulk assign all areas in a pincode to a shop (Super Admin only)
+router.post('/locations/assign-pincode', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { pincode, shop_id, city } = req.body;
+
+  const cleanPin = String(pincode || '').replace(/\D/g, '').slice(0, 6);
+  if (!cleanPin || cleanPin.length !== 6) {
+    return res.status(400).json({ success: false, error: 'A valid 6-digit PIN code is required' });
+  }
+
+  if (!shop_id) {
+    return res.status(400).json({ success: false, error: 'A valid shop_id is required' });
+  }
+
+  try {
+    const db = readDb();
+    if (!db.serviceable_locations) db.serviceable_locations = [];
+
+    let updatedCount = 0;
+    // 1. Update all existing serviceable locations with this pincode (and city if provided)
+    db.serviceable_locations = db.serviceable_locations.map((loc: any) => {
+      const pinMatch = String(loc.pincode || '').trim() === cleanPin;
+      const cityMatch = !city || String(loc.city || '').trim().toLowerCase() === String(city).trim().toLowerCase();
+      if (pinMatch && cityMatch) {
+        updatedCount++;
+        return {
+          ...loc,
+          shop_id: shop_id,
+          is_serviceable: true,
+        };
+      }
+      return loc;
+    });
+
+    // 2. Also check if there are registered areas under db.areas with this pincode that aren't yet in serviceable_locations
+    if (db.areas && Array.isArray(db.areas)) {
+      for (const area of db.areas) {
+        if (String(area.pincode || '').trim() === cleanPin) {
+          const cityObj = (db.cities || []).find((c: any) => c.id === area.city_id);
+          const cityName = cityObj ? cityObj.name : (city || '');
+          const existing = db.serviceable_locations.find(
+            (l: any) => l.area_name.trim().toLowerCase() === area.name.trim().toLowerCase() && String(l.pincode || '').trim() === cleanPin
+          );
+          if (!existing) {
+            db.serviceable_locations.push({
+              id: `loc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+              city: cityName,
+              area_name: area.name,
+              pincode: cleanPin,
+              is_serviceable: true,
+              shop_id: shop_id,
+            });
+            updatedCount++;
+          }
+        }
+      }
+    }
+
+    // 3. If no areas exist yet for this pincode, create a general entry for this pincode
+    if (updatedCount === 0) {
+      db.serviceable_locations.push({
+        id: `loc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        city: city || 'Registered Zone',
+        area_name: `All Areas (${cleanPin})`,
+        pincode: cleanPin,
+        is_serviceable: true,
+        shop_id: shop_id,
+      });
+      updatedCount++;
+    }
+
+    writeDb(db);
+    return res.json({
+      success: true,
+      message: `Successfully mapped ${updatedCount} area(s) in PIN code ${cleanPin} to the selected shop.`,
+      updated_count: updatedCount,
+      locations: db.serviceable_locations,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /locations/assign-area: Assign a specific locality/area to a shopkeeper (Super Admin only)
+router.post('/locations/assign-area', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+  const { location_id, shop_id } = req.body;
+
+  if (!location_id || !shop_id) {
+    return res.status(400).json({ success: false, error: 'location_id and shop_id are required' });
+  }
+
+  try {
+    const db = readDb();
+    if (!db.serviceable_locations) db.serviceable_locations = [];
+
+    const targetLoc = db.serviceable_locations.find((l: any) => l.id === location_id);
+    if (!targetLoc) {
+      return res.status(404).json({ success: false, error: 'Location zone not found' });
+    }
+
+    targetLoc.shop_id = shop_id;
+    targetLoc.is_serviceable = true;
+    writeDb(db);
+
+    return res.json({
+      success: true,
+      message: `Assigned ${targetLoc.area_name} (${targetLoc.pincode}) to the selected shop.`,
+      location: targetLoc,
+      locations: db.serviceable_locations,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 // ==========================================
 // 2. Promotional Banners (Festive campaigns)

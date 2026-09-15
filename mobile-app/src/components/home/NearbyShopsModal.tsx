@@ -89,12 +89,29 @@ export default function NearbyShopsModal({
           <View style={styles.shopTitleWrap}>
             <Text style={styles.shopEmoji}>🏪</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.shopName} numberOfLines={1}>
-                {item.shop_name}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <Text style={styles.shopName} numberOfLines={1}>
+                  {item.shop_name}
+                </Text>
+                {item.is_area_primary && (
+                  <View style={styles.primaryAreaTag}>
+                    <Text style={styles.primaryAreaTagText}>🎯 Locality Default</Text>
+                  </View>
+                )}
+                {item.is_pincode_primary && !item.is_area_primary && (
+                  <View style={styles.pincodeTag}>
+                    <Text style={styles.pincodeTagText}>📮 PIN Store</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.shopAddress} numberOfLines={1}>
                 {[item.address_line, item.area_name, item.city].filter(Boolean).join(', ') || 'Local Kirana Partner'}
               </Text>
+              {item.assigned_areas && item.assigned_areas.length > 0 ? (
+                <Text style={styles.assignedAreasText} numberOfLines={1}>
+                  📍 Serving: {item.assigned_areas.join(', ')}
+                </Text>
+              ) : null}
             </View>
           </View>
           {isSelected ? (
@@ -342,6 +359,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.ink500,
     marginTop: 1,
+  },
+  primaryAreaTag: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  primaryAreaTagText: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: '#166534',
+  },
+  pincodeTag: {
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  pincodeTagText: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: '#3730A3',
+  },
+  assignedAreasText: {
+    ...FONTS.muktaRegular,
+    fontSize: 11,
+    color: '#059669',
+    marginTop: 2,
   },
   selectedBadge: {
     backgroundColor: COLORS.green700,
