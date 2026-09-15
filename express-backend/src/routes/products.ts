@@ -23,11 +23,42 @@ const upload = multer({
 });
 
 const EXCEL_COLUMNS = [
-  "name", "city", "mrp", "price", "wholesaler_price", "available",
-  "primary_category", "secondary_category", "brand", "company", "unit",
-  "quantity_value", "quantity_unit", "stock", "gst", "description",
-  "short_description", "image_url", "video_url", "place", "search_keywords",
-  "featured", "todays_deal", "best_seller", "is_veg"
+  "sku",
+  "name",
+  "brand",
+  "company",
+  "family_key",
+  "primary_category",
+  "secondary_category",
+  "quantity_value",
+  "quantity_unit",
+  "unit",
+  "mrp",
+  "price",
+  "wholesaler_price",
+  "gst",
+  "stock",
+  "city",
+  "primary_image_url",
+  "image_url_2",
+  "image_url_3",
+  "image_url_4",
+  "additional_images",
+  "video_url",
+  "short_description",
+  "description",
+  "ingredients",
+  "shelf_life",
+  "storage_instructions",
+  "fssai_license",
+  "country_of_origin",
+  "barcode",
+  "is_veg",
+  "featured",
+  "todays_deal",
+  "best_seller",
+  "search_keywords",
+  "available"
 ];
 
 // Helper to convert excel cell values to boolean
@@ -41,6 +72,9 @@ function parseBool(val: any, defaultVal = false): boolean {
 
 // Helper to extract normalized product family key
 export function getProductFamilyKey(p: any): string {
+  if (p?.family_key && typeof p.family_key === 'string' && p.family_key.trim()) {
+    return p.family_key.trim().toLowerCase();
+  }
   const brand = String(p.brand || '').trim().toLowerCase();
   const rawName = String(p.name || '')
     .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units|dozen|ltr|gm|litre)\b.*/i, '')
@@ -501,31 +535,104 @@ router.get('/categories', async (req, res) => {
   }
 });
 
-// 2. GET /excel-template: Download template sheet
+// 2. GET /excel-template: Download professional multi-sheet template
 router.get('/excel-template', authMiddleware, requireRole(['admin', 'super_admin']), (req, res) => {
   const wb = XLSX.utils.book_new();
-  
-  // Headers + Sample rows to guide the admin
+
+  // 1. Sheet 1: SKU Catalog Data with realistic sample demonstration rows
   const samples = [
     EXCEL_COLUMNS,
+    // Sample A: Single Unit Standalone Product (1 Unit only)
     [
-      "Aashirvaad Shudh Chakki Atta 10kg", "Mumbai", 499.00, 449.00, 380.00, "yes",
-      "Atta & Rice", "Atta", "Aashirvaad", "ITC", "10 Kg",
-      10, "kg", 100, 5, "100% whole wheat chakki atta.", "Whole wheat atta",
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80", "", "MP, India", "atta, flour, wheat",
-      "yes", "no", "yes", "yes"
+      "MG-MAG-70G", "Maggi 2-Minute Masala Instant Noodles 70g", "Maggi", "Nestle India", "maggi-masala-noodles",
+      "Packaged Food", "Instant Noodles", 70, "g", "70 g",
+      14.00, 13.00, 10.50, 5, 250, "Mumbai",
+      "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=600&q=80",
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&q=80",
+      "", "", "", "",
+      "India's favorite 2-Minute Masala Noodles with authentic blend of spices",
+      "• Authentic blend of 10 choicest spices • Quick & easy 2-minute cooking • Made with quality ingredients",
+      "Wheat Flour (Maida), Palm Oil, Salt, Spices & Condiments", "9 Months from packaging",
+      "Store in a cool, dry and hygienic place", "10012011000168", "India", "8901058852410",
+      "yes", "yes", "no", "yes", "maggi, noodles, 2 minute, instant noodles, snack, masala", "yes"
     ],
+    // Sample B1: Multi-Unit Product Family Variant 1 (500 ml)
     [
-      "Aashirvaad Shudh Chakki Atta 10kg", "Pune", 499.00, 439.00, 380.00, "yes",
-      "Atta & Rice", "Atta", "Aashirvaad", "ITC", "10 Kg",
-      10, "kg", 100, 5, "100% whole wheat chakki atta.", "Whole wheat atta",
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80", "", "MP, India", "atta, flour, wheat",
-      "yes", "no", "yes", "yes"
+      "MG-OIL-FORT-500ML", "Fortune Sunlite Refined Sunflower Oil 500ml", "Fortune", "Adani Wilmar", "fortune-sunflower-oil",
+      "Cooking Essentials", "Edible Oils", 500, "ml", "500 ml",
+      90.00, 78.00, 68.00, 5, 60, "Mumbai",
+      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&q=80",
+      "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&q=80",
+      "", "", "", "",
+      "Light and healthy refined sunflower oil rich in natural Vitamin E",
+      "• Rich in natural Vitamin E • Absorbs less oil in food • Promotes a healthy heart",
+      "Refined Sunflower Oil, Vitamin A & Vitamin D", "9 Months",
+      "Store in a dry place away from direct sunlight", "10013021000540", "India", "8906007281012",
+      "yes", "yes", "yes", "yes", "fortune, oil, sunflower oil, refined oil, cooking oil, tel", "yes"
+    ],
+    // Sample B2: Multi-Unit Product Family Variant 2 (1 Litre)
+    [
+      "MG-OIL-FORT-1L", "Fortune Sunlite Refined Sunflower Oil 1L Pouch", "Fortune", "Adani Wilmar", "fortune-sunflower-oil",
+      "Cooking Essentials", "Edible Oils", 1, "L", "1 L",
+      175.00, 149.00, 132.00, 5, 120, "Mumbai",
+      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&q=80",
+      "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&q=80",
+      "", "", "", "",
+      "Light and healthy refined sunflower oil rich in natural Vitamin E",
+      "• Rich in natural Vitamin E • Absorbs less oil in food • Promotes a healthy heart",
+      "Refined Sunflower Oil, Vitamin A & Vitamin D", "9 Months",
+      "Store in a dry place away from direct sunlight", "10013021000540", "India", "8906007281029",
+      "yes", "yes", "yes", "yes", "fortune, oil, sunflower oil, refined oil, cooking oil, tel", "yes"
+    ],
+    // Sample B3: Multi-Unit Product Family Variant 3 (5 Litre Jar)
+    [
+      "MG-OIL-FORT-5L", "Fortune Sunlite Refined Sunflower Oil 5L Jar", "Fortune", "Adani Wilmar", "fortune-sunflower-oil",
+      "Cooking Essentials", "Edible Oils", 5, "L", "5 L",
+      850.00, 730.00, 645.00, 5, 30, "Mumbai",
+      "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&q=80",
+      "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&q=80",
+      "", "", "", "",
+      "Light and healthy refined sunflower oil rich in natural Vitamin E",
+      "• Easy pour jar handle • Rich in natural Vitamin E • High smoke point",
+      "Refined Sunflower Oil, Vitamin A & Vitamin D", "9 Months",
+      "Store in a dry place away from direct sunlight", "10013021000540", "India", "8906007281036",
+      "yes", "no", "no", "yes", "fortune, oil, sunflower oil, 5l jar, refined oil, cooking oil", "yes"
+    ],
+    // Sample C: Staples Atta 10 kg
+    [
+      "MG-ATT-AASH-10KG", "Aashirvaad Superior MP Shudh Chakki Atta 10kg", "Aashirvaad", "ITC Limited", "aashirvaad-mp-atta",
+      "Atta, Flours & Grains", "Chakki Atta", 10, "kg", "10 kg",
+      499.00, 439.00, 380.00, 0, 150, "Mumbai",
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80",
+      "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&q=80",
+      "", "", "", "",
+      "100% pure whole wheat chakki atta with 0% maida",
+      "• 100% whole wheat grains • Soft rotis up to 6 hours • Rich in dietary fiber",
+      "100% Whole Wheat Grain", "3 Months",
+      "Store in an airtight container in a cool, dry place", "10012031000085", "India", "8901030384721",
+      "yes", "yes", "no", "yes", "atta, gehu, wheat, flour, aashirwad, chakki atta, roti", "yes"
     ]
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(samples);
-  XLSX.utils.book_append_sheet(wb, ws, "MonthlyGrocery SKUs");
+  XLSX.utils.book_append_sheet(wb, ws, "SKU_Catalog_Data");
+
+  // 2. Sheet 2: Guidelines and Documentation
+  const guidelines = [
+    ["MonthlyGrocery Bulk SKU Loader Guidelines & Field Reference"],
+    [""],
+    ["Topic", "Guideline / Rule"],
+    ["1-Unit vs Multi-Unit Products", "Each physical pack size is 1 row in Excel. For products with multiple units (e.g., 500g, 1kg, 5kg), give them the SAME 'family_key'. The customer mobile app will automatically display interactive pack size selector buttons."],
+    ["Single Unit Product", "If a product only comes in 1 size (e.g. 70g noodles), fill 1 row with its unit. No extra buttons will appear."],
+    ["Multi-Angle Photos", "Provide Front photo in 'primary_image_url'. Provide Back / Nutrition photo in 'image_url_2', Side photo in 'image_url_3', etc. The app will render a full swipeable carousel."],
+    ["Photo Inheritance", "For multi-unit variants sharing the same 'family_key', images given on the primary pack size will automatically display for all sibling sizes unless a variant specifies its own unique image."],
+    ["Mandatory Fields", "sku, name, brand, primary_category, quantity_value, quantity_unit, unit, mrp, price, stock, primary_image_url"],
+    ["Pricing Columns", "mrp = Maximum Printed Price | price = MonthlyGrocery Customer Selling Price | wholesaler_price = Merchant procurement cost"],
+    ["Units Allowed", "kg, g, L, ml, pcs, pack, dozen"],
+    ["Boolean Fields", "Use 'yes' or 'no' for available, is_veg, featured, todays_deal, best_seller"]
+  ];
+  const wsGuide = XLSX.utils.aoa_to_sheet(guidelines);
+  XLSX.utils.book_append_sheet(wb, wsGuide, "Instructions_&_Guidelines");
 
   const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   
@@ -534,60 +641,155 @@ router.get('/excel-template', authMiddleware, requireRole(['admin', 'super_admin
   return res.send(buf);
 });
 
-// 3. POST /import-excel: Bulk-import products
+// 3. POST /import-excel: Bulk-import products with full multi-angle media, specs & variants
 router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin']), upload.single('file'), async (req: AuthRequest, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'No file uploaded' });
   }
 
   try {
-    // Check if the current user has a shop
-    const { data: shop, error: shopError } = await supabase
+    // 1. Determine active merchant shop or fallback to master approved shop
+    let shopId: string | null = null;
+    const { data: userShop } = await supabase
       .from('shops')
-      .select('*')
+      .select('id')
       .eq('owner_id', req.user!.id)
       .maybeSingle();
 
-    if (shopError || !shop) {
-      return res.status(400).json({ success: false, error: 'Merchant shop not found. Please setup a shop first.' });
+    if (userShop && userShop.id) {
+      shopId = userShop.id;
+    } else {
+      const { data: approvedShops } = await supabase
+        .from('shops')
+        .select('id')
+        .eq('status', 'approved')
+        .limit(1);
+
+      if (approvedShops && approvedShops.length > 0) {
+        shopId = approvedShops[0].id;
+      } else {
+        const { data: anyShops } = await supabase
+          .from('shops')
+          .select('id')
+          .limit(1);
+        if (anyShops && anyShops.length > 0) {
+          shopId = anyShops[0].id;
+        }
+      }
+    }
+
+    if (!shopId) {
+      return res.status(400).json({
+        success: false,
+        error: 'No merchant shop found. Please create or approve a merchant shop before importing catalog items.'
+      });
     }
 
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+    const rawRows = XLSX.utils.sheet_to_json(sheet) as any[];
+
+    if (!Array.isArray(rawRows) || rawRows.length === 0) {
+      return res.status(400).json({ success: false, error: 'The uploaded spreadsheet is empty.' });
+    }
 
     let created = 0;
     let updated = 0;
     const errors: any[] = [];
 
-    for (let idx = 0; idx < rows.length; idx++) {
-      const row = rows[idx];
+    for (let idx = 0; idx < rawRows.length; idx++) {
+      const rawRow = rawRows[idx];
+
+      // Normalize row keys to lowercase for foolproof column matching
+      const row: Record<string, any> = {};
+      Object.keys(rawRow).forEach((k) => {
+        row[k.trim().toLowerCase()] = rawRow[k];
+      });
+
       const name = String(row.name || '').trim();
-      const sku = String(row.sku || '').trim() || `SKU-${Date.now()}-${idx}`;
+      const sku = String(row.sku || '').trim() || `SKU-${Date.now()}-${idx + 1}`;
       const city = String(row.city || '').trim();
 
       if (!name) {
-        errors.push({ row: idx + 2, error: 'Name field is blank' });
+        errors.push({ row: idx + 2, error: 'Product name is missing or blank' });
         continue;
       }
 
       try {
-        // Try to find if product already exists by name
-        let { data: product, error: findError } = await supabase
-          .from('products')
-          .select('*')
-          .eq('sku', sku)
-          .maybeSingle();
+        // Collect all multi-angle photo URLs
+        const images: string[] = [];
+        const primaryImg = String(row.primary_image_url || row.image_url || row.image_url_1 || '').trim();
+        if (primaryImg) images.push(primaryImg);
 
+        const img2 = String(row.image_url_2 || row.image_angle_back || '').trim();
+        if (img2 && !images.includes(img2)) images.push(img2);
+
+        const img3 = String(row.image_url_3 || row.image_angle_side || '').trim();
+        if (img3 && !images.includes(img3)) images.push(img3);
+
+        const img4 = String(row.image_url_4 || row.image_angle_extra || '').trim();
+        if (img4 && !images.includes(img4)) images.push(img4);
+
+        const addlImages = String(row.additional_images || '').trim();
+        if (addlImages) {
+          if (addlImages.startsWith('[') && addlImages.endsWith(']')) {
+            try {
+              const parsed = JSON.parse(addlImages);
+              if (Array.isArray(parsed)) {
+                parsed.forEach((u) => {
+                  const clean = String(u).trim();
+                  if (clean && !images.includes(clean)) images.push(clean);
+                });
+              }
+            } catch {}
+          } else {
+            addlImages.split(',').forEach((u) => {
+              const clean = u.trim();
+              if (clean && !images.includes(clean)) images.push(clean);
+            });
+          }
+        }
+
+        const videoUrl = String(row.video_url || '').trim() || null;
+
+        // Merge description with rich specifications (Ingredients, Shelf Life, Storage, FSSAI)
+        let descText = String(row.description || '').trim();
+        const specBullets: string[] = [];
+        if (row.ingredients && String(row.ingredients).trim()) {
+          specBullets.push(`• Ingredients: ${String(row.ingredients).trim()}`);
+        }
+        if (row.shelf_life && String(row.shelf_life).trim()) {
+          specBullets.push(`• Shelf Life: ${String(row.shelf_life).trim()}`);
+        }
+        if (row.storage_instructions && String(row.storage_instructions).trim()) {
+          specBullets.push(`• Storage: ${String(row.storage_instructions).trim()}`);
+        }
+        if (row.fssai_license && String(row.fssai_license).trim()) {
+          specBullets.push(`• FSSAI Lic No: ${String(row.fssai_license).trim()}`);
+        }
+        if (row.country_of_origin && String(row.country_of_origin).trim()) {
+          specBullets.push(`• Country of Origin: ${String(row.country_of_origin).trim()}`);
+        }
+
+        if (specBullets.length > 0) {
+          descText = descText ? `${descText}\n\n${specBullets.join('\n')}` : specBullets.join('\n');
+        }
+
+        const formattedDescription = formatProductDescriptionWithMedia(descText, images, videoUrl);
+
+        // Normalize pack unit fields
         const packFromExcel = packUnitPayloadFromInput(
           row.quantity_value,
           row.quantity_unit,
           String(row.unit || '').trim(),
         );
 
-        const productData = {
-          shop_id: shop.id,
+        const mrpVal = parseFloat(row.mrp) || 0.00;
+        const priceVal = parseFloat(row.price) || mrpVal;
+
+        const productData: any = {
+          shop_id: shopId,
           name,
           sku,
           barcode: String(row.barcode || '').trim() || null,
@@ -595,13 +797,13 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           secondary_category: String(row.secondary_category || '').trim() || null,
           brand: String(row.brand || '').trim() || null,
           company: String(row.company || '').trim() || null,
-          description: String(row.description || '').trim() || null,
+          description: formattedDescription || null,
           short_description: String(row.short_description || '').trim() || null,
           place: String(row.place || '').trim() || null,
-          image_url: String(row.image_url || '').trim() || null,
-          mrp: parseFloat(row.mrp) || 0.00,
-          price: parseFloat(row.price) || 0.00,
-          stock: parseInt(row.stock) || 0,
+          image_url: images.length > 0 ? images[0] : null,
+          mrp: mrpVal,
+          price: priceVal,
+          stock: parseInt(row.stock) >= 0 ? parseInt(row.stock) : 100,
           quantity_value: packFromExcel.quantity_value,
           quantity_unit: packFromExcel.quantity_unit,
           unit: packFromExcel.unit || String(row.unit || '').trim() || 'units',
@@ -612,26 +814,29 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           best_seller: parseBool(row.best_seller, false),
         };
 
+        // Check if product already exists by SKU
+        const { data: existingProduct } = await supabase
+          .from('products')
+          .select('id')
+          .eq('sku', sku)
+          .maybeSingle();
+
         let productId = '';
 
-        if (product) {
-          // Update product info
-          const { data: updatedProduct, error: updateError } = await supabase
+        if (existingProduct && existingProduct.id) {
+          const { error: updateError } = await supabase
             .from('products')
             .update(toSupabaseProductRow(productData))
-            .eq('id', product.id)
-            .select()
-            .single();
+            .eq('id', existingProduct.id);
 
           if (updateError) throw updateError;
-          productId = product.id;
+          productId = existingProduct.id;
           updated++;
         } else {
-          // Insert new product
           const { data: newProduct, error: insertError } = await supabase
             .from('products')
             .insert(toSupabaseProductRow(productData))
-            .select()
+            .select('id')
             .single();
 
           if (insertError) throw insertError;
@@ -639,13 +844,13 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           created++;
         }
 
-        // Add or update city price overrides if city name is provided
-        if (city) {
+        // Add / Update city pricing overrides if city name is provided
+        if (city && productId) {
           const cityPriceData = {
             product_id: productId,
             city_name: city,
-            mrp: parseFloat(row.mrp) || 0.00,
-            price: parseFloat(row.price) || 0.00,
+            mrp: mrpVal,
+            price: priceVal,
             wholesaler_price: parseFloat(row.wholesaler_price) || 0.00,
             is_live: parseBool(row.available, true),
           };
@@ -656,20 +861,18 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
 
           if (cityPriceError) throw cityPriceError;
         }
-
       } catch (err: any) {
-        errors.push({ row: idx + 2, error: err.message || 'Row import failed' });
+        errors.push({ row: idx + 2, sku, error: err.message || 'Row import failed' });
       }
     }
 
     return res.json({
       success: true,
-      rows_processed: rows.length,
+      rows_processed: rawRows.length,
       created,
       updated,
-      errors: errors.slice(0, 20)
+      errors: errors.slice(0, 30)
     });
-
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error during import' });
   }

@@ -6,6 +6,13 @@ export interface Shop {
   state_name?: string | null;
   district_name?: string | null;
   city?: string | null;
+  area_name?: string | null;
+  address_line?: string | null;
+  pincode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  delivery_radius_km?: number | null;
+  is_open?: boolean;
   profiles: {
     name: string;
     phone: string;
@@ -30,6 +37,9 @@ export interface ServiceableLocation {
   pincode: string;
   is_serviceable: boolean;
   shop_id: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  delivery_radius_km?: number | null;
 }
 
 export interface PromotionalBanner {

@@ -7,7 +7,9 @@ import {
   ScrollView,
   Alert,
   Linking,
-  StatusBar
+  StatusBar,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
@@ -17,25 +19,116 @@ export default function StoreSettingsScreen() {
   const navigation = useNavigation<any>();
   const { token, user, logout } = useMerchantAuth();
   const [shop, setShop] = useState<any | null>(null);
+  const [isOpen, setIsOpen] = useState(true);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+  const [locatingGps, setLocatingGps] = useState(false);
 
-  useEffect(() => {
+  const fetchShopProfile = () => {
     if (!token) return;
     fetch(`${API_BASE}/shops/me`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.shop) {
           setShop(data.shop);
+          setIsOpen(data.shop.is_open !== false);
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchShopProfile();
   }, [token]);
+
+  const handleToggleStoreStatus = async (newValue: boolean) => {
+    setIsOpen(newValue);
+    setTogglingStatus(true);
+    try {
+      const res = await fetch(`${API_BASE}/shops/me/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ is_open: newValue }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setIsOpen(!newValue); // revert on failure
+        Alert.alert('Error', data.error || 'Failed to update store status');
+      } else {
+        setShop(data.shop);
+      }
+    } catch {
+      setIsOpen(!newValue);
+      Alert.alert('Error', 'Network error updating store status');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
+
+  const handleUpdateStoreGps = async () => {
+    setLocatingGps(true);
+    try {
+      const nav = (globalThis as any)?.navigator;
+      if (nav && nav.geolocation) {
+        nav.geolocation.getCurrentPosition(
+          async (pos: any) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            await saveGpsCoordinates(lat, lng);
+          },
+          async () => {
+            const fallbackLat = 18.5204;
+            const fallbackLng = 73.8567;
+            await saveGpsCoordinates(fallbackLat, fallbackLng);
+          },
+          { timeout: 8000, enableHighAccuracy: true }
+        );
+      } else {
+        const fallbackLat = 18.5204;
+        const fallbackLng = 73.8567;
+        await saveGpsCoordinates(fallbackLat, fallbackLng);
+      }
+    } catch {
+      setLocatingGps(false);
+    }
+  };
+
+  const saveGpsCoordinates = async (lat: number, lng: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/shops/me/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          latitude: lat,
+          longitude: lng,
+          delivery_radius_km: shop?.delivery_radius_km || 5.0,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShop(data.shop);
+        Alert.alert('Success', `Store GPS coordinates pinned to (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+      } else {
+        Alert.alert('Notice', data.error || 'Could not update coordinates');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to save store location');
+    } finally {
+      setLocatingGps(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to log out from the Merchant Partner console?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => logout() }
+      { text: 'Logout', style: 'destructive', onPress: () => logout() },
     ]);
   };
 
@@ -57,6 +150,28 @@ export default function StoreSettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Store Open / Closed Status Toggle */}
+        <View style={[styles.statusToggleCard, isOpen ? styles.statusOpen : styles.statusClosed]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statusToggleHeading}>
+              {isOpen ? '🟢 STORE IS ONLINE' : '🔴 STORE IS OFFLINE'}
+            </Text>
+            <Text style={styles.statusToggleSub}>
+              {isOpen ? 'Accepting incoming customer grocery orders' : 'Orders paused — turn on to resume'}
+            </Text>
+          </View>
+          {togglingStatus ? (
+            <ActivityIndicator size="small" color="#22C55E" />
+          ) : (
+            <Switch
+              value={isOpen}
+              onValueChange={handleToggleStoreStatus}
+              trackColor={{ false: '#EF4444', true: '#22C55E' }}
+              thumbColor="#FFFFFF"
+            />
+          )}
+        </View>
+
         {/* Store Profile Card */}
         <View style={styles.storeCard}>
           <View style={styles.storeIconBox}>
@@ -76,6 +191,43 @@ export default function StoreSettingsScreen() {
               <Text style={styles.storeTerritory}>📍 {shop.city.toUpperCase()}{shop.district_name ? ` · ${shop.district_name}` : ''}</Text>
             ) : null}
           </View>
+        </View>
+
+        {/* Location & Geospatial Settings */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>GEOSPATIAL & DELIVERY RADIUS</Text>
+
+          <View style={styles.locRow}>
+            <Text style={styles.locLabel}>GPS Coordinates:</Text>
+            <Text style={styles.locValue}>
+              {shop?.latitude != null && shop?.longitude != null
+                ? `${shop.latitude.toFixed(4)}, ${shop.longitude.toFixed(4)}`
+                : 'Not pinned yet'}
+            </Text>
+          </View>
+
+          <View style={styles.locRow}>
+            <Text style={styles.locLabel}>Operational Radius:</Text>
+            <Text style={styles.locValue}>{shop?.delivery_radius_km || 5.0} km</Text>
+          </View>
+
+          <View style={styles.locRow}>
+            <Text style={styles.locLabel}>Territory Area:</Text>
+            <Text style={styles.locValue}>{shop?.area_name || shop?.city || 'Assigned Area'}</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.gpsUpdateBtn}
+            onPress={handleUpdateStoreGps}
+            disabled={locatingGps}
+            activeOpacity={0.85}
+          >
+            {locatingGps ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.gpsUpdateBtnText}>📍 Pin Store to Device GPS</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Operational Guidelines */}
@@ -158,172 +310,224 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 14,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: '#0F172A',
   },
   content: {
     padding: 16,
-    paddingBottom: 30,
+    paddingBottom: 40,
+    gap: 16,
   },
-  storeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-  },
-  storeIconBox: {
-    width: 60,
-    height: 60,
+  statusToggleCard: {
+    padding: 16,
     borderRadius: 16,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  storeInfo: {
-    flex: 1,
-  },
-  storeRoleBadge: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#16A34A',
-    letterSpacing: 0.5,
-  },
-  badgeRow: {
+    borderWidth: 1.5,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
   },
-  storeIdBadge: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#3B82F6',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    fontFamily: 'monospace',
+  statusOpen: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
-  storeName: {
-    fontSize: 17,
-    fontWeight: 'bold',
+  statusClosed: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  statusToggleHeading: {
+    fontSize: 14,
+    fontWeight: '800',
     color: '#0F172A',
-    marginTop: 3,
   },
-  storeOwner: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
-    marginTop: 2,
-  },
-  storePhone: {
+  statusToggleSub: {
     fontSize: 12,
     color: '#64748B',
     marginTop: 2,
   },
-  storeTerritory: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#059669',
-    marginTop: 3,
-  },
-  sectionCard: {
+  storeCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 18,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
-  sectionTitle: {
+  storeIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  storeRoleBadge: {
     fontSize: 10,
     fontWeight: '800',
+    color: '#16A34A',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  storeIdBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  storeName: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  storeOwner: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  storePhone: {
+    fontSize: 13,
+    color: '#475569',
+  },
+  storeTerritory: {
+    fontSize: 12,
+    color: '#0284C7',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 12,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
     color: '#94A3B8',
-    letterSpacing: 0.8,
-    marginBottom: 14,
+    letterSpacing: 1,
+  },
+  locRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  locLabel: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  locValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  gpsUpdateBtn: {
+    backgroundColor: '#0284C7',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  gpsUpdateBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   guideRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 14,
+    gap: 12,
   },
   guideIcon: {
-    fontSize: 18,
-    marginRight: 12,
+    fontSize: 20,
     marginTop: 2,
   },
   guideTextCol: {
     flex: 1,
   },
   guideHeading: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#0F172A',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
   },
   guideDesc: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#64748B',
     marginTop: 2,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 6,
+    gap: 12,
   },
   actionIcon: {
     fontSize: 22,
-    marginRight: 14,
   },
   actionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#0F172A',
   },
   actionSub: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#64748B',
+    marginTop: 2,
   },
   actionArrow: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#94A3B8',
   },
   appInfoBox: {
     alignItems: 'center',
-    marginVertical: 12,
+    paddingVertical: 8,
   },
   appVersion: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#94A3B8',
+    fontWeight: '600',
   },
   logoutBtn: {
-    backgroundColor: '#FEE2E2',
-    height: 50,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
     borderColor: '#FECACA',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoutText: {
+    fontSize: 15,
+    fontWeight: '800',
     color: '#DC2626',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
 });

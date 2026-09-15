@@ -28,6 +28,7 @@ import {
   fetchAddAddressScreenConfig,
   saveUserAddress,
   cacheAddressesLocally,
+  reverseGeocodeLocation,
 } from '../../services/addressApi';
 import {
   isValidIndianPincode,
@@ -52,7 +53,7 @@ function defaultPhoneFromUser(mobile?: string): string {
 }
 
 export default function AddAddressScreen({ navigation, route }: any) {
-  const { token, user, pincode: areaPincode } = useAuth();
+  const { token, user, pincode: areaPincode, city: authCity, area: authArea } = useAuth();
   const editingAddress = route?.params?.editingAddress as AddressItem | undefined;
   const fromCheckout = route?.params?.fromCheckout;
 
@@ -62,8 +63,14 @@ export default function AddAddressScreen({ navigation, route }: any) {
   const [tag, setTag] = useState('');
   const [flat, setFlat] = useState(editingAddress?.flat || '');
   const [street, setStreet] = useState(editingAddress?.street || '');
+  const [area, setArea] = useState(editingAddress?.area || authArea || '');
+  const [city, setCity] = useState(editingAddress?.city || authCity || '');
+  const [stateName, setStateName] = useState(editingAddress?.state || 'Maharashtra');
   const [landmark, setLandmark] = useState(editingAddress?.landmark || '');
   const [pincode, setPincode] = useState(editingAddress?.pincode || '');
+  const [latitude, setLatitude] = useState<number | null>(editingAddress?.latitude || null);
+  const [longitude, setLongitude] = useState<number | null>(editingAddress?.longitude || null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [phone, setPhone] = useState(
     editingAddress?.phone || defaultPhoneFromUser(user?.mobile),
   );
@@ -120,6 +127,63 @@ export default function AddAddressScreen({ navigation, route }: any) {
     ];
   }, [screenConfig]);
 
+  const handleUseCurrentLocation = async () => {
+    setDetectingLocation(true);
+    try {
+      const nav = (globalThis as any)?.navigator;
+      if (nav && nav.geolocation) {
+        nav.geolocation.getCurrentPosition(
+          async (pos: any) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            setLatitude(lat);
+            setLongitude(lng);
+
+            const details = await reverseGeocodeLocation(lat, lng);
+            if (details) {
+              if (details.pincode) setPincode(details.pincode);
+              if (details.city) setCity(details.city);
+              if (details.state) setStateName(details.state);
+              if (details.area) setArea(details.area);
+              if (details.street && !street) setStreet(details.street);
+            }
+            setDetectingLocation(false);
+          },
+          async () => {
+            const fallbackLat = 18.5204;
+            const fallbackLng = 73.8567;
+            setLatitude(fallbackLat);
+            setLongitude(fallbackLng);
+            const details = await reverseGeocodeLocation(fallbackLat, fallbackLng);
+            if (details) {
+              if (details.pincode) setPincode(details.pincode);
+              if (details.city) setCity(details.city);
+              if (details.state) setStateName(details.state);
+              if (details.area) setArea(details.area);
+            }
+            setDetectingLocation(false);
+          },
+          { timeout: 8000, enableHighAccuracy: true }
+        );
+      } else {
+        const fallbackLat = 18.5204;
+        const fallbackLng = 73.8567;
+        setLatitude(fallbackLat);
+        setLongitude(fallbackLng);
+        const details = await reverseGeocodeLocation(fallbackLat, fallbackLng);
+        if (details) {
+          if (details.pincode) setPincode(details.pincode);
+          if (details.city) setCity(details.city);
+          if (details.state) setStateName(details.state);
+          if (details.area) setArea(details.area);
+        }
+        setDetectingLocation(false);
+      }
+    } catch {
+      setDetectingLocation(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!screenConfig || !token) {
       if (screenConfig) {
@@ -131,7 +195,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
       return;
     }
 
-    if (!flat.trim() || !street.trim() || !pincode.trim()) {
+    if (!flat.trim() || (!street.trim() && !area.trim()) || !pincode.trim()) {
       Alert.alert(screenConfig.incomplete_title, screenConfig.incomplete_message);
       return;
     }
@@ -154,10 +218,15 @@ export default function AddAddressScreen({ navigation, route }: any) {
         id: editingAddress?.id,
         tag,
         flat: flat.trim(),
-        street: street.trim(),
+        street: street.trim() || area.trim(),
+        area: area.trim() || street.trim(),
+        city: city.trim(),
+        state: stateName.trim(),
         landmark: landmark.trim(),
         pincode: normalizedPin,
         phone: phone.trim(),
+        latitude,
+        longitude,
         isDefault: editingAddress?.isDefault,
       });
 
@@ -237,6 +306,23 @@ export default function AddAddressScreen({ navigation, route }: any) {
       >
         <View style={styles.mapPreview}>
           <MapPinLargeIcon size={34} />
+          {latitude != null && longitude != null ? (
+            <Text style={styles.coordsText}>
+              📍 GPS: {latitude.toFixed(4)}, {longitude.toFixed(4)}
+            </Text>
+          ) : null}
+          <TouchableOpacity
+            style={styles.detectBtn}
+            onPress={handleUseCurrentLocation}
+            disabled={detectingLocation}
+            activeOpacity={0.85}
+          >
+            {detectingLocation ? (
+              <ActivityIndicator size="small" color={COLORS.green700} />
+            ) : (
+              <Text style={styles.detectBtnText}>🎯 Use Exact Device GPS</Text>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Flat / House No. & Building */}
@@ -253,16 +339,28 @@ export default function AddAddressScreen({ navigation, route }: any) {
           />
         </View>
 
-        {/* Area / Locality */}
+        {/* Apartment / Road / Street */}
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>
-            {screenConfig.street_label || 'AREA / LOCALITY'}
+            {screenConfig.street_label || 'STREET / ROAD / APARTMENT'}
           </Text>
           <TextInput
             style={styles.input}
             value={street}
             onChangeText={setStreet}
-            placeholder={screenConfig.street_placeholder || 'e.g. Paud Road, Kothrud'}
+            placeholder={screenConfig.street_placeholder || 'e.g. Paud Road'}
+            placeholderTextColor={COLORS.ink300}
+          />
+        </View>
+
+        {/* Area / Locality */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>AREA / LOCALITY</Text>
+          <TextInput
+            style={styles.input}
+            value={area}
+            onChangeText={setArea}
+            placeholder="e.g. Kothrud"
             placeholderTextColor={COLORS.ink300}
           />
         </View>
@@ -279,6 +377,30 @@ export default function AddAddressScreen({ navigation, route }: any) {
             placeholder={screenConfig.landmark_placeholder || 'Near City Pride multiplex'}
             placeholderTextColor={COLORS.ink300}
           />
+        </View>
+
+        {/* City & State */}
+        <View style={styles.rowFields}>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>CITY</Text>
+            <TextInput
+              style={styles.input}
+              value={city}
+              onChangeText={setCity}
+              placeholder="e.g. Pune"
+              placeholderTextColor={COLORS.ink300}
+            />
+          </View>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <Text style={styles.fieldLabel}>STATE</Text>
+            <TextInput
+              style={styles.input}
+              value={stateName}
+              onChangeText={setStateName}
+              placeholder="e.g. Maharashtra"
+              placeholderTextColor={COLORS.ink300}
+            />
+          </View>
         </View>
 
         {/* Pincode & Phone */}
@@ -404,11 +526,31 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   mapPreview: {
-    height: 120,
+    paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: MAP_BG,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+  },
+  coordsText: {
+    ...FONTS.muktaMedium,
+    fontSize: 12,
+    color: COLORS.green700,
+  },
+  detectBtn: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.green700,
+    marginTop: 4,
+  },
+  detectBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: COLORS.green700,
   },
   fieldGroup: {
     gap: 4,
