@@ -41,6 +41,7 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
         area_name: string;
         pincode?: string;
         is_serviceable?: boolean;
+        shop_id?: string | null;
       }
     >();
     if (locationsRes.ok && locationsData.success && Array.isArray(locationsData.locations)) {
@@ -53,6 +54,7 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
           area_name: string;
           pincode?: string;
           is_serviceable?: boolean;
+          shop_id?: string | null;
         }) => {
           locationByArea.set(loc.area_name.trim().toLowerCase(), loc);
         });
@@ -62,13 +64,14 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
       (area: { city_id: string }) => area.city_id === city.id,
     );
 
-    const merged: CityArea[] = masterAreas.map((area: { id: string; name: string }) => {
+    const merged: CityArea[] = masterAreas.map((area: { id: string; name: string; pincode?: string }) => {
       const loc = locationByArea.get(area.name.trim().toLowerCase());
+      const isServiceable = loc ? (loc.is_serviceable !== false && Boolean(loc.shop_id)) : false;
       return {
         id: area.id,
         name: area.name,
-        pincode: loc?.pincode?.trim() || '',
-        serviceable: loc ? loc.is_serviceable !== false : true,
+        pincode: loc?.pincode?.trim() || area.pincode?.trim() || '',
+        serviceable: isServiceable,
       };
     });
 
@@ -79,7 +82,7 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
           id: loc.id || areaKey.replace(/\s+/g, '-'),
           name: loc.area_name,
           pincode: loc.pincode?.trim() || '',
-          serviceable: loc.is_serviceable !== false,
+          serviceable: loc.is_serviceable !== false && Boolean(loc.shop_id),
         });
       }
     });

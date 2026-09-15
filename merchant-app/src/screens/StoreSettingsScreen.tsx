@@ -236,9 +236,36 @@ export default function StoreSettingsScreen() {
           </View>
 
           <View style={styles.locRow}>
-            <Text style={styles.locLabel}>Territory Area:</Text>
-            <Text style={styles.locValue}>{shop?.area_name || shop?.city || 'Assigned Area'}</Text>
+            <Text style={styles.locLabel}>Base Area:</Text>
+            <Text style={styles.locValue}>{shop?.area_name || shop?.city || 'Assigned Base Area'}</Text>
           </View>
+
+          {shop?.assigned_locations && Array.isArray(shop.assigned_locations) && shop.assigned_locations.length > 0 ? (
+            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+              <Text style={[styles.locLabel, { marginBottom: 6, color: '#0F172A', fontWeight: '700' }]}>
+                🎯 Assigned Serviceable Localities ({shop.assigned_locations.length}):
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {shop.assigned_locations.map((loc: any) => (
+                  <View
+                    key={loc.id}
+                    style={{
+                      backgroundColor: '#F0FDF4',
+                      borderColor: '#BBF7D0',
+                      borderWidth: 1,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#166534' }}>
+                      📍 {loc.area_name} {loc.pincode ? `(${loc.pincode})` : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           <TouchableOpacity
             style={styles.gpsUpdateBtn}

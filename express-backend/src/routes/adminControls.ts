@@ -1560,10 +1560,12 @@ router.post('/areas', authMiddleware, requireRole(['super_admin']), async (req: 
       return res.status(400).json({ success: false, error: 'Area/locality is already registered under this city' });
     }
 
+    const cleanPin = pincode ? String(pincode).replace(/\D/g, '').slice(0, 6) : '';
     const newArea = {
       id: `area-${Date.now()}`,
       city_id,
-      name: name.trim()
+      name: name.trim(),
+      pincode: cleanPin || '000000',
     };
     db.areas.push(newArea);
 
@@ -1579,13 +1581,13 @@ router.post('/areas', authMiddleware, requireRole(['super_admin']), async (req: 
         id: `loc-${Date.now()}`,
         city: city.name,
         area_name: name.trim(),
-        pincode: pincode?.trim() || '000000',
+        pincode: cleanPin || '000000',
         is_serviceable: is_serviceable !== false,
         shop_id: null,
       });
     } else {
       existingLoc.is_serviceable = is_serviceable !== false;
-      if (pincode?.trim()) existingLoc.pincode = pincode.trim();
+      if (cleanPin) existingLoc.pincode = cleanPin;
     }
 
     writeDb(db);

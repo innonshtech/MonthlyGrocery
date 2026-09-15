@@ -24,6 +24,14 @@ const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
     const { readDb } = require('../config/localDb');
     const db = readDb();
     const territory = (db.shop_territories || []).find((t: any) => t.shop_id === shop.id);
+    const assignedLocations = (db.serviceable_locations || [])
+      .filter((loc: any) => loc.shop_id === shop.id && loc.is_serviceable !== false)
+      .map((loc: any) => ({
+        id: loc.id,
+        area_name: loc.area_name,
+        city: loc.city,
+        pincode: loc.pincode,
+      }));
 
     return res.json({
       success: true,
@@ -39,6 +47,7 @@ const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
         longitude: territory?.longitude != null ? parseFloat(territory.longitude) : null,
         delivery_radius_km: territory?.delivery_radius_km || 5.0,
         is_open: territory?.is_open !== false,
+        assigned_locations: assignedLocations,
       },
     });
   } catch (error: any) {
@@ -504,6 +513,32 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
       delivery_radius_km: radius,
       is_open: true,
     });
+
+    // Auto-link or create serviceable locality for this store
+    if (area_name?.trim()) {
+      if (!db.serviceable_locations) db.serviceable_locations = [];
+      const cleanPin = pincode ? String(pincode).replace(/\D/g, '').slice(0, 6) : '';
+      const existingLoc = db.serviceable_locations.find(
+        (loc: any) =>
+          loc.city.trim().toLowerCase() === cityName.toLowerCase() &&
+          loc.area_name.trim().toLowerCase() === area_name.trim().toLowerCase()
+      );
+      if (existingLoc) {
+        existingLoc.shop_id = newShop.id;
+        existingLoc.is_serviceable = true;
+        if (cleanPin) existingLoc.pincode = cleanPin;
+      } else {
+        db.serviceable_locations.push({
+          id: `loc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          city: cityName,
+          area_name: area_name.trim(),
+          pincode: cleanPin || '000000',
+          is_serviceable: true,
+          shop_id: newShop.id,
+        });
+      }
+    }
+
     writeDb(db);
 
     return res.json({

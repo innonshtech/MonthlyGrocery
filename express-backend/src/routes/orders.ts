@@ -186,15 +186,18 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
   const finalDistrict = delivery_district || district || '';
 
   const finalAddress = sanitizeOrderAddress(shipping_address || delivery_address);
+  const resolvedCity = (city || req.body.cityName || '').trim();
+  const resolvedArea = (area_name || req.body.area || req.body.areaName || '').trim();
+  const resolvedPin = String(pincode || req.body.pin || '').replace(/\D/g, '').slice(0, 6);
 
   if (!items || !Array.isArray(items) || items.length === 0 || !total_amount) {
     return res.status(400).json({ success: false, error: 'Incomplete order checkout details' });
   }
 
-  if (!city?.trim() || !area_name?.trim()) {
+  if (!resolvedCity && !resolvedArea && !resolvedPin) {
     return res.status(400).json({
       success: false,
-      error: 'Delivery city and area are required for checkout.',
+      error: 'Delivery city, area, or PIN code is required for checkout.',
       code: 'LOCATION_REQUIRED',
     });
   }
@@ -282,9 +285,9 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
     let targetShopId = resolveShopIdForLocation({
       shopId: cartShopId,
-      city,
-      areaName: area_name,
-      pincode,
+      city: resolvedCity,
+      areaName: resolvedArea,
+      pincode: resolvedPin,
       latitude: finalLat,
       longitude: finalLng,
     });
