@@ -152,37 +152,30 @@ export default function AddAddressScreen({ navigation, route }: any) {
             }
             setDetectingLocation(false);
           },
-          async () => {
-            const fallbackLat = 18.5204;
-            const fallbackLng = 73.8567;
-            setLatitude(fallbackLat);
-            setLongitude(fallbackLng);
-            const details = await reverseGeocodeLocation(fallbackLat, fallbackLng);
-            if (details) {
-              if (details.pincode) setPincode(details.pincode);
-              if (details.city) setCity(details.city);
-              if (details.state) setStateName(details.state);
-              if (details.area) setArea(details.area);
-            }
+          () => {
+            showToast({
+              type: 'info',
+              title: 'Location Unavailable',
+              message: 'Could not detect device GPS. Please enter your address manually.',
+            });
             setDetectingLocation(false);
           },
           { timeout: 8000, enableHighAccuracy: true }
         );
       } else {
-        const fallbackLat = 18.5204;
-        const fallbackLng = 73.8567;
-        setLatitude(fallbackLat);
-        setLongitude(fallbackLng);
-        const details = await reverseGeocodeLocation(fallbackLat, fallbackLng);
-        if (details) {
-          if (details.pincode) setPincode(details.pincode);
-          if (details.city) setCity(details.city);
-          if (details.state) setStateName(details.state);
-          if (details.area) setArea(details.area);
-        }
+        showToast({
+          type: 'info',
+          title: 'Location Unavailable',
+          message: 'GPS geolocation is not supported on this device. Please enter address manually.',
+        });
         setDetectingLocation(false);
       }
     } catch {
+      showToast({
+        type: 'error',
+        title: 'Location Error',
+        message: 'Failed to access device location. Please type your address.',
+      });
       setDetectingLocation(false);
     }
   };

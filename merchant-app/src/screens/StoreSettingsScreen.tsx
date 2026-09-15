@@ -80,19 +80,21 @@ export default function StoreSettingsScreen() {
             const lng = pos.coords.longitude;
             await saveGpsCoordinates(lat, lng);
           },
-          async () => {
-            const fallbackLat = 18.5204;
-            const fallbackLng = 73.8567;
-            await saveGpsCoordinates(fallbackLat, fallbackLng);
+          () => {
+            Alert.alert(
+              'Location Unavailable',
+              'Could not access exact device GPS. Please turn on device location and try again.',
+            );
+            setLocatingGps(false);
           },
           { timeout: 8000, enableHighAccuracy: true }
         );
       } else {
-        const fallbackLat = 18.5204;
-        const fallbackLng = 73.8567;
-        await saveGpsCoordinates(fallbackLat, fallbackLng);
+        Alert.alert('Notice', 'Geolocation is not available on this device.');
+        setLocatingGps(false);
       }
     } catch {
+      Alert.alert('Error', 'Failed to detect GPS location');
       setLocatingGps(false);
     }
   };
