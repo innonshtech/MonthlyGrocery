@@ -144,17 +144,40 @@ export default function ShopsTab({
             <tbody className="divide-y divide-slate-800/30 text-sm">
               {shops.map((shop) => (
                 <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
-                  <td className="py-4 pr-3 font-semibold text-white">{shop.shop_name}</td>
+                  <td className="py-4 pr-3 font-semibold text-white">
+                    <p className="text-white font-bold">{shop.shop_name}</p>
+                    {shop.latitude != null && shop.longitude != null ? (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${shop.latitude},${shop.longitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline"
+                        title="Open exact store location in Google Maps"
+                      >
+                        🗺️ View Store on Map
+                      </a>
+                    ) : shop.city ? (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.shop_name}, ${shop.city}`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-slate-400 hover:text-slate-300 hover:underline"
+                        title="Search store in Google Maps"
+                      >
+                        🗺️ Search on Map
+                      </a>
+                    ) : null}
+                  </td>
                   <td className="py-4 pr-3">
                     {shop.state_name ? (
                       <>
                         <p className="text-slate-200 text-sm">{shop.state_name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-slate-400 font-medium">
                           {shop.district_name} · {shop.city || '—'}
                         </p>
                         {shop.latitude != null && shop.longitude != null && (
                           <p className="text-[11px] text-emerald-400 font-mono mt-0.5">
-                            📍 {shop.latitude.toFixed(2)}, {shop.longitude.toFixed(2)} ({shop.delivery_radius_km || 5} km)
+                            📍 {shop.latitude.toFixed(4)}, {shop.longitude.toFixed(4)} ({shop.delivery_radius_km || 5} km radius)
                           </p>
                         )}
                       </>
