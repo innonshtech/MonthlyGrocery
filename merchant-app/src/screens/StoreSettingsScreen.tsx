@@ -97,8 +97,9 @@ export default function StoreSettingsScreen() {
     }
   };
 
-  const saveGpsCoordinates = async (lat: number, lng: number) => {
+  const saveGpsCoordinates = async (lat: number, lng: number, customRadius?: number) => {
     try {
+      const radiusToSave = customRadius != null ? customRadius : (shop?.delivery_radius_km || 5.0);
       const res = await fetch(`${API_BASE}/shops/me/settings`, {
         method: 'PUT',
         headers: {
@@ -108,18 +109,22 @@ export default function StoreSettingsScreen() {
         body: JSON.stringify({
           latitude: lat,
           longitude: lng,
-          delivery_radius_km: shop?.delivery_radius_km || 5.0,
+          delivery_radius_km: radiusToSave,
         }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setShop(data.shop);
-        Alert.alert('Success', `Store GPS coordinates pinned to (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        if (customRadius != null) {
+          Alert.alert('Updated', `Delivery radius updated to ${customRadius} km`);
+        } else {
+          Alert.alert('Success', `Store GPS coordinates pinned to (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        }
       } else {
-        Alert.alert('Notice', data.error || 'Could not update coordinates');
+        Alert.alert('Notice', data.error || 'Could not update settings');
       }
     } catch {
-      Alert.alert('Error', 'Failed to save store location');
+      Alert.alert('Error', 'Failed to save store settings');
     } finally {
       setLocatingGps(false);
     }
@@ -209,6 +214,25 @@ export default function StoreSettingsScreen() {
           <View style={styles.locRow}>
             <Text style={styles.locLabel}>Operational Radius:</Text>
             <Text style={styles.locValue}>{shop?.delivery_radius_km || 5.0} km</Text>
+          </View>
+
+          {/* Quick Dynamic Radius Selector */}
+          <View style={styles.radiusSelectorRow}>
+            {[3, 5, 7, 10, 15, 20].map((r) => {
+              const active = Math.round(shop?.delivery_radius_km || 5) === r;
+              return (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.radiusChip, active && styles.radiusChipActive]}
+                  onPress={() => saveGpsCoordinates(shop?.latitude || 18.5204, shop?.longitude || 73.8567, r)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.radiusChipText, active && styles.radiusChipTextActive]}>
+                    {r} km
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <View style={styles.locRow}>
@@ -529,5 +553,31 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#DC2626',
+  },
+  radiusSelectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 6,
+  },
+  radiusChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  radiusChipActive: {
+    backgroundColor: '#DCFCE7',
+    borderColor: '#22C55E',
+  },
+  radiusChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  radiusChipTextActive: {
+    color: '#15803D',
   },
 });

@@ -27,7 +27,7 @@ export default function ShopScreen({ navigation }: any) {
   const [categories, setCategories] = useState<string[]>(['All']);
   const [error, setError] = useState('');
 
-  const { token, logout, city, area, pincode } = useAuth();
+  const { token, logout, city, area, pincode, selectedShop } = useAuth();
   const { items, addToCart, updateQuantity } = useCart();
 
   const fetchCategories = async () => {
@@ -35,6 +35,9 @@ export default function ShopScreen({ navigation }: any) {
       let url = `${API_BASE}/products/categories`;
       if (city && area) {
         url = appendLocationParams(url, { city, area, pincode });
+      }
+      if (selectedShop?.id) {
+        url += `${url.includes('?') ? '&' : '?'}shop_id=${encodeURIComponent(selectedShop.id)}`;
       }
       const res = await fetch(url);
       const data = await res.json();
@@ -48,7 +51,7 @@ export default function ShopScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchCategories();
-  }, [city, area, pincode]);
+  }, [city, area, pincode, selectedShop]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -62,6 +65,9 @@ export default function ShopScreen({ navigation }: any) {
         url += `&q=${encodeURIComponent(search)}`;
       }
       url = appendLocationParams(url, { city, area, pincode });
+      if (selectedShop?.id) {
+        url += `&shop_id=${encodeURIComponent(selectedShop.id)}`;
+      }
 
       const res = await fetch(url);
       const data = await res.json();
@@ -79,7 +85,7 @@ export default function ShopScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchProducts();
-  }, [category, search, city, area, pincode]);
+  }, [category, search, city, area, pincode, selectedShop]);
 
   const getCartQuantity = (productId: string) => {
     const item = items.find((it) => it.product.id === productId);

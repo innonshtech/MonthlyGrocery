@@ -13,6 +13,14 @@ export interface User {
   avatar_url?: string;
 }
 
+export interface SelectedStoreInfo {
+  id: string;
+  name: string;
+  distance_km?: number | null;
+  delivery_radius_km?: number;
+  address?: string;
+}
+
 interface AuthContextType {
   token: string | null;
   user: User | null;
@@ -20,6 +28,8 @@ interface AuthContextType {
   city: string | null;
   area: string | null;
   pincode: string | null;
+  selectedShop: SelectedStoreInfo | null;
+  setSelectedShop: (shop: SelectedStoreInfo | null) => Promise<void>;
   setCityAndArea: (
     city: string | null,
     area: string | null,
@@ -39,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [city, setCityState] = useState<string | null>(null);
   const [area, setAreaState] = useState<string | null>(null);
   const [pincode, setPincodeState] = useState<string | null>(null);
+  const [selectedShop, setSelectedShopState] = useState<SelectedStoreInfo | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -49,9 +60,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const savedCity = await AsyncStorage.getItem('@user_city');
         const savedArea = await AsyncStorage.getItem('@user_area');
         const savedPincode = await AsyncStorage.getItem('@user_pincode');
+        const savedShopStr = await AsyncStorage.getItem('@selected_shop');
 
         if (savedCity) setCityState(savedCity);
         if (savedArea) setAreaState(savedArea);
+        if (savedShopStr) {
+          try {
+            setSelectedShopState(JSON.parse(savedShopStr));
+          } catch {}
+        }
         if (savedPincode) {
           setPincodeState(savedPincode);
         } else if (savedCity && savedArea) {
@@ -186,6 +203,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const setSelectedShop = async (shop: SelectedStoreInfo | null) => {
+    try {
+      if (shop) {
+        await AsyncStorage.setItem('@selected_shop', JSON.stringify(shop));
+      } else {
+        await AsyncStorage.removeItem('@selected_shop');
+      }
+      setSelectedShopState(shop);
+    } catch (err) {
+      console.error('Failed to save selected shop:', err);
+    }
+  };
+
   const updateUser = async (updatedFields: Partial<User>) => {
     if (user) {
       const updated = { ...user, ...updatedFields };
@@ -206,6 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         AsyncStorage.removeItem('@user_city'),
         AsyncStorage.removeItem('@user_area'),
         AsyncStorage.removeItem('@user_pincode'),
+        AsyncStorage.removeItem('@selected_shop'),
         AsyncStorage.removeItem('@value_intro_seen'),
       ]);
       setToken(null);
@@ -213,6 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCityState(null);
       setAreaState(null);
       setPincodeState(null);
+      setSelectedShopState(null);
     } catch (err) {
       console.error('Error during logout:', err);
     }
@@ -227,6 +259,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         city,
         area,
         pincode,
+        selectedShop,
+        setSelectedShop,
         setCityAndArea,
         sendOtp,
         verifyOtp,

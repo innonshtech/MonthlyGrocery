@@ -70,6 +70,12 @@ export function findServiceableLocation(input: ShopResolutionInput) {
  */
 export function resolveShopIdForLocation(input: ShopResolutionInput): string | null {
   const db = readDb() as any;
+
+  // 0. EXPLICIT CUSTOMER SELECTION: If the customer selected a specific shopkeeper
+  if (input.shopId) {
+    return input.shopId;
+  }
+
   const pincode = String(input.pincode || '').replace(/\D/g, '').slice(0, 6);
 
   // 1. PRIMARY STRICT RULE: Match by Pincode in serviceable_locations (Center Store for that Pincode)

@@ -115,6 +115,123 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
   }
 });
 
+// 0.2 GET /nearby: Find all active approved shops delivering to the customer's location within their dynamic radius
+router.get('/nearby', async (req, res) => {
+  try {
+    const lat = req.query.lat != null ? parseFloat(String(req.query.lat)) : null;
+    const lng = req.query.lng != null ? parseFloat(String(req.query.lng)) : null;
+    const pincode = String(req.query.pincode || '').replace(/\D/g, '').slice(0, 6);
+    const city = String(req.query.city || '').trim().toLowerCase();
+    const area = String(req.query.area || req.query.area_name || '').trim().toLowerCase();
+    const queryRadius = req.query.radius != null ? parseFloat(String(req.query.radius)) : null;
+
+    const { data: shops, error } = await supabase
+      .from('shops')
+      .select('id, shop_name, status, created_at')
+      .eq('status', 'approved');
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    const { readDb } = require('../config/localDb');
+    const db = readDb();
+    const territoryMap = new Map<string, any>((db.shop_territories || []).map((t: any) => [t.shop_id, t]));
+    const serviceableLocations = db.serviceable_locations || [];
+
+    const hasCustomerGps = lat != null && lng != null && !isNaN(lat) && !isNaN(lng);
+
+    const enriched = (shops || []).map((shop: any) => {
+      const territory = territoryMap.get(shop.id);
+      const shopLat = territory?.latitude != null ? parseFloat(String(territory.latitude)) : null;
+      const shopLng = territory?.longitude != null ? parseFloat(String(territory.longitude)) : null;
+      const deliveryRadiusKm = territory?.delivery_radius_km != null ? parseFloat(String(territory.delivery_radius_km)) : 5.0;
+      const isOpen = territory?.is_open !== false;
+
+      let distanceKm: number | null = null;
+      let withinRadius = false;
+      let matchedByPincode = false;
+      let matchedByArea = false;
+
+      if (hasCustomerGps && shopLat != null && shopLng != null && !isNaN(shopLat) && !isNaN(shopLng)) {
+        const { calculateHaversineDistanceKm } = require('../services/geocodingService');
+        distanceKm = calculateHaversineDistanceKm(lat!, lng!, shopLat, shopLng);
+        const effectiveRadius = queryRadius && !isNaN(queryRadius) ? queryRadius : deliveryRadiusKm;
+        withinRadius = distanceKm != null && distanceKm <= effectiveRadius;
+      }
+
+      // Check pincode serviceability
+      if (pincode && pincode.length === 6) {
+        if (territory?.pincode && String(territory.pincode).trim() === pincode) {
+          matchedByPincode = true;
+          withinRadius = true;
+        }
+        const locMatch = serviceableLocations.find(
+          (loc: any) => loc.shop_id === shop.id && String(loc.pincode || '').trim() === pincode && loc.is_serviceable !== false
+        );
+        if (locMatch) {
+          matchedByPincode = true;
+          withinRadius = true;
+        }
+      }
+
+      // Check area/city match
+      if (city && territory?.city && String(territory.city).trim().toLowerCase() === city) {
+        if (area && territory?.area_name && String(territory.area_name).trim().toLowerCase() === area) {
+          matchedByArea = true;
+          withinRadius = true;
+        }
+      }
+
+      // If no GPS provided and no specific pincode/city, allow all active shops
+      if (!hasCustomerGps && !pincode && !city) {
+        withinRadius = true;
+      }
+
+      return {
+        id: shop.id,
+        shop_name: shop.shop_name,
+        status: shop.status,
+        address_line: territory?.address_line || '',
+        area_name: territory?.area_name || '',
+        city: territory?.city || '',
+        pincode: territory?.pincode || '',
+        latitude: shopLat,
+        longitude: shopLng,
+        delivery_radius_km: deliveryRadiusKm,
+        is_open: isOpen,
+        distance_km: distanceKm,
+        within_radius: withinRadius,
+        matched_by_pincode: matchedByPincode,
+        matched_by_area: matchedByArea,
+      };
+    });
+
+    const matchingShops = enriched
+      .filter((s: any) => s.within_radius && s.is_open)
+      .sort((a: any, b: any) => {
+        if (a.distance_km != null && b.distance_km != null) {
+          return a.distance_km - b.distance_km;
+        }
+        if (a.distance_km != null) return -1;
+        if (b.distance_km != null) return 1;
+        return 0;
+      });
+
+    const resultList = matchingShops.length > 0 ? matchingShops : enriched.sort((a: any, b: any) => (a.distance_km || 999) - (b.distance_km || 999));
+
+    return res.json({
+      success: true,
+      count: resultList.length,
+      query_radius_km: queryRadius,
+      customer_coords: hasCustomerGps ? { latitude: lat, longitude: lng } : null,
+      shops: resultList,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 // 1. GET /all: List all shops (Super Admin only)
 router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {
