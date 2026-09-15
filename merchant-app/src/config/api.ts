@@ -26,7 +26,7 @@ function resolveApiHost(): string {
     if (isAndroidEmulator()) {
       return '10.0.2.2';
     }
-    return '127.0.0.1';
+    return DEV_MACHINE_IP;
   }
   return 'localhost';
 }
