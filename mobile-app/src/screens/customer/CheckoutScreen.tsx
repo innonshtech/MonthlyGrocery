@@ -131,6 +131,22 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
   const minLimit = minOrderLimit || 2500;
 
+  const [deliveryFeeInfo, setDeliveryFeeInfo] = useState<{
+    delivery_fee: number;
+    is_free: boolean;
+    distance_km: number | null;
+    free_delivery_radius_km: number;
+    delivery_fee_label: string;
+    free_delivery_message: string;
+  }>({
+    delivery_fee: 0,
+    is_free: true,
+    distance_km: null,
+    free_delivery_radius_km: 5,
+    delivery_fee_label: 'FREE (within 5 km)',
+    free_delivery_message: 'Delivery is FREE within 5 km',
+  });
+
   const itemTotalMrp = items.reduce((sum, item) => {
     const mrp = parseFloat(item.product.mrp as any) || Math.round(Number(item.product.price) * 1.22);
     return sum + mrp * item.quantity;
@@ -141,13 +157,47 @@ export default function CheckoutScreen({ route, navigation }: any) {
     return sum + price * item.quantity;
   }, 0);
 
+  useEffect(() => {
+    const fetchDeliveryFee = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedAddress?.latitude) params.set('lat', String(selectedAddress.latitude));
+        if (selectedAddress?.longitude) params.set('lng', String(selectedAddress.longitude));
+        if (selectedAddress?.city || city) params.set('city', String(selectedAddress?.city || city));
+        if (selectedAddress?.area || area) params.set('area_name', String(selectedAddress?.area || area));
+        if (selectedAddress?.pincode || areaPincode) params.set('pincode', String(selectedAddress?.pincode || areaPincode));
+        if (items[0]?.product?.shop_id) params.set('shop_id', String(items[0].product.shop_id));
+        params.set('subtotal', String(itemTotalPrice));
+
+        const res = await fetch(`${API_BASE}/orders/calculate-delivery-fee?${params.toString()}`);
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setDeliveryFeeInfo({
+            delivery_fee: data.delivery_fee || 0,
+            is_free: Boolean(data.is_free),
+            distance_km: data.distance_km != null ? data.distance_km : null,
+            free_delivery_radius_km: data.free_delivery_radius_km || 5,
+            delivery_fee_label: data.delivery_fee_label || 'FREE',
+            free_delivery_message: data.free_delivery_message || 'Free Delivery',
+          });
+        }
+      } catch {
+        /* fallback to free */
+      }
+    };
+
+    fetchDeliveryFee();
+  }, [selectedAddress, city, area, areaPincode, items, itemTotalPrice]);
+
   let couponDiscount = calculateCouponDiscount(appliedCoupon, itemTotalPrice);
 
   const productSavings = Math.max(0, itemTotalMrp - itemTotalPrice);
-  const toPay = Math.max(0, itemTotalPrice - couponDiscount);
+  const activeDeliveryFee = deliveryFeeInfo.is_free ? 0 : deliveryFeeInfo.delivery_fee;
+  const toPay = Math.max(0, itemTotalPrice + activeDeliveryFee - couponDiscount);
   const isBelowMin = toPay < minLimit;
   const amountNeeded = minLimit - toPay;
   const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
 
   const addressLabel =
     selectedAddress?.tag || selectedAddress?.label || selectedAddress?.type || 'Home';
@@ -245,6 +295,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
       appliedCoupon,
       couponDiscount,
       productSavings,
+      deliveryFee: activeDeliveryFee,
+      deliveryFeeInfo,
       totalAmount: toPay,
       itemTotalMrp,
       totalSavings: productSavings + couponDiscount,
@@ -439,8 +491,20 @@ export default function CheckoutScreen({ route, navigation }: any) {
           </View>
 
           <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Delivery fee</Text>
-            <Text style={styles.billValFree}>FREE</Text>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={styles.billLabel}>Delivery fee</Text>
+              {deliveryFeeInfo.distance_km != null ? (
+                <Text style={styles.deliveryDistSub}>
+                  📍 {deliveryFeeInfo.distance_km.toFixed(1)} km from store
+                  {deliveryFeeInfo.is_free
+                    ? ` · Free within ${deliveryFeeInfo.free_delivery_radius_km} km`
+                    : ` · Free up to ${deliveryFeeInfo.free_delivery_radius_km} km`}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={deliveryFeeInfo.is_free ? styles.billValFree : styles.billVal}>
+              {deliveryFeeInfo.is_free ? 'FREE' : `+ ${formatInr(deliveryFeeInfo.delivery_fee)}`}
+            </Text>
           </View>
 
           <View style={styles.divider} />
@@ -744,6 +808,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#64748B',
+  },
+  deliveryDistSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#059669',
+    marginTop: 1,
   },
   billVal: {
     ...FONTS.muktaMedium,

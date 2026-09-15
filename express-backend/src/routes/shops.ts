@@ -43,6 +43,8 @@ const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
         latitude: territory?.latitude != null ? parseFloat(territory.latitude) : null,
         longitude: territory?.longitude != null ? parseFloat(territory.longitude) : null,
         delivery_radius_km: territory?.delivery_radius_km || 5.0,
+        free_delivery_radius_km: territory?.free_delivery_radius_km != null ? parseFloat(String(territory.free_delivery_radius_km)) : 5.0,
+        extra_delivery_fee_per_km: territory?.extra_delivery_fee_per_km != null ? parseFloat(String(territory.extra_delivery_fee_per_km)) : 10.0,
         is_open: territory?.is_open !== false,
         assigned_locations: assignedLocations,
       },
@@ -55,7 +57,7 @@ const handleGetMyMerchantShop = async (req: AuthRequest, res: any) => {
 router.get('/me', authMiddleware, requireRole(['admin', 'super_admin']), handleGetMyMerchantShop);
 router.get('/my', authMiddleware, requireRole(['admin', 'super_admin']), handleGetMyMerchantShop);
 
-// 0.1 PUT /me/settings: Update merchant's store location, delivery radius, and open/closed status
+// 0.1 PUT /me/settings: Update merchant's store location, delivery radius, fee structure, and open/closed status
 router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   try {
     const shop = await getMerchantShopForUser({
@@ -68,7 +70,6 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
       return res.status(404).json({ success: false, error: 'Merchant store not found', shop_not_found: true });
     }
 
-
     const {
       latitude,
       longitude,
@@ -79,6 +80,8 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
       state_name,
       pincode,
       delivery_radius_km,
+      free_delivery_radius_km,
+      extra_delivery_fee_per_km,
       is_open,
     } = req.body;
 
@@ -99,6 +102,8 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
       state_name: state_name !== undefined ? String(state_name).trim() : (idx >= 0 ? db.shop_territories[idx].state_name : ''),
       pincode: pincode !== undefined ? String(pincode).trim() : (idx >= 0 ? db.shop_territories[idx].pincode : ''),
       delivery_radius_km: delivery_radius_km != null && !isNaN(parseFloat(String(delivery_radius_km))) ? parseFloat(String(delivery_radius_km)) : (idx >= 0 ? (db.shop_territories[idx].delivery_radius_km || 5.0) : 5.0),
+      free_delivery_radius_km: free_delivery_radius_km != null && !isNaN(parseFloat(String(free_delivery_radius_km))) ? parseFloat(String(free_delivery_radius_km)) : (idx >= 0 && db.shop_territories[idx].free_delivery_radius_km != null ? db.shop_territories[idx].free_delivery_radius_km : 5.0),
+      extra_delivery_fee_per_km: extra_delivery_fee_per_km != null && !isNaN(parseFloat(String(extra_delivery_fee_per_km))) ? parseFloat(String(extra_delivery_fee_per_km)) : (idx >= 0 && db.shop_territories[idx].extra_delivery_fee_per_km != null ? db.shop_territories[idx].extra_delivery_fee_per_km : 10.0),
       is_open: is_open !== undefined ? is_open === true : (idx >= 0 ? db.shop_territories[idx].is_open !== false : true),
     };
 
@@ -121,6 +126,7 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
 });
+
 
 // 0.2 GET /nearby: Find all active approved shops delivering to the customer's location within their dynamic radius
 router.get('/nearby', async (req, res) => {

@@ -128,6 +128,11 @@ export interface ConsumerOrder {
   deliver_to_label?: string;
   delivery_slot?: string | null;
   delivery_otp?: string | null;
+  delivery_fee?: number;
+  delivery_fee_label?: string;
+  distance_km?: number | null;
+  free_delivery_radius_km?: number;
+  extra_delivery_fee_per_km?: number;
   payment_method?: string;
   payment_method_label?: string;
   delivery_partner_name?: string;

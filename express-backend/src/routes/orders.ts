@@ -13,6 +13,7 @@ import {
 } from '../utils/orderEnrichment';
 import { resolveShopIdForLocation, getMerchantShopForUser } from '../services/shopResolution';
 import { calculateHaversineDistanceKm } from '../services/geocodingService';
+import { calculateDeliveryFee } from '../services/deliveryFeeService';
 
 const router = Router();
 
@@ -216,9 +217,15 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb() as any;
 
-    // Strict Server-Side Coupon Verification
+    const rawItemsTotal = items.reduce((sum: number, it: any) => {
+      const price = parseFloat(it.price || it.unit_price) || 0;
+      const qty = parseInt(it.quantity) || 1;
+      return sum + (price * qty);
+    }, 0);
+
+    const baseAmount = rawItemsTotal > 0 ? rawItemsTotal : parseFloat(total_amount);
     let validatedDiscount = 0;
-    let finalPayableAmount = parseFloat(total_amount);
+    let finalPayableAmount = baseAmount;
 
     if (coupon_code) {
       const { getMergedCouponsList } = require('./coupons');
@@ -229,11 +236,8 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ success: false, error: 'Invalid coupon code' });
       }
 
-      // Reconstruct original amount before any client-applied discount
-      const originalAmount = parseFloat(total_amount) + (parseFloat(discount_amount) || 0);
-
       // 1. Min order amount check
-      if (originalAmount < matchedCoupon.min_order_amount) {
+      if (baseAmount < matchedCoupon.min_order_amount) {
         return res.status(400).json({ 
           success: false, 
           error: `Minimum order amount of ₹${matchedCoupon.min_order_amount} not met for coupon ${matchedCoupon.code}.` 
@@ -272,10 +276,9 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       if (matchedCoupon.discount_type === 'fixed') {
         validatedDiscount = matchedCoupon.discount_value;
       } else {
-        validatedDiscount = Math.min((originalAmount * matchedCoupon.discount_value) / 100, matchedCoupon.max_discount);
+        validatedDiscount = Math.min((baseAmount * matchedCoupon.discount_value) / 100, matchedCoupon.max_discount);
       }
       validatedDiscount = Math.round(validatedDiscount);
-      finalPayableAmount = Math.max(0, originalAmount - validatedDiscount);
     }
 
     const itemShopIds = items
@@ -313,22 +316,20 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Calculate distance between shop territory and customer coordinates if available
-    let distanceKm: number | null = null;
-    const territory = (db.shop_territories || []).find((t: any) => t.shop_id === targetShopId);
-    if (
-      finalLat != null &&
-      finalLng != null &&
-      territory?.latitude != null &&
-      territory?.longitude != null
-    ) {
-      distanceKm = calculateHaversineDistanceKm(
-        finalLat,
-        finalLng,
-        parseFloat(territory.latitude),
-        parseFloat(territory.longitude)
-      );
-    }
+    // Dynamic Distance & Delivery Fee Calculation (5 KM Free + Extra KM Rate)
+    const feeCalculation = calculateDeliveryFee({
+      shopId: targetShopId,
+      latitude: finalLat,
+      longitude: finalLng,
+      city: resolvedCity,
+      areaName: resolvedArea,
+      pincode: resolvedPin,
+      subtotal: baseAmount,
+    });
+
+    const calculatedDeliveryFee = feeCalculation.is_free ? 0 : feeCalculation.delivery_fee;
+    const distanceKm = feeCalculation.distance_km;
+    finalPayableAmount = Math.max(0, baseAmount + calculatedDeliveryFee - validatedDiscount);
 
     // Validate delivery slot availability (dynamic capacity from merchant config)
     if (delivery_slot_date && delivery_slot_window_id) {
@@ -410,6 +411,11 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       consumer_name: req.user!.mobile || 'Customer',
       shop_id: targetShopId,
       shop_name: targetShop.shop_name || null,
+      items_total: baseAmount,
+      delivery_fee: calculatedDeliveryFee,
+      delivery_fee_label: feeCalculation.delivery_fee_label,
+      free_delivery_radius_km: feeCalculation.free_delivery_radius_km,
+      extra_delivery_fee_per_km: feeCalculation.extra_delivery_fee_per_km,
       total_amount: finalPayableAmount,
       discount_amount: validatedDiscount,
       product_savings: validatedProductSavings,
@@ -448,6 +454,8 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       order: enrichConsumerOrder(enrichedOrder),
       shop_id: targetShopId,
       shop_name: targetShop.shop_name || null,
+      delivery_fee: calculatedDeliveryFee,
+      delivery_fee_label: feeCalculation.delivery_fee_label,
     });
 
   } catch (error: any) {
@@ -455,8 +463,39 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// 1.5 GET & POST /calculate-delivery-fee: Live distance & delivery fee calculation
+const handleCalculateDeliveryFee = async (req: AuthRequest, res: Response) => {
+  try {
+    const lat = req.query.lat != null ? parseFloat(String(req.query.lat)) : (req.body?.latitude != null ? parseFloat(String(req.body.latitude)) : (req.query.latitude != null ? parseFloat(String(req.query.latitude)) : null));
+    const lng = req.query.lng != null ? parseFloat(String(req.query.lng)) : (req.body?.longitude != null ? parseFloat(String(req.body.longitude)) : (req.query.longitude != null ? parseFloat(String(req.query.longitude)) : null));
+    const city = req.query.city ? String(req.query.city).trim() : (req.body?.city ? String(req.body.city).trim() : null);
+    const areaName = req.query.area_name || req.query.area ? String(req.query.area_name || req.query.area).trim() : (req.body?.area_name || req.body?.area ? String(req.body.area_name || req.body.area).trim() : null);
+    const pincode = req.query.pincode ? String(req.query.pincode).trim() : (req.body?.pincode ? String(req.body.pincode).trim() : null);
+    const shopId = req.query.shop_id ? String(req.query.shop_id).trim() : (req.body?.shop_id ? String(req.body.shop_id).trim() : null);
+    const subtotal = req.query.subtotal != null ? parseFloat(String(req.query.subtotal)) : (req.body?.subtotal != null ? parseFloat(String(req.body.subtotal)) : null);
+
+    const feeResult = calculateDeliveryFee({
+      shopId,
+      latitude: lat,
+      longitude: lng,
+      city,
+      areaName,
+      pincode,
+      subtotal,
+    });
+
+    return res.json({ success: true, ...feeResult });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to calculate delivery fee' });
+  }
+};
+
+router.get('/calculate-delivery-fee', handleCalculateDeliveryFee);
+router.post('/calculate-delivery-fee', handleCalculateDeliveryFee);
+
 router.post('/checkout', authMiddleware, handleCheckout);
 router.post('/', authMiddleware, handleCheckout);
+
 
 // 2. GET /mine & /my: Consumer order history (Swiggy/Zomato Real-time sync)
 const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {

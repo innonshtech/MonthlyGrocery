@@ -193,6 +193,13 @@ export function enrichConsumerOrder(order: Record<string, any>) {
       order.status === 'cancelled'
         ? buildDefaultRefundMessage(order)
         : order.refund_message || null,
+    delivery_fee: order.delivery_fee != null ? Number(order.delivery_fee) : 0,
+    delivery_fee_label:
+      order.delivery_fee_label ||
+      (Number(order.delivery_fee) > 0 ? `₹${order.delivery_fee}` : 'FREE'),
+    distance_km: order.distance_km != null ? Number(order.distance_km) : null,
+    free_delivery_radius_km: order.free_delivery_radius_km != null ? Number(order.free_delivery_radius_km) : 5,
+    extra_delivery_fee_per_km: order.extra_delivery_fee_per_km != null ? Number(order.extra_delivery_fee_per_km) : 10,
     total_savings:
       Number(order.total_savings) || productSavings + discountAmount,
     payment_method_label:

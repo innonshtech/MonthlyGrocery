@@ -25,6 +25,7 @@ export default function StoreSettingsScreen() {
   const [isOpen, setIsOpen] = useState(true);
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [locatingGps, setLocatingGps] = useState(false);
+  const [updatingConfig, setUpdatingConfig] = useState(false);
 
   // Custom Coordinates & Geocoding Modal
   const [modalVisible, setModalVisible] = useState(false);
@@ -101,13 +102,11 @@ export default function StoreSettingsScreen() {
             await saveGpsCoordinates(lat, lng);
           },
           async () => {
-            // If device hardware GPS failed or timed out, attempt automatic area geocoding
             await fallbackGeocodeStore();
           },
           { timeout: 6000, enableHighAccuracy: true }
         );
       } else {
-        // Fallback to backend geocoding using store territory info
         await fallbackGeocodeStore();
       }
     } catch {
@@ -186,9 +185,8 @@ export default function StoreSettingsScreen() {
     setModalVisible(false);
   };
 
-  const saveGpsCoordinates = async (lat: number, lng: number, customRadius?: number) => {
+  const saveGpsCoordinates = async (lat: number, lng: number) => {
     try {
-      const radiusToSave = customRadius != null ? customRadius : (shop?.delivery_radius_km || 5.0);
       const res = await fetch(`${API_BASE}/shops/me/settings`, {
         method: 'PUT',
         headers: {
@@ -198,7 +196,6 @@ export default function StoreSettingsScreen() {
         body: JSON.stringify({
           latitude: lat,
           longitude: lng,
-          delivery_radius_km: radiusToSave,
         }),
       });
       const data = await res.json();
@@ -206,11 +203,7 @@ export default function StoreSettingsScreen() {
         setShop(data.shop);
         setManualLat(String(lat));
         setManualLng(String(lng));
-        if (customRadius != null) {
-          Alert.alert('Updated', `Delivery radius updated to ${customRadius} km`);
-        } else {
-          Alert.alert('Success', `Store GPS coordinates pinned to (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-        }
+        Alert.alert('Success', `Store GPS coordinates pinned to (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
       } else {
         Alert.alert('Notice', data.error || 'Could not update settings');
       }
@@ -218,6 +211,34 @@ export default function StoreSettingsScreen() {
       Alert.alert('Error', 'Failed to save store settings');
     } finally {
       setLocatingGps(false);
+    }
+  };
+
+  const saveDeliveryConfig = async (payload: {
+    delivery_radius_km?: number;
+    free_delivery_radius_km?: number;
+    extra_delivery_fee_per_km?: number;
+  }) => {
+    setUpdatingConfig(true);
+    try {
+      const res = await fetch(`${API_BASE}/shops/me/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShop(data.shop);
+      } else {
+        Alert.alert('Error', data.error || 'Could not update delivery settings');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to update delivery settings');
+    } finally {
+      setUpdatingConfig(false);
     }
   };
 
@@ -245,6 +266,9 @@ export default function StoreSettingsScreen() {
   };
 
   const storeIdDisplay = shop?.id ? `#${shop.id.slice(0, 8).toUpperCase()}` : '';
+  const currentFreeRadius = shop?.free_delivery_radius_km != null ? Number(shop.free_delivery_radius_km) : 5;
+  const currentExtraFee = shop?.extra_delivery_fee_per_km != null ? Number(shop.extra_delivery_fee_per_km) : 10;
+  const currentMaxRadius = shop?.delivery_radius_km != null ? Number(shop.delivery_radius_km) : 10;
 
   return (
     <View style={styles.safeArea}>
@@ -325,10 +349,10 @@ export default function StoreSettingsScreen() {
 
             {/* Location & Geospatial Settings */}
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>GEOSPATIAL & DELIVERY RADIUS</Text>
+              <Text style={styles.sectionTitle}>GEOSPATIAL & STORE GPS</Text>
 
               <View style={styles.locRow}>
-                <Text style={styles.locLabel}>GPS Coordinates:</Text>
+                <Text style={styles.locLabel}>Store GPS Location:</Text>
                 <Text style={styles.locValue}>
                   {shop?.latitude != null && shop?.longitude != null
                     ? `${shop.latitude.toFixed(4)}, ${shop.longitude.toFixed(4)}`
@@ -342,31 +366,30 @@ export default function StoreSettingsScreen() {
                 </TouchableOpacity>
               ) : null}
 
-              <View style={styles.locRow}>
-                <Text style={styles.locLabel}>Operational Radius:</Text>
-                <Text style={styles.locValue}>{shop?.delivery_radius_km || 5.0} km</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+                <TouchableOpacity
+                  style={[styles.gpsUpdateBtn, { flex: 1 }]}
+                  onPress={handleUpdateStoreGps}
+                  disabled={locatingGps}
+                  activeOpacity={0.85}
+                >
+                  {locatingGps ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.gpsUpdateBtnText}>📍 Auto-Pin GPS</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.gpsEditBtn, { flex: 1 }]}
+                  onPress={() => setModalVisible(true)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.gpsEditBtnText}>✏️ Set Coordinates</Text>
+                </TouchableOpacity>
               </View>
 
-              {/* Quick Dynamic Radius Selector */}
-              <View style={styles.radiusSelectorRow}>
-                {[3, 5, 7, 10, 15, 20].map((r) => {
-                  const active = Math.round(shop?.delivery_radius_km || 5) === r;
-                  return (
-                    <TouchableOpacity
-                      key={r}
-                      style={[styles.radiusChip, active && styles.radiusChipActive]}
-                      onPress={() => saveGpsCoordinates(shop?.latitude || 18.5204, shop?.longitude || 73.8567, r)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.radiusChipText, active && styles.radiusChipTextActive]}>
-                        {r} km
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              <View style={styles.locRow}>
+              <View style={[styles.locRow, { marginTop: 6 }]}>
                 <Text style={styles.locLabel}>Base Area:</Text>
                 <Text style={styles.locValue}>{shop?.area_name || shop?.city || 'Assigned Base Area'}</Text>
               </View>
@@ -397,28 +420,93 @@ export default function StoreSettingsScreen() {
                   </View>
                 </View>
               ) : null}
+            </View>
 
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                <TouchableOpacity
-                  style={[styles.gpsUpdateBtn, { flex: 1 }]}
-                  onPress={handleUpdateStoreGps}
-                  disabled={locatingGps}
-                  activeOpacity={0.85}
-                >
-                  {locatingGps ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.gpsUpdateBtnText}>📍 Auto-Pin GPS</Text>
-                  )}
-                </TouchableOpacity>
+            {/* Distance-based Delivery Charges Section */}
+            <View style={styles.sectionCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.sectionTitle}>DELIVERY CHARGES & RADIUS</Text>
+                {updatingConfig ? <ActivityIndicator size="small" color="#22C55E" /> : null}
+              </View>
 
-                <TouchableOpacity
-                  style={[styles.gpsEditBtn, { flex: 1 }]}
-                  onPress={() => setModalVisible(true)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.gpsEditBtnText}>✏️ Set Coordinates</Text>
-                </TouchableOpacity>
+              {/* Formula explanation box */}
+              <View style={styles.formulaBox}>
+                <Text style={styles.formulaHeading}>🛵 Active Delivery Fee Rule:</Text>
+                <Text style={styles.formulaDesc}>
+                  • Within <Text style={{ fontWeight: '800', color: '#15803D' }}>{currentFreeRadius} KM</Text>: <Text style={{ fontWeight: '800', color: '#15803D' }}>FREE Delivery (₹0)</Text>
+                </Text>
+                <Text style={styles.formulaDesc}>
+                  • Beyond <Text style={{ fontWeight: '800' }}>{currentFreeRadius} KM</Text>: <Text style={{ fontWeight: '800', color: '#D97706' }}>+₹{currentExtraFee}/KM</Text>
+                </Text>
+                <Text style={styles.formulaDesc}>
+                  • Max Coverage: <Text style={{ fontWeight: '800' }}>{currentMaxRadius} KM</Text>
+                </Text>
+              </View>
+
+              {/* 1. Free Delivery Radius */}
+              <View style={{ marginTop: 6 }}>
+                <Text style={styles.configSubheading}>1. Free Delivery Range (No charge for customer):</Text>
+                <View style={styles.radiusSelectorRow}>
+                  {[2, 3, 5, 7, 10].map((r) => {
+                    const active = Math.round(currentFreeRadius) === r;
+                    return (
+                      <TouchableOpacity
+                        key={r}
+                        style={[styles.radiusChip, active && styles.radiusChipActive]}
+                        onPress={() => saveDeliveryConfig({ free_delivery_radius_km: r })}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.radiusChipText, active && styles.radiusChipTextActive]}>
+                          {r} km Free
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* 2. Extra Charge per KM */}
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.configSubheading}>2. Extra Charge per KM (Beyond Free Range):</Text>
+                <View style={styles.radiusSelectorRow}>
+                  {[0, 5, 10, 15, 20, 25].map((f) => {
+                    const active = Math.round(currentExtraFee) === f;
+                    return (
+                      <TouchableOpacity
+                        key={f}
+                        style={[styles.radiusChip, active && styles.feeChipActive]}
+                        onPress={() => saveDeliveryConfig({ extra_delivery_fee_per_km: f })}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.radiusChipText, active && styles.feeChipTextActive]}>
+                          {f === 0 ? '₹0 (All Free)' : `+₹${f}/km`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* 3. Max Delivery Distance */}
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.configSubheading}>3. Maximum Store Delivery Radius:</Text>
+                <View style={styles.radiusSelectorRow}>
+                  {[5, 10, 15, 20, 25].map((mr) => {
+                    const active = Math.round(currentMaxRadius) === mr;
+                    return (
+                      <TouchableOpacity
+                        key={mr}
+                        style={[styles.radiusChip, active && styles.radiusChipActive]}
+                        onPress={() => saveDeliveryConfig({ delivery_radius_km: mr })}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.radiusChipText, active && styles.radiusChipTextActive]}>
+                          Up to {mr} km
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
             </View>
 
@@ -811,6 +899,31 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#334155',
   },
+  formulaBox: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 4,
+  },
+  formulaHeading: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#166534',
+    marginBottom: 2,
+  },
+  formulaDesc: {
+    fontSize: 12,
+    color: '#1E293B',
+    lineHeight: 18,
+  },
+  configSubheading: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 6,
+  },
   guideRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -884,11 +997,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginVertical: 6,
   },
   radiusChip: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
@@ -898,6 +1010,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCFCE7',
     borderColor: '#22C55E',
   },
+  feeChipActive: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#F59E0B',
+  },
   radiusChipText: {
     fontSize: 12,
     fontWeight: '700',
@@ -905,6 +1021,9 @@ const styles = StyleSheet.create({
   },
   radiusChipTextActive: {
     color: '#15803D',
+  },
+  feeChipTextActive: {
+    color: '#B45309',
   },
   modalOverlay: {
     flex: 1,

@@ -331,8 +331,11 @@ export default function OrderDetailScreen({ route, navigation }: any) {
   const totalPaid = Number(order.total_amount) || 0;
   const discountAmount = Number(order.discount_amount) || 0;
   const productSavings = Number(order.product_savings) || 0;
+  const deliveryFee = Number(order.delivery_fee) || 0;
+  const distanceKm = order.distance_km != null ? Number(order.distance_km) : null;
+  const isFreeDelivery = deliveryFee === 0;
   const totalSavings = discountAmount + productSavings;
-  const itemTotalMrp = totalPaid + totalSavings;
+  const itemTotalMrp = totalPaid + totalSavings - deliveryFee;
 
   const displayId = getOrderDisplayId(order);
   const deliverTo = order.deliver_to_label || order.shipping_address || 'Delivery Address';
@@ -562,11 +565,18 @@ export default function OrderDetailScreen({ route, navigation }: any) {
 
               {/* Delivery Fee */}
               <View style={styles.billRow}>
-                <Text style={styles.billLabelTxt}>
-                  {screenConfig?.bill_delivery_fee_label || 'Delivery fee'}
-                </Text>
-                <Text style={styles.billFreeTxt}>
-                  {screenConfig?.bill_delivery_fee_value || 'FREE'}
+                <View style={{ flex: 1, paddingRight: 8 }}>
+                  <Text style={styles.billLabelTxt}>
+                    {screenConfig?.bill_delivery_fee_label || 'Delivery fee'}
+                  </Text>
+                  {distanceKm != null ? (
+                    <Text style={[styles.detailSubLabel, { color: '#059669', marginTop: 1 }]}>
+                      📍 {distanceKm.toFixed(1)} km away
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={isFreeDelivery ? styles.billFreeTxt : styles.billValueTxt}>
+                  {isFreeDelivery ? (screenConfig?.bill_delivery_fee_value || 'FREE') : `+ ${formatInr(deliveryFee)}`}
                 </Text>
               </View>
 

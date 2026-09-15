@@ -272,21 +272,40 @@ export default function OrdersDashboard() {
           <View style={styles.addressHeaderRow}>
             <Text style={styles.addressLabel}>DELIVERY DESTINATION:</Text>
             {item.distance_km != null ? (
-              <Text style={styles.distanceText}>📍 {item.distance_km} km away</Text>
+              <Text style={styles.distanceText}>📍 {Number(item.distance_km).toFixed(1)} km away</Text>
             ) : null}
           </View>
           <Text style={styles.addressText}>📍 {deliveryAddress}</Text>
           {item.delivery_landmark ? (
             <Text style={styles.landmarkText}>Landmark: {item.delivery_landmark}</Text>
           ) : null}
+
+          {/* Delivery Fee Status */}
+          <View style={styles.feeBreakdownRow}>
+            {item.delivery_fee === 0 || item.delivery_fee == null ? (
+              <View style={styles.freeFeeBadge}>
+                <Text style={styles.freeFeeText}>
+                  🛵 FREE Delivery {item.distance_km != null ? `(within ${item.free_delivery_radius_km || 5} km)` : '(Local Area)'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.paidFeeBadge}>
+                <Text style={styles.paidFeeText}>
+                  🛵 +₹{item.delivery_fee} Delivery Fee ({item.delivery_fee_label || `${item.distance_km} km`})
+                </Text>
+              </View>
+            )}
+          </View>
+
           <TouchableOpacity
             style={styles.navigateBtn}
             onPress={() => handleNavigateCustomer(item)}
             activeOpacity={0.8}
           >
-            <Text style={styles.navigateBtnText}>🗺️ Navigate to Customer</Text>
+            <Text style={styles.navigateBtnText}>🧭 Open Google Maps Navigation ➔</Text>
           </TouchableOpacity>
         </View>
+
 
         {/* Order Items List preview / toggle */}
         <TouchableOpacity 
@@ -773,14 +792,46 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontStyle: 'italic',
   },
+  feeBreakdownRow: {
+    marginVertical: 6,
+  },
+  freeFeeBadge: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  freeFeeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  paidFeeBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  paidFeeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
   navigateBtn: {
     backgroundColor: '#0F172A',
     borderRadius: 8,
-    paddingVertical: 7,
+    paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
+
   navigateBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
