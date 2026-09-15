@@ -226,3 +226,49 @@ export async function cacheAddressesLocally(addresses: AddressItem[]) {
     /* ignore cache errors */
   }
 }
+
+export interface ServiceabilityCheckResult {
+  isServiceable: boolean;
+  shopId: string | null;
+  distanceKm?: number | null;
+  message?: string;
+}
+
+export async function checkAddressServiceability(params: {
+  pincode?: string | null;
+  city?: string | null;
+  area?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<ServiceabilityCheckResult> {
+  try {
+    const q: string[] = [];
+    if (params.pincode?.trim()) q.push(`pincode=${encodeURIComponent(params.pincode.trim())}`);
+    if (params.city?.trim()) q.push(`city=${encodeURIComponent(params.city.trim())}`);
+    if (params.area?.trim()) q.push(`area=${encodeURIComponent(params.area.trim())}`);
+    if (params.lat != null && !isNaN(params.lat)) q.push(`lat=${params.lat}`);
+    if (params.lng != null && !isNaN(params.lng)) q.push(`lng=${params.lng}`);
+
+    const url = `${API_BASE}/addresses/check-serviceability${q.length ? `?${q.join('&')}` : ''}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (res.ok && data.success) {
+      return {
+        isServiceable: Boolean(data.isServiceable),
+        shopId: data.shopId || null,
+        distanceKm: data.distanceKm != null ? data.distanceKm : null,
+        message: data.message,
+      };
+    }
+    return {
+      isServiceable: false,
+      shopId: null,
+      message: data.error || 'Service is not available in this location',
+    };
+  } catch {
+    return {
+      isServiceable: true,
+      shopId: null,
+    };
+  }
+}

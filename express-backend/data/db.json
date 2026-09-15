@@ -1526,7 +1526,11 @@
       "state_name": "Maharashtra",
       "district_id": "dist-mh-pune",
       "district_name": "Pune",
-      "city": "pune"
+      "city": "pune",
+      "latitude": 18.5204,
+      "longitude": 73.8567,
+      "delivery_radius_km": 7,
+      "is_open": true
     }
   ],
   "subcategories": [

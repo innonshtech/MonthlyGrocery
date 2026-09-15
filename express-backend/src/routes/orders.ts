@@ -301,27 +301,12 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (!targetShop) {
-      // Dynamic fallback to any active/approved store in Supabase
-      const { data: firstShop } = await supabase
-        .from('shops')
-        .select('id, shop_name, status')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (firstShop) {
-        targetShop = firstShop;
-        targetShopId = firstShop.id;
-      }
-    }
-
-    if (!targetShop) {
-      return res.status(400).json({
+    if (!targetShopId || !targetShop) {
+      const pinLabel = pincode ? `pincode ${pincode}` : (area_name ? `${area_name}, ${city}` : 'this address');
+      return res.status(422).json({
         success: false,
-        error: 'No active store is available to fulfill this order. Please register a store in Superadmin.',
-        code: 'SHOP_NOT_FOUND',
+        error: `Service Unavailable: Delivery is currently not available for ${pinLabel}. Please choose a serviceable delivery address.`,
+        code: 'SERVICE_UNAVAILABLE',
       });
     }
 

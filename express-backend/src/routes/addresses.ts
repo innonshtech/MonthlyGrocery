@@ -44,6 +44,33 @@ router.post('/reverse-geocode', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// GET /check-serviceability — Verify whether a pincode, area, or coordinates are serviceable
+router.get('/check-serviceability', async (req: AuthRequest, res: Response) => {
+  try {
+    const { checkLocationServiceability } = require('../services/shopResolution');
+    const lat = req.query.lat != null ? parseFloat(String(req.query.lat)) : (req.query.latitude != null ? parseFloat(String(req.query.latitude)) : null);
+    const lng = req.query.lng != null ? parseFloat(String(req.query.lng)) : (req.query.longitude != null ? parseFloat(String(req.query.longitude)) : null);
+    const pincode = String(req.query.pincode || '').replace(/\D/g, '').slice(0, 6);
+    const city = String(req.query.city || '').trim();
+    const area = String(req.query.area || req.query.area_name || '').trim();
+
+    const result = checkLocationServiceability({
+      pincode,
+      city,
+      areaName: area,
+      latitude: lat,
+      longitude: lng,
+    });
+
+    return res.json({
+      success: true,
+      ...result,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Serviceability check failed' });
+  }
+});
+
 // GET / — List saved addresses for logged-in consumer
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {

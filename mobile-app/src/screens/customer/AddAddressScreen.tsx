@@ -30,6 +30,7 @@ import {
   saveUserAddress,
   cacheAddressesLocally,
   reverseGeocodeLocation,
+  checkAddressServiceability,
 } from '../../services/addressApi';
 import {
   isValidIndianPincode,
@@ -229,6 +230,24 @@ export default function AddAddressScreen({ navigation, route }: any) {
 
     setSaving(true);
     try {
+      const serviceCheck = await checkAddressServiceability({
+        pincode: normalizedPin,
+        city: city.trim(),
+        area: area.trim(),
+        lat: latitude,
+        lng: longitude,
+      });
+
+      if (!serviceCheck.isServiceable) {
+        showToast({
+          type: 'error',
+          title: 'Service Unavailable',
+          message: serviceCheck.message || `Delivery is currently not available for pincode ${normalizedPin}.`,
+        });
+        setSaving(false);
+        return;
+      }
+
       const { address: savedAddr, addresses } = await saveUserAddress(token, {
         id: editingAddress?.id,
         tag,

@@ -18,6 +18,7 @@ import { COLORS, FONTS } from '../../constants/theme';
 import {
   fetchUserAddresses,
   cacheAddressesLocally,
+  checkAddressServiceability,
 } from '../../services/addressApi';
 import {
   CheckoutBackIcon,
@@ -188,7 +189,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     });
   };
 
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!city?.trim() || !area?.trim()) {
       showToast({
         type: 'info',
@@ -206,6 +207,26 @@ export default function CheckoutScreen({ route, navigation }: any) {
       });
       return;
     }
+
+    const serviceCheck = await checkAddressServiceability({
+      pincode: selectedAddress.pincode,
+      city: selectedAddress.city || city,
+      area: selectedAddress.area || area,
+      lat: selectedAddress.latitude,
+      lng: selectedAddress.longitude,
+    });
+
+    if (!serviceCheck.isServiceable) {
+      showToast({
+        type: 'error',
+        title: 'Service Unavailable',
+        message: serviceCheck.message || `Delivery is currently not available for pincode ${selectedAddress.pincode}. Please select a different address.`,
+        actionLabel: 'Change',
+        onAction: () => handleSelectAddress(),
+      });
+      return;
+    }
+
     if (!selectedSlot) {
       handleSelectSlot();
       return;
