@@ -1,5 +1,14 @@
 {
-  "serviceable_locations": [],
+  "serviceable_locations": [
+    {
+      "id": "loc-1789467105750",
+      "city": "pune",
+      "area_name": "Ravet",
+      "pincode": "412101",
+      "is_serviceable": true,
+      "shop_id": null
+    }
+  ],
   "promotional_banners": [
     {
       "id": "banner-promo-monthly",
@@ -46,42 +55,34 @@
     }
   ],
   "franchise_requests": [],
-  "states": [],
-  "districts": [],
-  "cities": [],
-  "areas": [],
-  "shop_products": [
+  "states": [
     {
-      "id": "sp-1788516570109-637oigwzt",
-      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
-      "product_id": "35326e0a-8dfe-4f36-acad-badef35cb765",
-      "selling_price": 480,
-      "discount_percentage": 4,
-      "stock": 0,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1788952329170-5h5wfva1p",
-      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
-      "product_id": "175d2c28-6a33-4e68-a6ee-67112b6c72ef",
-      "selling_price": 2600,
-      "discount_percentage": 10,
-      "stock": 0,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1789038153181-roiw4e4bx",
-      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c",
-      "product_id": "7cd6ac47-52f7-460d-8791-66f8da69eb63",
-      "selling_price": 1300,
-      "discount_percentage": 48,
-      "stock": 10,
-      "available": true,
-      "status": "approved"
+      "id": "state-1789466786523",
+      "name": "Maharashtra"
     }
   ],
+  "districts": [
+    {
+      "id": "dist-1789466795551",
+      "state_id": "state-1789466786523",
+      "name": "pune"
+    }
+  ],
+  "cities": [
+    {
+      "id": "city-1789466949121",
+      "name": "pune"
+    }
+  ],
+  "areas": [
+    {
+      "id": "area-1789467105749",
+      "city_id": "city-1789466949121",
+      "name": "Ravet",
+      "pincode": "412101"
+    }
+  ],
+  "shop_products": [],
   "categories": [
     {
       "id": "cat-1",

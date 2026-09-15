@@ -357,7 +357,32 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
       if (profileError) {
         console.error('Failed to elevate user to admin:', profileError.message);
       }
+    } else if (status === 'rejected') {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ role: 'customer' })
+          .eq('id', shop.owner_id);
+      } catch {}
     }
+
+    const { readDb, writeDb } = require('../config/localDb');
+    const db = readDb() as any;
+    if (db.shop_territories) {
+      const tIdx = db.shop_territories.findIndex((t: any) => t.shop_id === shop_id);
+      if (tIdx >= 0) {
+        db.shop_territories[tIdx].is_open = status === 'approved';
+      }
+    }
+    if (status === 'rejected' && db.serviceable_locations) {
+      db.serviceable_locations = db.serviceable_locations.map((loc: any) => {
+        if (loc.shop_id === shop_id) {
+          return { ...loc, shop_id: null, is_serviceable: false };
+        }
+        return loc;
+      });
+    }
+    writeDb(db);
 
     return res.json({ success: true, message: `Shop status updated to ${status}`, shop });
 
@@ -569,6 +594,28 @@ router.delete('/:shop_id', authMiddleware, requireRole(['super_admin']), async (
   const { shop_id } = req.params;
 
   try {
+    // 1. Delete dependent order items and orders to avoid foreign key errors
+    try {
+      const { data: relatedOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('shop_id', shop_id);
+
+      if (relatedOrders && relatedOrders.length > 0) {
+        const orderIds = relatedOrders.map((o: any) => o.id);
+        await supabase.from('order_items').delete().in('order_id', orderIds);
+        await supabase.from('orders').delete().eq('shop_id', shop_id);
+      }
+    } catch (e: any) {
+      console.warn('Notice clearing related orders:', e.message);
+    }
+
+    // 2. Delete shop products if any in supabase
+    try {
+      await supabase.from('shop_products').delete().eq('shop_id', shop_id);
+    } catch {}
+
+    // 3. Delete shop from Supabase
     const { error: shopDelError } = await supabase
       .from('shops')
       .delete()
@@ -588,6 +635,9 @@ router.delete('/:shop_id', authMiddleware, requireRole(['super_admin']), async (
     }
     if (db.serviceable_locations) {
       db.serviceable_locations = db.serviceable_locations.filter((loc: any) => loc.shop_id !== shop_id);
+    }
+    if (db.orders) {
+      db.orders = db.orders.filter((o: any) => o.shop_id !== shop_id);
     }
     writeDb(db);
 
