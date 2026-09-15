@@ -148,37 +148,6 @@ async function seedDatabase() {
       }
     }
 
-    // 2. Check if a default Shop is configured
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
-
-    if (shopError) {
-      console.error('Error checking shop:', shopError.message);
-      return;
-    }
-
-    if (!shop) {
-      console.log('Seeding default shop: MonthlyGrocery...');
-      const { error: insertShopError } = await supabase
-        .from('shops')
-        .insert({
-          owner_id: profile.id,
-          shop_name: 'MonthlyGrocery',
-          status: 'approved',
-        });
-
-      if (insertShopError) {
-        console.error('Failed to seed default shop:', insertShopError.message);
-      } else {
-        console.log('Default shop seeded successfully.');
-      }
-    } else {
-      console.log(`Using active shop: ${shop.shop_name} (${shop.id})`);
-    }
-
     console.log('Database startup checks complete.');
 
   } catch (err: any) {
