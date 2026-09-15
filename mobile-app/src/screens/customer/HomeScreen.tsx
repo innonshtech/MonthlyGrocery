@@ -39,7 +39,6 @@ import {
 } from '../../services/homeApi';
 import { fetchCategoryList } from '../../services/categoriesApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
-import NearbyShopsModal from '../../components/home/NearbyShopsModal';
 import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { HomeCategoryEmojiIcon, getCategoryEmojiKind } from '../../components/home/HomeEmojiIcons';
@@ -102,7 +101,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [banners, setBanners] = useState<PromotionalBanner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [shopsModalVisible, setShopsModalVisible] = useState(false);
   const [orderStats, setOrderStats] = useState<{
     orderCount: number;
     lastOrder: any | null;
@@ -424,23 +422,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   <HomeDeliveryIcon size={15} color="#F5A524" />
                   <Text style={styles.deliveryPillText}>{home?.delivery_pill_text || 'Planned monthly delivery · 4-hour window'}</Text>
                 </View>
-
-                {/* Nearby Stores Selector Pill */}
-                <TouchableOpacity
-                  style={styles.storeSelectorPill}
-                  onPress={() => setShopsModalVisible(true)}
-                  activeOpacity={0.85}
-                >
-                  <Text style={{ fontSize: 13 }}>🏪</Text>
-                  <Text style={styles.storeSelectorText} numberOfLines={1}>
-                    {selectedShop
-                      ? `${selectedShop.name}${selectedShop.distance_km != null ? ` · ${selectedShop.distance_km.toFixed(1)} km` : ''}`
-                      : 'Delivering from Nearby Store (Radius)'}
-                  </Text>
-                  <View style={styles.changeBadge}>
-                    <Text style={styles.changeBadgeText}>Change</Text>
-                  </View>
-                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -652,20 +633,11 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 : home?.first_basket_subtitle}
             </Text>
           </View>
-          <View style={styles.reorderBtn}>
-            <Text style={styles.reorderBtnText}>
-              {hasPastOrder ? home?.reorder_cta_label : home?.first_basket_cta_label}
-            </Text>
-          </View>
         </TouchableOpacity>
       </View>
         </View>
       )}
       </Animated.ScrollView>
-      <NearbyShopsModal
-        visible={shopsModalVisible}
-        onClose={() => setShopsModalVisible(false)}
-      />
     </View>
   );
 }
@@ -780,40 +752,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: '#FFFFFF',
-  },
-  storeSelectorPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    marginTop: 2,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-    gap: 8,
-  },
-  storeSelectorText: {
-    flex: 1,
-    ...FONTS.muktaBold,
-    fontSize: 12.5,
-    color: COLORS.green900,
-  },
-  changeBadge: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  changeBadgeText: {
-    ...FONTS.muktaBold,
-    fontSize: 11,
-    color: COLORS.green700,
   },
   searchBar: {
     flexDirection: 'row',
