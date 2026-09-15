@@ -1,14 +1,5 @@
 {
-  "serviceable_locations": [
-    {
-      "id": "loc-1789462527531",
-      "city": "pune",
-      "area_name": "ravet",
-      "pincode": "411011",
-      "is_serviceable": true,
-      "shop_id": "c1cad151-087b-4784-9f26-74e12246690c"
-    }
-  ],
+  "serviceable_locations": [],
   "promotional_banners": [
     {
       "id": "banner-promo-monthly",
@@ -55,19 +46,8 @@
     }
   ],
   "franchise_requests": [],
-  "cities": [
-    {
-      "id": "city-1788514120950",
-      "name": "pune"
-    }
-  ],
-  "areas": [
-    {
-      "id": "area-1788514136819",
-      "city_id": "city-1788514120950",
-      "name": "ravet"
-    }
-  ],
+  "cities": [],
+  "areas": [],
   "shop_products": [
     {
       "id": "sp-1788516570109-637oigwzt",
