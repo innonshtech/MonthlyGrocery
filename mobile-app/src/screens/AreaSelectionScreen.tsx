@@ -39,6 +39,7 @@ import {
   fetchOnboardingConfig,
 } from '../services/onboardingApi';
 import { reverseGeocodeLocation } from '../services/addressApi';
+import Geolocation from '@react-native-community/geolocation';
 
 function formatUnserviceableSubtitle(
   template: string,
@@ -123,62 +124,71 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
         }
       }
 
-      const nav = (globalThis as any)?.navigator;
-      if (nav && nav.geolocation && typeof nav.geolocation.getCurrentPosition === 'function') {
-        nav.geolocation.getCurrentPosition(
-          async (pos: any) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            const details = await reverseGeocodeLocation(lat, lng);
-            if (details) {
-              if (details.pincode) {
-                setSearchQuery(details.pincode);
-                showToast({
-                  type: 'success',
-                  title: 'Location Detected',
-                  message: `Found PIN ${details.pincode}${details.area ? ` (${details.area})` : ''}. Showing areas & stores nearby!`,
-                });
-              } else if (details.area) {
-                setSearchQuery(details.area);
-                showToast({
-                  type: 'success',
-                  title: 'Location Detected',
-                  message: `Found ${details.area}. Showing nearby areas!`,
-                });
-              }
-            } else {
-              showToast({
-                type: 'info',
-                title: 'Location Found',
-                message: 'Could not resolve exact pincode. Please search your area or pincode.',
-              });
+      const getGpsPosition = (options: { enableHighAccuracy: boolean; timeout: number; maximumAge?: number }): Promise<{ latitude: number; longitude: number }> => {
+        return new Promise((resolve, reject) => {
+          Geolocation.getCurrentPosition(
+            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            (err) => reject(err),
+            options
+          );
+        });
+      };
+
+      let coords: { latitude: number; longitude: number } | null = null;
+      try {
+        // 1. Try high accuracy GPS (satellite / hardware)
+        coords = await getGpsPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
+      } catch {
+        try {
+          // 2. Fallback to network/cell-tower location if satellite times out
+          coords = await getGpsPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+        } catch (err: any) {
+          console.warn('GPS location error:', err?.message);
+        }
+      }
+
+      if (coords) {
+        const details = await reverseGeocodeLocation(coords.latitude, coords.longitude);
+        if (details) {
+          const detectedPin = details.pincode ? String(details.pincode).trim() : '';
+          const detectedArea = details.area ? String(details.area).trim() : '';
+
+          if (detectedPin) {
+            setSearchQuery(detectedPin);
+            const matched = areas.find((a) => a.pincode && a.pincode.trim() === detectedPin);
+            if (matched) {
+              setSelectedAreaId(matched.id);
             }
-            setGpsLocating(false);
-          },
-          async (err: any) => {
-            console.warn('GPS error in AreaSelection, trying fallback:', err?.message);
-            // Fallback: check city or first available area
-            if (areas.length > 0) {
-              const firstWithPin = areas.find((a) => a.pincode);
-              if (firstWithPin?.pincode) {
-                setSearchQuery(firstWithPin.pincode);
-                showToast({
-                  type: 'info',
-                  title: 'Default Location',
-                  message: `Showing areas in ${cityName} (PIN ${firstWithPin.pincode}).`,
-                });
-              }
-            } else {
-              showToast({
-                type: 'info',
-                title: 'Search Location',
-                message: 'GPS unavailable. Please search by area name or 6-digit pincode.',
-              });
+            showToast({
+              type: 'success',
+              title: 'Location Detected',
+              message: `Found PIN ${detectedPin}${detectedArea ? ` (${detectedArea})` : ''}. Showing areas & stores nearby!`,
+            });
+          } else if (detectedArea) {
+            setSearchQuery(detectedArea);
+            const matched = areas.find((a) => a.name.toLowerCase().includes(detectedArea.toLowerCase()));
+            if (matched) {
+              setSelectedAreaId(matched.id);
             }
-            setGpsLocating(false);
-          },
-          { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
-        );
+            showToast({
+              type: 'success',
+              title: 'Location Detected',
+              message: `Found ${detectedArea}. Showing nearby areas!`,
+            });
+          } else {
+            showToast({
+              type: 'info',
+              title: 'Location Found',
+              message: 'Detected your GPS position. Showing areas nearby.',
+            });
+          }
+        } else {
+          showToast({
+            type: 'info',
+            title: 'GPS Coordinates Detected',
+            message: 'Detected your GPS position. Showing areas in this city.',
+          });
+        }
       } else {
         if (areas.length > 0 && areas[0].pincode) {
           setSearchQuery(areas[0].pincode);
@@ -186,10 +196,10 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
         showToast({
           type: 'info',
           title: 'Search Location',
-          message: 'GPS is not available on this device. Showing all areas.',
+          message: 'GPS unavailable. Showing registered areas in this city.',
         });
-        setGpsLocating(false);
       }
+      setGpsLocating(false);
     } catch {
       setGpsLocating(false);
     }

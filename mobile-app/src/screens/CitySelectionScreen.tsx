@@ -9,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,8 @@ import {
   CitySelectionConfig,
   fetchOnboardingConfig,
 } from '../services/onboardingApi';
+import { reverseGeocodeLocation } from '../services/addressApi';
+import Geolocation from '@react-native-community/geolocation';
 
 /**
  * A5 · City Selection — Redesign (Figma node 408:612)
@@ -67,6 +70,8 @@ export default function CitySelectionScreen({ navigation }: any) {
     loadData();
   }, [loadData]);
 
+  const [detectingGps, setDetectingGps] = useState(false);
+
   const handleCitySelect = async (cityName: string) => {
     setSelectedCity(cityName);
     setDetectMessage('');
@@ -74,9 +79,79 @@ export default function CitySelectionScreen({ navigation }: any) {
     navigation.navigate('AreaSelection', { cityName });
   };
 
-  const handleDetectLocation = () => {
+  const handleDetectLocation = async () => {
     if (!config) return;
-    setDetectMessage(config.detect_unavailable_message);
+    setDetectingGps(true);
+    setDetectMessage('Detecting your GPS location...');
+
+    try {
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Location Permission',
+              message: 'MonthlyGrocery needs your location to find nearby serviceable cities.',
+              buttonPositive: 'OK',
+              buttonNegative: 'Cancel',
+            },
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            setDetectMessage('Location permission was denied. Please select your city from the list.');
+            setDetectingGps(false);
+            return;
+          }
+        } catch {}
+      }
+
+      const getGpsPosition = (options: { enableHighAccuracy: boolean; timeout: number; maximumAge?: number }): Promise<{ latitude: number; longitude: number }> => {
+        return new Promise((resolve, reject) => {
+          Geolocation.getCurrentPosition(
+            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            (err) => reject(err),
+            options
+          );
+        });
+      };
+
+      let coords: { latitude: number; longitude: number } | null = null;
+      try {
+        coords = await getGpsPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
+      } catch {
+        try {
+          coords = await getGpsPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+        } catch {}
+      }
+
+      if (coords) {
+        const details = await reverseGeocodeLocation(coords.latitude, coords.longitude);
+        if (details && details.city) {
+          const detectedCityName = details.city.trim();
+          const matched = cities.find(
+            (c) => c.name.toLowerCase() === detectedCityName.toLowerCase() ||
+                   detectedCityName.toLowerCase().includes(c.name.toLowerCase()) ||
+                   c.name.toLowerCase().includes(detectedCityName.toLowerCase())
+          );
+          if (matched) {
+            setDetectMessage(`📍 Found ${matched.name}! Redirecting...`);
+            setTimeout(() => {
+              handleCitySelect(matched.name);
+            }, 600);
+            return;
+          } else {
+            setDetectMessage(`Location detected: ${detectedCityName}. MonthlyGrocery is currently available in: ${cities.map(c => c.name).join(', ')}.`);
+          }
+        } else {
+          setDetectMessage('GPS detected, but could not resolve city name. Please pick your city from below.');
+        }
+      } else {
+        setDetectMessage(config.detect_unavailable_message || 'GPS location unavailable. Please select your city from the list.');
+      }
+    } catch {
+      setDetectMessage(config.detect_unavailable_message || 'Could not detect location. Please choose from below.');
+    } finally {
+      setDetectingGps(false);
+    }
   };
 
   const filteredCities = cities.filter((c) =>
@@ -125,14 +200,21 @@ export default function CitySelectionScreen({ navigation }: any) {
       <TouchableOpacity
         style={styles.locationCard}
         onPress={handleDetectLocation}
+        disabled={detectingGps}
         activeOpacity={0.8}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <View style={styles.locationTextCol}>
-          <Text style={styles.locationTitle}>{config.detect_title}</Text>
+          <Text style={styles.locationTitle}>
+            {detectingGps ? 'Detecting your location...' : config.detect_title}
+          </Text>
           <Text style={styles.locationSubtitle}>{config.detect_subtitle}</Text>
         </View>
-        <OnboardingChevronRightIcon size={20} color={COLORS.green700} />
+        {detectingGps ? (
+          <ActivityIndicator size="small" color={COLORS.green700} />
+        ) : (
+          <OnboardingChevronRightIcon size={20} color={COLORS.green700} />
+        )}
       </TouchableOpacity>
 
       {detectMessage ? (

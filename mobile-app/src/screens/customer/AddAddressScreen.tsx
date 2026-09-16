@@ -38,6 +38,7 @@ import {
   normalizePincode,
   validateAddressPincode,
 } from '../../utils/locationParams';
+import Geolocation from '@react-native-community/geolocation';
 
 const SCREEN_BG = '#FBFAF6';
 const MAP_BG = '#E8F0EA';
@@ -134,30 +135,38 @@ export default function AddAddressScreen({ navigation, route }: any) {
   const handleUseCurrentLocation = async () => {
     setDetectingLocation(true);
     try {
-      const nav = (globalThis as any)?.navigator;
-      if (nav && nav.geolocation && typeof nav.geolocation.getCurrentPosition === 'function') {
-        nav.geolocation.getCurrentPosition(
-          async (pos: any) => {
-            const lat = pos.coords.latitude;
-            const lng = pos.coords.longitude;
-            setLatitude(lat);
-            setLongitude(lng);
+      const getGpsPosition = (options: { enableHighAccuracy: boolean; timeout: number; maximumAge?: number }): Promise<{ latitude: number; longitude: number }> => {
+        return new Promise((resolve, reject) => {
+          Geolocation.getCurrentPosition(
+            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            (err) => reject(err),
+            options
+          );
+        });
+      };
 
-            const details = await reverseGeocodeLocation(lat, lng);
-            if (details) {
-              if (details.pincode) setPincode(details.pincode);
-              if (details.city) setCity(details.city);
-              if (details.state) setStateName(details.state);
-              if (details.area) setArea(details.area);
-              if (details.street && !street) setStreet(details.street);
-            }
-            setDetectingLocation(false);
-          },
-          async () => {
-            await fallbackLocationFromArea();
-          },
-          { timeout: 6000, enableHighAccuracy: true }
-        );
+      let coords: { latitude: number; longitude: number } | null = null;
+      try {
+        coords = await getGpsPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
+      } catch {
+        try {
+          coords = await getGpsPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+        } catch {}
+      }
+
+      if (coords) {
+        setLatitude(coords.latitude);
+        setLongitude(coords.longitude);
+
+        const details = await reverseGeocodeLocation(coords.latitude, coords.longitude);
+        if (details) {
+          if (details.pincode) setPincode(details.pincode);
+          if (details.city) setCity(details.city);
+          if (details.state) setStateName(details.state);
+          if (details.area) setArea(details.area);
+          if (details.street && !street) setStreet(details.street);
+        }
+        setDetectingLocation(false);
       } else {
         await fallbackLocationFromArea();
       }

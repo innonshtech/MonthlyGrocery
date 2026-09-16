@@ -1,5 +1,14 @@
 {
-  "serviceable_locations": [],
+  "serviceable_locations": [
+    {
+      "id": "loc-1789536002355",
+      "city": "pune",
+      "area_name": "Ravet",
+      "pincode": "412101",
+      "is_serviceable": true,
+      "shop_id": "11bf599b-72c1-4fab-886b-0447502838e8"
+    }
+  ],
   "promotional_banners": [
     {
       "id": "banner-promo-monthly",
@@ -65,7 +74,14 @@
       "name": "pune"
     }
   ],
-  "areas": [],
+  "areas": [
+    {
+      "id": "area-1789536002355",
+      "city_id": "city-1789466949121",
+      "name": "Ravet",
+      "pincode": "412101"
+    }
+  ],
   "shop_products": [],
   "categories": [
     {
@@ -932,7 +948,15 @@
     "filter_clear_label": "Clear all",
     "filter_apply_label": "Apply"
   },
-  "area_notify_requests": [],
+  "area_notify_requests": [
+    {
+      "id": "area-notify-1789536195930",
+      "city": "pune",
+      "area_name": "414",
+      "phone": "918830480018",
+      "created_at": "2026-09-16T05:23:15.930Z"
+    }
+  ],
   "product_detail_screen": {
     "delivery_window_label": "Delivered in your planned 4-hour window",
     "highlights_section_label": "HIGHLIGHTS",
@@ -1455,6 +1479,23 @@
       "longitude": null,
       "delivery_radius_km": 5,
       "is_open": true
+    },
+    {
+      "shop_id": "11bf599b-72c1-4fab-886b-0447502838e8",
+      "state_id": "state-1789466786523",
+      "state_name": "Maharashtra",
+      "district_id": "dist-1789466795551",
+      "district_name": "pune",
+      "city": "pune",
+      "area_name": "Ravet",
+      "address_line": "",
+      "pincode": "412101",
+      "latitude": 18.643269,
+      "longitude": 73.7450557,
+      "delivery_radius_km": 5,
+      "is_open": true,
+      "free_delivery_radius_km": 5,
+      "extra_delivery_fee_per_km": 10
     }
   ],
   "subcategories": [
