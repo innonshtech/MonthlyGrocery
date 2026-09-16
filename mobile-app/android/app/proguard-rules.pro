@@ -10,5 +10,7 @@
 # Add any project specific keep options here:
 -keep class com.facebook.react.** { *; }
 -keep class com.horcrux.svg.** { *; }
+-keep class com.monthlygrocerymobile.** { *; }
 -dontwarn com.facebook.react.**
+
 

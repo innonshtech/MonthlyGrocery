@@ -38,7 +38,7 @@ import {
   normalizePincode,
   validateAddressPincode,
 } from '../../utils/locationParams';
-import Geolocation from '@react-native-community/geolocation';
+import { getCurrentCoordinates } from '../../services/locationService';
 
 const SCREEN_BG = '#FBFAF6';
 const MAP_BG = '#E8F0EA';
@@ -135,24 +135,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
   const handleUseCurrentLocation = async () => {
     setDetectingLocation(true);
     try {
-      const getGpsPosition = (options: { enableHighAccuracy: boolean; timeout: number; maximumAge?: number }): Promise<{ latitude: number; longitude: number }> => {
-        return new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            options
-          );
-        });
-      };
-
-      let coords: { latitude: number; longitude: number } | null = null;
-      try {
-        coords = await getGpsPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
-      } catch {
-        try {
-          coords = await getGpsPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-        } catch {}
-      }
+      const coords = await getCurrentCoordinates();
 
       if (coords) {
         setLatitude(coords.latitude);

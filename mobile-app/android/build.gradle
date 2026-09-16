@@ -20,3 +20,12 @@ buildscript {
 
 apply plugin: "com.facebook.react.rootproject"
 
+allprojects {
+    plugins.withId("com.android.application") {
+        android.buildFeatures.buildConfig = true
+    }
+    plugins.withId("com.android.library") {
+        android.buildFeatures.buildConfig = true
+    }
+}
+

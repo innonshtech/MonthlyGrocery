@@ -39,7 +39,7 @@ import {
   fetchOnboardingConfig,
 } from '../services/onboardingApi';
 import { reverseGeocodeLocation } from '../services/addressApi';
-import Geolocation from '@react-native-community/geolocation';
+import { getCurrentCoordinates } from '../services/locationService';
 
 function formatUnserviceableSubtitle(
   template: string,
@@ -99,53 +99,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const handleUseCurrentGps = async () => {
     setGpsLocating(true);
     try {
-      if (Platform.OS === 'android') {
-        try {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-              title: 'Location Permission',
-              message: 'MonthlyGrocery needs your location to find nearby serviceable areas and stores.',
-              buttonPositive: 'OK',
-              buttonNegative: 'Cancel',
-            },
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            showToast({
-              type: 'error',
-              title: 'Permission Denied',
-              message: 'Location permission was denied. You can search by area name or pincode.',
-            });
-            setGpsLocating(false);
-            return;
-          }
-        } catch {
-          // Continue if permission dialog fails
-        }
-      }
-
-      const getGpsPosition = (options: { enableHighAccuracy: boolean; timeout: number; maximumAge?: number }): Promise<{ latitude: number; longitude: number }> => {
-        return new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            options
-          );
-        });
-      };
-
-      let coords: { latitude: number; longitude: number } | null = null;
-      try {
-        // 1. Try high accuracy GPS (satellite / hardware)
-        coords = await getGpsPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
-      } catch {
-        try {
-          // 2. Fallback to network/cell-tower location if satellite times out
-          coords = await getGpsPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-        } catch (err: any) {
-          console.warn('GPS location error:', err?.message);
-        }
-      }
+      const coords = await getCurrentCoordinates();
 
       if (coords) {
         const details = await reverseGeocodeLocation(coords.latitude, coords.longitude);

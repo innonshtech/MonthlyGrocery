@@ -79,6 +79,10 @@ android {
 
     namespace "com.monthlygrocerymobile"
 
+    buildFeatures {
+        buildConfig true
+    }
+
 
     defaultConfig {
         applicationId "com.monthlygrocerymobile"

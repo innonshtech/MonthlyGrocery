@@ -1,10 +1,20 @@
 import { NativeModules, Platform } from 'react-native';
 
 /**
+ * Live Vercel Cloud Production Server URL
+ */
+export const VERCEL_SERVER_URL = 'https://monthly-grocery-rust.vercel.app/api';
+
+/**
  * Local IP / Host for Wireless & ADB Debugging
- * With `adb reverse tcp:8001 tcp:8001`, 127.0.0.1 connects directly through the ADB bridge!
  */
 export const DEV_MACHINE_IP = '192.168.1.15';
+
+/**
+ * Toggle to connect the app to the live Vercel Cloud Server.
+ * Set to TRUE for production APK and cloud testing.
+ */
+export const USE_VERCEL_SERVER = false;
 
 function isAndroidEmulator(): boolean {
   if (Platform.OS !== 'android') return false;
@@ -21,14 +31,17 @@ function isAndroidEmulator(): boolean {
   );
 }
 
-function resolveApiHost(): string {
+function resolveApiBase(): string {
+  if (USE_VERCEL_SERVER) {
+    return VERCEL_SERVER_URL;
+  }
   if (Platform.OS === 'android') {
     if (isAndroidEmulator()) {
-      return '10.0.2.2';
+      return 'http://10.0.2.2:8001/api';
     }
-    return DEV_MACHINE_IP;
+    return `http://${DEV_MACHINE_IP}:8001/api`;
   }
-  return 'localhost';
+  return 'http://localhost:8001/api';
 }
 
-export const API_BASE = `http://${resolveApiHost()}:8001/api`;
+export const API_BASE = resolveApiBase();

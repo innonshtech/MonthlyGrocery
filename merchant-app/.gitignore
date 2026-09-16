@@ -5,6 +5,11 @@ android/app/.cxx/
 android/.gradle/
 android/local.properties
 
+# Generated Bundle Assets
+android/app/src/main/assets/
+android/app/src/main/res/raw/
+android/app/src/main/res/drawable-*/
+
 # Dependencies
 node_modules/
 

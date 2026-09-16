@@ -33,7 +33,7 @@ import {
   fetchOnboardingConfig,
 } from '../services/onboardingApi';
 import { reverseGeocodeLocation } from '../services/addressApi';
-import Geolocation from '@react-native-community/geolocation';
+import { getCurrentCoordinates } from '../services/locationService';
 
 /**
  * A5 · City Selection — Redesign (Figma node 408:612)
@@ -85,43 +85,7 @@ export default function CitySelectionScreen({ navigation }: any) {
     setDetectMessage('Detecting your GPS location...');
 
     try {
-      if (Platform.OS === 'android') {
-        try {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            {
-              title: 'Location Permission',
-              message: 'MonthlyGrocery needs your location to find nearby serviceable cities.',
-              buttonPositive: 'OK',
-              buttonNegative: 'Cancel',
-            },
-          );
-          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-            setDetectMessage('Location permission was denied. Please select your city from the list.');
-            setDetectingGps(false);
-            return;
-          }
-        } catch {}
-      }
-
-      const getGpsPosition = (options: { enableHighAccuracy: boolean; timeout: number; maximumAge?: number }): Promise<{ latitude: number; longitude: number }> => {
-        return new Promise((resolve, reject) => {
-          Geolocation.getCurrentPosition(
-            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-            (err) => reject(err),
-            options
-          );
-        });
-      };
-
-      let coords: { latitude: number; longitude: number } | null = null;
-      try {
-        coords = await getGpsPosition({ enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 });
-      } catch {
-        try {
-          coords = await getGpsPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
-        } catch {}
-      }
+      const coords = await getCurrentCoordinates();
 
       if (coords) {
         const details = await reverseGeocodeLocation(coords.latitude, coords.longitude);
