@@ -20,9 +20,10 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('[AWS RDS DB] Idle client error:', err.message);
 });
+
 
 /**
  * Direct SQL Query execution helper
@@ -588,7 +589,8 @@ const authAdmin = {
   async listUsers() {
     try {
       const res = await query('SELECT * FROM profiles ORDER BY created_at DESC;');
-      const users = res.rows.map(row => ({
+      const users = res.rows.map((row: any) => ({
+
         id: row.id,
         phone: row.phone,
         email: row.email,

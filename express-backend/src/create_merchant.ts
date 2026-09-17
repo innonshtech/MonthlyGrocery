@@ -10,7 +10,8 @@ async function createMerchant() {
 
   // 1. Check if user already exists in auth.users
   const { data: authUsers } = await supabase.auth.admin.listUsers();
-  const existingUser = authUsers?.users.find(u => u.phone === `+${cleanMobile}`);
+  const existingUser = authUsers?.users.find((u: any) => u.phone === `+${cleanMobile}`);
+
 
   let ownerId: string;
 

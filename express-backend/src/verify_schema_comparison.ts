@@ -40,7 +40,8 @@ async function compareDatabases() {
       WHERE table_schema = 'public' 
       ORDER BY table_name;
     `);
-    const awsTables = tableRes.rows.map(r => r.table_name);
+    const awsTables = tableRes.rows.map((r: any) => r.table_name);
+
 
     console.log(`📦 AWS RDS Tables Detected (${awsTables.length} total):`);
     console.log(`   ${awsTables.join(', ')}\n`);
