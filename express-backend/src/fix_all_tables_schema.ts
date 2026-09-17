@@ -40,10 +40,33 @@ async function fixAllTablesSchema() {
 
     // 3. Products Table
     await client.query(`
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5, 2) DEFAULT 0;
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesaler_price NUMERIC(10, 2) DEFAULT 0;
-      ALTER TABLE products ADD COLUMN IF NOT EXISTS gst NUMERIC(5, 2) DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS shop_id VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS sku VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS primary_category VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS secondary_category VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS company VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS short_description TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS place VARCHAR(255);
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS primary_image_url TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS images TEXT;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS mrp NUMERIC(10, 2) DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS wholesaler_price NUMERIC(10, 2) DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5, 2) DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS gst NUMERIC(5, 2) DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'units';
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS available BOOLEAN DEFAULT true;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS is_veg BOOLEAN DEFAULT true;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS todays_deal BOOLEAN DEFAULT false;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS best_seller BOOLEAN DEFAULT false;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS family_key VARCHAR(255);
       ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity_value NUMERIC(10, 2);
       ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity_unit VARCHAR(50);
