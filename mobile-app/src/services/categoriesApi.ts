@@ -52,13 +52,11 @@ export async function fetchCategoryList(): Promise<CategoriesListResult> {
     const full = data.categoriesFull || [];
     if (full.length > 0) {
       return {
-        items: full
-          .filter((item: { image_url?: string }) => Boolean(item.image_url?.trim()))
-          .map((item: { id: string; name: string; image_url?: string }) => ({
-            id: item.id,
-            name: item.name,
-            image_url: item.image_url!.trim(),
-          })),
+        items: full.map((item: { id: string; name: string; image_url?: string }) => ({
+          id: item.id,
+          name: item.name,
+          image_url: (item.image_url || '').trim(),
+        })),
         error: false,
       };
     }

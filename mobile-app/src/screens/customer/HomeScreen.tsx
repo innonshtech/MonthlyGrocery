@@ -177,15 +177,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   useEffect(() => {
     const loadCategories = async () => {
       const result = await fetchCategoryList();
-      if (!result.error) {
-        const withTiles = result.items
-          .filter((item) => Boolean(item.image_url?.trim()))
-          .map((item) => ({
-            id: item.id,
-            name: item.name,
-            image_url: item.image_url!.trim(),
-          }));
-        setCategories(withTiles);
+      if (!result.error && result.items) {
+        setCategories(result.items);
       }
     };
     loadCategories();
@@ -491,40 +484,34 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.catRail}
                 >
-                  {categories.map((cat) => {
-                    const kind = getCategoryEmojiKind(cat.name);
-                    const pastelBgs: Record<string, string> = {
-                      atta: '#FFF4D6',
-                      oil: '#E4F5EB',
-                      dal: '#FCE9E4',
-                      salt: '#FDEEF1',
-                      snacks: '#FFF3E8',
-                      bev: '#E8F1FD',
-                      milk: '#F4F1FD',
-                      clean: '#EBF7F2',
-                    };
-                    const bg = pastelBgs[kind] || '#FFF4D6';
-                    return (
-                      <TouchableOpacity
-                        key={cat.id}
-                        style={styles.catRailItem}
-                        onPress={() =>
-                          navigation.navigate('CategoryProducts', {
-                            categoryId: cat.id,
-                            categoryName: cat.name,
-                          })
-                        }
-                        activeOpacity={0.75}
-                      >
-                        <View style={[styles.catTile, { backgroundColor: bg }]}>
-                          <HomeCategoryEmojiIcon kind={kind} size={42} />
-                        </View>
-                        <Text style={styles.catName} numberOfLines={2}>
-                          {cat.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={styles.catRailItem}
+                      onPress={() =>
+                        navigation.navigate('CategoryProducts', {
+                          categoryId: cat.id,
+                          categoryName: cat.name,
+                        })
+                      }
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.catTile}>
+                        {cat.image_url ? (
+                          <Image
+                            source={{ uri: cat.image_url }}
+                            style={styles.categoryPng}
+                            resizeMode="contain"
+                          />
+                        ) : (
+                          <AppIcon name="grid" size={26} color="#1E7A46" />
+                        )}
+                      </View>
+                      <Text style={styles.catName} numberOfLines={2}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </ScrollView>
               ) : null}
 
@@ -962,11 +949,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
     overflow: 'hidden',
-    backgroundColor: '#F4F3EE',
+    backgroundColor: '#F8FAF8',
+    borderWidth: 1,
+    borderColor: '#E8EFEA',
+    padding: 6,
   },
   categoryPng: {
-    width: 46,
-    height: 46,
+    width: 52,
+    height: 52,
   },
   catName: {
     ...FONTS.muktaMedium,
