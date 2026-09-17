@@ -11,7 +11,7 @@ import {
   resolveMerchantOrderStatus,
   MERCHANT_ORDER_STATUSES,
 } from '../utils/orderEnrichment';
-import { resolveShopIdForLocation, getMerchantShopForUser } from '../services/shopResolution';
+import { resolveShopIdForLocation, resolveShopIdForLocationAsync, getMerchantShopForUser } from '../services/shopResolution';
 import { calculateHaversineDistanceKm } from '../services/geocodingService';
 import { calculateDeliveryFee } from '../services/deliveryFeeService';
 
@@ -286,7 +286,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       .filter(Boolean);
     const cartShopId = itemShopIds[0] || shop_id || null;
 
-    let targetShopId = resolveShopIdForLocation({
+    let targetShopId = await resolveShopIdForLocationAsync({
       shopId: cartShopId,
       city: resolvedCity,
       areaName: resolvedArea,
@@ -319,6 +319,23 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
           };
         }
       }
+    }
+
+    // Master fallback to any active approved shop in AWS RDS
+    if (!targetShopId || !targetShop) {
+      try {
+        const { data: fallbackShops } = await supabase
+          .from('shops')
+          .select('id, shop_name, status')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (fallbackShops && fallbackShops.length > 0) {
+          targetShopId = fallbackShops[0].id;
+          targetShop = fallbackShops[0];
+        }
+      } catch {}
     }
 
     if (!targetShopId || !targetShop) {
@@ -357,14 +374,29 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     // 2. Generate random 4-digit Delivery OTP (Swiggy/Zomato style)
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
-    // 3. Insert order into Supabase with validated final amount
+    // 3. Insert order into Supabase/AWS RDS with validated final amount
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
+        user_id: req.user!.id,
         consumer_id: req.user!.id,
         shop_id: targetShopId,
         total_amount: finalPayableAmount,
+        subtotal: baseAmount,
+        discount_amount: validatedDiscount,
+        delivery_fee: calculatedDeliveryFee,
+        coupon_code: coupon_code || null,
+        payment_method: 'cod',
+        payment_status: 'pending',
+        customer_name: (req.user as any)?.name || 'Customer',
+        customer_phone: req.user!.mobile || '',
+        shipping_address: finalAddress,
         delivery_address: finalAddress,
+        delivery_latitude: finalLat,
+        delivery_longitude: finalLng,
+        delivery_slot: delivery_slot,
+        delivery_date: delivery_slot_date || null,
+        items: items,
         status: 'pending',
       })
       .select()
@@ -378,8 +410,11 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     const orderItems = items.map((it: any) => ({
       order_id: order.id,
       product_id: it.product_id || it.id,
+      product_name: it.name || it.product_name || '',
       quantity: parseInt(it.quantity) || 1,
-      unit_price: parseFloat(it.price || it.unit_price) || 0.00,
+      price: parseFloat(it.price || it.unit_price) || 0.00,
+      unit: it.unit || '1 unit',
+      image_url: it.image_url || '',
     }));
 
     // 5. Insert order items

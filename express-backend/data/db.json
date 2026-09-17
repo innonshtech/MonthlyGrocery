@@ -1496,6 +1496,21 @@
       "is_open": true,
       "free_delivery_radius_km": 5,
       "extra_delivery_fee_per_km": 10
+    },
+    {
+      "shop_id": "5eb56095-62cc-432e-aa71-3b2990b0c6a0",
+      "latitude": null,
+      "longitude": null,
+      "address_line": "",
+      "area_name": "",
+      "city": "",
+      "district_name": "",
+      "state_name": "",
+      "pincode": "",
+      "delivery_radius_km": 15,
+      "free_delivery_radius_km": 5,
+      "extra_delivery_fee_per_km": 10,
+      "is_open": true
     }
   ],
   "subcategories": [
