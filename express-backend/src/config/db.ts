@@ -362,12 +362,31 @@ export class TableQueryBuilder {
   }
 
   private async executeInsertOrUpsert(): Promise<{ data: any; error: any }> {
-    const rows = Array.isArray(this.payloadData) ? this.payloadData : [this.payloadData];
-    if (rows.length === 0) return { data: [], error: null };
+    const rawRows = Array.isArray(this.payloadData) ? this.payloadData : [this.payloadData];
+    if (rawRows.length === 0) return { data: [], error: null };
 
     try {
       const insertedRows: any[] = [];
-      for (const row of rows) {
+      for (const originalRow of rawRows) {
+        const row = { ...originalRow };
+
+        // Auto-assign random UUID for string ID tables if missing
+        if (!row.id && ['shops', 'profiles', 'products', 'orders', 'promotional_banners', 'serviceable_locations', 'coupons', 'delivery_slots'].includes(this.tableName)) {
+          row.id = randomUUID();
+        }
+
+        // Normalize shop column aliases
+        if (this.tableName === 'shops') {
+          if (row.shop_name && !row.name) row.name = row.shop_name;
+          if (row.name && !row.shop_name) row.shop_name = row.name;
+          if (row.status && !row.kyc_status) row.kyc_status = row.status;
+        }
+
+        // Normalize profile column aliases
+        if (this.tableName === 'profiles') {
+          if (row.name && !row.full_name) row.full_name = row.name;
+        }
+
         const keys = Object.keys(row).filter(k => row[k] !== undefined);
         const colNames = keys.map(k => `"${k}"`).join(', ');
         const params: any[] = [];
@@ -382,9 +401,14 @@ export class TableQueryBuilder {
 
         let conflictSql = '';
         if (this.mode === 'UPSERT') {
-          const conflictTarget = this.onConflictCols.map(c => `"${c}"`).join(', ');
+          // If upserting profiles by phone, adjust conflict target
+          let targetCols = this.onConflictCols;
+          if (this.tableName === 'profiles' && row.phone && targetCols.length === 1 && targetCols[0] === 'id') {
+            targetCols = ['phone'];
+          }
+          const conflictTarget = targetCols.map(c => `"${c}"`).join(', ');
           const updateSets = keys
-            .filter(k => !this.onConflictCols.includes(k))
+            .filter(k => !targetCols.includes(k))
             .map(k => `"${k}" = EXCLUDED."${k}"`);
           
           if (updateSets.length > 0) {
@@ -393,6 +417,7 @@ export class TableQueryBuilder {
             conflictSql = ` ON CONFLICT (${conflictTarget}) DO NOTHING`;
           }
         }
+
 
         const sql = `INSERT INTO "${this.tableName}" (${colNames}) VALUES (${placeholders})${conflictSql} RETURNING *;`;
         const res = await query(sql, params);

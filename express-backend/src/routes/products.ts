@@ -652,14 +652,14 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
   try {
     // 1. Determine active merchant shop or fallback to master approved shop
     let shopId: string | null = null;
-    const { data: userShop } = await supabase
-      .from('shops')
-      .select('id')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const resolvedShop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (userShop && userShop.id) {
-      shopId = userShop.id;
+    if (resolvedShop && resolvedShop.id) {
+      shopId = resolvedShop.id;
     } else {
       const { data: approvedShops } = await supabase
         .from('shops')
@@ -885,13 +885,13 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
   const data = req.body;
 
   try {
-    const { data: shop, error: shopError } = await supabase
-      .from('shops')
-      .select('*')
-      .eq('owner_id', req.user!.id)
-      .maybeSingle();
+    const shop = await getMerchantShopForUser({
+      id: req.user!.id,
+      role: req.user!.role,
+      mobile: (req.user as any)?.mobile || (req.user as any)?.phone,
+    });
 
-    if (shopError || !shop) {
+    if (!shop) {
       return res.status(400).json({ success: false, error: 'Merchant shop not found.' });
     }
 

@@ -278,17 +278,23 @@ export function resolveShopIdForLocationOrThrow(input: ShopResolutionInput): str
 export async function getMerchantShopForUser(user: { id: string; role?: string; mobile?: string }): Promise<any | null> {
   if (!user || !user.id) return null;
 
-  // 1. Check direct owner_id in Supabase
+  // 1. Check direct owner_id in AWS RDS
   try {
     const { data: shop, error } = await supabase
       .from('shops')
-      .select('id, shop_name, status, owner_id, created_at')
+      .select('*')
       .eq('owner_id', user.id)
       .maybeSingle();
 
-    if (!error && shop) return shop;
+    if (!error && shop) {
+      return {
+        ...shop,
+        shop_name: shop.shop_name || shop.name || 'MonthlyGrocery',
+        status: shop.status || shop.kyc_status || 'approved',
+      };
+    }
   } catch (err) {
-    console.warn('[getMerchantShopForUser] Supabase query error:', err);
+    console.warn('[getMerchantShopForUser] Database query error:', err);
   }
 
   // 2. Check if user's phone matches owner's profile
@@ -299,50 +305,51 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
       const normalized = cleanMobile.length === 10 ? '91' + cleanMobile : cleanMobile;
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
+        .select('*')
         .eq('phone', normalized)
         .maybeSingle();
 
-      if (profile && profile.id !== user.id) {
+      if (profile) {
         const { data: shopByPhone } = await supabase
           .from('shops')
-          .select('id, shop_name, status, owner_id, created_at')
+          .select('*')
           .eq('owner_id', profile.id)
           .maybeSingle();
 
-        if (shopByPhone) return shopByPhone;
+        if (shopByPhone) {
+          return {
+            ...shopByPhone,
+            shop_name: shopByPhone.shop_name || shopByPhone.name || 'MonthlyGrocery',
+            status: shopByPhone.status || shopByPhone.kyc_status || 'approved',
+          };
+        }
       }
     }
   } catch (err) {
     console.warn('[getMerchantShopForUser] Profile phone check error:', err);
   }
 
-  // 3. Check local JSON DB
-  try {
-    const db = readDb() as any;
-    const localShop = (db.shops || []).find((s: any) => s.owner_id === user.id);
-    if (localShop) return localShop;
-  } catch {}
-
-  // 4. Super Admin fallback: If logged in as super_admin, provide the first approved shop
-  if (user.role === 'super_admin') {
+  // 3. Super Admin & Admin fallback: If logged in as admin or super_admin, provide the first approved shop
+  if (user.role === 'super_admin' || user.role === 'admin') {
     try {
       const { data: firstShop } = await supabase
         .from('shops')
-        .select('id, shop_name, status, owner_id, created_at')
-        .eq('status', 'approved')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (firstShop) return firstShop;
+      if (firstShop) {
+        return {
+          ...firstShop,
+          shop_name: firstShop.shop_name || firstShop.name || 'MonthlyGrocery',
+          status: firstShop.status || firstShop.kyc_status || 'approved',
+        };
+      }
     } catch {}
-
-    const db = readDb() as any;
-    const firstLocal = (db.shops || []).find((s: any) => s.status === 'approved' || !s.status);
-    if (firstLocal) return firstLocal;
   }
 
   return null;
 }
+
 
