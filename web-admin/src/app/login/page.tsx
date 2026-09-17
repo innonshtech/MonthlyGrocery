@@ -91,15 +91,16 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-[#090D16] via-[#0F172A] to-[#1E1B4B] flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-[#090D16]/65 backdrop-blur-xl rounded-3xl p-8 border border-slate-800/80 shadow-2xl">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2.5 bg-gradient-to-tr from-emerald-500 to-teal-600 rounded-xl text-white shadow-md shadow-emerald-500/20">
-            <Shield className="w-6 h-6" />
+        <div className="flex items-center gap-3.5 mb-8">
+          <div className="w-12 h-12 rounded-2xl overflow-hidden border border-amber-500/30 shadow-xl shadow-amber-500/15 flex-shrink-0 bg-[#0c120c] p-1 flex items-center justify-center">
+            <img src="/favicon.svg" alt="MonthlyGrocery Logo" className="w-full h-full object-contain rounded-xl" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">MonthlyGrocery</h1>
-            <p className="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">Super Admin Portal</p>
+            <p className="text-[10px] text-amber-400 font-bold tracking-wider uppercase">Super Admin Portal</p>
           </div>
         </div>
+
 
         {notice && (
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 rounded-xl">
