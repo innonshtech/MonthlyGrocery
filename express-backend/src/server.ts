@@ -2,10 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import { supabase } from './config/supabase';
 
 // Load config
 dotenv.config({ path: path.join(__dirname, '../.env') });
+
+import { db } from './config/db';
 
 import authRouter from './routes/auth';
 import productsRouter from './routes/products';
@@ -67,13 +68,35 @@ const sendConfig = (req: express.Request, res: express.Response) => {
 app.get('/api/config', sendConfig);
 app.get('/config', sendConfig);
 
-// Basic health check route
-app.get('/health', (req, res) => {
-  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'MonthlyGrocery Express Backend (AWS RDS PostgreSQL)',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
-// Seeding Script (Super Admin & Shop)
-async function seedDatabase() {
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'MonthlyGrocery Express Backend (AWS RDS PostgreSQL)',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Root welcome route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to the MonthlyGrocery Express API (Powered by AWS RDS)',
+    version: '1.0.0',
+    documentation: '/api/health',
+  });
+});
+
+// Seed / Verify super_admin on startup
+async function ensureSuperAdmin() {
   const saMobileRaw = process.env.SUPER_ADMIN_MOBILE || '+918830480015';
   const saName = process.env.SUPER_ADMIN_NAME || 'Vaibhav Thorat';
 
@@ -87,71 +110,61 @@ async function seedDatabase() {
   const saMobileClean = cleanPhone(saMobileRaw);
   const saMobileE164 = '+' + saMobileClean;
 
-  console.log('Running startup database checks...');
+  console.log('Running startup database checks on AWS RDS PostgreSQL...');
 
   try {
     // 1. Check if the Super Admin profile already exists
-    let { data: profile, error: profileError } = await supabase
+    let { data: profile, error: profileError } = await db
       .from('profiles')
       .select('*')
       .eq('phone', saMobileClean)
       .maybeSingle();
 
     if (profileError) {
-      console.error('Error checking admin profile:', profileError.message);
+      console.error('Error checking admin profile in AWS RDS:', profileError.message);
       return;
     }
 
     if (!profile) {
       console.log(`Seeding Super Admin user for ${saMobileE164}...`);
-      // Create user in auth.users
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      const { data: authUser, error: authError } = await db.auth.admin.createUser({
         phone: saMobileE164,
-        phone_confirm: true,
         user_metadata: {
           name: saName,
           role: 'super_admin',
         }
       });
 
-      if (authError || !authUser.user) {
-        console.error('Failed to create admin in auth.users:', authError?.message);
+      if (authError || !authUser?.user) {
+        console.error('Failed to create admin profile in AWS RDS:', authError?.message);
         return;
       }
 
       // Fetch the created profile
-      const { data: newProfile, error: fetchError } = await supabase
+      const { data: newProfile } = await db
         .from('profiles')
         .select('*')
         .eq('phone', saMobileClean)
-        .single();
-
-      if (fetchError || !newProfile) {
-        console.error('Failed to fetch new profile:', fetchError?.message);
-        return;
-      }
+        .maybeSingle();
 
       profile = newProfile;
     }
 
     // Force role to super_admin if it is not
-    if (profile.role !== 'super_admin') {
-      const { data: updated, error: updateError } = await supabase
+    if (profile && profile.role !== 'super_admin') {
+      await db
         .from('profiles')
         .update({ role: 'super_admin' })
-        .eq('id', profile.id)
-        .select()
-        .single();
+        .eq('id', profile.id);
       
-      if (!updateError && updated) {
-        profile = updated;
-      }
+      console.log(`Updated user ${saMobileE164} role to super_admin.`);
+    } else if (profile) {
+      console.log(`Super Admin verified in AWS RDS: ${profile.name || saName} (${saMobileE164})`);
     }
 
     console.log('Database startup checks complete.');
-
   } catch (err: any) {
-    console.error('Database seeding failed with exception:', err.message || err);
+    console.error('Database startup checks failed with exception:', err.message || err);
   }
 }
 
@@ -171,8 +184,9 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 if (!process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', async () => {
     console.log(`Node.js Express Server listening on http://0.0.0.0:${PORT}`);
-    await seedDatabase();
+    await ensureSuperAdmin();
   });
 }
 
 export default app;
+

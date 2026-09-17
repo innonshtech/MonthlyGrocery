@@ -625,32 +625,35 @@ async function seed() {
       console.log(`Inserted: ${created.name} (${created.id})`);
     }
 
-    insertedProducts.push({
-      id: inserted.id,
-      mrp: dp.mrp,
-      price: dp.price,
-      todays_deal: dp.todays_deal,
-    });
+    if (inserted) {
+      insertedProducts.push({
+        id: inserted.id,
+        mrp: dp.mrp,
+        price: dp.price,
+        todays_deal: dp.todays_deal,
+      });
 
-    // Refresh city prices for this SKU
-    await supabase.from('product_city_prices').delete().eq('product_id', inserted.id);
+      // Refresh city prices for this SKU
+      await supabase.from('product_city_prices').delete().eq('product_id', inserted.id);
 
-    const cityPrices = dp.city_prices.map(cp => ({
-      product_id: inserted.id,
-      city_name: cp.city_name,
-      mrp: cp.mrp,
-      price: cp.price,
-      wholesaler_price: cp.wholesaler_price,
-      is_live: cp.is_live
-    }));
+      const cityPrices = dp.city_prices.map(cp => ({
+        product_id: inserted.id,
+        city_name: cp.city_name,
+        mrp: cp.mrp,
+        price: cp.price,
+        wholesaler_price: cp.wholesaler_price,
+        is_live: cp.is_live
+      }));
 
-    const { error: cityPricesError } = await supabase
-      .from('product_city_prices')
-      .insert(cityPrices);
+      const { error: cityPricesError } = await supabase
+        .from('product_city_prices')
+        .insert(cityPrices);
 
-    if (cityPricesError) {
-      console.error(`Failed to insert city prices for ${inserted.name}:`, cityPricesError.message);
+      if (cityPricesError) {
+        console.error(`Failed to insert city prices for ${inserted.name}:`, cityPricesError.message);
+      }
     }
+
   }
 
   console.log("Product database seeding completed successfully!");

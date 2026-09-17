@@ -697,15 +697,15 @@ router.post('/register', authMiddleware, requireRole(['super_admin']), async (re
     } else {
       const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
         phone: cleanMobile,
-        phone_confirm: true,
         user_metadata: { name: owner_name.trim(), role: 'admin' }
       });
 
-      if (createUserError || !newUser.user) {
+      if (createUserError || !newUser?.user) {
         return res.status(500).json({ success: false, error: createUserError?.message || 'Failed to create owner user' });
       }
 
       ownerId = newUser.user.id;
+
 
       await supabase
         .from('profiles')

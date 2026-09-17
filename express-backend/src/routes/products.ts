@@ -501,7 +501,8 @@ router.get('/categories', async (req, res) => {
 
     const productCategoryNames = Array.from(
       new Set((products || []).map((p: any) => String(p.primary_category || '').trim()).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b));
+    ).sort((a: any, b: any) => String(a).localeCompare(String(b)));
+
 
     const categoriesFull = adminCategories.map((c: { id: string; name: string; image_url?: string }) => {
       const subcategories = (db.subcategories || [])

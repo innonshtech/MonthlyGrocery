@@ -32,16 +32,16 @@ async function createMerchant() {
     console.log("Creating new merchant user in auth...");
     const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
       phone: `+${cleanMobile}`,
-      phone_confirm: true,
       user_metadata: { name: ownerName, role: 'admin' }
     });
 
-    if (createUserError || !newUser.user) {
+    if (createUserError || !newUser?.user) {
       console.error("Failed to create auth user:", createUserError?.message);
       process.exit(1);
     }
 
     ownerId = newUser.user.id;
+
 
     // Create profile
     const { error: profileInsertError } = await supabase
