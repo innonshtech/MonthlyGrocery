@@ -292,16 +292,7 @@ router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: Aut
   try {
     const { data: shops, error } = await supabase
       .from('shops')
-      .select(`
-        id,
-        shop_name,
-        status,
-        created_at,
-        profiles (
-          name,
-          phone
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -316,18 +307,21 @@ router.get('/all', authMiddleware, requireRole(['super_admin']), async (req: Aut
       const territory = territoryMap.get(shop.id);
       return {
         ...shop,
+        shop_name: shop.shop_name || shop.name || 'MonthlyGrocery',
+        status: shop.status || shop.kyc_status || 'approved',
         state_name: territory?.state_name || null,
         district_name: territory?.district_name || null,
-        city: territory?.city || null,
+        city: territory?.city || shop.city || null,
         area_name: territory?.area_name || null,
-        pincode: territory?.pincode || null,
-        address_line: territory?.address_line || null,
+        pincode: territory?.pincode || shop.pincode || null,
+        address_line: territory?.address_line || shop.address || null,
         latitude: territory?.latitude != null ? parseFloat(territory.latitude) : null,
         longitude: territory?.longitude != null ? parseFloat(territory.longitude) : null,
         delivery_radius_km: territory?.delivery_radius_km || 5.0,
         is_open: territory?.is_open !== false,
       };
     });
+
 
     return res.json({ success: true, shops: enrichedShops });
   } catch (error: any) {

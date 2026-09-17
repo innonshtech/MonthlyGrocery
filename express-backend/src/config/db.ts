@@ -326,11 +326,20 @@ export class TableQueryBuilder {
       offsetSql = `OFFSET ${this.offsetCount}`;
     }
 
-    const selectSql = this.selectedColumns === '*' 
+    // Clean any Supabase/PostgREST nested relationship patterns like "relation_table (...)" across multiple lines
+    let rawCols = this.selectedColumns;
+    if (rawCols.includes('(')) {
+      rawCols = rawCols.replace(/\b\w+\s*\([^)]*\)/gs, '').replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '');
+      if (!rawCols) rawCols = '*';
+    }
+
+    const selectSql = rawCols === '*' 
       ? '*' 
-      : this.selectedColumns.split(',').map(c => c.trim()).map(c => c.includes('(') || c.includes(' ') ? c : `"${c}"`).join(', ');
+      : rawCols.split(',').map(c => c.trim()).filter(Boolean).map(c => c === '*' || c.includes(' ') ? c : `"${c}"`).join(', ');
 
     const sql = `SELECT ${selectSql} FROM "${this.tableName}" ${whereSql} ${orderSql} ${limitSql} ${offsetSql};`.trim();
+
+
 
     try {
       const res = await query(sql, params);
