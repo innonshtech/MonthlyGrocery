@@ -187,6 +187,7 @@ async function ensureDatabaseSchema() {
       await client.query(`
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS consumer_id VARCHAR(255);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS shop_id VARCHAR(255);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_amount NUMERIC(10, 2) DEFAULT 0;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10, 2) DEFAULT 0;
@@ -205,6 +206,8 @@ async function ensureDatabaseSchema() {
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_slot VARCHAR(100);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date DATE;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS items JSONB;
+        UPDATE orders SET consumer_id = user_id WHERE (consumer_id IS NULL OR consumer_id = '') AND user_id IS NOT NULL;
+        UPDATE orders SET user_id = consumer_id WHERE (user_id IS NULL OR user_id = '') AND consumer_id IS NOT NULL;
       `);
 
       // 6. Order Items Table
@@ -226,7 +229,8 @@ async function ensureDatabaseSchema() {
       await client.query(`
         CREATE TABLE IF NOT EXISTS addresses (
           id VARCHAR(255) PRIMARY KEY,
-          user_id VARCHAR(255) NOT NULL,
+          user_id VARCHAR(255),
+          consumer_id VARCHAR(255),
           full_name VARCHAR(255),
           phone VARCHAR(50),
           address_line TEXT,
@@ -241,6 +245,10 @@ async function ensureDatabaseSchema() {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE addresses ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+        ALTER TABLE addresses ADD COLUMN IF NOT EXISTS consumer_id VARCHAR(255);
+        UPDATE addresses SET consumer_id = user_id WHERE (consumer_id IS NULL OR consumer_id = '') AND user_id IS NOT NULL;
+        UPDATE addresses SET user_id = consumer_id WHERE (user_id IS NULL OR user_id = '') AND consumer_id IS NOT NULL;
       `);
 
       // 8. Coupons Table

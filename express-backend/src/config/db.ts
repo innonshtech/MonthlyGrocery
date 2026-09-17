@@ -387,6 +387,18 @@ export class TableQueryBuilder {
           if (row.name && !row.full_name) row.full_name = row.name;
         }
 
+        // Normalize order column aliases
+        if (this.tableName === 'orders') {
+          if (row.consumer_id && !row.user_id) row.user_id = row.consumer_id;
+          if (row.user_id && !row.consumer_id) row.consumer_id = row.user_id;
+        }
+
+        // Normalize address column aliases
+        if (this.tableName === 'addresses') {
+          if (row.consumer_id && !row.user_id) row.user_id = row.consumer_id;
+          if (row.user_id && !row.consumer_id) row.consumer_id = row.user_id;
+        }
+
         const keys = Object.keys(row).filter(k => row[k] !== undefined);
         const colNames = keys.map(k => `"${k}"`).join(', ');
         const params: any[] = [];
@@ -434,6 +446,16 @@ export class TableQueryBuilder {
   }
 
   private async executeUpdate(): Promise<{ data: any; error: any }> {
+    if (this.payloadData && typeof this.payloadData === 'object') {
+      if (this.tableName === 'orders') {
+        if (this.payloadData.consumer_id && !this.payloadData.user_id) this.payloadData.user_id = this.payloadData.consumer_id;
+        if (this.payloadData.user_id && !this.payloadData.consumer_id) this.payloadData.consumer_id = this.payloadData.user_id;
+      }
+      if (this.tableName === 'addresses') {
+        if (this.payloadData.consumer_id && !this.payloadData.user_id) this.payloadData.user_id = this.payloadData.consumer_id;
+        if (this.payloadData.user_id && !this.payloadData.consumer_id) this.payloadData.consumer_id = this.payloadData.user_id;
+      }
+    }
     const keys = Object.keys(this.payloadData || {}).filter(k => this.payloadData[k] !== undefined);
     if (keys.length === 0) return { data: null, error: null };
 
