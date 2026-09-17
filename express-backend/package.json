@@ -10,6 +10,7 @@
     "seed": "npx ts-node src/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1133.0",
     "@supabase/supabase-js": "^2.39.8",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -17,6 +18,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "pg": "^8.23.0",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },
@@ -27,6 +29,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.11.24",
+    "@types/pg": "^8.23.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
   }

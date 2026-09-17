@@ -1,9 +1,9 @@
 import { NativeModules, Platform } from 'react-native';
 
 /**
- * Live Vercel Cloud Production Server URL
+ * Live AWS EC2 Production Server URL
  */
-export const VERCEL_SERVER_URL = 'https://monthly-grocery-rust.vercel.app/api';
+export const AWS_SERVER_URL = 'http://13.233.159.143/api';
 
 /**
  * Local IP / Host for Wireless & ADB Debugging
@@ -11,10 +11,10 @@ export const VERCEL_SERVER_URL = 'https://monthly-grocery-rust.vercel.app/api';
 export const DEV_MACHINE_IP = '192.168.1.15';
 
 /**
- * Toggle to connect the app to the live Vercel Cloud Server.
+ * Toggle to connect the app to the live AWS EC2 Cloud Server.
  * Set to TRUE for production APK and cloud testing.
  */
-export const USE_VERCEL_SERVER = false;
+export const USE_AWS_SERVER = true;
 
 function isAndroidEmulator(): boolean {
   if (Platform.OS !== 'android') return false;
@@ -32,8 +32,8 @@ function isAndroidEmulator(): boolean {
 }
 
 function resolveApiBase(): string {
-  if (USE_VERCEL_SERVER) {
-    return VERCEL_SERVER_URL;
+  if (USE_AWS_SERVER) {
+    return AWS_SERVER_URL;
   }
   if (Platform.OS === 'android') {
     if (isAndroidEmulator()) {
@@ -45,3 +45,4 @@ function resolveApiBase(): string {
 }
 
 export const API_BASE = resolveApiBase();
+
