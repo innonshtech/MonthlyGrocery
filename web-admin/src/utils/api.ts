@@ -1,9 +1,14 @@
 const getApiBase = () => {
-  const envUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001/api').trim().replace(/\/+$/, '');
-  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/+$/, '');
+    return envUrl.endsWith('/api') || envUrl.endsWith('/backend-api') ? envUrl : `${envUrl}/api`;
+  }
+  // Use Next.js rewrite proxy by default to avoid HTTPS-to-HTTP mixed content blocks
+  return '/backend-api';
 };
 
 export const API_BASE = getApiBase();
+
 
 export function clearAdminSession() {
   if (typeof window === 'undefined') return;
