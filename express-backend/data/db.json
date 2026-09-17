@@ -87,62 +87,62 @@
     {
       "id": "cat-1",
       "name": "Atta & Rice",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519364045_rr06qa.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519364045_rr06qa.png"
     },
     {
       "id": "cat-2",
       "name": "Oils & Ghee",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519424287_w0855u.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519424287_w0855u.png"
     },
     {
       "id": "cat-3",
       "name": "Dals & Pulses",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519449900_nqjgm7.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519449900_nqjgm7.png"
     },
     {
       "id": "cat-4",
       "name": "Spices & Masala",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519512871_xqxvn4.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519512871_xqxvn4.png"
     },
     {
       "id": "cat-5",
       "name": "Dry Fruits",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519682060_os0mj7.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519682060_os0mj7.png"
     },
     {
       "id": "cat-6",
       "name": "Snacks",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519527095_nudj3k.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519527095_nudj3k.png"
     },
     {
       "id": "cat-7",
       "name": "Beverages",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519689921_f0wn1w.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519689921_f0wn1w.png"
     },
     {
       "id": "cat-8",
       "name": "Biscuits",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519549841_4syuid.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519549841_4syuid.png"
     },
     {
       "id": "cat-9",
       "name": "Cleaning",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519700416_r460pm.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519700416_r460pm.png"
     },
     {
       "id": "cat-10",
       "name": "Personal Care",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519709113_7pqzpt.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519709113_7pqzpt.png"
     },
     {
       "id": "cat-11",
       "name": "Home & Kitchen",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519732834_4c45kw.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519732834_4c45kw.png"
     },
     {
       "id": "cat-12",
       "name": "Baby Care",
-      "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788519741028_t25nks.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788519741028_t25nks.png"
     }
   ],
   "coupons": [
@@ -195,7 +195,7 @@
           "quantity": 2,
           "unit_price": 255,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
         },
         {
           "product_id": "p2",
@@ -204,7 +204,7 @@
           "quantity": 2,
           "unit_price": 525,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/daawat_rice_5kg.png"
         },
         {
           "product_id": "p3",
@@ -213,7 +213,7 @@
           "quantity": 1,
           "unit_price": 720,
           "unit": "5 L",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/fortune_oil_5l.png"
         },
         {
           "product_id": "p4",
@@ -222,7 +222,7 @@
           "quantity": 4,
           "unit_price": 142,
           "unit": "1 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/tata_toor_dal_1kg.png"
         }
       ]
     },
@@ -260,7 +260,7 @@
           "quantity": 2,
           "unit_price": 255,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
         },
         {
           "product_id": "p2",
@@ -269,7 +269,7 @@
           "quantity": 2,
           "unit_price": 525,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/daawat_rice_5kg.png"
         },
         {
           "product_id": "p3",
@@ -278,7 +278,7 @@
           "quantity": 1,
           "unit_price": 720,
           "unit": "5 L",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/fortune_oil_5l.png"
         },
         {
           "product_id": "p4",
@@ -287,7 +287,7 @@
           "quantity": 4,
           "unit_price": 142,
           "unit": "1 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/tata_toor_dal_1kg.png"
         }
       ]
     },
@@ -325,7 +325,7 @@
           "quantity": 2,
           "unit_price": 255,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
         },
         {
           "product_id": "p2",
@@ -334,7 +334,7 @@
           "quantity": 2,
           "unit_price": 525,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/daawat_rice_5kg.png"
         },
         {
           "product_id": "p3",
@@ -343,7 +343,7 @@
           "quantity": 1,
           "unit_price": 720,
           "unit": "5 L",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/fortune_oil_5l.png"
         },
         {
           "product_id": "p4",
@@ -352,7 +352,7 @@
           "quantity": 4,
           "unit_price": 142,
           "unit": "1 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/tata_toor_dal_1kg.png"
         }
       ]
     },
@@ -390,7 +390,7 @@
           "quantity": 2,
           "unit_price": 255,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
         },
         {
           "product_id": "p2",
@@ -399,7 +399,7 @@
           "quantity": 2,
           "unit_price": 525,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/daawat_rice_5kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/daawat_rice_5kg.png"
         },
         {
           "product_id": "p3",
@@ -408,7 +408,7 @@
           "quantity": 1,
           "unit_price": 720,
           "unit": "5 L",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/fortune_oil_5l.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/fortune_oil_5l.png"
         },
         {
           "product_id": "p4",
@@ -417,7 +417,7 @@
           "quantity": 4,
           "unit_price": 142,
           "unit": "1 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/tata_toor_dal_1kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/tata_toor_dal_1kg.png"
         }
       ]
     },
@@ -451,7 +451,7 @@
           "quantity": 17,
           "unit_price": 245,
           "unit": "5 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/aashirvaad_atta_10kg.png"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
         }
       ],
       "confirmed_at": "2026-09-10T12:27:34.956Z",
@@ -490,7 +490,7 @@
           "quantity": 19,
           "unit_price": 480,
           "unit": "1 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788515304411_rq407l.jpg"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788515304411_rq407l.jpg"
         }
       ],
       "confirmed_at": "2026-09-10T12:20:48.422Z",
@@ -529,7 +529,7 @@
           "quantity": 9,
           "unit_price": 480,
           "unit": "1 kg",
-          "image_url": "https://xlnebedclqcmgfbfqkbm.supabase.co/storage/v1/object/public/product-images/products/prod_1788515304411_rq407l.jpg"
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/prod_1788515304411_rq407l.jpg"
         }
       ],
       "confirmed_at": "2026-09-04T09:54:16.650Z",
