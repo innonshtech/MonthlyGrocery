@@ -329,22 +329,80 @@ export class TableQueryBuilder {
 
     // Clean any Supabase/PostgREST nested relationship patterns like "relation_table (...)" across multiple lines
     let rawCols = this.selectedColumns;
-    if (rawCols.includes('(')) {
-      rawCols = rawCols.replace(/\b\w+\s*\([^)]*\)/gs, '').replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '');
-      if (!rawCols) rawCols = '*';
+    const requestedNestedOrderItems = this.tableName === 'orders' && rawCols.includes('order_items');
+
+    if (rawCols && rawCols !== '*') {
+      const cols: string[] = [];
+      let depth = 0;
+      let currentToken = '';
+
+      for (let i = 0; i < rawCols.length; i++) {
+        const char = rawCols[i];
+        if (char === '(') {
+          depth++;
+        } else if (char === ')') {
+          depth--;
+        } else if (char === ',' && depth === 0) {
+          const trimmed = currentToken.trim();
+          if (trimmed && !trimmed.includes('(')) {
+            const colMatch = trimmed.match(/^([a-zA-Z0-9_*]+)/);
+            if (colMatch) cols.push(colMatch[1]);
+          }
+          currentToken = '';
+          continue;
+        }
+        currentToken += char;
+      }
+
+      const trimmed = currentToken.trim();
+      if (trimmed && !trimmed.includes('(')) {
+        const colMatch = trimmed.match(/^([a-zA-Z0-9_*]+)/);
+        if (colMatch) cols.push(colMatch[1]);
+      }
+
+      if (cols.length === 0 || cols.includes('*')) {
+        rawCols = '*';
+      } else {
+        // If items column exists in table (like orders), make sure it is fetched if nested items requested
+        if (requestedNestedOrderItems && !cols.includes('items')) {
+          cols.push('items');
+        }
+        rawCols = cols.map(c => c === '*' ? '*' : `"${c}"`).join(', ');
+      }
     }
 
-    const selectSql = rawCols === '*' 
-      ? '*' 
-      : rawCols.split(',').map(c => c.trim()).filter(Boolean).map(c => c === '*' || c.includes(' ') ? c : `"${c}"`).join(', ');
-
+    const selectSql = (rawCols && rawCols !== '*') ? rawCols : '*';
     const sql = `SELECT ${selectSql} FROM "${this.tableName}" ${whereSql} ${orderSql} ${limitSql} ${offsetSql};`.trim();
-
-
 
     try {
       const res = await query(sql, params);
       let resultData: any = res.rows;
+
+      // Hydrate nested relationships for orders if requested
+      if (requestedNestedOrderItems && Array.isArray(resultData)) {
+        for (const row of resultData) {
+          if (!row.order_items) {
+            let parsedItems: any[] = [];
+            if (Array.isArray(row.items)) {
+              parsedItems = row.items;
+            } else if (typeof row.items === 'string') {
+              try { parsedItems = JSON.parse(row.items); } catch {}
+            }
+            row.order_items = parsedItems.map((it: any) => ({
+              id: it.id || it.product_id,
+              product_id: it.product_id || it.id,
+              quantity: it.quantity || 1,
+              unit_price: it.price || it.unit_price || 0,
+              products: {
+                name: it.name || it.product_name || '',
+                image_url: it.image_url || '',
+                unit: it.unit || '1 unit',
+              },
+            }));
+          }
+        }
+      }
+
       if (this.isSingleResult) {
         if (res.rows.length === 0) {
           const err = new Error(`Row not found in table "${this.tableName}"`);
