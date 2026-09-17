@@ -20,8 +20,8 @@ export const pool = new Pool({
   connectionTimeoutMillis: 10000,
 });
 
-pool.on('error', (err: Error) => {
-  console.error('[AWS RDS DB] Idle client error:', err.message);
+pool.on('error', (err: any) => {
+  console.error('[AWS RDS DB] Idle client error:', err?.message || err);
 });
 
 
