@@ -15,7 +15,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MonthlyGrocery Super Admin Panel",
   description: "Super Admin Dashboard for MonthlyGrocery",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
+
 
 export default function RootLayout({
   children,

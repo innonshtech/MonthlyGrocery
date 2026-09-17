@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16a34a" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+    <linearGradient id="basketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f0fdf4" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Background Rounded App Tile -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" />
+  
+  <!-- Subtle Inner Ring Highlight -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="8" />
+
+  <!-- Shopping Basket / Grocery Bag Icon -->
+  <g filter="url(#shadow)">
+    <!-- Basket Handle -->
+    <path d="M196 210 V156 C196 122.8 222.8 96 256 96 C289.2 96 316 122.8 316 156 V210" 
+          fill="none" stroke="url(#basketGrad)" stroke-width="32" stroke-linecap="round" />
+    
+    <!-- Grocery Leaf Accent -->
+    <path d="M256 96 C256 96 290 50 336 60 C346 106 300 140 256 96 Z" 
+          fill="url(#leafGrad)" />
+    <path d="M256 96 C280 80 310 75 336 60" 
+          stroke="#15803d" stroke-width="6" stroke-linecap="round" fill="none" />
+
+    <!-- Bag / Basket Main Body -->
+    <path d="M140 210 H372 L350 400 C347 420 330 436 310 436 H202 C182 436 165 420 162 400 L140 210 Z" 
+          fill="url(#basketGrad)" />
+
+    <!-- Bag Detail Lines / Modern Grocery Texture -->
+    <path d="M210 260 V380" stroke="#16a34a" stroke-width="14" stroke-linecap="round" />
+    <path d="M256 260 V380" stroke="#16a34a" stroke-width="14" stroke-linecap="round" />
+    <path d="M302 260 V380" stroke="#16a34a" stroke-width="14" stroke-linecap="round" />
+
+    <!-- Fresh Fruit / Grocery Badge Dot -->
+    <circle cx="256" cy="320" r="24" fill="#f59e0b" />
+    <path d="M256 296 C262 286 270 284 274 286" stroke="#15803d" stroke-width="4" stroke-linecap="round" fill="none" />
+  </g>
+</svg>
