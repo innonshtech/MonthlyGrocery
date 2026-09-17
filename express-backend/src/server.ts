@@ -185,14 +185,79 @@ async function ensureDatabaseSchema() {
 
       // 5. Orders Table
       await client.query(`
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id VARCHAR(255);
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS shop_id VARCHAR(255);
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_amount NUMERIC(10, 2) DEFAULT 0;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10, 2) DEFAULT 0;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(10, 2) DEFAULT 0;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee NUMERIC(10, 2) DEFAULT 0;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(100);
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending';
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'pending';
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'cod';
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255);
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_address TEXT;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_address TEXT;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_latitude NUMERIC(10, 6);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_longitude NUMERIC(10, 6);
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_name VARCHAR(255);
-        ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_slot VARCHAR(100);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date DATE;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS items JSONB;
+      `);
+
+      // 6. Order Items Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS order_items (
+          id VARCHAR(255) PRIMARY KEY,
+          order_id VARCHAR(255) NOT NULL,
+          product_id VARCHAR(255) NOT NULL,
+          product_name VARCHAR(255),
+          price NUMERIC(10, 2) NOT NULL,
+          quantity INTEGER NOT NULL,
+          unit VARCHAR(50),
+          image_url TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 7. Addresses Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS addresses (
+          id VARCHAR(255) PRIMARY KEY,
+          user_id VARCHAR(255) NOT NULL,
+          full_name VARCHAR(255),
+          phone VARCHAR(50),
+          address_line TEXT,
+          area_name VARCHAR(255),
+          city VARCHAR(100),
+          pincode VARCHAR(20),
+          state_name VARCHAR(100),
+          landmark TEXT,
+          latitude NUMERIC(10, 6),
+          longitude NUMERIC(10, 6),
+          is_default BOOLEAN DEFAULT false,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 8. Coupons Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS coupons (
+          id VARCHAR(255) PRIMARY KEY,
+          code VARCHAR(100) UNIQUE NOT NULL,
+          title VARCHAR(255),
+          description TEXT,
+          discount_type VARCHAR(50) DEFAULT 'percentage',
+          discount_value NUMERIC(10, 2) NOT NULL,
+          min_order_amount NUMERIC(10, 2) DEFAULT 0,
+          max_discount_amount NUMERIC(10, 2),
+          is_active BOOLEAN DEFAULT true,
+          expires_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
       console.log('✅ AWS RDS PostgreSQL schema verified & aligned on startup.');
