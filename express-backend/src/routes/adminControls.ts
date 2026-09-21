@@ -957,6 +957,23 @@ router.post('/system-states-screen', authMiddleware, requireRole(['super_admin']
 // 1. Serviceable Locations (Geographical Zones)
 // ==========================================
 
+async function syncLocationsToPostgres(locations: ServiceableLocation[]) {
+  try {
+    for (const loc of locations) {
+      await supabase.from('serviceable_locations').upsert({
+        id: loc.id,
+        city: loc.city,
+        area_name: loc.area_name,
+        pincode: loc.pincode,
+        is_serviceable: loc.is_serviceable !== false,
+        shop_id: loc.shop_id || null,
+      });
+    }
+  } catch (err) {
+    console.warn('[syncLocationsToPostgres] Warning:', err);
+  }
+}
+
 // GET /locations: Retrieve all serviceable zones (Public)
 router.get('/locations', async (req, res) => {
   try {
@@ -1009,6 +1026,7 @@ router.post('/locations', authMiddleware, requireRole(['super_admin']), async (r
     }
 
     writeDb(db);
+    syncLocationsToPostgres(db.serviceable_locations).catch(() => {});
     return res.json({ success: true, locations: db.serviceable_locations });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
@@ -1022,6 +1040,9 @@ router.delete('/locations/:id', authMiddleware, requireRole(['super_admin']), as
     const { id } = req.params;
     db.serviceable_locations = db.serviceable_locations.filter(loc => loc.id !== id);
     writeDb(db);
+    try {
+      await supabase.from('serviceable_locations').delete().eq('id', id);
+    } catch {}
     return res.json({ success: true, locations: db.serviceable_locations });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
@@ -1100,6 +1121,7 @@ router.post('/locations/assign-pincode', authMiddleware, requireRole(['super_adm
     }
 
     writeDb(db);
+    syncLocationsToPostgres(db.serviceable_locations).catch(() => {});
     return res.json({
       success: true,
       message: `Successfully mapped ${updatedCount} area(s) in PIN code ${cleanPin} to the selected shop.`,
@@ -1131,6 +1153,7 @@ router.post('/locations/assign-area', authMiddleware, requireRole(['super_admin'
     targetLoc.shop_id = shop_id;
     targetLoc.is_serviceable = true;
     writeDb(db);
+    syncLocationsToPostgres(db.serviceable_locations).catch(() => {});
 
     return res.json({
       success: true,

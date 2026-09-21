@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   StatusBar,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +16,7 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
+import AppIcon from '../../components/AppIcon';
 import {
   fetchUserAddresses,
   cacheAddressesLocally,
@@ -27,6 +29,8 @@ import {
   CheckoutPlusIcon,
   CheckoutPercentIcon,
   CheckoutFallbackEmoji,
+  AddressRadioOnIcon,
+  AddressRadioOffIcon,
   THUMB_BG,
 } from '../../components/CheckoutFigmaIcons';
 import { calculateCouponDiscount } from '../../utils/couponDiscount';
@@ -46,6 +50,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
   const { showToast } = useToast();
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
 
   useEffect(() => {
     if (route?.params?.appliedCoupon) {
@@ -75,13 +81,13 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      const loadDefaultAddress = async () => {
-        if (route?.params?.selectedAddress) return;
+      const loadAddresses = async () => {
         if (!token) return;
         try {
           const list = await fetchUserAddresses(token);
           await cacheAddressesLocally(list);
-          if (list.length > 0) {
+          setSavedAddresses(list);
+          if (!selectedAddress && !route?.params?.selectedAddress && list.length > 0) {
             const defAddr = list.find((a) => a.isDefault) || list[0];
             setSelectedAddress(defAddr);
           }
@@ -89,8 +95,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
           /* ignore */
         }
       };
-      loadDefaultAddress();
-    }, [token, route?.params?.selectedAddress]),
+      loadAddresses();
+    }, [token, route?.params?.selectedAddress, selectedAddress]),
   );
 
   useFocusEffect(
@@ -214,10 +220,16 @@ export default function CheckoutScreen({ route, navigation }: any) {
     : '';
 
   const handleSelectAddress = () => {
+    // If no address saved yet, open LocationPicker first (Blinkit style)
+    // Otherwise open saved address list to pick from
     navigation.navigate('DeliveryAddress', {
       selectedAddress,
       fromCheckout: true,
     });
+  };
+
+  const handleAddNewAddress = () => {
+    navigation.navigate('LocationPicker', { fromCheckout: true });
   };
 
   const handleSelectSlot = () => {
@@ -335,31 +347,44 @@ export default function CheckoutScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* Address card */}
+        {/* Address card — Blinkit style */}
         {!selectedAddress ? (
-          <TouchableOpacity style={styles.sectionCard} onPress={handleSelectAddress} activeOpacity={0.75}>
+          <TouchableOpacity
+            style={styles.sectionCard}
+            onPress={() => setShowAddressModal(true)}
+            activeOpacity={0.75}
+          >
             <View style={styles.iconSquare}>
               <CheckoutHomeIcon size={20} />
             </View>
             <View style={styles.detailsBlock}>
               <View style={styles.titleRow}>
-                <Text style={styles.requiredTitle}>Add delivery address</Text>
+                <Text style={styles.cardTitle}>Address</Text>
                 <View style={styles.requiredBadge}>
                   <Text style={styles.requiredBadgeText}>REQUIRED</Text>
                 </View>
               </View>
-              <Text style={styles.cardSub}>Where should we deliver your order?</Text>
+              <Text style={styles.cardSub}>Select delivery location (Live GPS or Search)</Text>
             </View>
             <CheckoutPlusIcon size={20} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.sectionCard}>
+          <TouchableOpacity
+            style={styles.sectionCard}
+            onPress={() => setShowAddressModal(true)}
+            activeOpacity={0.75}
+          >
             <View style={styles.iconSquare}>
               <CheckoutHomeIcon size={20} />
             </View>
             <View style={styles.detailsBlock}>
               <View style={styles.titleRow}>
-                <Text style={styles.cardTitle}>{addressLabel}</Text>
+                <Text style={styles.cardTitle}>Address</Text>
+                {selectedAddress.tag ? (
+                  <View style={styles.tagBadge}>
+                    <Text style={styles.tagBadgeText}>{String(selectedAddress.tag).toUpperCase()}</Text>
+                  </View>
+                ) : null}
                 {selectedAddress.isDefault ? (
                   <View style={styles.defaultBadge}>
                     <Text style={styles.defaultBadgeText}>DEFAULT</Text>
@@ -370,11 +395,13 @@ export default function CheckoutScreen({ route, navigation }: any) {
                 {addressLine}
               </Text>
             </View>
-            <TouchableOpacity onPress={handleSelectAddress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <View style={styles.changeActionWrap}>
               <Text style={styles.changeLink}>Change</Text>
-            </TouchableOpacity>
-          </View>
+              <AppIcon name="chevron-right" size={14} color="#1E7A46" />
+            </View>
+          </TouchableOpacity>
         )}
+
 
         {/* Slot card */}
         {!selectedSlot ? (
@@ -544,6 +571,170 @@ export default function CheckoutScreen({ route, navigation }: any) {
           </View>
         )}
       </View>
+
+      {/* Blinkit-style Delivery Location Selector Sheet */}
+      <Modal
+        visible={showAddressModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAddressModal(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}
+          >
+            {/* Sheet Handle */}
+            <View style={styles.modalHandle} />
+
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Select Delivery Location</Text>
+                <Text style={styles.modalSubtitle}>Choose how you want to set your address</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.modalCloseBtn}
+                onPress={() => setShowAddressModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Option 1: Live Location */}
+            <TouchableOpacity
+              style={styles.locOptionCard}
+              onPress={() => {
+                setShowAddressModal(false);
+                navigation.navigate('LocationPicker', {
+                  fromCheckout: true,
+                  initialMode: 'default',
+                });
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.locOptionIconWrap, { backgroundColor: '#EAF5EE' }]}>
+                <AppIcon name="map-pin" size={22} color="#1E7A46" />
+              </View>
+              <View style={styles.locOptionTextWrap}>
+                <View style={styles.locOptionTitleRow}>
+                  <Text style={styles.locOptionTitle}>Use Current / Live Location</Text>
+                  <View style={styles.gpsBadge}>
+                    <Text style={styles.gpsBadgeText}>GPS</Text>
+                  </View>
+                </View>
+                <Text style={styles.locOptionSub}>
+                  Auto-detect street address using device GPS
+                </Text>
+              </View>
+              <AppIcon name="chevron-right" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+
+            {/* Option 2: Enter Another Location */}
+            <TouchableOpacity
+              style={styles.locOptionCard}
+              onPress={() => {
+                setShowAddressModal(false);
+                navigation.navigate('LocationPicker', {
+                  fromCheckout: true,
+                  initialMode: 'search',
+                });
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.locOptionIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                <AppIcon name="search" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.locOptionTextWrap}>
+                <Text style={styles.locOptionTitle}>Enter Another Location</Text>
+                <Text style={styles.locOptionSub}>
+                  Search for area, street, landmark, or city
+                </Text>
+              </View>
+              <AppIcon name="chevron-right" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+
+            {/* Saved Addresses Section */}
+            {savedAddresses.length > 0 && (
+              <View style={styles.savedSection}>
+                <View style={styles.savedSectionHeader}>
+                  <Text style={styles.savedSectionTitle}>SAVED ADDRESSES</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowAddressModal(false);
+                      navigation.navigate('DeliveryAddress', {
+                        selectedAddress,
+                        fromCheckout: true,
+                      });
+                    }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.viewAllText}>Manage</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
+                  {savedAddresses.map((addr) => {
+                    const isSelected = selectedAddress?.id === addr.id;
+                    const formatted = [addr.flat, addr.building, addr.street || addr.area, addr.city, addr.pincode]
+                      .filter(Boolean)
+                      .join(', ');
+                    return (
+                      <TouchableOpacity
+                        key={addr.id}
+                        style={[
+                          styles.savedAddressItem,
+                          isSelected && styles.savedAddressItemSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedAddress(addr);
+                          setShowAddressModal(false);
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        <View style={styles.savedAddressIcon}>
+                          <AppIcon
+                            name={addr.tag?.toLowerCase() === 'work' ? 'building' : 'home'}
+                            size={18}
+                            color={isSelected ? '#1E7A46' : '#64748B'}
+                          />
+                        </View>
+                        <View style={styles.savedAddressBody}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={styles.savedAddressTag}>
+                              {addr.tag || 'Saved Address'}
+                            </Text>
+                            {addr.isDefault && (
+                              <View style={styles.miniDefaultBadge}>
+                                <Text style={styles.miniDefaultText}>DEFAULT</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.savedAddressLine} numberOfLines={2}>
+                            {formatted}
+                          </Text>
+                        </View>
+                        <View style={styles.savedRadioWrap}>
+                          {isSelected ? (
+                            <AddressRadioOnIcon size={20} />
+                          ) : (
+                            <AddressRadioOffIcon size={20} />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -915,5 +1106,205 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 20,
     color: '#9CA3AF',
+  },
+  tagBadge: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  tagBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 10.5,
+    lineHeight: 13,
+    color: '#475569',
+    textTransform: 'uppercase',
+  },
+  changeActionWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: '#111827',
+  },
+  modalSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  locOptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: '#F8FAF9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+    gap: 12,
+  },
+  locOptionIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locOptionTextWrap: {
+    flex: 1,
+  },
+  locOptionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  locOptionTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: '#111827',
+  },
+  locOptionSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 12.5,
+    lineHeight: 16,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  gpsBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  gpsBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 9.5,
+    lineHeight: 12,
+    color: '#15803D',
+  },
+  savedSection: {
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  savedSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  savedSectionTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+  },
+  viewAllText: {
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    lineHeight: 16,
+    color: '#1E7A46',
+  },
+  savedAddressItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 8,
+    gap: 10,
+  },
+  savedAddressItemSelected: {
+    borderColor: '#1E7A46',
+    backgroundColor: '#F7FDF9',
+  },
+  savedAddressIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savedAddressBody: {
+    flex: 1,
+    gap: 2,
+  },
+  savedAddressTag: {
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: '#111827',
+  },
+  miniDefaultBadge: {
+    backgroundColor: '#EAF5EE',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 3,
+  },
+  miniDefaultText: {
+    ...FONTS.muktaBold,
+    fontSize: 9,
+    lineHeight: 11,
+    color: '#1E7A46',
+  },
+  savedAddressLine: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#64748B',
+  },
+  savedRadioWrap: {
+    paddingLeft: 4,
   },
 });

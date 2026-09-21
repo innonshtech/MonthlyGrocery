@@ -2,6 +2,7 @@ export type LocationParams = {
   city?: string | null;
   area?: string | null;
   pincode?: string | null;
+  shop_id?: string | null;
 };
 
 export function normalizePincode(value?: string | null): string {
@@ -23,6 +24,9 @@ export function appendLocationParams(baseUrl: string, params: LocationParams): s
   const pin = normalizePincode(params.pincode);
   if (pin) {
     parts.push(`pincode=${encodeURIComponent(pin)}`);
+  }
+  if (params.shop_id?.trim()) {
+    parts.push(`shop_id=${encodeURIComponent(params.shop_id.trim())}`);
   }
   if (!parts.length) return baseUrl;
   const separator = baseUrl.includes('?') ? '&' : '?';

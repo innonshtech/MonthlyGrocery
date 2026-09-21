@@ -227,6 +227,23 @@ export async function cacheAddressesLocally(addresses: AddressItem[]) {
   }
 }
 
+export async function setDefaultUserAddress(
+  token: string,
+  addressId: string,
+): Promise<{ address: AddressItem; addresses: AddressItem[] }> {
+  const res = await fetch(`${API_BASE}/addresses/${addressId}/default`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Failed to set default address');
+  }
+  return { address: data.address, addresses: data.addresses || [] };
+}
+
 export interface ServiceabilityCheckResult {
   isServiceable: boolean;
   shopId: string | null;
@@ -276,6 +293,7 @@ export async function checkAddressServiceability(params: {
 export async function forwardGeocodeLocation(query: string): Promise<{
   latitude?: number;
   longitude?: number;
+  street?: string;
   area?: string;
   city?: string;
   district?: string;

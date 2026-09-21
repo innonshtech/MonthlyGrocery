@@ -20,7 +20,9 @@ export const COLORS = {
   // Ink / Text
   ink900: '#17251E', // Primary text
   ink700: '#3D4A44', // Secondary text
+  ink600: '#536059', // Mid text
   ink500: '#6B7772', // Muted / captions
+  ink400: '#8EA39A', // Light muted
   ink300: '#A7B0AB', // Placeholder / disabled
 
   // Surfaces

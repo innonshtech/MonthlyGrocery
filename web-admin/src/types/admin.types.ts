@@ -1,6 +1,9 @@
 export interface Shop {
   id: string;
   shop_name: string;
+  owner_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
   status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   state_name?: string | null;
@@ -8,14 +11,27 @@ export interface Shop {
   city?: string | null;
   area_name?: string | null;
   address_line?: string | null;
+  street_address?: string | null;
+  detailed_address?: string | null;
   pincode?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   delivery_radius_km?: number | null;
   is_open?: boolean;
-  profiles: {
+  aadhaar_number?: string | null;
+  aadhaar_doc_url?: string | null;
+  fssai_number?: string | null;
+  fssai_doc_url?: string | null;
+  pan_number?: string | null;
+  pan_doc_url?: string | null;
+  gstin?: string | null;
+  shop_photo_url?: string | null;
+  rejection_reason?: string | null;
+  onboarding_source?: string | null;
+  profiles?: {
     name: string;
     phone: string;
+    email?: string;
   };
 }
 

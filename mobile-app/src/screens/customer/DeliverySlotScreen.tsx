@@ -42,7 +42,8 @@ type DayOption = {
 export default function DeliverySlotScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
-  const { currentSlot, shopId, pincode, city, area } = route.params || {};
+  const currentSlot = route.params?.currentSlot || route.params?.selectedSlot;
+  const { shopId, pincode, city, area } = route.params || {};
 
   const [days, setDays] = useState<DayOption[]>([]);
   const [selectedDateId, setSelectedDateId] = useState<string>('');
@@ -59,7 +60,7 @@ export default function DeliverySlotScreen({ navigation, route }: any) {
       if (city) q.set('city', city);
       if (area) q.set('area', area);
 
-      const res = await fetch(`${API_BASE}/api/delivery-slots?${q.toString()}`);
+      const res = await fetch(`${API_BASE}/delivery-slots?${q.toString()}`);
       const data = await res.json();
       const list: DayOption[] = data.days || [];
       setDays(list);

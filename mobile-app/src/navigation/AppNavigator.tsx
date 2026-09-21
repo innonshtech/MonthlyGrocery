@@ -32,6 +32,7 @@ import OffersCouponsScreen from '../screens/customer/OffersCouponsScreen';
 import MyCouponsScreen from '../screens/customer/MyCouponsScreen';
 import DeliverySlotScreen from '../screens/customer/DeliverySlotScreen';
 import AddAddressScreen from '../screens/customer/AddAddressScreen';
+import LocationPickerScreen from '../screens/customer/LocationPickerScreen';
 import PaymentMethodScreen from '../screens/customer/PaymentMethodScreen';
 import PaymentFailedScreen from '../screens/customer/PaymentFailedScreen';
 import OneClickCartScreen from '../screens/customer/OneClickCartScreen';
@@ -81,6 +82,7 @@ export default function AppNavigator() {
           <Stack.Screen name="SavedAddresses" component={SavedAddressesScreen} />
           <Stack.Screen name="DeliveryAddress" component={SavedAddressesScreen} />
           <Stack.Screen name="AddAddress" component={AddAddressScreen} />
+          <Stack.Screen name="LocationPicker" component={LocationPickerScreen} />
           <Stack.Screen name="DeliverySlot" component={DeliverySlotScreen} />
           <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
           <Stack.Screen name="PaymentFailed" component={PaymentFailedScreen} />

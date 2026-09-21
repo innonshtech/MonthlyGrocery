@@ -58,3 +58,28 @@ export async function fetchNearbyShops(params: {
     return [];
   }
 }
+
+/**
+ * Fetch all shops that serve a specific area — used by the ShopPickerSlide
+ * after a customer selects an area.
+ */
+export async function fetchShopsForArea(
+  areaName: string,
+  city?: string | null,
+): Promise<NearbyShop[]> {
+  try {
+    const qs = new URLSearchParams();
+    qs.set('area', areaName.trim());
+    if (city?.trim()) qs.set('city', city.trim());
+
+    const res = await fetch(`${API_BASE}/shops/by-area?${qs.toString()}`);
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    return data.success && Array.isArray(data.shops) ? (data.shops as NearbyShop[]) : [];
+  } catch (err) {
+    console.warn('Failed to fetch shops for area:', err);
+    return [];
+  }
+}
+

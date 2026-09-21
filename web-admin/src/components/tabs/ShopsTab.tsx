@@ -1,10 +1,36 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Store, Trash2, X, Search, MapPin, Zap, Layers, CheckCircle2, AlertTriangle, Plus } from 'lucide-react';
+import {
+  Store,
+  Trash2,
+  X,
+  Search,
+  MapPin,
+  Zap,
+  Layers,
+  CheckCircle2,
+  AlertTriangle,
+  Plus,
+  FileText,
+  ShieldCheck,
+  Eye,
+  ExternalLink,
+  Lock,
+  Upload,
+  Camera,
+  Check,
+  AlertCircle,
+  RefreshCw,
+  Phone,
+  User,
+  Building,
+  FileCheck,
+  Map,
+} from 'lucide-react';
 import { Shop, AdminState, AdminDistrict, City, Area, ServiceableLocation } from '../../types/admin.types';
 import { resolvePackUnitLabel } from '../../lib/packUnits';
-import { apiFetch } from '../../utils/api';
+import { apiFetch, API_BASE } from '../../utils/api';
 import { validateIndianPincode } from '../../utils/pincodeValidator';
 
 interface ShopsTabProps {
@@ -50,11 +76,26 @@ interface ShopsTabProps {
   handleBulkAssignPincode?: (pincode: string, shopId: string, city?: string) => Promise<void>;
   handleDeleteLocation?: (locId: string) => void;
   handleRegisterShop: (e: React.FormEvent) => void;
-  handleUpdateShopStatus: (shopId: string, status: 'approved' | 'rejected') => void;
+  handleUpdateShopStatus: (
+    shopId: string,
+    status: 'approved' | 'rejected',
+    rejectionReason?: string,
+    approvalData?: {
+      area_name?: string;
+      city?: string;
+      pincode?: string;
+      delivery_radius_km?: number;
+      latitude?: number;
+      longitude?: number;
+      assigned_areas?: Array<{ area_name: string; city?: string; pincode?: string } | string>;
+      additional_areas?: string[];
+    }
+  ) => void | Promise<void>;
   handleDeleteShop: (shopId: string, shopName: string) => void;
   fetchData: () => void;
   masterProductsList: any[];
   token: string | null;
+  setActiveTab?: (tab: any) => void;
 }
 
 export default function ShopsTab({
@@ -104,8 +145,25 @@ export default function ShopsTab({
   handleDeleteShop,
   fetchData,
   masterProductsList,
-  token
+  token,
+  setActiveTab,
 }: ShopsTabProps) {
+  // Helper to safely resolve document URLs (rewriting S3 403 URLs to backend media stream proxy)
+  const getSafeDocUrl = (url?: string | null): string => {
+    if (!url) return '';
+    const s = String(url).trim();
+    if (!s) return '';
+    if (s.startsWith('data:')) return s;
+    const s3Match = s.match(/amazonaws\.com\/(.+)$/);
+    if (s3Match) {
+      return `http://localhost:8001/api/shops/doc-file/${s3Match[1]}`;
+    }
+    if (s.startsWith('/api/shops/doc-file/')) {
+      return `http://localhost:8001${s}`;
+    }
+    return s;
+  };
+
   // Tab View Mode: 'table' vs 'register' vs 'coverage' vs 'map'
   const [viewMode, setViewMode] = useState<'table' | 'register' | 'coverage' | 'map'>('table');
   const [selectedShopForZones, setSelectedShopForZones] = useState<Shop | null>(null);
@@ -122,6 +180,102 @@ export default function ShopsTab({
   const [manualPincodeMode, setManualPincodeMode] = useState(false);
   const [manualCityMode, setManualCityMode] = useState(false);
 
+  // Review Application Modal State (tracked by ID for clean React state without re-render loops)
+  const [selectedReviewShopId, setSelectedReviewShopId] = useState<string | null>(null);
+  const selectedShopForReview = useMemo(() => {
+    if (!selectedReviewShopId) return null;
+    return shops.find((s) => s.id === selectedReviewShopId) || null;
+  }, [shops, selectedReviewShopId]);
+  const setSelectedShopForReview = (shop: Shop | null) => {
+    setSelectedReviewShopId(shop ? shop.id : null);
+  };
+
+  // Approval & Area Assignment Modal State
+  const [approveModalShop, setApproveModalShop] = useState<Shop | null>(null);
+  const [approveSelectedCity, setApproveSelectedCity] = useState('');
+  const [approveCustomCity, setApproveCustomCity] = useState('');
+  const [approveIsCustomCity, setApproveIsCustomCity] = useState(false);
+  const [approveSelectedArea, setApproveSelectedArea] = useState('');
+  const [approveCustomArea, setApproveCustomArea] = useState('');
+  const [approveIsCustomArea, setApproveIsCustomArea] = useState(false);
+  const [approvePincode, setApprovePincode] = useState('');
+  const [approveRadius, setApproveRadius] = useState('5.0');
+  const [approveAdditionalAreas, setApproveAdditionalAreas] = useState<string[]>([]);
+  const [approveNewCustomZone, setApproveNewCustomZone] = useState('');
+  const [approveSubmitting, setApproveSubmitting] = useState(false);
+
+  // Open Approval with Area Assignment Dialog
+  const openApproveModal = (shop: Shop) => {
+    setApproveModalShop(shop);
+    const shopCity = (shop.city || '').trim();
+    const matchedCity = (cities || []).find(
+      (c) => c.name.toLowerCase() === shopCity.toLowerCase() || c.id === shopCity
+    );
+
+    if (matchedCity) {
+      setApproveSelectedCity(matchedCity.name);
+      setApproveIsCustomCity(false);
+      setApproveCustomCity('');
+    } else if (shopCity) {
+      setApproveSelectedCity(shopCity);
+      setApproveIsCustomCity(false);
+      setApproveCustomCity('');
+    } else {
+      const defaultCity = cities && cities.length > 0 ? cities[0].name : 'Pimpri-Chinchwad';
+      setApproveSelectedCity(defaultCity);
+      setApproveIsCustomCity(false);
+      setApproveCustomCity('');
+    }
+
+    setApproveSelectedArea(shop.area_name || '');
+    setApproveCustomArea(shop.area_name || '');
+    setApproveIsCustomArea(false);
+    setApprovePincode(shop.pincode || '');
+    setApproveRadius(String(shop.delivery_radius_km || '5.0'));
+
+    // Populate initial assigned zones from shop's detected area and locations table
+    const initialZones: string[] = [];
+    if (shop.area_name && shop.area_name.trim()) {
+      initialZones.push(shop.area_name.trim());
+    }
+    if (locations && shop.id) {
+      locations
+        .filter((l) => l.shop_id === shop.id && l.area_name)
+        .forEach((l) => {
+          if (!initialZones.includes(l.area_name)) {
+            initialZones.push(l.area_name);
+          }
+        });
+    }
+    setApproveAdditionalAreas(initialZones);
+  };
+
+  // Rejection Reason Modal State
+  const [rejectModalShop, setRejectModalShop] = useState<Shop | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+
+  // Lightbox Image / Document Preview Modal State
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
+  const [previewDocTitle, setPreviewDocTitle] = useState<string>('');
+
+  // Extended Direct Register Form States
+  const [regStreetAddress, setRegStreetAddress] = useState('');
+  const [regDetailedAddress, setRegDetailedAddress] = useState('');
+  const [regAadhaarNumber, setRegAadhaarNumber] = useState('');
+  const [regAadhaarDocUrl, setRegAadhaarDocUrl] = useState('');
+  const [regAadhaarUploading, setRegAadhaarUploading] = useState(false);
+  const [regFssaiNumber, setRegFssaiNumber] = useState('');
+  const [regFssaiDocUrl, setRegFssaiDocUrl] = useState('');
+  const [regFssaiUploading, setRegFssaiUploading] = useState(false);
+  const [regPanNumber, setRegPanNumber] = useState('');
+  const [regPanDocUrl, setRegPanDocUrl] = useState('');
+  const [regPanUploading, setRegPanUploading] = useState(false);
+  const [regGstin, setRegGstin] = useState('');
+  const [regShopPhotoUrl, setRegShopPhotoUrl] = useState('');
+  const [regShopPhotoUploading, setRegShopPhotoUploading] = useState(false);
+  const [directRegisterSubmitting, setDirectRegisterSubmitting] = useState(false);
+
   // Filtered shops list for Store Directory Table
   const filteredShops = useMemo(() => {
     return shops.filter((shop) => {
@@ -131,11 +285,19 @@ export default function ShopsTab({
       if (!shopSearchQuery.trim()) return true;
       const q = shopSearchQuery.trim().toLowerCase();
       const nameMatch = (shop.shop_name || '').toLowerCase().includes(q);
-      const ownerMatch = (shop.profiles?.name || '').toLowerCase().includes(q) || (shop.profiles?.phone || '').includes(q);
-      const cityMatch = (shop.city || '').toLowerCase().includes(q) || (shop.area_name || '').toLowerCase().includes(q) || (shop.pincode || '').includes(q);
+      const ownerMatch =
+        (shop.profiles?.name || shop.owner_name || '').toLowerCase().includes(q) ||
+        (shop.profiles?.phone || '').includes(q);
+      const cityMatch =
+        (shop.city || '').toLowerCase().includes(q) ||
+        (shop.area_name || '').toLowerCase().includes(q) ||
+        (shop.pincode || '').includes(q) ||
+        (shop.street_address || '').toLowerCase().includes(q);
       return nameMatch || ownerMatch || cityMatch;
     });
   }, [shops, shopStatusFilter, shopSearchQuery]);
+
+  const pendingShops = useMemo(() => shops.filter((s) => s.status === 'pending'), [shops]);
 
   // Cascading City -> Pincode -> Area computations for Store Registration
   const activeCityObj = useMemo(() => {
@@ -222,6 +384,123 @@ export default function ShopsTab({
     return validateIndianPincode(bulkPin.trim());
   }, [bulkPin]);
 
+  // Cascading City -> Area computations for Store Approval Territory Mapping
+  const approveEffectiveCity = useMemo(() => {
+    return (approveIsCustomCity ? approveCustomCity : approveSelectedCity).trim();
+  }, [approveIsCustomCity, approveCustomCity, approveSelectedCity]);
+
+  const approveModalCityObj = useMemo(() => {
+    if (!approveEffectiveCity) return undefined;
+    const cleanCity = approveEffectiveCity.toLowerCase();
+    return (cities || []).find(
+      (c) => c.name.trim().toLowerCase() === cleanCity || c.id === approveEffectiveCity
+    );
+  }, [cities, approveEffectiveCity]);
+
+  const approveModalAreas = useMemo(() => {
+    if (!approveEffectiveCity) return [];
+    const cleanCity = approveEffectiveCity.toLowerCase();
+
+    // 1. Get from master areas table
+    const fromAreas = (areas || []).filter((a) => {
+      if (approveModalCityObj && a.city_id === approveModalCityObj.id) return true;
+      if (a.city_id === approveEffectiveCity) return true;
+      if ((a as any).city_name && (a as any).city_name.trim().toLowerCase() === cleanCity) return true;
+      return false;
+    });
+
+    // 2. Also check locations table under this city
+    const fromLocations = (locations || [])
+      .filter((loc) => (loc.city || '').trim().toLowerCase() === cleanCity)
+      .map((loc) => ({
+        id: loc.id,
+        city_id: approveModalCityObj?.id || approveEffectiveCity,
+        name: loc.area_name,
+        pincode: loc.pincode,
+      }));
+
+    const merged: Area[] = [...fromAreas];
+    for (const locArea of fromLocations) {
+      const exists = merged.some(
+        (a) =>
+          a.name.trim().toLowerCase() === locArea.name.trim().toLowerCase() &&
+          String(a.pincode || '').trim() === String(locArea.pincode || '').trim()
+      );
+      if (!exists) {
+        merged.push(locArea as Area);
+      }
+    }
+
+    return merged;
+  }, [areas, locations, approveModalCityObj, approveEffectiveCity]);
+
+  const approveModalPincodes = useMemo(() => {
+    if (!approveEffectiveCity) return [];
+    const pinSet = new Set<string>();
+    approveModalAreas.forEach((a) => {
+      const pin = a.pincode ? String(a.pincode).replace(/\D/g, '').slice(0, 6) : '';
+      if (pin.length === 6) pinSet.add(pin);
+    });
+    return Array.from(pinSet).sort();
+  }, [approveModalAreas, approveEffectiveCity]);
+
+  const approvePinValidation = useMemo(() => {
+    if (!approvePincode || !approvePincode.trim()) return null;
+    return validateIndianPincode(approvePincode.trim());
+  }, [approvePincode]);
+
+  // Upload document helper for Direct Onboarding form
+  const handleUploadDocument = async (file: File, type: 'aadhaar' | 'fssai' | 'pan' | 'shop_photo') => {
+    if (!file) return;
+
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Maximum photo size is 5MB. Please choose an image under 5MB.');
+      return;
+    }
+
+    if (type === 'aadhaar') setRegAadhaarUploading(true);
+    if (type === 'fssai') setRegFssaiUploading(true);
+    if (type === 'pan') setRegPanUploading(true);
+    if (type === 'shop_photo') setRegShopPhotoUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('document', file);
+      formData.append('doc_type', type);
+
+      const freshToken = token || localStorage.getItem('@admin_token');
+      const res = await fetch(`${API_BASE}/shops/upload-doc`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${freshToken}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      const uploadedUrl = data.document_url || data.file_url || data.url;
+      if (!res.ok || !uploadedUrl) {
+        throw new Error(data.error || 'Document upload failed. Maximum size is 5MB.');
+      }
+
+      if (type === 'aadhaar') setRegAadhaarDocUrl(uploadedUrl);
+      if (type === 'fssai') setRegFssaiDocUrl(uploadedUrl);
+      if (type === 'pan') setRegPanDocUrl(uploadedUrl);
+      if (type === 'shop_photo') setRegShopPhotoUrl(uploadedUrl);
+    } catch (err: any) {
+      alert(`Error uploading document: ${err.message || 'Network error'}`);
+    } finally {
+      if (type === 'aadhaar') setRegAadhaarUploading(false);
+      if (type === 'fssai') setRegFssaiUploading(false);
+      if (type === 'pan') setRegPanUploading(false);
+      if (type === 'shop_photo') setRegShopPhotoUploading(false);
+    }
+  };
+
+  // Google Maps GPS Auto-Detect with locked street address
   const handleDetectAdminGps = async () => {
     setDetectingAdminGps(true);
 
@@ -233,15 +512,24 @@ export default function ShopsTab({
         });
         if (res.success && res.location) {
           const loc = res.location;
-          if (loc.city && !regCity && setRegCity) setRegCity(loc.city);
-          if (loc.area && !regArea && setRegArea) setRegArea(loc.area);
-          if (loc.pincode && !regPincode && setRegPincode) setRegPincode(loc.pincode);
+          if (loc.formatted_address) {
+            setRegStreetAddress(loc.formatted_address);
+          } else if (loc.street) {
+            setRegStreetAddress(loc.street);
+          }
+          if (loc.city && setRegCity) setRegCity(loc.city);
+          if (loc.area && setRegArea) setRegArea(loc.area);
+          if (loc.pincode && setRegPincode) setRegPincode(loc.pincode);
         }
-      } catch {}
+      } catch (err) {
+        console.error('Reverse geocode error:', err);
+      }
     };
 
     const fallbackToGeocoding = async () => {
-      const q = [regArea, regCity, regPincode].filter(Boolean).join(', ') || (regCity ? `${regCity}, Maharashtra` : 'Pune, Maharashtra');
+      const q =
+        [regArea, regCity, regPincode].filter(Boolean).join(', ') ||
+        (regCity ? `${regCity}, Maharashtra` : 'Pune, Maharashtra');
       try {
         const res = await apiFetch('/addresses/forward-geocode', {
           method: 'POST',
@@ -252,6 +540,9 @@ export default function ShopsTab({
           const lng = parseFloat(res.location.longitude.toFixed(6));
           if (setRegLat) setRegLat(String(lat));
           if (setRegLng) setRegLng(String(lng));
+          if (res.location.formatted_address) {
+            setRegStreetAddress(res.location.formatted_address);
+          }
         } else {
           if (setRegLat) setRegLat('18.5204');
           if (setRegLng) setRegLng('73.8567');
@@ -278,10 +569,181 @@ export default function ShopsTab({
           console.warn('Browser GPS error, falling back to address geocoding:', err?.message);
           await fallbackToGeocoding();
         },
-        { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
       );
     } else {
       await fallbackToGeocoding();
+    }
+  };
+
+  // Direct Admin Onboarding Submission
+  const handleAdminDirectRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !regShopName.trim() || !regOwnerName.trim() || !regOwnerMobile.trim()) {
+      alert('Please fill out all store and owner fields');
+      return;
+    }
+    if (!regStateId || !regDistrictId || !regCity.trim()) {
+      alert('Please select state, district, and city for merchant access');
+      return;
+    }
+
+    let validatedPin: string | undefined = undefined;
+    if (regPincode && regPincode.trim()) {
+      const pinVal = validateIndianPincode(regPincode.trim());
+      if (!pinVal.isValid) {
+        alert(`Invalid PIN Code: ${pinVal.error}`);
+        return;
+      }
+      validatedPin = pinVal.formatted;
+    }
+
+    setDirectRegisterSubmitting(true);
+    try {
+      const res = await apiFetch('/shops/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          shop_name: regShopName.trim(),
+          owner_name: regOwnerName.trim(),
+          owner_mobile: regOwnerMobile.trim(),
+          state_id: regStateId,
+          district_id: regDistrictId,
+          city: regCity.trim(),
+          area_name: regArea.trim() || undefined,
+          pincode: validatedPin || undefined,
+          street_address: regStreetAddress.trim() || undefined,
+          detailed_address: regDetailedAddress.trim() || undefined,
+          latitude: regLat ? parseFloat(regLat) : undefined,
+          longitude: regLng ? parseFloat(regLng) : undefined,
+          delivery_radius_km: regRadius ? parseFloat(regRadius) : 5.0,
+          aadhaar_number: regAadhaarNumber.trim() || undefined,
+          aadhaar_doc_url: regAadhaarDocUrl || undefined,
+          fssai_number: regFssaiNumber.trim() || undefined,
+          fssai_doc_url: regFssaiDocUrl || undefined,
+          pan_number: regPanNumber.trim() || undefined,
+          pan_doc_url: regPanDocUrl || undefined,
+          gstin: regGstin.trim() || undefined,
+          shop_photo_url: regShopPhotoUrl || undefined,
+        }),
+      });
+
+      if (res.success) {
+        alert('🎉 Merchant store successfully registered & approved with all documents!');
+        // Reset form
+        setRegShopName('');
+        setRegOwnerName('');
+        setRegOwnerMobile('');
+        setRegStateId('');
+        setRegDistrictId('');
+        setRegCity('');
+        if (setRegArea) setRegArea('');
+        if (setRegPincode) setRegPincode('');
+        if (setRegLat) setRegLat('');
+        if (setRegLng) setRegLng('');
+        if (setRegRadius) setRegRadius('5.0');
+        setRegStreetAddress('');
+        setRegDetailedAddress('');
+        setRegAadhaarNumber('');
+        setRegAadhaarDocUrl('');
+        setRegFssaiNumber('');
+        setRegFssaiDocUrl('');
+        setRegPanNumber('');
+        setRegPanDocUrl('');
+        setRegGstin('');
+        setRegShopPhotoUrl('');
+        setViewMode('table');
+        fetchData();
+      } else {
+        alert(res.error || 'Failed to register store');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error registering store');
+    } finally {
+      setDirectRegisterSubmitting(false);
+    }
+  };
+
+  // Submit Rejection with Reason
+  const handleConfirmRejection = async () => {
+    if (!rejectModalShop || !token) return;
+    if (!rejectionReasonInput.trim()) {
+      alert('Please enter a rejection reason to inform the merchant.');
+      return;
+    }
+
+    setRejectSubmitting(true);
+    try {
+      await handleUpdateShopStatus(rejectModalShop.id, 'rejected', rejectionReasonInput.trim());
+      setRejectModalShop(null);
+      setRejectionReasonInput('');
+      if (selectedShopForReview && selectedShopForReview.id === rejectModalShop.id) {
+        setSelectedShopForReview(null);
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to reject shop');
+    } finally {
+      setRejectSubmitting(false);
+    }
+  };
+
+  // Submit Approval with Assigned Delivery Area & Coordinates
+  const handleConfirmApproval = async () => {
+    if (!approveModalShop || !token) return;
+    const finalCity = (approveIsCustomCity ? approveCustomCity : approveSelectedCity).trim() || approveModalShop.city || 'Pimpri-Chinchwad';
+    const finalArea = (approveIsCustomArea ? approveCustomArea : approveSelectedArea).trim();
+    if (!finalArea) {
+      alert('Please select or type the Primary Delivery Area to assign to this merchant store.');
+      return;
+    }
+
+    // Build complete list of assigned areas including primary and all selected delivery zones
+    const allAssignedSet = new Set<string>();
+    allAssignedSet.add(finalArea);
+    approveAdditionalAreas.forEach((a) => {
+      if (a && a.trim()) allAssignedSet.add(a.trim());
+    });
+
+    const assignedAreasList = Array.from(allAssignedSet).map((areaName) => {
+      const matchedAreaObj = approveModalAreas.find(
+        (a) => a.name.trim().toLowerCase() === areaName.toLowerCase()
+      );
+      return {
+        area_name: areaName,
+        city: finalCity,
+        pincode: matchedAreaObj?.pincode || approvePincode.trim() || approveModalShop.pincode || '',
+      };
+    });
+
+    setApproveSubmitting(true);
+    try {
+      await handleUpdateShopStatus(
+        approveModalShop.id,
+        'approved',
+        undefined,
+        {
+          area_name: finalArea,
+          city: finalCity,
+          pincode: approvePincode.trim() || approveModalShop.pincode || '',
+          delivery_radius_km: parseFloat(approveRadius) || 5.0,
+          latitude: approveModalShop.latitude != null && !isNaN(parseFloat(String(approveModalShop.latitude))) ? parseFloat(String(approveModalShop.latitude)) : undefined,
+          longitude: approveModalShop.longitude != null && !isNaN(parseFloat(String(approveModalShop.longitude))) ? parseFloat(String(approveModalShop.longitude)) : undefined,
+          assigned_areas: assignedAreasList,
+          additional_areas: Array.from(allAssignedSet),
+        }
+      );
+      setApproveModalShop(null);
+      if (selectedShopForReview && selectedShopForReview.id === approveModalShop.id) {
+        setSelectedShopForReview(null);
+      }
+      if (selectedShopForMap && selectedShopForMap.id === approveModalShop.id) {
+        setSelectedShopForMap(null);
+      }
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve shop');
+    } finally {
+      setApproveSubmitting(false);
     }
   };
 
@@ -334,7 +796,9 @@ export default function ShopsTab({
 
       if (data.success) {
         alert('Store GPS location and delivery radius updated successfully!');
-        setSelectedShopForMap((prev) => prev ? { ...prev, latitude: lat, longitude: lng, delivery_radius_km: radius } : null);
+        setSelectedShopForMap((prev) =>
+          prev ? { ...prev, latitude: lat, longitude: lng, delivery_radius_km: radius } : null
+        );
         fetchData();
       } else {
         alert(data.error || 'Failed to update store location');
@@ -369,8 +833,8 @@ export default function ShopsTab({
           product_id: assignProdId,
           selling_price: parseFloat(assignProdPrice),
           discount_percentage: assignProdDiscount ? parseFloat(assignProdDiscount) : 0,
-          stock: assignProdStock ? parseInt(assignProdStock) : 100
-        })
+          stock: assignProdStock ? parseInt(assignProdStock) : 100,
+        }),
       });
       if (data.success) {
         alert('Product assigned to shop successfully!');
@@ -391,7 +855,7 @@ export default function ShopsTab({
     if (!confirm('Are you sure you want to remove this product from shop inventory?')) return;
     try {
       await apiFetch(`/admin/shop-inventory/${invId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
       if (selectedShopForInventory) {
         fetchShopInventory(selectedShopForInventory.id);
@@ -402,11 +866,48 @@ export default function ShopsTab({
   };
 
   const activeNetworkShop = shops.find((s) => s.id === networkSelectedShopId) || shops[0] || null;
-  const activeLat = activeNetworkShop?.latitude != null ? activeNetworkShop.latitude : 18.5204;
-  const activeLng = activeNetworkShop?.longitude != null ? activeNetworkShop.longitude : 73.8567;
+  const activeLat =
+    activeNetworkShop?.latitude != null && !isNaN(Number(activeNetworkShop.latitude))
+      ? Number(activeNetworkShop.latitude)
+      : 18.5204;
+  const activeLng =
+    activeNetworkShop?.longitude != null && !isNaN(Number(activeNetworkShop.longitude))
+      ? Number(activeNetworkShop.longitude)
+      : 73.8567;
 
   return (
     <div className="space-y-6">
+      {/* Pending Applications Alert Banner */}
+      {pendingShops.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/15 to-amber-900/20 border border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 text-lg">
+              ⚠️
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                {pendingShops.length} Merchant Application{pendingShops.length > 1 ? 's' : ''} Pending Verification
+              </h3>
+              <p className="text-xs text-amber-200/80 mt-0.5">
+                Inspect uploaded Aadhaar, FSSAI certificates, and Google Maps street pins to approve or reject merchant access.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setViewMode('table');
+                setShopStatusFilter('pending');
+              }}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              📋 Review Pending ({pendingShops.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Controls Bar: View Switcher & Quick Stats */}
       <div className="bg-slate-900/40 rounded-2xl p-4 border border-slate-800/80 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 shadow-xl">
         <div className="flex items-center gap-2 flex-wrap">
@@ -429,7 +930,7 @@ export default function ShopsTab({
                 : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/20'
             }`}
           >
-            <Plus className="w-3.5 h-3.5" /> Register New Store
+            <Plus className="w-3.5 h-3.5" /> Direct Onboard Store
           </button>
 
           <button
@@ -460,20 +961,31 @@ export default function ShopsTab({
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             Approved: <strong className="text-white font-bold">{shops.filter((s) => s.status === 'approved').length}</strong>
           </span>
+          {pendingShops.length > 0 && (
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+              Pending: <strong className="text-amber-400 font-bold">{pendingShops.length}</strong>
+            </span>
+          )}
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-teal-400" />
-            Active Zones: <strong className="text-teal-400 font-bold">{locations.filter(l => l.is_serviceable !== false && l.shop_id).length}</strong>
+            Active Zones:{' '}
+            <strong className="text-teal-400 font-bold">
+              {locations.filter((l) => l.is_serviceable !== false && l.shop_id).length}
+            </strong>
           </span>
-          <button onClick={fetchData} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold cursor-pointer">
+          <button
+            onClick={fetchData}
+            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold cursor-pointer"
+          >
             🔄 Refresh
           </button>
         </div>
       </div>
 
-      {/* VIEW MODE 1: NETWORK MAP (BIRD'S EYE VIEW) */}
+      {/* VIEW MODE 1: NETWORK MAP */}
       {viewMode === 'map' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Map Left: Interactive Map Container */}
           <div className="lg:col-span-8 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -481,7 +993,7 @@ export default function ShopsTab({
                   🗺️ City-Wide Store GPS Coverage Map
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Visualizing active kirana stores and their 5 KM delivery radius coverage zones.
+                  Visualizing active kirana stores and their delivery radius coverage zones.
                 </p>
               </div>
 
@@ -497,7 +1009,6 @@ export default function ShopsTab({
               )}
             </div>
 
-            {/* Embedded OpenStreetMap Preview */}
             <div className="w-full h-[460px] rounded-2xl overflow-hidden border border-slate-700/80 relative shadow-inner bg-slate-950">
               <iframe
                 title="Store Network Map"
@@ -507,11 +1018,12 @@ export default function ShopsTab({
                 scrolling="no"
                 marginHeight={0}
                 marginWidth={0}
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${activeLng - 0.045}%2C${activeLat - 0.035}%2C${activeLng + 0.045}%2C${activeLat + 0.035}&layer=mapnik&marker=${activeLat}%2C${activeLng}`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${activeLng - 0.045}%2C${
+                  activeLat - 0.035
+                }%2C${activeLng + 0.045}%2C${activeLat + 0.035}&layer=mapnik&marker=${activeLat}%2C${activeLng}`}
                 className="w-full h-full filter saturate-150 contrast-105"
               />
 
-              {/* Floating Overlay Badge on Map */}
               {activeNetworkShop && (
                 <div className="absolute top-4 left-4 bg-slate-950/90 border border-slate-700 rounded-2xl p-4 backdrop-blur-md shadow-2xl max-w-sm pointer-events-auto">
                   <div className="flex items-center justify-between gap-3">
@@ -528,10 +1040,11 @@ export default function ShopsTab({
                   </div>
 
                   <p className="text-xs text-slate-300 mt-1">
-                    👤 {activeNetworkShop.profiles?.name || 'Owner'} · 📞 +{activeNetworkShop.profiles?.phone}
+                    👤 {activeNetworkShop.owner_name || activeNetworkShop.profiles?.name || 'Owner'} · 📞 +
+                    {activeNetworkShop.profiles?.phone}
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    📍 {activeNetworkShop.area_name ? `${activeNetworkShop.area_name}, ` : ''}{activeNetworkShop.city || 'Pune'} (PIN: {activeNetworkShop.pincode || '—'})
+                    📍 {activeNetworkShop.street_address || activeNetworkShop.area_name || activeNetworkShop.city || 'Pune'}
                   </p>
 
                   <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
@@ -550,7 +1063,6 @@ export default function ShopsTab({
             </div>
           </div>
 
-          {/* Map Right: Store Selector Sidebar */}
           <div className="lg:col-span-4 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col space-y-3">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center justify-between">
               <span>🏪 Registered Stores ({shops.length})</span>
@@ -559,7 +1071,11 @@ export default function ShopsTab({
             <div className="space-y-2.5 overflow-y-auto max-h-[480px] pr-1">
               {shops.map((shop) => {
                 const isSelected = shop.id === networkSelectedShopId;
-                const hasGps = shop.latitude != null && shop.longitude != null;
+                const hasGps =
+                  shop.latitude != null &&
+                  shop.longitude != null &&
+                  !isNaN(Number(shop.latitude)) &&
+                  !isNaN(Number(shop.longitude));
 
                 return (
                   <div
@@ -577,7 +1093,9 @@ export default function ShopsTab({
                         className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                           shop.status === 'approved'
                             ? 'bg-emerald-500/15 text-emerald-400'
-                            : 'bg-amber-500/15 text-amber-400'
+                            : shop.status === 'rejected'
+                            ? 'bg-red-500/15 text-red-400'
+                            : 'bg-amber-500/15 text-amber-400 animate-pulse'
                         }`}
                       >
                         {shop.status}
@@ -591,7 +1109,7 @@ export default function ShopsTab({
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-[11px]">
                       {hasGps ? (
                         <span className="text-emerald-400 font-mono font-semibold">
-                          📍 {shop.latitude?.toFixed(4)}, {shop.longitude?.toFixed(4)}
+                          📍 {Number(shop.latitude).toFixed(4)}, {Number(shop.longitude).toFixed(4)}
                         </span>
                       ) : (
                         <span className="text-amber-400/90 font-medium">⚠️ GPS not pinned</span>
@@ -600,11 +1118,11 @@ export default function ShopsTab({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          openShopMapModal(shop);
+                          setSelectedShopForReview(shop);
                         }}
-                        className="text-sky-400 hover:text-sky-300 font-bold cursor-pointer"
+                        className="text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
                       >
-                        Adjust Pin ⚙️
+                        📋 Docs & Review
                       </button>
                     </div>
                   </div>
@@ -612,9 +1130,7 @@ export default function ShopsTab({
               })}
 
               {shops.length === 0 && (
-                <div className="p-6 text-center text-slate-500 italic text-xs">
-                  No stores registered yet.
-                </div>
+                <div className="p-6 text-center text-slate-500 italic text-xs">No stores registered yet.</div>
               )}
             </div>
           </div>
@@ -632,7 +1148,7 @@ export default function ShopsTab({
                   <Store className="w-5 h-5 text-emerald-400" /> Store Directory & Approvals
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Approve merchant registrations, inspect GPS territories, assign delivery zones, and manage inventory.
+                  Review legal KYC documents (Aadhaar, FSSAI, PAN), inspect Google Maps street pins, and manage delivery territories.
                 </p>
               </div>
 
@@ -643,7 +1159,7 @@ export default function ShopsTab({
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    placeholder="Search store, owner, city..."
+                    placeholder="Search store, owner, street, city..."
                     value={shopSearchQuery}
                     onChange={(e) => setShopSearchQuery(e.target.value)}
                     className="h-9 pl-9 pr-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 outline-none focus:border-emerald-500 w-44 sm:w-56"
@@ -657,17 +1173,17 @@ export default function ShopsTab({
                   className="h-9 px-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 outline-none cursor-pointer focus:border-emerald-500"
                 >
                   <option value="all">All Statuses ({shops.length})</option>
-                  <option value="approved">Approved ({shops.filter((s) => s.status === 'approved').length})</option>
-                  <option value="pending">Pending ({shops.filter((s) => s.status === 'pending').length})</option>
-                  <option value="rejected">Rejected ({shops.filter((s) => s.status === 'rejected').length})</option>
+                  <option value="pending">Pending Approvals ({shops.filter((s) => s.status === 'pending').length})</option>
+                  <option value="approved">Approved Stores ({shops.filter((s) => s.status === 'approved').length})</option>
+                  <option value="rejected">Rejected Stores ({shops.filter((s) => s.status === 'rejected').length})</option>
                 </select>
 
-                {/* Register Store Button */}
+                {/* Direct Onboard Store Button */}
                 <button
                   onClick={() => setViewMode('register')}
                   className="h-9 px-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Plus className="w-4 h-4" /> Register New Store
+                  <Plus className="w-4 h-4" /> Direct Onboard Store
                 </button>
 
                 {/* Refresh */}
@@ -686,51 +1202,98 @@ export default function ShopsTab({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-3 pr-4">Store Name</th>
-                    <th className="pb-3 pr-4">Territory & GPS</th>
-                    <th className="pb-3 pr-4">Owner Contact</th>
+                    <th className="pb-3 pr-4">Store Name & Source</th>
+                    <th className="pb-3 pr-4">Street Address & GPS</th>
+                    <th className="pb-3 pr-4">Owner & KYC Docs</th>
                     <th className="pb-3 pr-4">Status</th>
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/30 text-sm">
                   {filteredShops.map((shop) => (
-                    <tr key={shop.id} className="hover:bg-slate-800/20 transition-colors">
+                    <tr
+                      key={shop.id}
+                      className={`hover:bg-slate-800/20 transition-colors ${
+                        shop.status === 'pending' ? 'bg-amber-500/5' : ''
+                      }`}
+                    >
                       <td className="py-4 pr-4 font-semibold text-white">
                         <p className="text-white font-bold">{shop.shop_name}</p>
-                        <button
-                          onClick={() => openShopMapModal(shop)}
-                          className="inline-flex items-center gap-1 mt-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
-                          title="Open interactive map modal with delivery radius"
-                        >
-                          🗺️ View Map & Radius
-                        </button>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300">
+                            {shop.onboarding_source === 'app_self_registration'
+                              ? '📱 App Self-Register'
+                              : '💻 Admin Direct'}
+                          </span>
+                          <button
+                            onClick={() => setSelectedShopForReview(shop)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
+                          >
+                            📋 Review Full App & Docs
+                          </button>
+                        </div>
                       </td>
-                      <td className="py-4 pr-4">
-                        {shop.state_name ? (
-                          <>
-                            <p className="text-slate-200 text-sm">{shop.state_name}</p>
-                            <p className="text-xs text-slate-400 font-medium">
-                              {shop.district_name} · {shop.city || '—'} {shop.area_name ? `(${shop.area_name})` : ''}
-                            </p>
-                            {shop.latitude != null && shop.longitude != null ? (
-                              <p className="text-[11px] text-emerald-400 font-mono mt-0.5">
-                                📍 {shop.latitude.toFixed(4)}, {shop.longitude.toFixed(4)} ({shop.delivery_radius_km || 5} km radius)
-                              </p>
-                            ) : (
-                              <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">
-                                ⚠️ No GPS Pinned
-                              </p>
-                            )}
-                          </>
+
+                      <td className="py-4 pr-4 max-w-xs">
+                        {shop.street_address ? (
+                          <p className="text-xs text-emerald-300/90 font-medium line-clamp-2">
+                            📍 {shop.street_address}
+                          </p>
+                        ) : shop.state_name ? (
+                          <p className="text-xs text-slate-300">
+                            {shop.area_name ? `${shop.area_name}, ` : ''}{shop.city || shop.district_name} (PIN: {shop.pincode || '—'})
+                          </p>
                         ) : (
-                          <span className="text-slate-500 italic text-xs">Not assigned</span>
+                          <span className="text-slate-500 italic text-xs">No address assigned</span>
                         )}
+
+                        {(() => {
+                          const sLat =
+                            shop.latitude != null && !isNaN(Number(shop.latitude))
+                              ? Number(shop.latitude)
+                              : (shop as any).lat != null && !isNaN(Number((shop as any).lat))
+                              ? Number((shop as any).lat)
+                              : null;
+                          const sLng =
+                            shop.longitude != null && !isNaN(Number(shop.longitude))
+                              ? Number(shop.longitude)
+                              : (shop as any).lng != null && !isNaN(Number((shop as any).lng))
+                              ? Number((shop as any).lng)
+                              : null;
+                          return sLat != null && sLng != null ? (
+                            <p className="text-[11px] text-emerald-400 font-mono font-semibold mt-0.5">
+                              📍 Coords: {sLat.toFixed(5)}, {sLng.toFixed(5)} ({shop.delivery_radius_km || 5} km radius)
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">⚠️ No GPS Pinned</p>
+                          );
+                        })()}
                       </td>
+
                       <td className="py-4 pr-4">
-                        <p className="font-semibold text-slate-200">{shop.profiles?.name || 'Owner'}</p>
-                        <p className="text-xs text-slate-500">+{shop.profiles?.phone}</p>
+                        <p className="font-semibold text-slate-200">
+                          {shop.owner_name || shop.profiles?.name || 'Owner'}
+                        </p>
+                        <p className="text-xs text-slate-400">+{shop.phone || shop.profiles?.phone || 'No phone'}</p>
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
+                          <span
+                            className={shop.aadhaar_doc_url ? 'text-emerald-400 font-bold' : 'text-slate-500'}
+                          >
+                            Aadhaar {shop.aadhaar_doc_url ? '✓' : '—'}
+                          </span>
+                          <span>·</span>
+                          <span
+                            className={shop.fssai_doc_url ? 'text-emerald-400 font-bold' : 'text-slate-500'}
+                          >
+                            FSSAI {shop.fssai_doc_url ? '✓' : '—'}
+                          </span>
+                          <span>·</span>
+                          <span className={shop.pan_doc_url ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                            PAN {shop.pan_doc_url ? '✓' : '—'}
+                          </span>
+                        </div>
                       </td>
+
                       <td className="py-4 pr-4">
                         {shop.status === 'approved' && (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -738,9 +1301,16 @@ export default function ShopsTab({
                           </span>
                         )}
                         {shop.status === 'rejected' && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                            Rejected
-                          </span>
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                              Rejected
+                            </span>
+                            {shop.rejection_reason && (
+                              <p className="text-[10px] text-red-400 mt-1 max-w-xs line-clamp-1 italic">
+                                &quot;{shop.rejection_reason}&quot;
+                              </p>
+                            )}
+                          </div>
                         )}
                         {shop.status === 'pending' && (
                           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
@@ -748,9 +1318,20 @@ export default function ShopsTab({
                           </span>
                         )}
                       </td>
+
                       <td className="py-4 text-right space-x-2 whitespace-nowrap">
+                        <button
+                          onClick={() => setSelectedShopForReview(shop)}
+                          className="text-xs font-bold px-3 py-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
+                          title="Inspect KYC documents and location pin"
+                        >
+                          📋 Review App
+                        </button>
+
                         {(() => {
-                          const shopZones = locations.filter((l) => l.shop_id === shop.id && l.is_serviceable !== false);
+                          const shopZones = locations.filter(
+                            (l) => l.shop_id === shop.id && l.is_serviceable !== false
+                          );
                           return (
                             <button
                               onClick={() => setSelectedShopForZones(shop)}
@@ -761,12 +1342,14 @@ export default function ShopsTab({
                             </button>
                           );
                         })()}
+
                         <button
                           onClick={() => openShopMapModal(shop)}
                           className="text-xs font-bold px-3 py-1.5 bg-sky-950/40 hover:bg-sky-900/60 text-sky-300 border border-sky-800/40 rounded-lg transition-all cursor-pointer"
                         >
                           📍 Map
                         </button>
+
                         {shop.status === 'approved' && (
                           <button
                             onClick={() => {
@@ -778,47 +1361,50 @@ export default function ShopsTab({
                             Inventory
                           </button>
                         )}
+
                         {shop.status !== 'approved' && (
                           <button
-                            onClick={() => handleUpdateShopStatus(shop.id, 'approved')}
+                            onClick={() => openApproveModal(shop)}
                             className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
                           >
                             Approve
                           </button>
                         )}
+
                         {shop.status !== 'rejected' && (
                           <button
-                            onClick={() => handleUpdateShopStatus(shop.id, 'rejected')}
+                            onClick={() => {
+                              setRejectModalShop(shop);
+                              setRejectionReasonInput('');
+                            }}
                             className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
                           >
                             Reject
                           </button>
                         )}
+
                         <button
                           onClick={() => handleDeleteShop(shop.id, shop.shop_name)}
                           className="text-xs font-bold px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 rounded-lg transition-all cursor-pointer"
                           title="Delete store"
                         >
-                          Delete
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
                   ))}
+
                   {filteredShops.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-slate-500">
-                        <div className="flex flex-col items-center justify-center space-y-3">
-                          <span className="text-3xl">🏬</span>
-                          <p className="text-sm font-medium text-slate-400">
-                            {shopSearchQuery || shopStatusFilter !== 'all'
-                              ? 'No stores match your search or filter.'
-                              : 'No stores registered yet.'}
-                          </p>
+                      <td colSpan={5} className="py-12 text-center text-slate-400">
+                        <Store className="w-10 h-10 mx-auto text-slate-600 mb-2" />
+                        <p className="font-semibold text-sm">No stores found matching your filters.</p>
+                        <div className="mt-3">
                           <button
                             onClick={() => setViewMode('register')}
-                            className="px-4 py-2 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold hover:bg-emerald-500/25 transition-all cursor-pointer"
+                            className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-emerald-400 transition-all"
                           >
-                            ➕ Register First Store Now
+                            ➕ Onboard First Store Now
                           </button>
                         </div>
                       </td>
@@ -831,7 +1417,7 @@ export default function ShopsTab({
         </div>
       )}
 
-      {/* VIEW MODE 2: REGISTER NEW STORE DEDICATED VIEW */}
+      {/* VIEW MODE 2: DIRECT ONBOARD STORE (WITH FULL KYC & LOCKED STREET ADDRESS) */}
       {viewMode === 'register' && (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
           {/* Top Back Header */}
@@ -846,27 +1432,21 @@ export default function ShopsTab({
               </button>
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  ➕ Register New Store Partner
+                  ➕ Direct Onboard Store Partner
                 </h2>
                 <p className="text-xs text-slate-400">
-                  Register a verified kirana merchant with automated delivery territory mapping & GPS pin.
+                  Register and immediately approve a merchant store with Aadhaar, FSSAI, PAN docs, and Google Maps street pinning.
                 </p>
               </div>
             </div>
 
             <span className="text-[11px] font-bold px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full hidden sm:inline-block">
-              ⚡ Instant Auto-Serviceable Zone
+              ⚡ Instant Approval & Zone Setup
             </span>
           </div>
 
           {/* Registration Form in Premium Structured Cards */}
-          <form
-            onSubmit={async (e) => {
-              await handleRegisterShop(e);
-              setViewMode('table');
-            }}
-            className="space-y-5"
-          >
+          <form onSubmit={handleAdminDirectRegister} className="space-y-5">
             {/* Section 1: Store & Owner Identity */}
             <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-800/60">
@@ -912,7 +1492,104 @@ export default function ShopsTab({
               </div>
             </div>
 
-            {/* Section 2: Territory & Cascading Pincode Selection */}
+            {/* Section 2: GPS Location & Google Maps Street Address (Locked) */}
+            <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400 text-xs">📍</span>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Google Maps GPS & Street Address
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDetectAdminGps}
+                  disabled={detectingAdminGps}
+                  className="text-xs font-bold px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  {detectingAdminGps ? 'Detecting GPS...' : '📍 Auto-Detect Live GPS & Street'}
+                </button>
+              </div>
+
+              {/* Locked Google Maps Street Address Field */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Google Maps Street Address (Locked / Read-Only)</span>
+                </label>
+                <div className="relative mt-1.5">
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="Click 'Auto-Detect Live GPS & Street' or select location to resolve street"
+                    className="w-full h-10 px-3.5 bg-slate-950/80 border border-emerald-500/40 text-emerald-300 font-medium rounded-xl text-xs outline-none cursor-not-allowed"
+                    value={regStreetAddress}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                      GPS Locked
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Street address is resolved via Google Maps Geocoding API to prevent fake store locations.
+                </p>
+              </div>
+
+              {/* Deep / Detailed Address */}
+              <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                  Detailed Store Address (Shop No, Floor, Building, Landmark)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Shop No 4, Ground Floor, Sai Plaza, Opp. Ravet Bus Stop"
+                  className="w-full mt-1.5 p-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none resize-none"
+                  value={regDetailedAddress}
+                  onChange={(e) => setRegDetailedAddress(e.target.value)}
+                />
+              </div>
+
+              {/* Coordinates & Delivery Radius */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Latitude</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 18.6432"
+                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    value={regLat}
+                    onChange={(e) => setRegLat && setRegLat(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Longitude</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 73.7450"
+                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    value={regLng}
+                    onChange={(e) => setRegLng && setRegLng(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Delivery Radius (KM)</label>
+                  <select
+                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
+                    value={regRadius}
+                    onChange={(e) => setRegRadius && setRegRadius(e.target.value)}
+                  >
+                    <option value="2.0">2.0 KM (Local Area Only)</option>
+                    <option value="3.0">3.0 KM (Compact Zone)</option>
+                    <option value="5.0">5.0 KM (Standard Free Delivery)</option>
+                    <option value="7.0">7.0 KM (Extended Area)</option>
+                    <option value="10.0">10.0 KM (Large Territory)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Territory & Cascading Pincode Selection */}
             <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-800/60">
                 <span className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400 text-xs">🗺️</span>
@@ -959,9 +1636,7 @@ export default function ShopsTab({
               {/* City Selection */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-                    City / Town *
-                  </label>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">City / Town *</label>
                   {(cities || []).length > 0 && (
                     <button
                       type="button"
@@ -1012,241 +1687,262 @@ export default function ShopsTab({
 
               {/* Pincode & Base Locality */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* 1. PINCODE FIELD (Left) */}
                 <div>
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
                       <span>Pincode *</span>
-                      {regCity && cityUniquePincodes.length > 0 && !manualPincodeMode && (
-                        <span className="text-[10px] text-emerald-400 font-normal">
-                          ({cityUniquePincodes.length} PINs in {regCity})
-                        </span>
-                      )}
                     </label>
-                    {regCity && cityUniquePincodes.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setManualPincodeMode(!manualPincodeMode);
-                          if (setRegPincode) setRegPincode('');
-                          if (setRegArea) setRegArea('');
-                        }}
-                        className="text-[10px] text-slate-400 hover:text-emerald-400 underline transition-colors cursor-pointer"
-                      >
-                        {manualPincodeMode ? '← Pick PIN' : '✏️ Custom PIN'}
-                      </button>
-                    )}
                   </div>
-
-                  {!regCity || !regCity.trim() ? (
-                    <div className="relative mt-1.5">
-                      <input
-                        type="text"
-                        disabled
-                        placeholder="🔒 Select City first"
-                        className="w-full h-10 px-3.5 bg-slate-900/40 border border-dashed border-slate-800 text-slate-500 rounded-xl text-xs outline-none cursor-not-allowed italic"
-                      />
-                    </div>
-                  ) : cityUniquePincodes.length > 0 && !manualPincodeMode ? (
-                    <div className="space-y-1.5 mt-1.5">
-                      {cityUniquePincodes.length > 3 && (
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="text"
-                            placeholder={`Search PIN / area in ${regCity}...`}
-                            value={pincodeSearchQuery}
-                            onChange={(e) => setPincodeSearchQuery(e.target.value)}
-                            className="w-full h-8 pl-8 pr-2.5 bg-slate-900/90 border border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-emerald-500 rounded-lg text-[11px] outline-none"
-                          />
-                        </div>
-                      )}
-
-                      <select
-                        className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer font-mono font-semibold"
-                        value={regPincode}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (setRegPincode) setRegPincode(val);
-                          if (setRegArea && regArea) {
-                            const validInNewPin = cityFilteredAreas.some(
-                              (a) => a.pincode?.trim() === val.trim() && a.name.toLowerCase() === regArea.toLowerCase()
-                            );
-                            if (!validInNewPin) setRegArea('');
-                          }
-                        }}
-                        required
-                      >
-                        <option value="">-- Select Pincode in {regCity} ({searchedPincodes.length}) --</option>
-                        {searchedPincodes.map((pin) => {
-                          const subAreas = cityFilteredAreas
-                            .filter((a) => a.pincode?.trim() === pin)
-                            .map((a) => a.name);
-                          return (
-                            <option key={pin} value={pin}>
-                              📮 PIN {pin} ({subAreas.length} {subAreas.length === 1 ? 'area' : 'areas'})
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="space-y-1 mt-1.5">
-                      <input
-                        type="text"
-                        maxLength={6}
-                        placeholder={`Enter 6-digit PIN for ${regCity}`}
-                        className={`w-full h-10 px-3.5 bg-slate-950 border ${
-                          regPinValidation && !regPinValidation.isValid && regPincode && regPincode.length === 6
-                            ? 'border-rose-500/70 focus:border-rose-400'
-                            : regPinValidation?.isValid
-                            ? 'border-emerald-500 focus:border-emerald-400'
-                            : 'border-slate-800 focus:border-emerald-500'
-                        } text-slate-200 rounded-xl text-xs outline-none font-mono`}
-                        value={regPincode}
-                        onChange={(e) => setRegPincode && setRegPincode(e.target.value.replace(/[^\d]/g, ''))}
-                        required
-                      />
-
-                      {regPincode && regPincode.length > 0 && regPincode.length < 6 && (
-                        <p className="text-[10px] text-amber-400 font-medium">
-                          ⚠️ 6-digit Indian Postal PIN required ({regPincode.length}/6 digits)
-                        </p>
-                      )}
-
-                      {regPincode && regPincode.length === 6 && regPinValidation && !regPinValidation.isValid && (
-                        <div className="p-1.5 bg-rose-500/10 border border-rose-500/30 rounded-lg text-[10px] text-rose-400 font-semibold flex items-center gap-1.5">
-                          <span>❌</span>
-                          <span>{regPinValidation.error}</span>
-                        </div>
-                      )}
-
-                      {regPincode && regPincode.length === 6 && regPinValidation && regPinValidation.isValid && (
-                        <div className="p-1 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-[10px] text-emerald-400 font-semibold flex items-center gap-1.5">
-                          <span>✅</span>
-                          <span>Valid Indian Postal PIN ({regPinValidation.formatted})</span>
-                        </div>
-                      )}
-
-                      {cityUniquePincodes.length === 0 && !regPincode && (
-                        <p className="text-[10px] text-amber-400/80">
-                          (No PINs saved for &ldquo;{regCity}&rdquo; yet in Master Directory — enter genuine PIN directly)
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="e.g. 412101"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    value={regPincode}
+                    onChange={(e) => setRegPincode && setRegPincode(e.target.value.replace(/[^\d]/g, ''))}
+                    required
+                  />
                 </div>
 
-                {/* 2. BASE LOCALITY / AREA FIELD (Right) */}
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center justify-between">
-                    <span>Base Locality *</span>
-                    {regPincode && pincodeFilteredAreas.length > 0 && (
-                      <span className="text-[10px] text-teal-400 font-normal">
-                        ({pincodeFilteredAreas.length} in PIN)
-                      </span>
-                    )}
-                  </label>
-
-                  {!regPincode || regPincode.trim().length === 0 ? (
-                    <div className="relative mt-1.5">
-                      <input
-                        type="text"
-                        disabled
-                        placeholder="🔒 Select Pincode first"
-                        className="w-full h-10 px-3.5 bg-slate-900/40 border border-dashed border-slate-800 text-slate-500 rounded-xl text-xs outline-none cursor-not-allowed italic"
-                      />
-                    </div>
-                  ) : pincodeFilteredAreas.length > 0 ? (
-                    <select
-                      className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-emerald-500/50 text-slate-200 focus:border-emerald-400 rounded-xl text-xs outline-none cursor-pointer"
-                      value={regArea}
-                      onChange={(e) => {
-                        if (setRegArea) setRegArea(e.target.value);
-                      }}
-                      required
-                    >
-                      <option value="">-- Select Locality ({pincodeFilteredAreas.length}) --</option>
-                      {pincodeFilteredAreas.map((a) => (
-                        <option key={a.id} value={a.name}>
-                          📍 {a.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      placeholder="e.g. Ravet, Kothrud"
-                      className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
-                      value={regArea}
-                      onChange={(e) => setRegArea && setRegArea(e.target.value)}
-                      required
-                    />
-                  )}
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Base Locality / Area *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Ravet, Kothrud"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
+                    value={regArea}
+                    onChange={(e) => setRegArea && setRegArea(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Section 3: GPS Pinning & Delivery Range */}
+            {/* Section 4: Legal & Compliance Documents Uploads */}
             <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400 text-xs">📍</span>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">GPS Store Pin & Delivery Radius</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleDetectAdminGps}
-                  disabled={detectingAdminGps}
-                  className="text-xs font-bold px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  {detectingAdminGps ? 'Detecting GPS...' : '📍 Auto-Detect GPS Pin'}
-                </button>
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-800/60">
+                <span className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 text-xs">📄</span>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Legal Documents & KYC (Direct S3 Upload)
+                </h3>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Latitude</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 18.6432"
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
-                    value={regLat}
-                    onChange={(e) => setRegLat && setRegLat(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Longitude</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 73.7450"
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
-                    value={regLng}
-                    onChange={(e) => setRegLng && setRegLng(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Delivery Radius (KM)</label>
-                  <select
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
-                    value={regRadius}
-                    onChange={(e) => setRegRadius && setRegRadius(e.target.value)}
-                  >
-                    <option value="2.0">2.0 KM (Local Area Only)</option>
-                    <option value="3.0">3.0 KM (Compact Zone)</option>
-                    <option value="5.0">5.0 KM (Standard Free Delivery)</option>
-                    <option value="7.0">7.0 KM (Extended Area)</option>
-                    <option value="10.0">10.0 KM (Large Territory)</option>
-                  </select>
-                </div>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Aadhaar Card */}
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" /> Aadhaar Card
+                    </label>
+                    {regAadhaarDocUrl && (
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Uploaded ✓
+                      </span>
+                    )}
+                  </div>
 
-              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-xs text-emerald-300 flex items-center gap-2.5">
-                <span className="text-lg">⚡</span>
-                <span>
-                  <strong>Auto-Serviceable Routing:</strong> Registering this store will automatically activate delivery routing for{' '}
-                  <strong className="text-white">{regArea || 'its base area'}</strong> (PIN: {regPincode || '—'}).
-                </span>
+                  <input
+                    type="text"
+                    placeholder="12-digit Aadhaar Number (Optional)"
+                    maxLength={12}
+                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono"
+                    value={regAadhaarNumber}
+                    onChange={(e) => setRegAadhaarNumber(e.target.value.replace(/[^\d]/g, ''))}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{regAadhaarUploading ? 'Uploading to S3...' : 'Upload Aadhaar Photo / PDF'}</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadDocument(file, 'aadhaar');
+                        }}
+                      />
+                    </label>
+
+                    {regAadhaarDocUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(regAadhaarDocUrl);
+                          setPreviewDocTitle('Aadhaar Document Preview');
+                        }}
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. FSSAI License */}
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-amber-400" /> FSSAI Food License
+                    </label>
+                    {regFssaiDocUrl && (
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Uploaded ✓
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="14-digit FSSAI License Number (Optional)"
+                    maxLength={14}
+                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono"
+                    value={regFssaiNumber}
+                    onChange={(e) => setRegFssaiNumber(e.target.value.replace(/[^\d]/g, ''))}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{regFssaiUploading ? 'Uploading to S3...' : 'Upload FSSAI Certificate'}</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadDocument(file, 'fssai');
+                        }}
+                      />
+                    </label>
+
+                    {regFssaiDocUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(regFssaiDocUrl);
+                          setPreviewDocTitle('FSSAI Certificate Preview');
+                        }}
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. PAN Card */}
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-sky-400" /> PAN Card
+                    </label>
+                    {regPanDocUrl && (
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Uploaded ✓
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="10-character PAN Number (Optional)"
+                    maxLength={10}
+                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono uppercase"
+                    value={regPanNumber}
+                    onChange={(e) => setRegPanNumber(e.target.value.toUpperCase())}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{regPanUploading ? 'Uploading to S3...' : 'Upload PAN Card Photo'}</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadDocument(file, 'pan');
+                        }}
+                      />
+                    </label>
+
+                    {regPanDocUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(regPanDocUrl);
+                          setPreviewDocTitle('PAN Card Preview');
+                        }}
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Storefront Photo & GSTIN */}
+                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-purple-400" /> Storefront Photo & GSTIN
+                    </label>
+                    {regShopPhotoUrl && (
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Uploaded ✓
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="GSTIN (15 chars, Optional)"
+                    maxLength={15}
+                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono uppercase"
+                    value={regGstin}
+                    onChange={(e) => setRegGstin(e.target.value.toUpperCase())}
+                  />
+
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 cursor-pointer">
+                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
+                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{regShopPhotoUploading ? 'Uploading to S3...' : 'Upload Shop Board Photo'}</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadDocument(file, 'shop_photo');
+                        }}
+                      />
+                    </label>
+
+                    {regShopPhotoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(regShopPhotoUrl);
+                          setPreviewDocTitle('Storefront Photo Preview');
+                        }}
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1261,9 +1957,11 @@ export default function ShopsTab({
               </button>
               <button
                 type="submit"
+                disabled={directRegisterSubmitting}
                 className="w-2/3 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-2xl font-bold text-sm shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
-                <Plus className="w-4 h-4" /> Register Store & Activate Territory
+                <Plus className="w-4 h-4" />
+                {directRegisterSubmitting ? 'Registering & Uploading...' : 'Direct Onboard & Approve Store'}
               </button>
             </div>
           </form>
@@ -1273,7 +1971,6 @@ export default function ShopsTab({
       {/* VIEW MODE 3: UNIFIED DELIVERY ZONES & ROUTING MATRIX */}
       {viewMode === 'coverage' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Top Banner */}
           <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-indigo-950/30 rounded-2xl p-4 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
@@ -1291,7 +1988,6 @@ export default function ShopsTab({
             </div>
           </div>
 
-          {/* Bulk Pincode & Quick Add Locality Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Bulk Assign by Pincode Card */}
             <section className="lg:col-span-6 bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-indigo-500/30 backdrop-blur-xl shadow-xl space-y-4">
@@ -1346,11 +2042,6 @@ export default function ShopsTab({
                       onChange={(e) => setBulkPin(e.target.value.replace(/[^\d]/g, ''))}
                       required
                     />
-                    {bulkPin.length === 6 && bulkPinValidation && !bulkPinValidation.isValid && (
-                      <p className="text-[10px] text-rose-400 mt-1 font-semibold">
-                        ❌ {bulkPinValidation.error}
-                      </p>
-                    )}
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Assign To Store *</label>
@@ -1527,7 +2218,9 @@ export default function ShopsTab({
                           <td className="py-3">
                             <select
                               value={loc.shop_id || ''}
-                              onChange={(e) => handleUpdateLocationShop && handleUpdateLocationShop(loc.id, e.target.value)}
+                              onChange={(e) =>
+                                handleUpdateLocationShop && handleUpdateLocationShop(loc.id, e.target.value)
+                              }
                               className="h-8 px-2 bg-slate-950 border border-slate-800 text-slate-200 rounded-lg text-xs outline-none cursor-pointer"
                             >
                               <option value="">-- Unassigned --</option>
@@ -1566,6 +2259,1138 @@ export default function ShopsTab({
         </div>
       )}
 
+      {/* COMPREHENSIVE ONBOARDING APPLICATION REVIEW MODAL */}
+      {selectedShopForReview && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[94vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-400">
+                  <Store className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h3 className="text-lg font-bold text-white">{selectedShopForReview.shop_name}</h3>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        selectedShopForReview.status === 'approved'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : selectedShopForReview.status === 'rejected'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse'
+                      }`}
+                    >
+                      {selectedShopForReview.status.toUpperCase()}
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded text-[11px]">
+                      {['app_self_registration', 'merchant_app'].includes(selectedShopForReview.onboarding_source || '')
+                        ? '📱 App Self-Registration'
+                        : '💻 Admin Direct Onboard'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Store ID: <span className="font-mono text-slate-300">{selectedShopForReview.id}</span> · Created:{' '}
+                    {new Date(selectedShopForReview.created_at).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedShopForReview(null)}
+                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+              {/* Previous Rejection Reason Callout (if any) */}
+              {selectedShopForReview.status === 'rejected' && selectedShopForReview.rejection_reason && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-red-400 uppercase tracking-wide">Previous Rejection Reason</h4>
+                    <p className="text-xs text-slate-200 mt-1">&quot;{selectedShopForReview.rejection_reason}&quot;</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Robust Coordinate Extraction */}
+              {(() => {
+                const revLat =
+                  selectedShopForReview.latitude != null && !isNaN(Number(selectedShopForReview.latitude))
+                    ? Number(selectedShopForReview.latitude)
+                    : (selectedShopForReview as any).lat != null && !isNaN(Number((selectedShopForReview as any).lat))
+                    ? Number((selectedShopForReview as any).lat)
+                    : null;
+
+                const revLng =
+                  selectedShopForReview.longitude != null && !isNaN(Number(selectedShopForReview.longitude))
+                    ? Number(selectedShopForReview.longitude)
+                    : (selectedShopForReview as any).lng != null && !isNaN(Number((selectedShopForReview as any).lng))
+                    ? Number((selectedShopForReview as any).lng)
+                    : null;
+
+                return (
+                  /* Grid: Left Col = Location & Map / Right Col = Owner & Documents */
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* Left Column: GPS & Street Address Verification (6 cols) */}
+                    <div className="lg:col-span-6 space-y-4">
+                      {/* Google Maps Pin & Coordinates */}
+                      <div className="bg-slate-900/40 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Map className="w-4 h-4 text-emerald-400" /> GPS Store Pin & Radius
+                          </h4>
+                          {revLat != null && revLng != null && (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${revLat},${revLng}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[11px] text-emerald-400 hover:underline font-bold flex items-center gap-1"
+                            >
+                              Google Maps Full View ↗
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="w-full h-44 rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
+                          {revLat != null && revLng != null ? (
+                            <iframe
+                              title="Shop Location Preview"
+                              width="100%"
+                              height="100%"
+                              frameBorder="0"
+                              scrolling="no"
+                              marginHeight={0}
+                              marginWidth={0}
+                              src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                                revLng - 0.02
+                              }%2C${revLat - 0.015}%2C${
+                                revLng + 0.02
+                              }%2C${
+                                revLat + 0.015
+                              }&layer=mapnik&marker=${revLat}%2C${revLng}`}
+                              className="w-full h-full filter saturate-125"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-1.5 text-xs">
+                              <MapPin className="w-6 h-6 text-slate-600" />
+                              <span>No GPS coordinates pinned</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs pt-1">
+                          <span className="font-mono text-emerald-400 font-bold">
+                            📍 Lat: {revLat != null ? revLat.toFixed(5) : '—'} · Lng:{' '}
+                            {revLng != null ? revLng.toFixed(5) : '—'}
+                          </span>
+                          <span className="text-slate-400">
+                            🛵 {selectedShopForReview.delivery_radius_km || 5.0} KM Radius
+                          </span>
+                        </div>
+                      </div>
+
+                  {/* Google Maps Street Address (LOCKED) */}
+                  <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-emerald-400" /> Google Maps Street Address (Locked)
+                      </h4>
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">
+                        GPS Verified
+                      </span>
+                    </div>
+                    <p className="text-xs text-white font-medium">
+                      {selectedShopForReview.street_address || 'No street address captured during GPS sync'}
+                    </p>
+                  </div>
+
+                  {/* Deep / Detailed Address */}
+                  <div className="bg-slate-900/40 p-4 rounded-2xl border border-slate-800 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Detailed / Deep Address (Manual Input)
+                    </h4>
+                    <p className="text-xs text-slate-200">
+                      {selectedShopForReview.detailed_address || 'Not specified'}
+                    </p>
+                    <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 grid grid-cols-2 gap-2">
+                      <div>
+                        Base Locality: <strong className="text-white">{selectedShopForReview.area_name || '—'}</strong>
+                      </div>
+                      <div>
+                        City: <strong className="text-white">{selectedShopForReview.city || '—'}</strong>
+                      </div>
+                      <div>
+                        Pincode: <strong className="text-white">{selectedShopForReview.pincode || '—'}</strong>
+                      </div>
+                      <div>
+                        District: <strong className="text-white">{selectedShopForReview.district_name || '—'}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Owner Profile & Legal Documents (6 cols) */}
+                <div className="lg:col-span-6 space-y-4">
+                  {/* Owner Credentials */}
+                  <div className="bg-slate-900/40 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-emerald-400" /> Owner Information
+                    </h4>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Owner Full Name</span>
+                        <p className="text-sm font-bold text-white">
+                          {selectedShopForReview.owner_name || selectedShopForReview.profiles?.name || 'Owner'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Contact Mobile</span>
+                        <p className="text-sm font-bold text-emerald-400 font-mono">
+                          +{selectedShopForReview.phone || selectedShopForReview.profiles?.phone || 'No phone'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Legal Documents Cards */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-amber-400" /> Legal Compliance & KYC Documents
+                    </h4>
+
+                    {/* Aadhaar Card Card */}
+                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                          <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">Aadhaar Card</p>
+                          <p className="text-[11px] font-mono text-slate-400">
+                            {selectedShopForReview.aadhaar_number
+                              ? `UID: ${selectedShopForReview.aadhaar_number.replace(/(\d{4})/g, '$1 ').trim()}`
+                              : 'Number not entered'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedShopForReview.aadhaar_doc_url ? (
+                        <button
+                          onClick={() => {
+                            setPreviewDocUrl(selectedShopForReview.aadhaar_doc_url!);
+                            setPreviewDocTitle(`${selectedShopForReview.shop_name} — Aadhaar Card`);
+                          }}
+                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Doc
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 italic">No doc attached</span>
+                      )}
+                    </div>
+
+                    {/* FSSAI Certificate Card */}
+                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">FSSAI License Certificate</p>
+                          <p className="text-[11px] font-mono text-slate-400">
+                            {selectedShopForReview.fssai_number
+                              ? `Lic: ${selectedShopForReview.fssai_number}`
+                              : 'Number not entered'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedShopForReview.fssai_doc_url ? (
+                        <button
+                          onClick={() => {
+                            setPreviewDocUrl(selectedShopForReview.fssai_doc_url!);
+                            setPreviewDocTitle(`${selectedShopForReview.shop_name} — FSSAI Certificate`);
+                          }}
+                          className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Doc
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 italic">No doc attached</span>
+                      )}
+                    </div>
+
+                    {/* PAN Card Card */}
+                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-sky-500/10 text-sky-400 rounded-xl">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">PAN Card</p>
+                          <p className="text-[11px] font-mono text-slate-400 uppercase">
+                            {selectedShopForReview.pan_number ? `PAN: ${selectedShopForReview.pan_number}` : 'Number not entered'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedShopForReview.pan_doc_url ? (
+                        <button
+                          onClick={() => {
+                            setPreviewDocUrl(selectedShopForReview.pan_doc_url!);
+                            setPreviewDocTitle(`${selectedShopForReview.shop_name} — PAN Card`);
+                          }}
+                          className="px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Doc
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 italic">No doc attached</span>
+                      )}
+                    </div>
+
+                    {/* Storefront Photo & GSTIN Card */}
+                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl">
+                          <Camera className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white">Storefront Photo & GST</p>
+                          <p className="text-[11px] font-mono text-slate-400 uppercase">
+                            {selectedShopForReview.gstin ? `GST: ${selectedShopForReview.gstin}` : 'Shop Board Photo'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedShopForReview.shop_photo_url ? (
+                        <button
+                          onClick={() => {
+                            setPreviewDocUrl(selectedShopForReview.shop_photo_url!);
+                            setPreviewDocTitle(`${selectedShopForReview.shop_name} — Storefront Photo`);
+                          }}
+                          className="px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Photo
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-500 italic">No photo attached</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+            {/* Modal Action Footer */}
+            <div className="p-5 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                onClick={() => setSelectedShopForReview(null)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Close Review
+              </button>
+
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                {selectedShopForReview.status !== 'rejected' && (
+                  <button
+                    onClick={() => {
+                      setRejectModalShop(selectedShopForReview);
+                      setRejectionReasonInput('');
+                    }}
+                    className="flex-1 sm:flex-initial px-5 py-2.5 bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    ❌ Reject Application
+                  </button>
+                )}
+
+                {selectedShopForReview.status !== 'approved' && (
+                  <button
+                    onClick={() => openApproveModal(selectedShopForReview)}
+                    className="flex-1 sm:flex-initial px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    ✅ Approve & Assign Delivery Area ➔
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REJECTION REASON DIALOG MODAL */}
+      {rejectModalShop && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#0b101d] border border-red-500/40 rounded-3xl w-full max-w-md overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400" /> Reject Store Application
+              </h3>
+              <button
+                onClick={() => setRejectModalShop(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-slate-300">
+                You are rejecting the application for <strong className="text-white">{rejectModalShop.shop_name}</strong>.
+                Please provide a clear reason so the merchant can correct their documents or location in their app:
+              </p>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                  Rejection Remarks / Feedback *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="e.g. FSSAI certificate is blurry. Please upload clear original document. GPS street address does not match shop."
+                  value={rejectionReasonInput}
+                  onChange={(e) => setRejectionReasonInput(e.target.value)}
+                  className="w-full mt-1 p-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-red-500 rounded-xl text-xs outline-none resize-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectModalShop(null)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={rejectSubmitting}
+                  onClick={handleConfirmRejection}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-600/20 transition-all cursor-pointer"
+                >
+                  {rejectSubmitting ? 'Rejecting...' : 'Confirm Rejection'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* APPROVE STORE & ASSIGN AREA MODAL */}
+      {approveModalShop && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-[#0b101d] border border-emerald-500/40 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-400">
+                  <Store className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    Approve Store & Assign Delivery Area
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Select the fulfillment locality area zone and confirm GPS coordinates for{' '}
+                    <strong className="text-white">{approveModalShop.shop_name}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setApproveModalShop(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+              {/* Store & Owner Summary Card */}
+              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Store & Owner</span>
+                  <p className="font-bold text-white text-sm">{approveModalShop.shop_name}</p>
+                  <p className="text-slate-300 mt-0.5">
+                    👤 {approveModalShop.owner_name || approveModalShop.profiles?.name || 'Owner'} · 📞 +
+                    {approveModalShop.profiles?.phone || approveModalShop.phone || 'No phone'}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Source & Status</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
+                      {approveModalShop.onboarding_source === 'app_self_registration'
+                        ? '📱 App Self-Register'
+                        : '💻 Admin Direct'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30 animate-pulse">
+                      PENDING APPROVAL
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* GPS Coordinates & Google Maps Street Address */}
+              <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/30 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-emerald-400" /> GPS Coordinates & Street Pin
+                  </h4>
+                  {approveModalShop.latitude != null && approveModalShop.longitude != null && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${parseFloat(String(approveModalShop.latitude))},${parseFloat(String(approveModalShop.longitude))}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-emerald-400 hover:underline font-bold flex items-center gap-1"
+                    >
+                      Google Maps ↗
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 text-xs flex-wrap font-mono">
+                  <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-lg font-bold">
+                    📍 Latitude: {approveModalShop.latitude != null && !isNaN(Number(approveModalShop.latitude)) ? Number(approveModalShop.latitude).toFixed(6) : 'Not Pinned'}
+                  </span>
+                  <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-lg font-bold">
+                    📍 Longitude: {approveModalShop.longitude != null && !isNaN(Number(approveModalShop.longitude)) ? Number(approveModalShop.longitude).toFixed(6) : 'Not Pinned'}
+                  </span>
+                </div>
+
+                {approveModalShop.street_address && (
+                  <p className="text-xs text-slate-200 mt-1">
+                    <strong className="text-emerald-400">Street:</strong> {approveModalShop.street_address}
+                  </p>
+                )}
+                {approveModalShop.detailed_address && (
+                  <p className="text-xs text-slate-400">
+                    <strong className="text-slate-300">Shop details:</strong> {approveModalShop.detailed_address}
+                  </p>
+                )}
+              </div>
+
+              {/* KYC Document Verification Strip */}
+              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" /> Verified Legal KYC Documents
+                </h4>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* Aadhaar */}
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400">Aadhaar Card</span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          approveModalShop.aadhaar_doc_url
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {approveModalShop.aadhaar_doc_url ? 'Uploaded ✓' : 'Missing'}
+                      </span>
+                    </div>
+                    {approveModalShop.aadhaar_doc_url ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(approveModalShop.aadhaar_doc_url!);
+                          setPreviewDocTitle(`${approveModalShop.shop_name} — Aadhaar Card`);
+                        }}
+                        className="w-full py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" /> View Doc
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                    )}
+                  </div>
+
+                  {/* FSSAI */}
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400">FSSAI Food</span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          approveModalShop.fssai_doc_url
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {approveModalShop.fssai_doc_url ? 'Uploaded ✓' : 'Optional'}
+                      </span>
+                    </div>
+                    {approveModalShop.fssai_doc_url ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(approveModalShop.fssai_doc_url!);
+                          setPreviewDocTitle(`${approveModalShop.shop_name} — FSSAI License`);
+                        }}
+                        className="w-full py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" /> View Doc
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                    )}
+                  </div>
+
+                  {/* PAN */}
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400">PAN Card</span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          approveModalShop.pan_doc_url
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {approveModalShop.pan_doc_url ? 'Uploaded ✓' : 'Optional'}
+                      </span>
+                    </div>
+                    {approveModalShop.pan_doc_url ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(approveModalShop.pan_doc_url!);
+                          setPreviewDocTitle(`${approveModalShop.shop_name} — PAN Card`);
+                        }}
+                        className="w-full py-1 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" /> View Doc
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                    )}
+                  </div>
+
+                  {/* Shop Photo */}
+                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400">Shop Board</span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          approveModalShop.shop_photo_url
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : 'bg-slate-800 text-slate-500'
+                        }`}
+                      >
+                        {approveModalShop.shop_photo_url ? 'Uploaded ✓' : 'Optional'}
+                      </span>
+                    </div>
+                    {approveModalShop.shop_photo_url ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocUrl(approveModalShop.shop_photo_url!);
+                          setPreviewDocTitle(`${approveModalShop.shop_name} — Storefront Photo`);
+                        }}
+                        className="w-full py-1 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" /> View Photo
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Territory & Area Assignment Section (DIRECT REFERENCE TO CITIES & LOCALITIES AND DELIVERY ZONES) */}
+              <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900/60 to-slate-900/40 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 shadow-xl space-y-5">
+                {/* Header with Quick Navigation to Master Tabs */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-indigo-500/20">
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-indigo-400" /> Assign Delivery Territory & Serviceable Zones *
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Directly referenced from Master Cities & Localities hierarchy and Delivery Zones & Routing.
+                    </p>
+                  </div>
+                  {setActiveTab && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApproveModalShop(null);
+                          setActiveTab('cities-areas');
+                        }}
+                        className="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        title="Manage Cities, Districts & Localities"
+                      >
+                        <MapPin className="w-3 h-3" /> Master Cities
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApproveModalShop(null);
+                          setActiveTab('locations');
+                        }}
+                        className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        title="Manage Delivery Zones & Routing"
+                      >
+                        <Zap className="w-3 h-3" /> Delivery Zones
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 1. City Selection & Primary Locality Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* City Selector */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1">
+                        <Building className="w-3.5 h-3.5 text-indigo-400" /> Master City *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApproveIsCustomCity(!approveIsCustomCity);
+                          if (!approveIsCustomCity) {
+                            setApproveCustomCity(approveSelectedCity);
+                          }
+                        }}
+                        className="text-[10px] text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+                      >
+                        {approveIsCustomCity ? '← Select from Master Cities' : '✏️ Custom City'}
+                      </button>
+                    </div>
+
+                    {approveIsCustomCity ? (
+                      <input
+                        type="text"
+                        placeholder="e.g. Pimpri-Chinchwad, Pune, Mumbai"
+                        value={approveCustomCity}
+                        onChange={(e) => setApproveCustomCity(e.target.value)}
+                        className="w-full h-10 px-3.5 bg-slate-950 border border-indigo-500/50 text-white rounded-xl text-xs outline-none focus:border-indigo-400 font-medium"
+                        required
+                      />
+                    ) : (
+                      <select
+                        value={approveSelectedCity}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__custom__') {
+                            setApproveIsCustomCity(true);
+                            setApproveCustomCity('');
+                          } else {
+                            setApproveSelectedCity(val);
+                            setApproveSelectedArea('');
+                          }
+                        }}
+                        className="w-full h-10 px-3 bg-slate-950 border border-indigo-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-400 font-medium"
+                      >
+                        <option value="">-- Select Master City --</option>
+                        {(cities || []).map((c) => {
+                          const count = (areas || []).filter((a) => a.city_id === c.id).length;
+                          return (
+                            <option key={c.id} value={c.name}>
+                              🏙️ {c.name} {count > 0 ? `(${count} areas)` : ''}
+                            </option>
+                          );
+                        })}
+                        {approveModalShop.city &&
+                          !(cities || []).some(
+                            (c) => c.name.toLowerCase() === (approveModalShop.city || '').toLowerCase()
+                          ) && (
+                            <option value={approveModalShop.city}>
+                              📍 Store Detected City: {approveModalShop.city}
+                            </option>
+                          )}
+                        <option value="__custom__">➕ Type Custom / New City...</option>
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Primary Area Locality Selector */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Primary Locality / Hub *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApproveIsCustomArea(!approveIsCustomArea);
+                          if (!approveIsCustomArea) {
+                            setApproveCustomArea(approveSelectedArea);
+                          }
+                        }}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                      >
+                        {approveIsCustomArea ? '← Pick from Master Localities' : '✏️ Custom Area'}
+                      </button>
+                    </div>
+
+                    {approveIsCustomArea ? (
+                      <input
+                        type="text"
+                        placeholder="e.g. Thergaon, Ravet, Wakad, Hinjawadi"
+                        value={approveCustomArea}
+                        onChange={(e) => {
+                          setApproveCustomArea(e.target.value);
+                          if (e.target.value && !approveAdditionalAreas.includes(e.target.value)) {
+                            setApproveAdditionalAreas((prev) => [...prev, e.target.value]);
+                          }
+                        }}
+                        className="w-full h-10 px-3.5 bg-slate-950 border border-emerald-500/50 text-white rounded-xl text-xs outline-none focus:border-emerald-400 font-medium"
+                        required
+                      />
+                    ) : (
+                      <select
+                        value={approveSelectedArea}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '__custom__') {
+                            setApproveIsCustomArea(true);
+                            setApproveCustomArea('');
+                          } else {
+                            setApproveSelectedArea(val);
+                            // Auto fill pincode
+                            const matchedAreaObj = approveModalAreas.find((a) => a.name === val);
+                            if (matchedAreaObj && matchedAreaObj.pincode) {
+                              setApprovePincode(matchedAreaObj.pincode);
+                            }
+                            if (val && !approveAdditionalAreas.includes(val)) {
+                              setApproveAdditionalAreas((prev) => [...prev, val]);
+                            }
+                          }
+                        }}
+                        className="w-full h-10 px-3 bg-slate-950 border border-emerald-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-emerald-400 font-medium"
+                        required
+                      >
+                        {approveModalShop.area_name && (
+                          <option value={approveModalShop.area_name}>
+                            📍 Store Detected Area: {approveModalShop.area_name}
+                          </option>
+                        )}
+                        <option value="">-- Select Master Locality Zone --</option>
+                        {approveModalAreas.map((a) => (
+                          <option key={a.id || `${a.name}-${a.pincode}`} value={a.name}>
+                            📍 {a.name} (PIN: {a.pincode || '—'})
+                          </option>
+                        ))}
+                        <option value="__custom__">➕ Type Custom / New Locality Area...</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Pincode & Delivery Radius Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center justify-between mb-1">
+                      <span>Primary PIN Code *</span>
+                      {approvePinValidation && (
+                        <span
+                          className={`text-[10px] font-semibold ${
+                            approvePinValidation.isValid ? 'text-emerald-400' : 'text-amber-400'
+                          }`}
+                        >
+                          {approvePinValidation.isValid ? '✓ Valid Indian PIN' : approvePinValidation.error}
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="e.g. 411033"
+                      value={approvePincode}
+                      onChange={(e) => setApprovePincode(e.target.value.replace(/[^\d]/g, ''))}
+                      className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                      Delivery Radius
+                    </label>
+                    <select
+                      value={approveRadius}
+                      onChange={(e) => setApproveRadius(e.target.value)}
+                      className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-400"
+                    >
+                      <option value="2.0">2.0 KM (Ultra Local)</option>
+                      <option value="3.0">3.0 KM (Neighborhood)</option>
+                      <option value="5.0">5.0 KM (Standard Area)</option>
+                      <option value="7.0">7.0 KM (Extended Hub)</option>
+                      <option value="10.0">10.0 KM (Sub-District)</option>
+                      <option value="15.0">15.0 KM (Wide Metro)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3. Multi-Zone Serviceable Coverage Area Multi-Select Chips */}
+                <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="text-[11px] font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-indigo-400" /> Multi-Zone Serviceable Localities ({approveAdditionalAreas.length} Assigned)
+                      </label>
+                      <p className="text-[10px] text-slate-400">
+                        Check all localities/zones from {approveEffectiveCity || 'this city'} that this merchant store will service.
+                      </p>
+                    </div>
+
+                    {approveModalAreas.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const all = approveModalAreas.map((a) => a.name);
+                            setApproveAdditionalAreas(all);
+                          }}
+                          className="px-2 py-0.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded text-[10px] font-bold cursor-pointer transition-all"
+                        >
+                          Select All ({approveModalAreas.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const primary = (approveIsCustomArea ? approveCustomArea : approveSelectedArea).trim();
+                            setApproveAdditionalAreas(primary ? [primary] : []);
+                          }}
+                          className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px] font-bold cursor-pointer transition-all"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Areas Chips Grid */}
+                  <div className="max-h-48 overflow-y-auto p-2.5 bg-slate-950/80 rounded-xl border border-slate-800/80 flex flex-wrap gap-2">
+                    {approveModalAreas.length === 0 ? (
+                      <div className="w-full py-3 text-center text-xs text-slate-500 italic">
+                        No registered master areas found for &quot;{approveEffectiveCity || 'selected city'}&quot;. You can type custom areas below or add them in the Master Cities tab.
+                      </div>
+                    ) : (
+                      approveModalAreas.map((area) => {
+                        const isSelected = approveAdditionalAreas.some(
+                          (a) => a.toLowerCase() === area.name.toLowerCase()
+                        );
+                        const isPrimary =
+                          (approveIsCustomArea ? approveCustomArea : approveSelectedArea).trim().toLowerCase() ===
+                          area.name.toLowerCase();
+
+                        return (
+                          <button
+                            key={area.id || `${area.name}-${area.pincode}`}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setApproveAdditionalAreas(
+                                  approveAdditionalAreas.filter(
+                                    (a) => a.toLowerCase() !== area.name.toLowerCase()
+                                  )
+                                );
+                              } else {
+                                setApproveAdditionalAreas([...approveAdditionalAreas, area.name]);
+                                if (!approveSelectedArea) {
+                                  setApproveSelectedArea(area.name);
+                                  if (area.pincode) setApprovePincode(area.pincode);
+                                }
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border-emerald-500/50 text-emerald-300 shadow-sm shadow-emerald-500/20'
+                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                                isSelected ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600'
+                              }`}
+                            >
+                              {isSelected ? '✓' : ''}
+                            </span>
+                            <span>{area.name}</span>
+                            {area.pincode && (
+                              <span className="text-[10px] opacity-60 font-mono">({area.pincode})</span>
+                            )}
+                            {isPrimary && (
+                              <span className="px-1 py-0.2 bg-emerald-500/30 text-emerald-300 text-[9px] font-bold rounded">
+                                Primary
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Add Custom Area on the fly */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="+ Add another serviceable zone name..."
+                      value={approveNewCustomZone}
+                      onChange={(e) => setApproveNewCustomZone(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = approveNewCustomZone.trim();
+                          if (val && !approveAdditionalAreas.some((a) => a.toLowerCase() === val.toLowerCase())) {
+                            setApproveAdditionalAreas([...approveAdditionalAreas, val]);
+                            setApproveNewCustomZone('');
+                          }
+                        }
+                      }}
+                      className="flex-1 h-9 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs outline-none focus:border-indigo-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = approveNewCustomZone.trim();
+                        if (val && !approveAdditionalAreas.some((a) => a.toLowerCase() === val.toLowerCase())) {
+                          setApproveAdditionalAreas([...approveAdditionalAreas, val]);
+                          setApproveNewCustomZone('');
+                        }
+                      }}
+                      className="px-3 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Action Footer */}
+            <div className="p-5 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setApproveModalShop(null)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={approveSubmitting}
+                onClick={handleConfirmApproval}
+                className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                {approveSubmitting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Approving & Setting Territory...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" /> Confirm Area & Approve Merchant Store
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DOCUMENT LIGHTBOX PREVIEW MODAL */}
+      {previewDocUrl && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
+          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" /> {previewDocTitle || 'Document Viewer'}
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!previewDocUrl) return;
+                    const safeUrl = getSafeDocUrl(previewDocUrl);
+                    if (safeUrl.startsWith('data:')) {
+                      const win = window.open('', '_blank');
+                      if (win) {
+                        win.document.write(`
+                          <!DOCTYPE html>
+                          <html>
+                            <head>
+                              <meta charset="utf-8" />
+                              <meta name="viewport" content="width=device-width, initial-scale=1" />
+                              <title>${previewDocTitle || 'KYC Document Preview'}</title>
+                              <style>
+                                body { margin: 0; background: #070a14; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: system-ui, sans-serif; color: #fff; padding: 20px; box-sizing: border-box; }
+                                img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+                              </style>
+                            </head>
+                            <body>
+                              <img src="${safeUrl}" alt="Document Preview" />
+                            </body>
+                          </html>
+                        `);
+                        win.document.close();
+                        return;
+                      }
+                    }
+                    window.open(safeUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Full Tab ↗
+                </button>
+                <button
+                  onClick={() => setPreviewDocUrl(null)}
+                  className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 bg-slate-950 flex items-center justify-center min-h-[350px]">
+              {previewDocUrl.toLowerCase().includes('.pdf') ? (
+                <iframe title="Document PDF Preview" src={getSafeDocUrl(previewDocUrl)} className="w-full h-[500px] rounded-xl border border-slate-800" />
+              ) : (
+                <img
+                  src={getSafeDocUrl(previewDocUrl)}
+                  alt={previewDocTitle}
+                  className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl border border-slate-800"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.doc-fallback-msg')) {
+                      const div = document.createElement('div');
+                      div.className = 'doc-fallback-msg flex flex-col items-center justify-center text-center p-6 space-y-3';
+                      div.innerHTML = `
+                        <p class="text-xs text-amber-400 font-semibold">⚠️ Document preview could not be loaded inline.</p>
+                        <a href="${getSafeDocUrl(previewDocUrl)}" target="_blank" rel="noreferrer" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all">
+                          Open in External Window ↗
+                        </a>
+                      `;
+                      parent.appendChild(div);
+                    }
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* INTERACTIVE STORE MAP & LOCATION VERIFICATION MODAL */}
       {selectedShopForMap && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -1590,7 +3415,12 @@ export default function ShopsTab({
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  Owner: <strong className="text-slate-200">{selectedShopForMap.profiles?.name || 'Owner'}</strong> · Mobile: <strong className="text-slate-200">+{selectedShopForMap.profiles?.phone}</strong> · City: <strong className="text-slate-200">{selectedShopForMap.city || '—'}</strong>
+                  Owner:{' '}
+                  <strong className="text-slate-200">
+                    {selectedShopForMap.owner_name || selectedShopForMap.profiles?.name || 'Owner'}
+                  </strong>{' '}
+                  · Mobile: <strong className="text-slate-200">+{selectedShopForMap.profiles?.phone}</strong> · City:{' '}
+                  <strong className="text-slate-200">{selectedShopForMap.city || '—'}</strong>
                 </p>
               </div>
 
@@ -1609,7 +3439,9 @@ export default function ShopsTab({
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-300">📍 Live OpenStreetMap Pinpoint</span>
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${parseFloat(editLat) || 18.5204},${parseFloat(editLng) || 73.8567}`}
+                    href={`https://www.google.com/maps/search/?api=1&query=${parseFloat(editLat) || 18.5204},${
+                      parseFloat(editLng) || 73.8567
+                    }`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline"
@@ -1627,13 +3459,21 @@ export default function ShopsTab({
                     scrolling="no"
                     marginHeight={0}
                     marginWidth={0}
-                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${(parseFloat(editLng) || 73.8567) - 0.035}%2C${(parseFloat(editLat) || 18.5204) - 0.025}%2C${(parseFloat(editLng) || 73.8567) + 0.035}%2C${(parseFloat(editLat) || 18.5204) + 0.025}&layer=mapnik&marker=${parseFloat(editLat) || 18.5204}%2C${parseFloat(editLng) || 73.8567}`}
+                    src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                      (parseFloat(editLng) || 73.8567) - 0.035
+                    }%2C${(parseFloat(editLat) || 18.5204) - 0.025}%2C${
+                      (parseFloat(editLng) || 73.8567) + 0.035
+                    }%2C${
+                      (parseFloat(editLat) || 18.5204) + 0.025
+                    }&layer=mapnik&marker=${parseFloat(editLat) || 18.5204}%2C${parseFloat(editLng) || 73.8567}`}
                     className="w-full h-full"
                   />
                 </div>
 
                 <div className="p-3 bg-emerald-950/30 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 flex items-center justify-between">
-                  <span>🛵 <strong>{editRadius} KM</strong> Coverage Radius Zone</span>
+                  <span>
+                    🛵 <strong>{editRadius} KM</strong> Coverage Radius Zone
+                  </span>
                   <span className="text-slate-400 text-[11px]">Customers within {editRadius} km get Free Delivery</span>
                 </div>
               </div>
@@ -1699,20 +3539,18 @@ export default function ShopsTab({
                 <div className="pt-4 border-t border-slate-800 space-y-2">
                   {selectedShopForMap.status !== 'approved' && (
                     <button
-                      onClick={() => {
-                        handleUpdateShopStatus(selectedShopForMap.id, 'approved');
-                        setSelectedShopForMap(null);
-                      }}
+                      onClick={() => openApproveModal(selectedShopForMap)}
                       className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
                     >
-                      ✅ Approve Store with this Location
+                      ✅ Approve & Assign Delivery Area ➔
                     </button>
                   )}
 
                   {selectedShopForMap.status !== 'rejected' && (
                     <button
                       onClick={() => {
-                        handleUpdateShopStatus(selectedShopForMap.id, 'rejected');
+                        setRejectModalShop(selectedShopForMap);
+                        setRejectionReasonInput('');
                         setSelectedShopForMap(null);
                       }}
                       className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
@@ -1731,7 +3569,6 @@ export default function ShopsTab({
       {selectedShopForInventory && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="p-6 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -1749,9 +3586,8 @@ export default function ShopsTab({
               </button>
             </div>
 
-            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Direct Assignment Form (Col 1) */}
+              {/* Direct Assignment Form */}
               <div className="bg-slate-900/30 p-5 rounded-2xl border border-slate-800/50 h-fit space-y-4">
                 <h4 className="font-bold text-white text-sm mb-2">➕ Assign Product to Store</h4>
                 <form onSubmit={handleDirectAssignProduct} className="space-y-3">
@@ -1822,7 +3658,7 @@ export default function ShopsTab({
                 </form>
               </div>
 
-              {/* Assigned Items List (Col 2-3) */}
+              {/* Assigned Items List */}
               <div className="lg:col-span-2 space-y-4">
                 <h4 className="font-bold text-white text-sm">Assigned Products ({shopInventoryList.length})</h4>
                 <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[480px] overflow-y-auto pr-1">
@@ -1883,6 +3719,7 @@ export default function ShopsTab({
           </div>
         </div>
       )}
+
       {/* STORE-LEVEL DELIVERY COVERAGE MODAL */}
       {selectedShopForZones && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -1893,7 +3730,8 @@ export default function ShopsTab({
                   <MapPin className="w-5 h-5 text-indigo-400" /> {selectedShopForZones.shop_name} — Coverage Zones
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Base: {selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'} (PIN: {selectedShopForZones.pincode || '—'})
+                  Base: {selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'} (PIN:{' '}
+                  {selectedShopForZones.pincode || '—'})
                 </p>
               </div>
               <button
@@ -1952,7 +3790,8 @@ export default function ShopsTab({
 
                 {locations.filter((l) => l.shop_id === selectedShopForZones.id).length === 0 && (
                   <div className="p-6 text-center text-slate-500 text-xs italic">
-                    No extra localities mapped to this store yet. Orders from its base area ({selectedShopForZones.area_name || '—'}) will be fulfilled automatically.
+                    No extra localities mapped to this store yet. Orders from its base area (
+                    {selectedShopForZones.area_name || '—'}) will be fulfilled automatically.
                   </div>
                 )}
               </div>

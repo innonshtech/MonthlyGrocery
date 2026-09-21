@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
+import LocationMapPreview from '../../components/LocationMapPreview';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
@@ -61,20 +62,46 @@ export default function AddAddressScreen({ navigation, route }: any) {
   const { showToast } = useToast();
   const editingAddress = route?.params?.editingAddress as AddressItem | undefined;
   const fromCheckout = route?.params?.fromCheckout;
+  // Pre-filled data from LocationPickerScreen
+  const prefilled = route?.params?.prefilled as {
+    street?: string;
+    area?: string;
+    city?: string;
+    district?: string;
+    state?: string;
+    pincode?: string;
+    formatted_address?: string;
+    latitude?: number;
+    longitude?: number;
+  } | undefined;
 
   const [screenConfig, setScreenConfig] = useState<AddAddressScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
 
   const [tag, setTag] = useState('');
   const [flat, setFlat] = useState(editingAddress?.flat || '');
-  const [street, setStreet] = useState(editingAddress?.street || '');
-  const [area, setArea] = useState(editingAddress?.area || authArea || '');
-  const [city, setCity] = useState(editingAddress?.city || authCity || '');
-  const [stateName, setStateName] = useState(editingAddress?.state || 'Maharashtra');
+  const [street, setStreet] = useState(
+    editingAddress?.street || prefilled?.street || '',
+  );
+  const [area, setArea] = useState(
+    editingAddress?.area || prefilled?.area || authArea || '',
+  );
+  const [city, setCity] = useState(
+    editingAddress?.city || prefilled?.city || authCity || '',
+  );
+  const [stateName, setStateName] = useState(
+    editingAddress?.state || prefilled?.state || 'Maharashtra',
+  );
   const [landmark, setLandmark] = useState(editingAddress?.landmark || '');
-  const [pincode, setPincode] = useState(editingAddress?.pincode || '');
-  const [latitude, setLatitude] = useState<number | null>(editingAddress?.latitude || null);
-  const [longitude, setLongitude] = useState<number | null>(editingAddress?.longitude || null);
+  const [pincode, setPincode] = useState(
+    editingAddress?.pincode || prefilled?.pincode || '',
+  );
+  const [latitude, setLatitude] = useState<number | null>(
+    editingAddress?.latitude || prefilled?.latitude || null,
+  );
+  const [longitude, setLongitude] = useState<number | null>(
+    editingAddress?.longitude || prefilled?.longitude || null,
+  );
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [phone, setPhone] = useState(
     editingAddress?.phone || defaultPhoneFromUser(user?.mobile),
@@ -143,11 +170,12 @@ export default function AddAddressScreen({ navigation, route }: any) {
 
         const details = await reverseGeocodeLocation(coords.latitude, coords.longitude);
         if (details) {
-          if (details.pincode) setPincode(details.pincode);
+          const detectedStreet = details.street || details.area || details.formatted_address || '';
+          if (detectedStreet) setStreet(detectedStreet);
+          if (details.area) setArea(details.area);
           if (details.city) setCity(details.city);
           if (details.state) setStateName(details.state);
-          if (details.area) setArea(details.area);
-          if (details.street && !street) setStreet(details.street);
+          if (details.pincode) setPincode(details.pincode);
         }
         setDetectingLocation(false);
       } else {
@@ -261,7 +289,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
         phone: phone.trim(),
         latitude,
         longitude,
-        isDefault: editingAddress?.isDefault,
+        isDefault: true,
       });
 
       await cacheAddressesLocally(addresses);
@@ -345,63 +373,51 @@ export default function AddAddressScreen({ navigation, route }: any) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.mapPreview}>
-          <MapPinLargeIcon size={34} />
-          {latitude != null && longitude != null ? (
-            <Text style={styles.coordsText}>
-              📍 GPS: {latitude.toFixed(4)}, {longitude.toFixed(4)}
-            </Text>
-          ) : null}
-          <TouchableOpacity
-            style={styles.detectBtn}
-            onPress={handleUseCurrentLocation}
-            disabled={detectingLocation}
-            activeOpacity={0.85}
-          >
-            {detectingLocation ? (
-              <ActivityIndicator size="small" color={COLORS.green700} />
-            ) : (
-              <Text style={styles.detectBtnText}>🎯 Use Exact Device GPS</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        {/* Live Location Map Box (Blinkit Style with interactive finger drag) */}
+        <LocationMapPreview
+          latitude={latitude}
+          longitude={longitude}
+          streetOrArea={street || area || city}
+          detectingLocation={detectingLocation}
+          onUseCurrentLocation={handleUseCurrentLocation}
+          onLocationChange={(loc) => {
+            setLatitude(loc.latitude);
+            setLongitude(loc.longitude);
+            if (loc.street) setStreet(loc.street);
+            if (loc.area && !area) setArea(loc.area);
+            if (loc.city) setCity(loc.city);
+            if (loc.state) setStateName(loc.state);
+            if (loc.pincode) setPincode(loc.pincode);
+          }}
+        />
 
-        {/* Flat / House No. & Building */}
+        {/* Complete Address — Free-form text (Blinkit style) */}
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>
-            {screenConfig.flat_label || 'FLAT / HOUSE NO. & BUILDING'}
+            COMPLETE ADDRESS (HOUSE / FLAT NO., BUILDING, FLOOR)
           </Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
             value={flat}
             onChangeText={setFlat}
-            placeholder={screenConfig.flat_placeholder || 'e.g. Flat 402, Green Meadows'}
+            placeholder="e.g. Flat 402, 4th Floor, B-Wing, Green Meadows Society"
             placeholderTextColor={COLORS.ink300}
+            multiline={true}
+            numberOfLines={2}
           />
         </View>
 
-        {/* Apartment / Road / Street */}
+        {/* Street Address / Locality — Locked & Auto-filled from Map/GPS (Blinkit style) */}
         <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>
-            {screenConfig.street_label || 'STREET / ROAD / APARTMENT'}
-          </Text>
+          <View style={styles.lockedLabelRow}>
+            <Text style={styles.fieldLabel}>STREET ADDRESS / LOCALITY</Text>
+            <Text style={styles.lockedBadge}>🔒 Map Selected</Text>
+          </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.lockedInput]}
             value={street}
-            onChangeText={setStreet}
-            placeholder={screenConfig.street_placeholder || 'e.g. Paud Road'}
-            placeholderTextColor={COLORS.ink300}
-          />
-        </View>
-
-        {/* Area / Locality */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>AREA / LOCALITY</Text>
-          <TextInput
-            style={styles.input}
-            value={area}
-            onChangeText={setArea}
-            placeholder="e.g. Kothrud"
+            editable={false}
+            placeholder="Select location from map above"
             placeholderTextColor={COLORS.ink300}
           />
         </View>
@@ -415,7 +431,7 @@ export default function AddAddressScreen({ navigation, route }: any) {
             style={styles.input}
             value={landmark}
             onChangeText={setLandmark}
-            placeholder={screenConfig.landmark_placeholder || 'Near City Pride multiplex'}
+            placeholder={screenConfig.landmark_placeholder || 'Near City Pride multiplex / Ganpati Temple'}
             placeholderTextColor={COLORS.ink300}
           />
         </View>
@@ -615,6 +631,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: COLORS.ink900,
+  },
+  lockedLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lockedBadge: {
+    ...FONTS.muktaMedium,
+    fontSize: 10.5,
+    color: '#64748B',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  lockedInput: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
+    color: '#334155',
+  },
+  multilineInput: {
+    height: 'auto',
+    minHeight: 64,
+    textAlignVertical: 'top',
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   rowFields: {
     flexDirection: 'row',

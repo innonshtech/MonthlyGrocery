@@ -14,35 +14,20 @@ export const DEV_MACHINE_IP = '192.168.1.15';
  * Toggle to connect the app to the live AWS EC2 Cloud Server.
  * Set to TRUE for production APK and cloud testing.
  */
-export const USE_AWS_SERVER = true;
-
-function isAndroidEmulator(): boolean {
-  if (Platform.OS !== 'android') return false;
-  const c = NativeModules.PlatformConstants || {};
-  const model = String(c.Model || '').toLowerCase();
-  const fingerprint = String(c.Fingerprint || '').toLowerCase();
-  const brand = String(c.Brand || '').toLowerCase();
-  return (
-    fingerprint.includes('generic') ||
-    fingerprint.includes('emulator') ||
-    model.includes('emulator') ||
-    model.includes('sdk') ||
-    brand.includes('generic')
-  );
-}
+export const USE_AWS_SERVER = false;
 
 function resolveApiBase(): string {
   if (USE_AWS_SERVER) {
     return AWS_SERVER_URL;
   }
-  if (Platform.OS === 'android') {
-    if (isAndroidEmulator()) {
-      return 'http://10.0.2.2:8001/api';
-    }
-    return `http://${DEV_MACHINE_IP}:8001/api`;
-  }
+  // With adb reverse tcp:8001 tcp:8001, localhost:8001 maps directly to local express backend
   return 'http://localhost:8001/api';
 }
 
 export const API_BASE = resolveApiBase();
+
+/**
+ * Google Maps API Key for Static Maps, Geocoding & Places
+ */
+export const GOOGLE_MAPS_API_KEY = 'AIzaSyDmN6Z7J7u9p7RDWze_39SPh9rLbmQ62wQ';
 

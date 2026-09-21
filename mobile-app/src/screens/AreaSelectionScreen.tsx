@@ -40,6 +40,8 @@ import {
 } from '../services/onboardingApi';
 import { reverseGeocodeLocation } from '../services/addressApi';
 import { getCurrentCoordinates } from '../services/locationService';
+import ShopPickerSlide from '../components/ShopPickerSlide';
+import { NearbyShop } from '../services/shopsApi';
 
 function formatUnserviceableSubtitle(
   template: string,
@@ -54,7 +56,7 @@ function formatUnserviceableSubtitle(
  * Areas from /api/admin/locations; copy from /api/admin/onboarding.
  */
 export default function AreaSelectionScreen({ route, navigation }: any) {
-  const { setCityAndArea, user, token, city: currentCity, area: currentArea } = useAuth();
+  const { setCityAndArea, setSelectedShop, user, token, city: currentCity, area: currentArea } = useAuth();
   const { items, clearCart } = useCart();
   const { showToast } = useToast();
   const cityName = route.params?.cityName?.trim() || '';
@@ -69,6 +71,10 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const [missingCity, setMissingCity] = useState(false);
   const [notifyLoading, setNotifyLoading] = useState(false);
   const [gpsLocating, setGpsLocating] = useState(false);
+
+  // Shop picker slide state
+  const [shopPickerVisible, setShopPickerVisible] = useState(false);
+  const [shopPickerArea, setShopPickerArea] = useState<CityArea | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -178,6 +184,14 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
     }
 
     await setCityAndArea(cityName, area.name, area.pincode || null);
+    // Show shop picker slide — user must choose a shop before proceeding
+    setShopPickerArea(area);
+    setShopPickerVisible(true);
+  };
+
+  const handleShopSelected = async (shop: NearbyShop) => {
+    await setSelectedShop({ id: shop.id, name: shop.shop_name, delivery_radius_km: shop.delivery_radius_km });
+    setShopPickerVisible(false);
     if (token && user?.name) {
       navigation.navigate('Shop');
     } else {
@@ -259,6 +273,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   }
 
   return (
+    <>
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
@@ -453,6 +468,14 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
         </View>
       )}
     </SafeAreaView>
+    <ShopPickerSlide
+      visible={shopPickerVisible}
+      areaName={shopPickerArea?.name ?? ''}
+      city={cityName}
+      onShopSelected={handleShopSelected}
+      onClose={() => setShopPickerVisible(false)}
+    />
+    </>
   );
 }
 

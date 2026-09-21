@@ -43,6 +43,8 @@ import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { HomeCategoryEmojiIcon, getCategoryEmojiKind } from '../../components/home/HomeEmojiIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
+import ShopPickerSlide from '../../components/ShopPickerSlide';
+import { NearbyShop } from '../../services/shopsApi';
 
 const { width } = Dimensions.get('window');
 const H_PAD = 14;
@@ -118,6 +120,10 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     : 0;
   const lastOrderTotal = hasPastOrder ? Number(orderStats.lastOrder.total_amount) || 0 : 0;
   const reorderPreviewItems = hasPastOrder ? getReorderPreviewItems(orderStats.lastOrder) : [];
+
+  // Shop picker slide (for "Change" from HomeScreen)
+  const [shopPickerVisible, setShopPickerVisible] = React.useState(false);
+  const { setSelectedShop } = useAuth();
 
   // When idle (scrollY = 0), overlay is 100% transparent so the header is 1 continuous shade.
   // As user scrolls, it transitions into frosted glass as content passes underneath.
@@ -197,10 +203,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           city,
           area,
           pincode,
+          shop_id: selectedShop?.id || null,
         });
-        if (selectedShop?.id) {
-          url += `&shop_id=${encodeURIComponent(selectedShop.id)}`;
-        }
         const res = await fetch(url);
         const data = await res.json();
         if (res.ok && data.success && data.products) {
@@ -326,6 +330,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   );
 
   return (
+    <>
     <View style={styles.outerWrap}>
       <StatusBar barStyle="dark-content" />
       {/* Dynamic Frosted Glass Status Bar that adapts its color as user scrolls */}
@@ -398,6 +403,17 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                       </Text>
                       <HomeChevronDownIcon size={16} color="#FFFFFF" />
                     </View>
+                    {selectedShop ? (
+                      <View style={styles.shopNameRow}>
+                        <Text style={styles.shopNameLabel} numberOfLines={1}>🏪 {selectedShop.name}</Text>
+                        <TouchableOpacity
+                          onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <Text style={styles.changeShopText}>Change</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
@@ -504,7 +520,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                             resizeMode="contain"
                           />
                         ) : (
-                          <AppIcon name="grid" size={26} color="#1E7A46" />
+                          <AppIcon name="categories" size={26} color="#1E7A46" />
                         )}
                       </View>
                       <Text style={styles.catName} numberOfLines={2}>
@@ -622,10 +638,21 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           </View>
         </TouchableOpacity>
       </View>
-        </View>
-      )}
-      </Animated.ScrollView>
     </View>
+    )}
+    </Animated.ScrollView>
+  </View>
+  <ShopPickerSlide
+      visible={shopPickerVisible}
+      areaName={area ?? ''}
+      city={city ?? ''}
+      onShopSelected={async (shop: NearbyShop) => {
+        await setSelectedShop({ id: shop.id, name: shop.shop_name, delivery_radius_km: shop.delivery_radius_km });
+        setShopPickerVisible(false);
+      }}
+      onClose={() => setShopPickerVisible(false)}
+    />
+    </>
   );
 }
 
@@ -702,6 +729,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
     marginTop: -2,
+  },
+  shopNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+    gap: 6,
+  },
+  shopNameLabel: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.88)',
+    flex: 1,
+  },
+  changeShopText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 12,
+    color: '#FFFFFF',
+    textDecorationLine: 'underline',
   },
   avatarBtn: {
     width: 38,

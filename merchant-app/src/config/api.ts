@@ -1,46 +1,26 @@
 import { NativeModules, Platform } from 'react-native';
 
 /**
- * Live Vercel Cloud Production Server URL
+ * Live AWS EC2 Production Server URL
  */
-export const VERCEL_SERVER_URL = 'https://monthly-grocery-rust.vercel.app/api';
+export const AWS_SERVER_URL = 'http://13.233.159.143/api';
 
 /**
  * Local IP / Host for Wireless & ADB Debugging
  */
-export const DEV_MACHINE_IP = '192.168.1.15';
+export const DEV_MACHINE_IP = '192.168.0.103';
 
 /**
- * Toggle to connect the app to the live Vercel Cloud Server.
+ * Toggle to connect the app to the live AWS EC2 Cloud Server.
  * Set to TRUE for production APK and cloud testing.
  */
-export const USE_VERCEL_SERVER = false;
-
-function isAndroidEmulator(): boolean {
-  if (Platform.OS !== 'android') return false;
-  const c = NativeModules.PlatformConstants || {};
-  const model = String(c.Model || '').toLowerCase();
-  const fingerprint = String(c.Fingerprint || '').toLowerCase();
-  const brand = String(c.Brand || '').toLowerCase();
-  return (
-    fingerprint.includes('generic') ||
-    fingerprint.includes('emulator') ||
-    model.includes('emulator') ||
-    model.includes('sdk') ||
-    brand.includes('generic')
-  );
-}
+export const USE_AWS_SERVER = false;
 
 function resolveApiBase(): string {
-  if (USE_VERCEL_SERVER) {
-    return VERCEL_SERVER_URL;
+  if (USE_AWS_SERVER) {
+    return AWS_SERVER_URL;
   }
-  if (Platform.OS === 'android') {
-    if (isAndroidEmulator()) {
-      return 'http://10.0.2.2:8001/api';
-    }
-    return `http://${DEV_MACHINE_IP}:8001/api`;
-  }
+  // With adb reverse tcp:8001 tcp:8001, localhost:8001 maps directly to local express backend
   return 'http://localhost:8001/api';
 }
 

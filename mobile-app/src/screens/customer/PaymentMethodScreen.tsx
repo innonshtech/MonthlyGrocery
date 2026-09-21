@@ -75,7 +75,7 @@ function mapOrderItemsForBasket(orderItems: any[]) {
 
 export default function PaymentMethodScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { token, city, area, pincode: areaPincode } = useAuth();
+  const { token, city, area, pincode: areaPincode, selectedShop } = useAuth();
   const { items, clearCart } = useCart();
   const { showToast } = useToast();
   const cartSubtotal = items.reduce(
@@ -174,7 +174,7 @@ export default function PaymentMethodScreen({ route, navigation }: any) {
         delivery_slot: slotLabel,
         delivery_slot_date: selectedSlot?.date || null,
         delivery_slot_window_id: selectedSlot?.windowId || null,
-        shop_id: selectedSlot?.shopId || items[0]?.product?.shop_id || null,
+        shop_id: selectedShop?.id || selectedSlot?.shopId || items[0]?.product?.shop_id || null,
         city: selectedAddress?.city || city || null,
         area_name: selectedAddress?.area || area || null,
         pincode: addressPin || areaPincode || null,

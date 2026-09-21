@@ -54,6 +54,7 @@ app.use('/coupons', couponsRouter);
 
 app.use('/api/delivery-slots', deliverySlotsRouter);
 app.use('/delivery-slots', deliverySlotsRouter);
+app.use('/api/api/delivery-slots', deliverySlotsRouter);
 
 app.use('/api/addresses', addressesRouter);
 app.use('/addresses', addressesRouter);
@@ -206,6 +207,8 @@ async function ensureDatabaseSchema() {
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_slot VARCHAR(100);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date DATE;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS items JSONB;
+        ALTER TABLE orders ALTER COLUMN delivery_address TYPE TEXT USING delivery_address::text;
+        ALTER TABLE orders ALTER COLUMN delivery_slot TYPE TEXT USING delivery_slot::text;
         UPDATE orders SET consumer_id = user_id WHERE (consumer_id IS NULL OR consumer_id = '') AND user_id IS NOT NULL;
         UPDATE orders SET user_id = consumer_id WHERE (user_id IS NULL OR user_id = '') AND consumer_id IS NOT NULL;
       `);

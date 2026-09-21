@@ -72,7 +72,7 @@ function CategoryTileItem({
         {item.image_url ? (
           <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="contain" />
         ) : (
-          <AppIcon name="grid" size={26} color="#1E7A46" />
+          <AppIcon name="categories" size={26} color="#1E7A46" />
         )}
       </View>
       <Text style={styles.tileLabel} numberOfLines={2}>

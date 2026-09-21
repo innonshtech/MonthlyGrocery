@@ -27,12 +27,13 @@ export interface UserAddressRecord {
   updated_at?: string;
 }
 
-// POST /reverse-geocode — Convert lat/lng to structured location data (Google Maps / Fallback)
-router.post('/reverse-geocode', async (req: AuthRequest, res: Response) => {
+// POST & GET /reverse-geocode — Convert lat/lng to structured location data (Google Maps / Fallback)
+const handleReverseGeocode = async (req: AuthRequest, res: Response) => {
   try {
-    const { latitude, longitude } = req.body;
-    const lat = parseFloat(String(latitude));
-    const lng = parseFloat(String(longitude));
+    const latRaw = req.body?.latitude ?? req.body?.lat ?? req.query?.latitude ?? req.query?.lat;
+    const lngRaw = req.body?.longitude ?? req.body?.lng ?? req.query?.longitude ?? req.query?.lng;
+    const lat = parseFloat(String(latRaw));
+    const lng = parseFloat(String(lngRaw));
 
     if (isNaN(lat) || isNaN(lng)) {
       return res.status(400).json({ success: false, error: 'Valid latitude and longitude are required' });
@@ -43,7 +44,10 @@ router.post('/reverse-geocode', async (req: AuthRequest, res: Response) => {
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Reverse geocoding failed' });
   }
-});
+};
+
+router.post('/reverse-geocode', handleReverseGeocode);
+router.get('/reverse-geocode', handleReverseGeocode);
 
 // POST & GET /forward-geocode — Convert address/area/pincode query to coordinates
 const handleForwardGeocode = async (req: AuthRequest, res: Response) => {
@@ -145,12 +149,70 @@ router.get('/check-serviceability', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// Helper function to deduplicate addresses and enforce single default per consumer
+function cleanupUserAddresses(allAddresses: UserAddressRecord[], targetConsumerId: string): UserAddressRecord[] {
+  const userAddrs = (allAddresses || []).filter((a) => a.consumer_id === targetConsumerId);
+  const otherAddrs = (allAddresses || []).filter((a) => a.consumer_id !== targetConsumerId);
+
+  // Group by normalized tag for 'home' and 'work'
+  const seenTags = new Set<string>();
+  const cleaned: UserAddressRecord[] = [];
+
+  // Sort: most recently updated/created first
+  const sorted = [...userAddrs].sort((a, b) => {
+    const timeA = new Date(a.updated_at || a.created_at || 0).getTime();
+    const timeB = new Date(b.updated_at || b.created_at || 0).getTime();
+    return timeB - timeA;
+  });
+
+  for (const addr of sorted) {
+    const tagNorm = (addr.tag || 'Home').trim().toLowerCase();
+    if (tagNorm === 'home' || tagNorm === 'work') {
+      if (!seenTags.has(tagNorm)) {
+        seenTags.add(tagNorm);
+        cleaned.push(addr);
+      }
+    } else {
+      cleaned.push(addr);
+    }
+  }
+
+  // Ensure exactly one address has isDefault = true
+  const hasDefault = cleaned.some((a) => a.isDefault);
+  if (!hasDefault && cleaned.length > 0) {
+    cleaned[0].isDefault = true;
+  } else {
+    // If multiple have isDefault = true, only the first (latest) retains it
+    let foundFirstDefault = false;
+    for (const a of cleaned) {
+      if (a.isDefault) {
+        if (!foundFirstDefault) {
+          foundFirstDefault = true;
+        } else {
+          a.isDefault = false;
+        }
+      }
+    }
+  }
+
+  return [...otherAddrs, ...cleaned];
+}
+
 // GET / — List saved addresses for logged-in consumer
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const db = readDb() as any;
+    if (!db.user_addresses) db.user_addresses = [];
+    const consumerId = req.user!.id;
+
+    const prevCount = db.user_addresses.length;
+    db.user_addresses = cleanupUserAddresses(db.user_addresses, consumerId);
+    if (db.user_addresses.length !== prevCount) {
+      writeDb(db);
+    }
+
     const addresses: UserAddressRecord[] = (db.user_addresses || []).filter(
-      (a: UserAddressRecord) => a.consumer_id === req.user!.id,
+      (a: UserAddressRecord) => a.consumer_id === consumerId,
     );
     return res.json({ success: true, addresses });
   } catch (err: any) {
@@ -175,7 +237,6 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     latitude,
     longitude,
     formatted_address,
-    isDefault,
   } = req.body;
 
   if (!flat?.trim() || !street?.trim() || !pincode?.trim()) {
@@ -202,39 +263,52 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     const consumerId = req.user!.id;
     const now = new Date().toISOString();
+    const cleanTag = (tag || 'Home').trim();
+    const cleanTagLower = cleanTag.toLowerCase();
     let saved: UserAddressRecord;
 
+    // Check if an existing address for this consumer matches:
+    // 1) Explicit ID match, OR
+    // 2) For standard tags ('Home' or 'Work'), match any existing address with the same tag to prevent duplicates
+    let existingIndex = -1;
     if (id) {
-      const idx = db.user_addresses.findIndex(
+      existingIndex = db.user_addresses.findIndex(
         (a: UserAddressRecord) => a.id === id && a.consumer_id === consumerId,
       );
-      if (idx === -1) {
-        return res.status(404).json({ success: false, error: 'Address not found' });
-      }
+    } else if (cleanTagLower === 'home' || cleanTagLower === 'work') {
+      existingIndex = db.user_addresses.findIndex(
+        (a: UserAddressRecord) => a.consumer_id === consumerId && (a.tag || '').trim().toLowerCase() === cleanTagLower,
+      );
+    }
+
+    if (existingIndex !== -1) {
+      const existingId = db.user_addresses[existingIndex].id;
       saved = {
-        ...db.user_addresses[idx],
-        tag: (tag || 'Home').trim(),
+        ...db.user_addresses[existingIndex],
+        id: existingId,
+        consumer_id: consumerId,
+        tag: cleanTag,
         flat: flat.trim(),
         street: street.trim(),
         landmark: landmark?.trim() || '',
-        area: area?.trim() || db.user_addresses[idx].area || '',
-        city: city?.trim() || db.user_addresses[idx].city || '',
-        district: district?.trim() || db.user_addresses[idx].district || '',
-        state: state?.trim() || db.user_addresses[idx].state || '',
+        area: area?.trim() || db.user_addresses[existingIndex].area || '',
+        city: city?.trim() || db.user_addresses[existingIndex].city || '',
+        district: district?.trim() || db.user_addresses[existingIndex].district || '',
+        state: state?.trim() || db.user_addresses[existingIndex].state || '',
         pincode: pincode.trim(),
         phone: (phone || '').trim(),
-        latitude: parsedLat ?? db.user_addresses[idx].latitude ?? null,
-        longitude: parsedLng ?? db.user_addresses[idx].longitude ?? null,
-        formatted_address: formatted_address?.trim() || db.user_addresses[idx].formatted_address || '',
-        isDefault: isDefault === true,
+        latitude: parsedLat ?? db.user_addresses[existingIndex].latitude ?? null,
+        longitude: parsedLng ?? db.user_addresses[existingIndex].longitude ?? null,
+        formatted_address: formatted_address?.trim() || db.user_addresses[existingIndex].formatted_address || '',
+        isDefault: true, // Newly saved/edited address is ALWAYS set as active default
         updated_at: now,
       };
-      db.user_addresses[idx] = saved;
+      db.user_addresses[existingIndex] = saved;
     } else {
       saved = {
         id: `addr-${Date.now()}`,
         consumer_id: consumerId,
-        tag: (tag || 'Home').trim(),
+        tag: cleanTag,
         flat: flat.trim(),
         street: street.trim(),
         landmark: landmark?.trim() || '',
@@ -247,21 +321,21 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
         latitude: parsedLat,
         longitude: parsedLng,
         formatted_address: formatted_address?.trim() || '',
-        isDefault: isDefault === true || db.user_addresses.filter(
-          (a: UserAddressRecord) => a.consumer_id === consumerId,
-        ).length === 0,
+        isDefault: true, // Newly added address is ALWAYS set as active default
         created_at: now,
         updated_at: now,
       };
       db.user_addresses.push(saved);
     }
 
-    if (saved.isDefault) {
-      db.user_addresses = db.user_addresses.map((a: UserAddressRecord) => {
-        if (a.consumer_id !== consumerId) return a;
-        return { ...a, isDefault: a.id === saved.id };
-      });
-    }
+    // Set all other addresses for this consumer to isDefault: false
+    db.user_addresses = db.user_addresses.map((a: UserAddressRecord) => {
+      if (a.consumer_id !== consumerId) return a;
+      return { ...a, isDefault: a.id === saved.id };
+    });
+
+    // Run deduplication to clean up any other duplicates in DB
+    db.user_addresses = cleanupUserAddresses(db.user_addresses, consumerId);
 
     writeDb(db);
     const addresses = db.user_addresses.filter(
@@ -270,6 +344,39 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     return res.json({ success: true, address: saved, addresses });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Failed to save address' });
+  }
+});
+
+// POST /:id/default — Set specific address as default
+router.post('/:id/default', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  try {
+    const db = readDb() as any;
+    if (!db.user_addresses) db.user_addresses = [];
+    const consumerId = req.user!.id;
+
+    const exists = db.user_addresses.some(
+      (a: UserAddressRecord) => a.id === id && a.consumer_id === consumerId,
+    );
+    if (!exists) {
+      return res.status(404).json({ success: false, error: 'Address not found' });
+    }
+
+    db.user_addresses = db.user_addresses.map((a: UserAddressRecord) => {
+      if (a.consumer_id !== consumerId) return a;
+      return { ...a, isDefault: a.id === id };
+    });
+
+    db.user_addresses = cleanupUserAddresses(db.user_addresses, consumerId);
+    writeDb(db);
+
+    const addresses = db.user_addresses.filter(
+      (a: UserAddressRecord) => a.consumer_id === consumerId,
+    );
+    const selected = addresses.find((a: UserAddressRecord) => a.id === id);
+    return res.json({ success: true, address: selected, addresses });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Failed to set default address' });
   }
 });
 
@@ -290,14 +397,12 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) =>
       (a: UserAddressRecord) => a.id !== id || a.consumer_id !== consumerId,
     );
 
+    db.user_addresses = cleanupUserAddresses(db.user_addresses, consumerId);
+    writeDb(db);
+
     const remaining = db.user_addresses.filter(
       (a: UserAddressRecord) => a.consumer_id === consumerId,
     );
-    if (remaining.length > 0 && !remaining.some((a: UserAddressRecord) => a.isDefault)) {
-      remaining[0].isDefault = true;
-    }
-
-    writeDb(db);
     return res.json({ success: true, addresses: remaining });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message || 'Failed to delete address' });

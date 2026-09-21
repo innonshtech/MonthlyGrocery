@@ -255,7 +255,7 @@ export default function DashboardPage() {
         setAreas(dataAreas.areas || []);
       }
 
-      if (activeTab === 'locations') {
+      if (activeTab === 'shops' || activeTab === 'locations') {
         const data = await apiFetch('/admin/locations');
         setLocations(data.locations || []);
       }
@@ -345,13 +345,45 @@ export default function DashboardPage() {
     }
   }, [token, activeTab]);
 
+  // Background auto-refresh for realtime sync of merchant registrations & GPS coordinates
+  useEffect(() => {
+    if (!token || (activeTab !== 'shops' && activeTab !== 'locations')) return;
+    const interval = setInterval(async () => {
+      try {
+        const data = await apiFetch('/shops/all');
+        if (data && data.shops) {
+          setShops(data.shops);
+        }
+      } catch {}
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [token, activeTab]);
+
   // Shop Status approvals
-  const handleUpdateShopStatus = async (shopId: string, status: 'approved' | 'rejected') => {
+  const handleUpdateShopStatus = async (
+    shopId: string,
+    status: 'approved' | 'rejected',
+    rejectionReason?: string,
+    approvalData?: {
+      area_name?: string;
+      city?: string;
+      pincode?: string;
+      delivery_radius_km?: number;
+      latitude?: number;
+      longitude?: number;
+      assigned_areas?: Array<{ area_name: string; city?: string; pincode?: string } | string>;
+      additional_areas?: string[];
+    }
+  ) => {
     if (!token) return;
     try {
       await apiFetch(`/shops/${shopId}/status`, {
         method: 'POST',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          rejection_reason: rejectionReason,
+          ...(approvalData || {}),
+        }),
       });
       fetchData();
     } catch (err: any) {
@@ -1357,6 +1389,7 @@ export default function DashboardPage() {
               fetchData={fetchData}
               masterProductsList={masterProductsList}
               token={token}
+              setActiveTab={setActiveTab}
             />
           )}
 

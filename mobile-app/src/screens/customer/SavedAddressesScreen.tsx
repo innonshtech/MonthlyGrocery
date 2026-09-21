@@ -27,6 +27,7 @@ import {
   fetchUserAddresses,
   fetchSavedAddressesScreenConfig,
   cacheAddressesLocally,
+  setDefaultUserAddress,
 } from '../../services/addressApi';
 
 export type { AddressItem };
@@ -82,14 +83,25 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
       .filter(Boolean)
       .join(', ');
 
-  const handleSelect = (id: string) => {
+  const handleSelect = async (id: string) => {
     setSelectedId(id);
+    if (token) {
+      try {
+        const { addresses: updatedList } = await setDefaultUserAddress(token, id);
+        setAddresses(updatedList);
+        await cacheAddressesLocally(updatedList);
+      } catch {
+        setAddresses((prev) =>
+          prev.map((a) => ({ ...a, isDefault: a.id === id })),
+        );
+      }
+    }
   };
 
   const handleOpenAdd = () => {
-    navigation.navigate('AddAddress', {
+    // Open LocationPicker (Blinkit-style: GPS auto-fill + search suggestions)
+    navigation.navigate('LocationPicker', {
       fromCheckout: route?.params?.fromCheckout,
-      onSave: route?.params?.onSelect,
     });
   };
 
@@ -197,7 +209,7 @@ export default function SavedAddressesScreen({ navigation, route }: any) {
                   styles.addressCard,
                   selected ? styles.addressCardSelected : styles.addressCardIdle,
                 ]}
-                onPress={() => setSelectedId(addr.id)}
+                onPress={() => handleSelect(addr.id)}
                 activeOpacity={0.85}
               >
                 {selected ? <AddressRadioOnIcon size={22} /> : <AddressRadioOffIcon size={22} />}
