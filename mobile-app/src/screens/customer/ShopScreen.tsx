@@ -28,7 +28,13 @@ export default function ShopScreen({ navigation }: any) {
   const [error, setError] = useState('');
 
   const { token, logout, city, area, pincode, selectedShop } = useAuth();
-  const { items, addToCart, updateQuantity } = useCart();
+  const { items, addToCart, updateQuantity, syncActiveShop } = useCart();
+
+  useEffect(() => {
+    if (selectedShop?.id) {
+      syncActiveShop(selectedShop.id, selectedShop.name);
+    }
+  }, [selectedShop, syncActiveShop]);
 
   const fetchCategories = async () => {
     try {
@@ -94,19 +100,32 @@ export default function ShopScreen({ navigation }: any) {
 
   const renderProductItem = ({ item }: { item: Product }) => {
     const qty = getCartQuantity(item.id);
+    const isOutOfStock =
+      item.available === false ||
+      (item as any).in_stock === false ||
+      (item.stock !== undefined && item.stock !== null && Number(item.stock) <= 0);
 
     return (
-      <View style={styles.productCard}>
+      <View style={[styles.productCard, isOutOfStock && { opacity: 0.85 }]}>
         <View style={styles.imageWrap}>
+          {isOutOfStock ? (
+            <View style={styles.outOfStockBadgeShop}>
+              <Text style={styles.outOfStockBadgeShopTxt}>OUT OF STOCK</Text>
+            </View>
+          ) : null}
           {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={styles.productImage} resizeMode="contain" />
+            <Image
+              source={{ uri: item.image_url }}
+              style={[styles.productImage, isOutOfStock && { opacity: 0.4 }]}
+              resizeMode="contain"
+            />
           ) : (
             <Text style={{ fontSize: 30 }}>🛍️</Text>
           )}
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.brandText}>{item.brand}</Text>
-          <Text style={styles.nameText} numberOfLines={2}>{item.name}</Text>
+          <Text style={[styles.nameText, isOutOfStock && { color: '#64748B' }]} numberOfLines={2}>{item.name}</Text>
           <Text style={styles.unitText}>{item.unit}</Text>
 
           <View style={styles.priceRow}>
@@ -117,7 +136,11 @@ export default function ShopScreen({ navigation }: any) {
               )}
             </View>
 
-            {qty > 0 ? (
+            {isOutOfStock ? (
+              <View style={styles.outOfStockPillShop}>
+                <Text style={styles.outOfStockPillShopTxt}>Out of stock</Text>
+              </View>
+            ) : qty > 0 ? (
               <View style={styles.stepper}>
                 <TouchableOpacity
                   style={styles.stepBtn}
@@ -474,5 +497,36 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     color: '#666',
+  },
+  outOfStockBadgeShop: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: 'rgba(23, 37, 30, 0.85)',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    zIndex: 2,
+  },
+  outOfStockBadgeShopTxt: {
+    ...FONTS.balooBold,
+    fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  outOfStockPillShop: {
+    paddingHorizontal: 8,
+    height: 30,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockPillShopTxt: {
+    ...FONTS.muktaMedium,
+    fontSize: 11,
+    color: '#64748B',
   },
 });

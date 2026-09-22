@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load config
+// Load config (.env)
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import { db } from './config/db';
@@ -108,6 +108,9 @@ async function ensureDatabaseSchema() {
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS city VARCHAR(100);
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);
         ALTER TABLE profiles ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+        ALTER TABLE profiles ADD COLUMN IF NOT EXISTS mobile VARCHAR(50);
       `);
 
       // 2. Shops Table

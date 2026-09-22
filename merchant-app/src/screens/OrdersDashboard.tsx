@@ -17,6 +17,12 @@ import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
 import SafeProductImage from '../components/SafeProductImage';
 import ProductMediaModal, { ProductMediaItem } from '../components/ProductMediaModal';
+import TopOrderNotificationBanner from '../components/TopOrderNotificationBanner';
+import AssignDeliveryPartnerModal from '../components/AssignDeliveryPartnerModal';
+import { BellRing, RefreshCw } from 'lucide-react-native';
+import {
+  playOrderSuccessChime,
+} from '../services/soundAlert';
 
 const STATUS_FILTERS = [
   { key: 'all', label: 'All Orders' },
@@ -103,9 +109,20 @@ export default function OrdersDashboard() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
+  // New Incoming Order Real-time Top Visual Notification States
+  const knownOrderIdsRef = React.useRef<Set<string>>(new Set());
+  const initialLoadDoneRef = React.useRef(false);
+  const [newOrderAlert, setNewOrderAlert] = useState<any | null>(null);
+  const [isAcceptingAlert, setIsAcceptingAlert] = useState(false);
+
   // Media Inspection Modal (for order packing verification)
   const [previewProduct, setPreviewProduct] = useState<ProductMediaItem | null>(null);
   const [previewModalVisible, setPreviewModalVisible] = useState(false);
+
+  // Dispatch & Assign Delivery Partner Modal States
+  const [dispatchModalVisible, setDispatchModalVisible] = useState(false);
+  const [dispatchingOrder, setDispatchingOrder] = useState<any | null>(null);
+  const [dispatchSubmitting, setDispatchSubmitting] = useState(false);
 
   const fetchOrders = useCallback(async (mode: 'initial' | 'refresh' | 'poll' = 'initial') => {
     if (!token) return;
@@ -125,7 +142,31 @@ export default function OrdersDashboard() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setOrders(data.orders || []);
+        const incomingOrders = data.orders || [];
+
+        // Detect fresh incoming pending orders (Silent Top Notification Banner with Icon)
+        if (initialLoadDoneRef.current) {
+          const freshPendingOrders = incomingOrders.filter(
+            (o: any) =>
+              o.id &&
+              !knownOrderIdsRef.current.has(o.id) &&
+              ['pending', 'placed'].includes(normalizeOrderStatus(o.status)),
+          );
+
+          if (freshPendingOrders.length > 0) {
+            const newest = freshPendingOrders[0];
+            setNewOrderAlert(newest);
+            // Silent top notification banner is displayed (no bell/sound)
+          }
+        }
+
+        // Register all known IDs
+        incomingOrders.forEach((o: any) => {
+          if (o.id) knownOrderIdsRef.current.add(o.id);
+        });
+        initialLoadDoneRef.current = true;
+
+        setOrders(incomingOrders);
         setShopName(data.shop_name || '');
         setShopNotFound(false);
       } else if (data.shop_not_found || (data.error && data.error.toLowerCase().includes('not found'))) {
@@ -145,15 +186,65 @@ export default function OrdersDashboard() {
     }
   }, [token]);
 
-
   useEffect(() => {
     fetchOrders('initial');
-    // Gap 4 solution: Real-time periodic polling every 15s
+    // Real-time periodic polling every 10s for instant order reception
     const pollTimer = setInterval(() => {
       fetchOrders('poll');
-    }, 15000);
-    return () => clearInterval(pollTimer);
+    }, 10000);
+    return () => {
+      clearInterval(pollTimer);
+    };
   }, [fetchOrders]);
+
+  const handleAcceptAlertOrder = async (orderId: string) => {
+    if (!orderId) return;
+    setIsAcceptingAlert(true);
+    setNewOrderAlert(null);
+    try {
+      if (String(orderId).startsWith('test-')) {
+        Alert.alert('Notification Test', '✓ Test order accepted! Real customer orders will update live on server.');
+        setIsAcceptingAlert(false);
+        return;
+      }
+      await playOrderSuccessChime();
+      await handleUpdateStatus(orderId, 'confirmed');
+    } catch (e) {
+      console.warn('Error accepting order:', e);
+    } finally {
+      setIsAcceptingAlert(false);
+    }
+  };
+
+  const handleViewAlertDetails = (orderId: string) => {
+    setNewOrderAlert(null);
+    if (!orderId || String(orderId).startsWith('test-')) return;
+    setSelectedStatusFilter('all');
+    setExpandedOrderId(orderId);
+  };
+
+  const handleDismissAlert = () => {
+    setNewOrderAlert(null);
+  };
+
+  const handleTestNotification = () => {
+    setNewOrderAlert(null);
+    setTimeout(() => {
+      if (orders && orders.length > 0) {
+        setNewOrderAlert({ ...orders[0], _testKey: Date.now() });
+      } else {
+        setNewOrderAlert({
+          id: 'test-order-001',
+          display_id: '#MG8920',
+          consumer_name: 'Rahul Sharma',
+          total_amount: 499,
+          delivery_address: 'Flat 402, Green Valley Apartments, Mumbai',
+          order_items: [{ name: 'Fresh Milk' }, { name: 'Fortune Atta 5kg' }],
+          _testKey: Date.now(),
+        });
+      }
+    }, 50);
+  };
 
   const handleNavigateCustomer = (order: any) => {
     const lat = order.delivery_latitude;
@@ -173,7 +264,11 @@ export default function OrdersDashboard() {
     }
   };
 
-  const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
+  const handleUpdateStatus = async (
+    orderId: string,
+    nextStatus: string,
+    meta?: { delivery_partner_name?: string; delivery_partner_phone?: string; refund_message?: string },
+  ) => {
     setUpdatingId(orderId);
     try {
       const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
@@ -182,13 +277,21 @@ export default function OrdersDashboard() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({
+          status: nextStatus,
+          ...(meta || {}),
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         const updatedStatus = normalizeOrderStatus(data.order?.status || nextStatus);
         setOrders((prev) =>
-          prev.map((o) => (o.id === orderId ? { ...o, status: updatedStatus } : o)),
+          prev.map((o) => (o.id === orderId ? {
+            ...o,
+            status: updatedStatus,
+            delivery_partner_name: data.order?.delivery_partner_name !== undefined ? data.order.delivery_partner_name : (meta?.delivery_partner_name !== undefined ? meta.delivery_partner_name : o.delivery_partner_name),
+            delivery_partner_phone: data.order?.delivery_partner_phone !== undefined ? data.order.delivery_partner_phone : (meta?.delivery_partner_phone !== undefined ? meta.delivery_partner_phone : o.delivery_partner_phone),
+          } : o)),
         );
       } else {
         Alert.alert('Error', data.error || 'Failed to update order status');
@@ -198,6 +301,23 @@ export default function OrdersDashboard() {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const handleOpenDispatchModal = (order: any) => {
+    setDispatchingOrder(order);
+    setDispatchModalVisible(true);
+  };
+
+  const handleConfirmDispatch = async (partnerName: string, partnerPhone: string) => {
+    if (!dispatchingOrder) return;
+    setDispatchSubmitting(true);
+    await handleUpdateStatus(dispatchingOrder.id, 'out_for_delivery', {
+      delivery_partner_name: partnerName,
+      delivery_partner_phone: partnerPhone,
+    });
+    setDispatchSubmitting(false);
+    setDispatchModalVisible(false);
+    setDispatchingOrder(null);
   };
 
   const handlePromptCancel = (orderId: string) => {
@@ -306,6 +426,31 @@ export default function OrdersDashboard() {
           </TouchableOpacity>
         </View>
 
+        {/* Assigned Delivery Partner Info Card */}
+        {item.delivery_partner_name ? (
+          <View style={styles.assignedPartnerBox}>
+            <View style={styles.assignedPartnerLeft}>
+              <Text style={styles.assignedPartnerTitle}>🛵 ASSIGNED DELIVERY PARTNER:</Text>
+              <Text style={styles.assignedPartnerName}>
+                👤 {item.delivery_partner_name}
+              </Text>
+              {item.delivery_partner_phone ? (
+                <Text style={styles.assignedPartnerPhone}>
+                  📞 +91 {item.delivery_partner_phone.slice(-10)}
+                </Text>
+              ) : null}
+            </View>
+            {item.delivery_partner_phone ? (
+              <TouchableOpacity
+                style={styles.callPartnerBtn}
+                onPress={() => handleCallCustomer(item.delivery_partner_phone)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.callPartnerBtnText}>Call Rider</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
 
         {/* Order Items List preview / toggle */}
         <TouchableOpacity 
@@ -426,7 +571,7 @@ export default function OrdersDashboard() {
               {orderStatus === 'packed' && (
                 <TouchableOpacity 
                   style={[styles.btnAction, styles.btnDispatch]} 
-                  onPress={() => handleUpdateStatus(item.id, 'out_for_delivery')}
+                  onPress={() => handleOpenDispatchModal(item)}
                 >
                   <Text style={styles.btnDispatchText}>Dispatch: Out for Delivery 🛵</Text>
                 </TouchableOpacity>
@@ -458,17 +603,37 @@ export default function OrdersDashboard() {
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
+
+      {/* Top Silent Notification Banner with Bell Icon */}
+      <TopOrderNotificationBanner
+        order={newOrderAlert}
+        onAccept={handleAcceptAlertOrder}
+        onViewDetails={handleViewAlertDetails}
+        onDismiss={handleDismissAlert}
+        accepting={isAcceptingAlert}
+      />
+
       {/* Top Bar */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={styles.headerTitle}>Live Store Orders</Text>
-          <Text style={styles.headerSubtitle}>
-            {shopName ? `${shopName} · ` : ''}Manage incoming customer orders & status updates
+          <Text style={styles.headerSubtitle} numberOfLines={1}>
+            {shopName ? `${shopName} · ` : ''}Silent Top Notifications Active
           </Text>
         </View>
-        <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchOrders('refresh')}>
-          <Text style={styles.refreshText}>🔄 Refresh</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <TouchableOpacity
+            style={styles.soundTestBtn}
+            onPress={handleTestNotification}
+            activeOpacity={0.8}
+          >
+            <BellRing size={14} color="#2563EB" strokeWidth={2.4} style={{ marginRight: 4 }} />
+            <Text style={styles.soundTestBtnText}>Test Alert</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshBtn} onPress={() => fetchOrders('refresh')}>
+            <RefreshCw size={14} color="#334155" strokeWidth={2.4} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Horizontal Status Filter Tabs */}
@@ -556,6 +721,20 @@ export default function OrdersDashboard() {
         onClose={() => setPreviewModalVisible(false)}
         product={previewProduct}
       />
+
+      {/* Dispatch Order & Assign Delivery Partner Modal */}
+      <AssignDeliveryPartnerModal
+        visible={dispatchModalVisible}
+        order={dispatchingOrder}
+        onClose={() => {
+          if (!dispatchSubmitting) {
+            setDispatchModalVisible(false);
+            setDispatchingOrder(null);
+          }
+        }}
+        onConfirm={handleConfirmDispatch}
+        loading={dispatchSubmitting}
+      />
     </View>
   );
 }
@@ -583,14 +762,39 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#15803D',
+    fontWeight: '600',
     marginTop: 2,
+  },
+  soundTestBtn: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  soundTestBtnActive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  soundTestBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  soundTestBtnTextActive: {
+    color: '#DC2626',
   },
   refreshBtn: {
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   refreshText: {
     fontSize: 12,
@@ -1066,6 +1270,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+  assignedPartnerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#ECFDF5',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  assignedPartnerLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  assignedPartnerTitle: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#059669',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  assignedPartnerName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  assignedPartnerPhone: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#047857',
+    marginTop: 1,
+  },
+  callPartnerBtn: {
+    backgroundColor: '#059669',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  callPartnerBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '700',
   },
 });
 

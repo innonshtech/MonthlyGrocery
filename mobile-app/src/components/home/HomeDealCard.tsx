@@ -43,23 +43,41 @@ export default function HomeDealCard({
   const mrp = parseFloat(String(item.mrp)) || price;
   const pctOff = getProductDiscountPercent(item);
   const packLabel = getProductPackLabel(item);
+  const isOutOfStock =
+    item.available === false ||
+    (item as any).in_stock === false ||
+    (item.stock !== undefined && item.stock !== null && Number(item.stock) <= 0);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={[styles.card, isOutOfStock && styles.cardOutOfStock]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       <View style={[styles.imgWrap, { backgroundColor: homeDealBg(index) }]}>
-        {pctOff > 0 && (
+        {isOutOfStock ? (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockBadgeTxt}>OUT OF STOCK</Text>
+          </View>
+        ) : pctOff > 0 ? (
           <View style={styles.offBadge}>
             <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
           </View>
-        )}
+        ) : null}
         {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.productImg} resizeMode="contain" />
+          <Image
+            source={{ uri: item.image_url }}
+            style={[styles.productImg, isOutOfStock && styles.imgOutOfStock]}
+            resizeMode="contain"
+          />
         ) : (
-          <AppIcon name="shopping-bag" size={40} color={COLORS.green700} />
+          <AppIcon name="shopping-bag" size={40} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
         )}
       </View>
 
-      <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+      <Text style={[styles.name, isOutOfStock && styles.nameOutOfStock]} numberOfLines={2}>
+        {item.name}
+      </Text>
       <View style={styles.unitRow}>
         {packLabel ? <Text style={styles.unit}>{packLabel}</Text> : null}
         {Array.isArray((item as any).variants) && (item as any).variants.length > 1 ? (
@@ -71,11 +89,15 @@ export default function HomeDealCard({
 
       <View style={styles.priceRow}>
         <View style={styles.priceCol}>
-          <Text style={styles.price}>₹{price}</Text>
+          <Text style={[styles.price, isOutOfStock && styles.priceOutOfStock]}>₹{price}</Text>
           {mrp > price ? <Text style={styles.mrp}>₹{mrp}</Text> : null}
         </View>
 
-        {quantity > 0 ? (
+        {isOutOfStock ? (
+          <View style={styles.outOfStockPill}>
+            <Text style={styles.outOfStockPillTxt}>Out of stock</Text>
+          </View>
+        ) : quantity > 0 ? (
           <View style={styles.stepper}>
             <TouchableOpacity style={styles.stepBtn} onPress={onDecrement}>
               <Text style={styles.stepTxt}>−</Text>
@@ -108,6 +130,9 @@ const styles = StyleSheet.create({
     paddingBottom: INNER_PAD_BOTTOM,
     flexDirection: 'column',
   },
+  cardOutOfStock: {
+    opacity: 0.72,
+  },
   imgWrap: {
     width: HOME_DEAL_CARD_WIDTH - INNER_PAD_H * 2,
     height: IMG_HEIGHT,
@@ -116,6 +141,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
+  },
+  outOfStockBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: '#334155',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 2,
+  },
+  outOfStockBadgeTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 8.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
   },
   offBadge: {
     position: 'absolute',
@@ -138,6 +179,30 @@ const styles = StyleSheet.create({
   productImg: {
     width: 60,
     height: 60,
+  },
+  imgOutOfStock: {
+    opacity: 0.4,
+  },
+  outOfStockPill: {
+    paddingHorizontal: 8,
+    height: 28,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: '#64748B',
+  },
+  nameOutOfStock: {
+    color: '#64748B',
+  },
+  priceOutOfStock: {
+    color: '#94A3B8',
   },
   name: {
     ...FONTS.muktaMedium,

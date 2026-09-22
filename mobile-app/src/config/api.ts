@@ -20,8 +20,8 @@ function resolveApiBase(): string {
   if (USE_AWS_SERVER) {
     return AWS_SERVER_URL;
   }
-  // With adb reverse tcp:8001 tcp:8001, localhost:8001 maps directly to local express backend
-  return 'http://localhost:8001/api';
+  // Direct computer local IP ensures 100% reliable connection over Wi-Fi & ADB
+  return `http://${DEV_MACHINE_IP}:8001/api`;
 }
 
 export const API_BASE = resolveApiBase();

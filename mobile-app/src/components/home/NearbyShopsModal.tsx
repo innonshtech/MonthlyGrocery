@@ -10,6 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { useAuth, SelectedStoreInfo } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import { fetchNearbyShops, NearbyShop } from '../../services/shopsApi';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import AppIcon from '../AppIcon';
@@ -30,6 +31,7 @@ export default function NearbyShopsModal({
   longitude,
 }: NearbyShopsModalProps) {
   const { city, area, pincode, selectedShop, setSelectedShop } = useAuth();
+  const { syncActiveShop } = useCart();
   const [shops, setShops] = useState<NearbyShop[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,6 +68,7 @@ export default function NearbyShopsModal({
       address: shop.address_line || shop.area_name || shop.city,
     };
     await setSelectedShop(info);
+    syncActiveShop(shop.id, shop.shop_name);
     if (onShopSelected) onShopSelected(info);
     onClose();
   };

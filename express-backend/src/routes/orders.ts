@@ -14,6 +14,7 @@ import {
 import { resolveShopIdForLocation, resolveShopIdForLocationAsync, getMerchantShopForUser } from '../services/shopResolution';
 import { calculateHaversineDistanceKm } from '../services/geocodingService';
 import { calculateDeliveryFee } from '../services/deliveryFeeService';
+import { deductShopInventory, restoreShopInventory } from '../services/inventoryService';
 
 const router = Router();
 
@@ -284,7 +285,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     const itemShopIds = items
       .map((it: any) => it.shop_id)
       .filter(Boolean);
-    const cartShopId = itemShopIds[0] || shop_id || null;
+    const cartShopId = shop_id || itemShopIds[0] || null;
 
     let targetShopId = await resolveShopIdForLocationAsync({
       shopId: cartShopId,
@@ -371,6 +372,31 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // Strict Pre-Checkout Stock Availability Validation
+    const outOfStockItems: string[] = [];
+    const shopProductsList = db.shop_products || [];
+
+    for (const it of items) {
+      const productId = it.product_id || it.id;
+      const requestedQty = parseInt(String(it.quantity), 10) || 1;
+      const sp = shopProductsList.find((p: any) => p.shop_id === targetShopId && p.product_id === productId);
+
+      if (sp) {
+        const availableStock = sp.stock != null ? Number(sp.stock) : 0;
+        if (sp.available === false || availableStock < requestedQty) {
+          outOfStockItems.push(`"${it.name || it.product_name || 'Item'}" (${availableStock <= 0 ? 'Out of Stock' : `Only ${availableStock} left`})`);
+        }
+      }
+    }
+
+    if (outOfStockItems.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Out of Stock: ${outOfStockItems.join(', ')}. Please update your basket to proceed.`,
+        code: 'OUT_OF_STOCK',
+      });
+    }
+
     // 2. Generate random 4-digit Delivery OTP (Swiggy/Zomato style)
     const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
@@ -446,6 +472,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
         product_id: productId,
         product_name: productName,
         name: productName,
+        shop_id: it.shop_id || targetShopId,
         quantity: parseInt(it.quantity) || 1,
         unit_price: parseFloat(it.price || it.unit_price) || 0.00,
         unit: it.unit || catalog?.unit || '1 unit',
@@ -496,6 +523,13 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
     db.orders.unshift(enrichedOrder);
     writeDb(db);
+
+    // Auto-deduct inventory from merchant store stock
+    try {
+      await deductShopInventory(targetShopId, items);
+    } catch (invErr) {
+      console.warn('Inventory deduction notice:', invErr);
+    }
 
     return res.json({
       success: true,
@@ -570,6 +604,7 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
       .from('orders')
       .select(`
         id,
+        shop_id,
         total_amount,
         status,
         delivery_address,
@@ -604,11 +639,13 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
           quantity: oi.quantity,
           unit: oi.products?.unit || '1 unit',
           image_url: oi.products?.image_url || '',
+          shop_id: so.shop_id,
         }));
 
         const supaOrder = enrichConsumerOrder(
           await enrichOrderFromSupabaseItems({
             id: so.id,
+            shop_id: so.shop_id,
             status: so.status,
             total_amount: so.total_amount,
             shipping_address: so.delivery_address,
@@ -748,6 +785,15 @@ router.post('/:order_id/cancel', authMiddleware, async (req: AuthRequest, res: R
     writeDb(db);
 
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id);
+
+    // Auto-restore inventory stock for cancelled order
+    try {
+      if (order.shop_id) {
+        await restoreShopInventory(order.shop_id, order.order_items || order.items || []);
+      }
+    } catch (invErr) {
+      console.warn('Inventory restore notice:', invErr);
+    }
 
     const enriched = enrichConsumerOrder(
       await enrichOrderFromSupabaseItems({ ...order }),
@@ -910,6 +956,8 @@ router.get('/:order_id', authMiddleware, async (req: AuthRequest, res: Response)
         deliver_to_label: localShadow?.deliver_to_label || supaOrder.delivery_address,
         delivery_slot: localShadow?.delivery_slot || null,
         delivery_otp: localShadow?.delivery_otp || null,
+        delivery_partner_name: localShadow?.delivery_partner_name || (supaOrder as any).delivery_partner_name || null,
+        delivery_partner_phone: localShadow?.delivery_partner_phone || (supaOrder as any).delivery_partner_phone || null,
         payment_method: localShadow?.payment_method || 'COD',
         payment_method_label: localShadow?.payment_method_label || null,
         status: localShadow?.status || supaOrder.status,
@@ -1030,13 +1078,17 @@ router.get('/merchant/all', authMiddleware, requireRole(['admin', 'super_admin']
 
     const profileMap = new Map<string, any>();
     if (consumerIds.length) {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name, phone, mobile')
-        .in('id', consumerIds);
+      try {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, phone')
+          .in('id', consumerIds);
 
-      for (const profile of profiles || []) {
-        profileMap.set(profile.id, profile);
+        for (const profile of profiles || []) {
+          profileMap.set(profile.id, profile);
+        }
+      } catch (profileErr) {
+        console.warn('Profile fetch fallback notice:', profileErr);
       }
     }
 
@@ -1055,7 +1107,7 @@ router.get('/merchant/all', authMiddleware, requireRole(['admin', 'super_admin']
 // 4. POST /:order_id/status: Merchant update order status (Swiggy/Zomato Operational Pipeline)
 router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { order_id } = req.params;
-  const { status, delivery_partner_name, refund_message } = req.body;
+  const { status, delivery_partner_name, delivery_partner_phone, refund_message } = req.body;
 
   const normalizedStatus = resolveMerchantOrderStatus(status);
   if (!normalizedStatus) {
@@ -1075,7 +1127,6 @@ router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_ad
     if (!shop) {
       return res.status(404).json({ success: false, error: 'Merchant shop not found', shop_not_found: true });
     }
-
 
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb();
@@ -1106,24 +1157,47 @@ router.post('/:order_id/status', authMiddleware, requireRole(['admin', 'super_ad
     if (orderIdx !== -1) {
       db.orders[orderIdx].status = normalizedStatus;
       applyStatusTimestamps(db.orders[orderIdx], normalizedStatus);
-      if (delivery_partner_name) {
-        db.orders[orderIdx].delivery_partner_name = delivery_partner_name;
+      if (delivery_partner_name !== undefined) {
+        db.orders[orderIdx].delivery_partner_name = delivery_partner_name ? String(delivery_partner_name).trim() : null;
+      }
+      if (delivery_partner_phone !== undefined) {
+        db.orders[orderIdx].delivery_partner_phone = delivery_partner_phone ? String(delivery_partner_phone).trim() : null;
       }
       if (normalizedStatus === 'cancelled') {
         if (!db.orders[orderIdx].cancelled_by) {
           db.orders[orderIdx].cancelled_by = 'support';
         }
         db.orders[orderIdx].refund_message = buildDefaultRefundMessage(db.orders[orderIdx]);
+        
+        // Auto-restore inventory stock when merchant rejects/cancels
+        try {
+          await restoreShopInventory(
+            shop.id,
+            db.orders[orderIdx].order_items || db.orders[orderIdx].items || [],
+          );
+        } catch (invErr) {
+          console.warn('Merchant cancel inventory restore notice:', invErr);
+        }
       } else if (refund_message) {
         db.orders[orderIdx].refund_message = refund_message;
       }
       writeDb(db);
     }
 
-    await supabase
-      .from('orders')
-      .update({ status: normalizedStatus })
-      .eq('id', matchedOrderId);
+    try {
+      const supaPayload: any = { status: normalizedStatus };
+      if (delivery_partner_name !== undefined) supaPayload.delivery_partner_name = delivery_partner_name ? String(delivery_partner_name).trim() : null;
+      if (delivery_partner_phone !== undefined) supaPayload.delivery_partner_phone = delivery_partner_phone ? String(delivery_partner_phone).trim() : null;
+      await supabase
+        .from('orders')
+        .update(supaPayload)
+        .eq('id', matchedOrderId);
+    } catch (supaErr) {
+      await supabase
+        .from('orders')
+        .update({ status: normalizedStatus })
+        .eq('id', matchedOrderId);
+    }
 
     return res.json({
       success: true,

@@ -96,7 +96,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const contentWidth = Math.max(windowWidth - H_PAD * 2, 280);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const { city, area, pincode, token, user, selectedShop } = useAuth();
-  const { addToCart, items, updateQuantity } = useCart();
+  const { addToCart, items, updateQuantity, syncActiveShop } = useCart();
   const [home, setHome] = useState<HomeScreenConfig | null>(null);
   const [homeLoadError, setHomeLoadError] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -648,6 +648,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       city={city ?? ''}
       onShopSelected={async (shop: NearbyShop) => {
         await setSelectedShop({ id: shop.id, name: shop.shop_name, delivery_radius_km: shop.delivery_radius_km });
+        syncActiveShop(shop.id, shop.shop_name);
         setShopPickerVisible(false);
       }}
       onClose={() => setShopPickerVisible(false)}

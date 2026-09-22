@@ -155,3 +155,23 @@ export function TagOtherIcon({ size = 16, color = '#6B7772' }: IconProps & { col
 export function SlotInfoIcon({ size = 17 }: IconProps) {
   return <SvgXml xml={SLOT_INFO_XML} width={size} height={size} />;
 }
+
+export function LucideLiveGpsIcon({ size = 22, color = '#1E7A46' }: { size?: number; color?: string }) {
+  const xml = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <line x1="2" y1="12" x2="5.5" y2="12" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="18.5" y1="12" x2="22" y2="12" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="12" y1="2" x2="12" y2="5.5" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="12" y1="18.5" x2="12" y2="22" stroke="${color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="12" cy="12" r="7" stroke="${color}" stroke-width="2.2"/>
+  <circle cx="12" cy="12" r="2.5" fill="${color}"/>
+</svg>`;
+  return <SvgXml xml={xml} width={size} height={size} />;
+}
+
+export function LucideSearchBlackIcon({ size = 20, color = '#0F172A' }: { size?: number; color?: string }) {
+  const xml = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="11" cy="11" r="7" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 21L16.2 16.2" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+  return <SvgXml xml={xml} width={size} height={size} />;
+}

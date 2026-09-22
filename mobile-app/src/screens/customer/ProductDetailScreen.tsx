@@ -229,6 +229,11 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       ? formatProductDetailTemplate(screenConfig.unit_price_suffix_template, { unit: activePackUnit })
       : `${activePackUnit} · incl. taxes`;
 
+    const isOutOfStock =
+      product.available === false ||
+      (product as any).in_stock === false ||
+      (product.stock !== undefined && product.stock !== null && Number(product.stock) <= 0);
+
     const cartItem = items.find((i) => i.product?.id === product.id);
     const qty = cartItem ? cartItem.quantity : 0;
 
@@ -257,12 +262,16 @@ export default function ProductDetailScreen({ route, navigation }: any) {
         >
           {/* 1. Amazon / Flipkart Multi-Media Hero Section */}
           <View style={styles.heroContainer}>
-            {/* Discount Badge */}
-            {pctOff > 0 && (
+            {/* Out of Stock or Discount Badge */}
+            {isOutOfStock ? (
+              <View style={styles.outOfStockBadgeHero}>
+                <Text style={styles.outOfStockBadgeHeroText}>OUT OF STOCK</Text>
+              </View>
+            ) : pctOff > 0 ? (
               <View style={styles.discountBadgeTop}>
                 <Text style={styles.discountBadgeTopText}>{pctOff}% OFF</Text>
               </View>
-            )}
+            ) : null}
 
             {/* Media Counter Badge */}
             {mediaList.length > 1 && (
@@ -308,7 +317,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                         <Text style={styles.videoSlideSubtitle}>Tap to watch video demo</Text>
                       </TouchableOpacity>
                     ) : item.isSvg ? (
-                      <View style={styles.svgWrapper}>
+                      <View style={[styles.svgWrapper, isOutOfStock && { opacity: 0.45 }]}>
                         <SvgUri
                           uri={item.url}
                           width={screenWidth * 0.75}
@@ -319,7 +328,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                     ) : (
                       <Image
                         source={{ uri: item.url }}
-                        style={styles.heroImage}
+                        style={[styles.heroImage, isOutOfStock && { opacity: 0.45 }]}
                         resizeMode="contain"
                       />
                     )}
@@ -328,7 +337,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
               </ScrollView>
             ) : (
               <View style={styles.imageWrapper}>
-                <AppIcon name="shopping-bag" size={90} color={COLORS.green700} />
+                <AppIcon name="shopping-bag" size={90} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
               </View>
             )}
 
@@ -401,11 +410,19 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                     variants.length > 1
                       ? opt.productObj.id === product.id
                       : opt.label === selectedPackSize;
+                  const optOutOfStock =
+                    opt.productObj?.available === false ||
+                    (opt.productObj as any)?.in_stock === false ||
+                    (opt.productObj?.stock !== undefined && opt.productObj?.stock !== null && Number(opt.productObj.stock) <= 0);
 
                   return (
                     <TouchableOpacity
                       key={opt.id}
-                      style={[styles.weightBox, isSelected && styles.weightBoxSelected]}
+                      style={[
+                        styles.weightBox,
+                        isSelected && styles.weightBoxSelected,
+                        optOutOfStock && styles.weightBoxOutOfStock,
+                      ]}
                       onPress={() => {
                         if (variants.length > 1 && opt.productObj) {
                           setProduct(opt.productObj);
@@ -414,8 +431,14 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                       }}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.weightText, isSelected && styles.weightTextSelected]}>
-                        {opt.label}
+                      <Text
+                        style={[
+                          styles.weightText,
+                          isSelected && styles.weightTextSelected,
+                          optOutOfStock && styles.weightTextOutOfStock,
+                        ]}
+                      >
+                        {opt.label}{optOutOfStock ? ' (Out of stock)' : ''}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -472,7 +495,11 @@ export default function ProductDetailScreen({ route, navigation }: any) {
             </Text>
           </View>
 
-          {qty > 0 ? (
+          {isOutOfStock ? (
+            <View style={styles.outOfStockBottomBtn}>
+              <Text style={styles.outOfStockBottomBtnText}>Out of Stock</Text>
+            </View>
+          ) : qty > 0 ? (
             <View style={styles.stepperContainer}>
               <TouchableOpacity
                 style={styles.stepperBtn}
@@ -1006,5 +1033,45 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     minWidth: 26,
     textAlign: 'center',
+  },
+  outOfStockBadgeHero: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    backgroundColor: 'rgba(23, 37, 30, 0.88)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  outOfStockBadgeHeroText: {
+    ...FONTS.balooBold,
+    fontSize: 12,
+    color: '#FFFFFF',
+    letterSpacing: 0.6,
+  },
+  weightBoxOutOfStock: {
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    opacity: 0.75,
+  },
+  weightTextOutOfStock: {
+    color: '#94A3B8',
+  },
+  outOfStockBottomBtn: {
+    backgroundColor: '#F1F5F9',
+    minWidth: 165,
+    height: 48,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  outOfStockBottomBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 15,
+    color: '#64748B',
   },
 });

@@ -31,6 +31,7 @@ import {
   forwardGeocodeLocation,
   reverseGeocodeLocation,
 } from '../../services/addressApi';
+import { LucideSearchBlackIcon, LucideLiveGpsIcon } from '../../components/CheckoutFigmaIcons';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -314,7 +315,10 @@ export default function LocationPickerScreen({ navigation, route }: any) {
                 <View style={styles.gpsLiveDotInner} />
               </View>
               <View style={styles.gpsCardBody}>
-                <Text style={styles.gpsCardTitle}>{'📍  Use my current location'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <LucideLiveGpsIcon size={16} color={COLORS.green700} />
+                  <Text style={styles.gpsCardTitle}>Use my current location</Text>
+                </View>
                 {gpsLoading ? (
                   <View style={styles.gpsLoadingRow}>
                     <ActivityIndicator size="small" color={COLORS.green700} />
@@ -364,8 +368,8 @@ export default function LocationPickerScreen({ navigation, route }: any) {
               onPress={switchToSearch}
               activeOpacity={0.85}
             >
-              <View style={styles.anotherLocationIconWrap}>
-                <Text style={styles.anotherLocationIcon}>🔍</Text>
+              <View style={[styles.anotherLocationIconWrap, { backgroundColor: '#F1F5F9' }]}>
+                <LucideSearchBlackIcon size={18} color="#0F172A" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.anotherLocationTitle}>Enter another location</Text>
@@ -384,7 +388,9 @@ export default function LocationPickerScreen({ navigation, route }: any) {
           suggestions.length === 0 &&
           searchText.length > 1 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateIcon}>🔍</Text>
+              <View style={{ marginBottom: 6 }}>
+                <LucideSearchBlackIcon size={28} color="#94A3B8" />
+              </View>
               <Text style={styles.emptyStateTitle}>No results found</Text>
               <Text style={styles.emptyStateSub}>
                 Try a different area name, street or pincode.

@@ -120,8 +120,8 @@ export default function OrdersScreen({
   navigation: any;
   setActiveTab?: (tab: 'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account') => void;
 }) {
-  const { token } = useAuth();
-  const { addToCart } = useCart();
+  const { token, selectedShop, setSelectedShop } = useAuth();
+  const { addToCart, syncActiveShop } = useCart();
   const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<OrdersScreenConfig | null>(null);
@@ -131,6 +131,7 @@ export default function OrdersScreen({
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<'current_shop' | 'all'>('current_shop');
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -167,22 +168,68 @@ export default function OrdersScreen({
     if (screenConfig) loadOrders();
   }, [screenConfig, loadOrders]);
 
-  const handleReorder = (order: ConsumerOrder) => {
+  // Gap 3: Smart live polling for active orders
+  useEffect(() => {
+    if (!token) return;
+    const hasActive = orders.some((o) => isActiveOrderStatus(o.status));
+    if (!hasActive) return;
+
+    const intervalId = setInterval(() => {
+      loadOrders();
+    }, 8000);
+
+    return () => clearInterval(intervalId);
+  }, [token, orders, loadOrders]);
+
+  const handleReorder = async (order: ConsumerOrder) => {
     if (!screenConfig) return;
     setReorderingId(order.id);
     try {
-      const addedCount = addOrderItemsToCart(
+      const targetShopId = order.shop_id || selectedShop?.id;
+      const targetShopName = order.shop_name || selectedShop?.name || 'Store';
+      const isShopSwitch = Boolean(
+        targetShopId && selectedShop?.id && targetShopId !== selectedShop.id,
+      );
+
+      if (targetShopId) {
+        await setSelectedShop({
+          id: targetShopId,
+          name: targetShopName,
+        });
+        syncActiveShop(targetShopId, targetShopName);
+      }
+
+      const reorderResult = addOrderItemsToCart(
         order,
         addToCart,
         screenConfig.default_product_name,
       );
+
+      const addedCount = reorderResult.addedCount;
+      const outOfStockCount = reorderResult.outOfStockCount;
+
+      const toastTitle = isShopSwitch
+        ? `Switched to ${targetShopName}`
+        : (screenConfig.reorder_success_title || 'Items added to cart');
+
+      let toastMessage = '';
+      if (isShopSwitch) {
+        toastMessage = outOfStockCount > 0
+          ? `Switched to ${targetShopName}: ${addedCount} items added (${outOfStockCount} item${outOfStockCount > 1 ? 's were' : ' was'} out of stock).`
+          : `Active store switched to ${targetShopName} & ${addedCount} items added to your basket.`;
+      } else {
+        toastMessage = outOfStockCount > 0
+          ? `${addedCount} items added (${outOfStockCount} item${outOfStockCount > 1 ? 's were' : ' was'} out of stock in store).`
+          : formatOrdersTemplate(screenConfig.reorder_success_message_template, {
+              count: addedCount,
+              order_id: getOrderDisplayId(order),
+            });
+      }
+
       showToast({
         type: 'cart',
-        title: screenConfig.reorder_success_title || 'Items added to cart',
-        message: formatOrdersTemplate(screenConfig.reorder_success_message_template, {
-          count: addedCount,
-          order_id: getOrderDisplayId(order),
-        }),
+        title: toastTitle,
+        message: toastMessage,
         actionLabel: screenConfig.reorder_view_cart_label || 'View Cart',
         onAction: () => navigation.navigate('Cart'),
       });
@@ -220,14 +267,70 @@ export default function OrdersScreen({
   }
 
   const safeOrders = Array.isArray(orders) ? orders.filter(Boolean) : [];
-  const activeOrders = safeOrders.filter((o) => isActiveOrderStatus(o.status));
-  const pastOrders = safeOrders.filter((o) => !isActiveOrderStatus(o.status));
+  const currentShopOrders = selectedShop?.id
+    ? safeOrders.filter((o) => o.shop_id === selectedShop.id || (!o.shop_id && safeOrders.length === 1))
+    : safeOrders;
+
+  const displayedOrders =
+    selectedShop?.id && filterMode === 'current_shop'
+      ? currentShopOrders
+      : safeOrders;
+
+  const activeOrders = displayedOrders.filter((o) => isActiveOrderStatus(o.status));
+  const pastOrders = displayedOrders.filter((o) => !isActiveOrderStatus(o.status));
+  const hasStoreEmptyState = Boolean(
+    selectedShop?.id &&
+    filterMode === 'current_shop' &&
+    currentShopOrders.length === 0 &&
+    safeOrders.length > 0,
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Your orders</Text>
+        {selectedShop?.id && safeOrders.length > 0 ? (
+          <View style={styles.filterPillsRow}>
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                filterMode === 'current_shop' && styles.filterPillActive,
+              ]}
+              onPress={() => setFilterMode('current_shop')}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.filterPillTxt,
+                  filterMode === 'current_shop' && styles.filterPillTxtActive,
+                ]}
+                numberOfLines={1}
+              >
+                🏪 {selectedShop.name || 'Current Shop'} ({currentShopOrders.length})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                filterMode === 'all' && styles.filterPillActive,
+              ]}
+              onPress={() => setFilterMode('all')}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.filterPillTxt,
+                  filterMode === 'all' && styles.filterPillTxtActive,
+                ]}
+                numberOfLines={1}
+              >
+                🌐 All Stores ({safeOrders.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       {!token ? (
@@ -276,6 +379,41 @@ export default function OrdersScreen({
             <Text style={styles.primaryBtnTxt}>{screenConfig.empty_cta_label || 'Start shopping'}</Text>
           </TouchableOpacity>
         </View>
+      ) : hasStoreEmptyState ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyCircle}>
+            <Text style={styles.storeEmptyEmoji}>🏪</Text>
+          </View>
+          <Text style={styles.emptyTitle}>
+            No orders with {selectedShop?.name || 'this shop'} yet
+          </Text>
+          <Text style={styles.emptySub}>
+            You haven't placed an order with {selectedShop?.name || 'this shop'} yet. Browse their catalog to start shopping!
+          </Text>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() => {
+              if (setActiveTab) {
+                setActiveTab('Home');
+              }
+              navigation.navigate('Shop', { initialTab: 'Home' });
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.primaryBtnTxt}>
+              Browse {selectedShop?.name || 'Shop'} Catalog ➔
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryFilterBtn}
+            onPress={() => setFilterMode('all')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryFilterBtnTxt}>
+              View {safeOrders.length} orders from all stores
+            </Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -321,6 +459,14 @@ export default function OrdersScreen({
                     <Text style={styles.orderId}>{getOrderDisplayId(order)}</Text>
                   </View>
                 </View>
+
+                {order.shop_name ? (
+                  <View style={styles.cardShopBadge}>
+                    <Text style={styles.cardShopBadgeTxt} numberOfLines={1}>
+                      🏪 Fulfilled by {order.shop_name}
+                    </Text>
+                  </View>
+                ) : null}
 
                 {/* Arriving slot title */}
                 <Text style={styles.arrivingTxt}>{slotText}</Text>
@@ -410,14 +556,23 @@ export default function OrdersScreen({
                           width={18}
                           height={18}
                         />
-                        <Text
-                          style={[
-                            styles.pastStatus,
-                            isCancelled && { color: '#DC2626' },
-                          ]}
-                        >
-                          {dateLabel}
-                        </Text>
+                        <View style={{ marginLeft: 6, flexShrink: 1 }}>
+                          <Text
+                            style={[
+                              styles.pastStatus,
+                              isCancelled && { color: '#DC2626' },
+                            ]}
+                          >
+                            {dateLabel}
+                          </Text>
+                          {order.shop_name ? (
+                            <View style={styles.pastShopPill}>
+                              <Text style={styles.pastShopPillTxt} numberOfLines={1}>
+                                🏪 {order.shop_name}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
                       </View>
                       <Text style={styles.pastAmount}>
                         {formatInr(Number(order.total_amount) || 0)}
@@ -864,6 +1019,85 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingVertical: 12,
     borderRadius: 999,
+  },
+  filterPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5EAE7',
+    maxWidth: '55%',
+  },
+  filterPillActive: {
+    backgroundColor: '#EAF5EE',
+    borderColor: '#1E7A46',
+  },
+  filterPillTxt: {
+    ...FONTS.muktaMedium,
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  filterPillTxtActive: {
+    ...FONTS.muktaBold,
+    color: '#1E7A46',
+  },
+  storeEmptyEmoji: {
+    fontSize: 48,
+  },
+  secondaryFilterBtn: {
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  secondaryFilterBtnTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 13.5,
+    color: '#1E7A46',
+    textDecorationLine: 'underline',
+  },
+  cardShopBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 8,
+  },
+  cardShopBadgeTxt: {
+    ...FONTS.muktaMedium,
+    fontSize: 11.5,
+    color: '#4B5563',
+  },
+  pastStoreSub: {
+    ...FONTS.muktaMedium,
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  pastShopPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EAF5EE',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 3,
+    borderWidth: 0.5,
+    borderColor: '#CBE5D5',
+  },
+  pastShopPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: '#1E7A46',
   },
 });
 

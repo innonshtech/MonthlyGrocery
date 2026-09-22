@@ -43,27 +43,43 @@ export default function BrowseProductCard({
   const mrp = parseFloat(String(item.mrp)) || price;
   const pctOff = getProductDiscountPercent(item);
   const packLabel = getProductPackLabel(item);
+  const isOutOfStock =
+    item.available === false ||
+    (item as any).in_stock === false ||
+    (item.stock !== undefined && item.stock !== null && Number(item.stock) <= 0);
 
   return (
     <TouchableOpacity
-      style={[styles.card, { width }]}
+      style={[styles.card, { width }, isOutOfStock && styles.cardOutOfStock]}
       onPress={onPress}
       activeOpacity={0.85}
     >
       <View style={[styles.imgWrap, { backgroundColor: homeDealBg(index) }]}>
-        {pctOff > 0 && (
+        {isOutOfStock ? (
+          <View style={styles.outOfStockBadge}>
+            <Text style={styles.outOfStockBadgeTxt}>OUT OF STOCK</Text>
+          </View>
+        ) : pctOff > 0 ? (
           <View style={styles.offBadge}>
             <Text style={styles.offBadgeTxt}>{pctOff}% OFF</Text>
           </View>
-        )}
+        ) : null}
 
         {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.img} resizeMode="contain" />
+          <Image
+            source={{ uri: item.image_url }}
+            style={[styles.img, isOutOfStock && styles.imgOutOfStock]}
+            resizeMode="contain"
+          />
         ) : (
-          <AppIcon name="shopping-bag" size={36} color={COLORS.green700} />
+          <AppIcon name="shopping-bag" size={36} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
         )}
 
-        {quantity > 0 ? (
+        {isOutOfStock ? (
+          <View style={styles.outOfStockPill}>
+            <Text style={styles.outOfStockPillTxt}>Out of stock</Text>
+          </View>
+        ) : quantity > 0 ? (
           <View style={styles.stepper}>
             <TouchableOpacity style={styles.stepBtn} onPress={onDecrement}>
               <Text style={styles.stepTxt}>−</Text>
@@ -80,7 +96,9 @@ export default function BrowseProductCard({
         )}
       </View>
 
-      <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+      <Text style={[styles.name, isOutOfStock && styles.nameOutOfStock]} numberOfLines={2}>
+        {item.name}
+      </Text>
       <View style={styles.unitRow}>
         {packLabel ? <Text style={styles.unit}>{packLabel}</Text> : null}
         {Array.isArray((item as any).variants) && (item as any).variants.length > 1 ? (
@@ -91,7 +109,7 @@ export default function BrowseProductCard({
       </View>
 
       <View style={styles.priceRow}>
-        <Text style={styles.price}>₹{price}</Text>
+        <Text style={[styles.price, isOutOfStock && styles.priceOutOfStock]}>₹{price}</Text>
         {mrp > price ? <Text style={styles.mrp}>₹{mrp}</Text> : null}
       </View>
     </TouchableOpacity>
@@ -106,6 +124,9 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     gap: 5,
   },
+  cardOutOfStock: {
+    opacity: 0.72,
+  },
   imgWrap: {
     width: '100%',
     height: BROWSE_PRODUCT_IMG_HEIGHT,
@@ -114,6 +135,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
     overflow: 'hidden',
+  },
+  outOfStockBadge: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    backgroundColor: '#334155',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 2,
+  },
+  outOfStockBadgeTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 8.5,
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
   },
   offBadge: {
     position: 'absolute',
@@ -133,6 +170,26 @@ const styles = StyleSheet.create({
   img: {
     width: 54,
     height: 54,
+  },
+  imgOutOfStock: {
+    opacity: 0.4,
+  },
+  outOfStockPill: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 3,
+  },
+  outOfStockPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: '#64748B',
   },
   addPill: {
     position: 'absolute',
@@ -188,6 +245,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     minHeight: 40,
   },
+  nameOutOfStock: {
+    color: COLORS.ink500,
+  },
   unitRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -222,6 +282,9 @@ const styles = StyleSheet.create({
     ...FONTS.muktaMedium,
     fontSize: 14,
     color: COLORS.ink900,
+  },
+  priceOutOfStock: {
+    color: COLORS.ink500,
   },
   mrp: {
     ...FONTS.muktaRegular,

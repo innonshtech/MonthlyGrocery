@@ -57,7 +57,7 @@ function formatUnserviceableSubtitle(
  */
 export default function AreaSelectionScreen({ route, navigation }: any) {
   const { setCityAndArea, setSelectedShop, user, token, city: currentCity, area: currentArea } = useAuth();
-  const { items, clearCart } = useCart();
+  const { items, clearCart, syncActiveShop } = useCart();
   const { showToast } = useToast();
   const cityName = route.params?.cityName?.trim() || '';
   const { bottomPadding } = useOnboardingLayout();
@@ -191,6 +191,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
 
   const handleShopSelected = async (shop: NearbyShop) => {
     await setSelectedShop({ id: shop.id, name: shop.shop_name, delivery_radius_km: shop.delivery_radius_km });
+    syncActiveShop(shop.id, shop.shop_name);
     setShopPickerVisible(false);
     if (token && user?.name) {
       navigation.navigate('Shop');

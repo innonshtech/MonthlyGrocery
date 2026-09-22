@@ -15,8 +15,9 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           add(NativeLocationPackage())
+          add(OrderAlertSoundPackage())
         },
-      useDevSupport = false,
+      useDevSupport = BuildConfig.DEBUG,
     )
   }
 

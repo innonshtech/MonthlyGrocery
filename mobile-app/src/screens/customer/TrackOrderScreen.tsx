@@ -98,37 +98,55 @@ export default function TrackOrderScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+      setError(false);
+    }
     const config = await fetchOrderDetailScreenConfig();
-    setScreenConfig(config);
+    if (config) setScreenConfig(config);
     if (!token || !orderId) {
       if (route?.params?.order) {
         setOrder(route.params.order);
-        setLoading(false);
+        if (!silent) setLoading(false);
         return;
       }
-      setError(true);
-      setLoading(false);
+      if (!silent) {
+        setError(true);
+        setLoading(false);
+      }
       return;
     }
     const fetched = await fetchOrderById(token, orderId);
     if (!fetched) {
       if (route?.params?.order) {
         setOrder(route.params.order);
-      } else {
+      } else if (!silent) {
         setError(true);
       }
     } else {
       setOrder(fetched);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [token, orderId, route?.params?.order]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Smart real-time background polling for live status & delivery partner updates
+  useEffect(() => {
+    if (!token || !orderId) return;
+    const currentStatus = (order?.status || '').toLowerCase();
+    const isTerminal = currentStatus === 'delivered' || currentStatus === 'cancelled';
+    if (isTerminal) return;
+
+    const intervalId = setInterval(() => {
+      load(true);
+    }, 6000);
+
+    return () => clearInterval(intervalId);
+  }, [token, orderId, order?.status, load]);
 
   if (loading && !order) {
     return (
@@ -147,7 +165,7 @@ export default function TrackOrderScreen({ route, navigation }: any) {
           <Text style={styles.errorMsg}>
             {screenConfig?.load_error_message || 'Could not load tracking details'}
           </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={load} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => load(false)} activeOpacity={0.85}>
             <Text style={styles.retryTxt}>{screenConfig?.retry_label || 'Retry'}</Text>
           </TouchableOpacity>
         </View>
@@ -365,7 +383,11 @@ export default function TrackOrderScreen({ route, navigation }: any) {
               <TouchableOpacity
                 style={styles.callPartnerBtn}
                 onPress={() => {
-                  Linking.openURL(`tel:${partnerPhone}`).catch(() => {});
+                  const cleanDigits = String(partnerPhone).replace(/[^0-9]/g, '');
+                  const dialed = cleanDigits.length === 10 ? `+91${cleanDigits}` : cleanDigits;
+                  Linking.openURL(`tel:${dialed}`).catch(() => {
+                    Alert.alert('Unable to Call', `Could not initiate call to +91 ${cleanDigits.slice(-10)}`);
+                  });
                 }}
                 activeOpacity={0.85}
               >

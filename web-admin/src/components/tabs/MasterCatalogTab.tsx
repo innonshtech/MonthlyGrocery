@@ -22,6 +22,7 @@ import {
   PACK_UNIT_OPTIONS,
   packUnitPayloadFromInput,
   resolvePackUnitLabel,
+  sortPackVariants,
 } from '@/lib/packUnits';
 import { apiFetch, API_BASE } from '@/utils/api';
 
@@ -208,11 +209,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
 
     return Array.from(map.values()).map((entry) => ({
       ...entry,
-      variants: entry.variants.sort((a, b) => {
-        const valA = parseFloat(a.quantity_value) || parseFloat(a.mrp) || 0;
-        const valB = parseFloat(b.quantity_value) || parseFloat(b.mrp) || 0;
-        return valA - valB;
-      }),
+      variants: sortPackVariants(entry.variants),
     }));
   }, [masterProductsList]);
 
@@ -745,7 +742,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
 
                         {/* 2. Pack Variants Pills */}
                         <td className="py-3.5 pr-3">
-                          <div className="flex flex-wrap items-center gap-1.5 max-w-sm">
+                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[280px] md:max-w-[360px] lg:max-w-[460px] py-1">
                             {group.variants.map((v) => {
                               const packLabel = resolvePackUnitLabel(v) || v.unit || 'Pack';
                               return (
@@ -753,7 +750,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                                   key={v.id}
                                   type="button"
                                   onClick={() => openEditMasterProductModal(v)}
-                                  className="px-2.5 py-1 bg-slate-950 border border-emerald-500/30 hover:border-emerald-400 rounded-lg text-xs font-semibold text-emerald-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group/pill"
+                                  className="shrink-0 px-2.5 py-1 bg-slate-950 border border-emerald-500/30 hover:border-emerald-400 rounded-lg text-xs font-semibold text-emerald-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm group/pill whitespace-nowrap"
                                   title={`Click to edit ${packLabel} (SKU: ${v.sku} • ₹${v.mrp})`}
                                 >
                                   <span>{packLabel}</span>
@@ -769,7 +766,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                                 openEditMasterProductModal(primary);
                                 setShowAddVariantForm(true);
                               }}
-                              className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-dashed border-emerald-500/40 rounded-lg text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-0.5 cursor-pointer"
+                              className="shrink-0 px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-dashed border-emerald-500/40 rounded-lg text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
                               title="Add another pack size variant to this product"
                             >
                               <Plus className="w-3 h-3" /> Add Size
@@ -1631,14 +1628,15 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                   {(() => {
                     const baseName = getProductBaseName(editMasterProduct.name || '');
                     const brand = (editMasterProduct.brand || '').toLowerCase();
-                    const siblings = masterProductsList.filter(
+                    const rawSiblings = masterProductsList.filter(
                       (p) =>
                         (p.brand || '').toLowerCase() === brand &&
                         getProductBaseName(p.name).toLowerCase() === baseName.toLowerCase()
                     );
+                    const siblings = sortPackVariants(rawSiblings);
 
                     return (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
                         {siblings.map((sib) => {
                           const isCurrent = sib.id === editMasterProduct.id;
                           const packLabel = resolvePackUnitLabel(sib) || sib.unit || 'Pack';
@@ -1647,9 +1645,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                               key={sib.id}
                               type="button"
                               onClick={() => !isCurrent && openEditMasterProductModal(sib)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all cursor-pointer ${
+                              className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all cursor-pointer whitespace-nowrap ${
                                 isCurrent
-                                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold'
+                                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-bold shadow-sm'
                                   : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
                               }`}
                               title={isCurrent ? 'Currently editing' : 'Click to edit this pack variant'}

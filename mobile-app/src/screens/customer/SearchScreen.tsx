@@ -273,23 +273,36 @@ export default function SearchScreen({ navigation }: any) {
             const qty = getQty(item.id);
             const price = parseFloat(String(item.price)) || 0;
             const mrp = parseFloat(String(item.mrp)) || price;
+            const isOutOfStock =
+              item.available === false ||
+              (item as any).in_stock === false ||
+              (item.stock !== undefined && item.stock !== null && Number(item.stock) <= 0);
 
             return (
               <TouchableOpacity
-                style={styles.resultRow}
+                style={[styles.resultRow, isOutOfStock && styles.resultRowOutOfStock]}
                 onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
                 activeOpacity={0.8}
               >
                 <View style={[styles.imgTile, { backgroundColor: tileBg(index) }]}>
+                  {isOutOfStock ? (
+                    <View style={styles.outOfStockBadgeTile}>
+                      <Text style={styles.outOfStockBadgeTileTxt}>OUT</Text>
+                    </View>
+                  ) : null}
                   {item.image_url ? (
-                    <Image source={{ uri: item.image_url }} style={styles.tileImg} resizeMode="contain" />
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={[styles.tileImg, isOutOfStock && styles.tileImgOutOfStock]}
+                      resizeMode="contain"
+                    />
                   ) : (
-                    <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
+                    <AppIcon name="shopping-bag" size={24} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
                   )}
                 </View>
 
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowName} numberOfLines={2}>{item.name}</Text>
+                  <Text style={[styles.rowName, isOutOfStock && styles.rowNameOutOfStock]} numberOfLines={2}>{item.name}</Text>
                   {getProductPackLabel(item) ? <Text style={styles.rowUnit}>{getProductPackLabel(item)}</Text> : null}
                   <View style={styles.priceRow}>
                     <Text style={styles.rowPrice}>₹{price}</Text>
@@ -297,7 +310,11 @@ export default function SearchScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                {qty > 0 ? (
+                {isOutOfStock ? (
+                  <View style={styles.outOfStockPill}>
+                    <Text style={styles.outOfStockPillTxt}>Out of stock</Text>
+                  </View>
+                ) : qty > 0 ? (
                   <View style={styles.stepper}>
                     <TouchableOpacity style={styles.stepBtn} onPress={() => updateQuantity(item.id, qty - 1)}>
                       <Text style={styles.stepTxt}>−</Text>
@@ -614,5 +631,46 @@ const styles = StyleSheet.create({
     ...FONTS.balooBold,
     fontSize: 14,
     color: '#FFFFFF',
+  },
+  resultRowOutOfStock: {
+    opacity: 0.82,
+  },
+  outOfStockBadgeTile: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    backgroundColor: 'rgba(23, 37, 30, 0.85)',
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    zIndex: 2,
+  },
+  outOfStockBadgeTileTxt: {
+    ...FONTS.balooBold,
+    fontSize: 9,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  tileImgOutOfStock: {
+    opacity: 0.38,
+  },
+  rowNameOutOfStock: {
+    color: COLORS.ink500,
+  },
+  outOfStockPill: {
+    paddingHorizontal: 8,
+    height: 30,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  outOfStockPillTxt: {
+    ...FONTS.muktaMedium,
+    fontSize: 11,
+    color: '#64748B',
   },
 });

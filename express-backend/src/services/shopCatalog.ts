@@ -39,6 +39,8 @@ function mergeShopProduct(
         ? Math.round(((mrp - price) / mrp) * 100)
         : 0;
 
+  const isStockEmpty = sp.stock !== undefined && sp.stock !== null && Number(sp.stock) <= 0;
+
   return enrichProductPackFields({
     id: p.id,
     shop_id: shopId,
@@ -59,7 +61,8 @@ function mergeShopProduct(
     price,
     discount_percent: discountPercent,
     stock: sp.stock != null ? Number(sp.stock) : 0,
-    available: sp.available !== false,
+    available: !isStockEmpty,
+    in_stock: !isStockEmpty,
     is_veg: p.is_veg,
     featured: p.featured,
     todays_deal: p.todays_deal,
@@ -80,8 +83,7 @@ export async function fetchProductsForShop(
 
   let supaQuery = supabase
     .from('products')
-    .select('*')
-    .eq('available', true);
+    .select('*');
 
   if (query.category) {
     supaQuery = supaQuery.eq('primary_category', query.category);
@@ -108,14 +110,21 @@ export async function fetchProductsForShop(
   for (const p of masterProducts || []) {
     const sp = overrideMap.get(p.id);
     if (sp) {
-      if (sp.available !== false) {
-        out.push(mergeShopProduct(shopId, sp, p));
+      // If merchant toggled this product OFF (available: false), HIDE IT completely from consumer app
+      if (sp.available === false) {
+        continue;
       }
+      out.push(mergeShopProduct(shopId, sp, p));
     } else {
+      // If master product is globally unavailable/hidden, skip it
+      if (p.available === false) {
+        continue;
+      }
       const mrp = parseFloat(p.mrp) || 0;
       const price = parseFloat(p.price) || mrp;
       const discountPercent =
         mrp > price && mrp > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0;
+      const isStockEmpty = p.stock !== undefined && p.stock !== null && Number(p.stock) <= 0;
 
       out.push(
         enrichProductPackFields({
@@ -138,7 +147,8 @@ export async function fetchProductsForShop(
           price,
           discount_percent: discountPercent,
           stock: p.stock != null ? Number(p.stock) : 50,
-          available: p.available !== false,
+          available: !isStockEmpty,
+          in_stock: !isStockEmpty,
           is_veg: p.is_veg,
           featured: p.featured,
           todays_deal: p.todays_deal,

@@ -67,3 +67,71 @@ export function packUnitPayloadFromInput(
     unit: formatPackUnit(num, code),
   };
 }
+
+/**
+ * Computes a standardized numeric score for a pack variant to sort sizes logically:
+ * e.g., 250g (250) < 500g (500) < 1kg (1000) < 5kg (5000) < 10kg (10000) < 25kg (25000)
+ */
+export function getNormalizedVariantScore(product: {
+  unit?: string | null;
+  quantity_value?: number | string | null;
+  quantity_unit?: string | null;
+  mrp?: number | string | null;
+  price?: number | string | null;
+}): number {
+  let qv = product.quantity_value != null ? parseFloat(String(product.quantity_value)) : NaN;
+  let qu = product.quantity_unit ? normalizePackUnitCode(product.quantity_unit) : '';
+
+  if ((isNaN(qv) || qv <= 0) && product.unit) {
+    const match = String(product.unit).trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)$/);
+    if (match) {
+      qv = parseFloat(match[1]);
+      qu = normalizePackUnitCode(match[2]);
+    }
+  }
+
+  if (!isNaN(qv) && qv > 0) {
+    const lower = qu.toLowerCase();
+    if (lower === 'kg') return qv * 1000;
+    if (lower === 'g' || lower === 'gm') return qv;
+    if (lower === 'l' || lower === 'ltr') return qv * 1000;
+    if (lower === 'ml') return qv;
+    if (lower === 'dozen') return qv * 12;
+    if (lower === 'pcs' || lower === 'pc') return qv;
+    return qv;
+  }
+
+  const mrp = parseFloat(String(product.mrp || product.price || 0));
+  return isNaN(mrp) ? 0 : mrp;
+}
+
+/**
+ * Sorts pack size variants in logical ascending sequence (smaller units first, larger units after).
+ * e.g., 500 g -> 1 kg -> 5 kg -> 10 kg -> 25 kg
+ */
+export function sortPackVariants<T extends {
+  unit?: string | null;
+  quantity_value?: number | string | null;
+  quantity_unit?: string | null;
+  mrp?: number | string | null;
+  price?: number | string | null;
+  created_at?: string | null;
+}>(variants: T[]): T[] {
+  return [...variants].sort((a, b) => {
+    const scoreA = getNormalizedVariantScore(a);
+    const scoreB = getNormalizedVariantScore(b);
+    if (scoreA !== scoreB) {
+      return scoreA - scoreB;
+    }
+    const mrpA = parseFloat(String(a.mrp || a.price || 0)) || 0;
+    const mrpB = parseFloat(String(b.mrp || b.price || 0)) || 0;
+    if (mrpA !== mrpB) {
+      return mrpA - mrpB;
+    }
+    if (a.created_at && b.created_at) {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+    return 0;
+  });
+}
+

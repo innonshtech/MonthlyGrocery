@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
+import { sendOtp, verifyOtp } from '../services/twilioOtpService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-token-key-change-me';
@@ -13,8 +14,80 @@ function normalizePhone(phone: string): string {
   let clean = phone.replace(/[^\d]/g, '');
   if (clean.length === 10) {
     clean = '91' + clean;
+  } else if (clean.length === 11 && clean.startsWith('0')) {
+    clean = '91' + clean.slice(1);
   }
   return clean;
+}
+
+// Check if a mobile number belongs to a registered merchant / store partner
+async function isRegisteredMerchant(normalizedPhone: string): Promise<boolean> {
+  if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN) {
+    return true;
+  }
+
+  try {
+    // 1. Check profiles table
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('phone', normalizedPhone)
+      .maybeSingle();
+
+    if (profile) {
+      if (profile.role === 'admin' || profile.role === 'super_admin') {
+        return true;
+      }
+      // Check if user owns a shop
+      const { data: shop } = await supabase
+        .from('shops')
+        .select('id, status')
+        .eq('owner_id', profile.id)
+        .maybeSingle();
+
+      if (shop) {
+        return true;
+      }
+    }
+
+    // 2. Check shops table directly by phone number
+    const { data: shopByPhone } = await supabase
+      .from('shops')
+      .select('id, status')
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
+      .maybeSingle();
+
+    if (shopByPhone) {
+      return true;
+    }
+  } catch (err) {
+    console.warn('[isRegisteredMerchant] Database check error:', err);
+  }
+
+  return false;
+}
+
+// Check if a mobile number is authorized as Super Admin
+async function isAuthorizedSuperAdmin(normalizedPhone: string): Promise<boolean> {
+  if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN) {
+    return true;
+  }
+
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, role')
+      .eq('phone', normalizedPhone)
+      .maybeSingle();
+
+    if (profile && profile.role === 'super_admin') {
+      return true;
+    }
+  } catch (err) {
+    console.warn('[isAuthorizedSuperAdmin] DB check error:', err);
+  }
+
+  return false;
 }
 
 // 1. Send OTP Endpoint
@@ -26,20 +99,47 @@ router.post('/send-otp', async (req, res) => {
 
   const normalized = normalizePhone(mobile);
 
-  // Default to OTP 123456 if Twilio is not configured or in development mode
-  if (!process.env.TWILIO_ACCOUNT_SID || process.env.DEV_OTP_BYPASS?.toLowerCase() !== 'false') {
-    console.log(`[OTP] Sent OTP '123456' for mobile: ${normalized}`);
-    return res.json({
-      success: true,
-      message: 'OTP sent successfully. Use code 123456.',
-      mobile: normalized,
-    });
+  // Validate merchant / super_admin registration before sending SMS OTP
+  if (role === 'admin') {
+    const isRegistered = await isRegisteredMerchant(normalized);
+    if (!isRegistered) {
+      return res.status(403).json({
+        success: false,
+        error: 'This mobile number is not registered as a store partner. Please sign up and register your store first.',
+      });
+    }
+  } else if (role === 'super_admin') {
+    const isSuperAdmin = await isAuthorizedSuperAdmin(normalized);
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access Denied: This mobile number is not registered as an authorized Super Admin.',
+      });
+    }
   }
 
-  return res.status(400).json({
-    success: false,
-    error: 'Twilio provider not configured.',
-  });
+  try {
+    const result = await sendOtp(normalized);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Failed to send OTP',
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: result.message,
+      mobile: normalized,
+      ...(result.devOtp ? { devOtp: result.devOtp } : {}),
+    });
+  } catch (error: any) {
+    console.error('[Auth send-otp] Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error sending OTP',
+    });
+  }
 });
 
 // 2. Verify OTP Endpoint
@@ -51,14 +151,15 @@ router.post('/verify-otp', async (req, res) => {
 
   const normalized = normalizePhone(mobile);
 
-  // Always accept 123456 as valid OTP for testing without Twilio
-  const isValid = (code === '123456');
-
-  if (!isValid) {
-    return res.status(400).json({ success: false, error: 'Invalid or expired OTP code' });
-  }
-
   try {
+    const verification = await verifyOtp(normalized, code);
+    if (!verification.success) {
+      return res.status(400).json({
+        success: false,
+        error: verification.error || 'Invalid or expired OTP code',
+      });
+    }
+
     // Check if profile already exists in Supabase
     let { data: profile, error: fetchError } = await supabase
       .from('profiles')

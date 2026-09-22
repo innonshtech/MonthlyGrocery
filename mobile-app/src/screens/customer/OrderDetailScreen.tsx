@@ -148,8 +148,8 @@ function formatStatusSubtitle(order: ConsumerOrder, statusKey: string): string {
 
 export default function OrderDetailScreen({ route, navigation }: any) {
   const orderId = route?.params?.orderId || route?.params?.order?.id;
-  const { token } = useAuth();
-  const { addToCart } = useCart();
+  const { token, selectedShop, setSelectedShop } = useAuth();
+  const { addToCart, syncActiveShop } = useCart();
   const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<OrderDetailScreenConfig | null>(null);
@@ -170,28 +170,30 @@ export default function OrderDetailScreen({ route, navigation }: any) {
     setConfigLoading(false);
   }, []);
 
-  const loadOrder = useCallback(async () => {
+  const loadOrder = useCallback(async (silent = false) => {
     if (!token || !orderId) {
       if (route?.params?.order) {
         setOrder(route.params.order);
       }
-      setOrderLoading(false);
+      if (!silent) setOrderLoading(false);
       return;
     }
-    setOrderLoading(true);
-    setOrderError(false);
+    if (!silent) {
+      setOrderLoading(true);
+      setOrderError(false);
+    }
     const fetched = await fetchOrderById(token, orderId);
     if (!fetched) {
       if (route?.params?.order) {
         setOrder(route.params.order);
-      } else {
+      } else if (!silent) {
         setOrderError(true);
         setOrder(null);
       }
     } else {
       setOrder(fetched);
     }
-    setOrderLoading(false);
+    if (!silent) setOrderLoading(false);
   }, [token, orderId, route?.params?.order]);
 
   useEffect(() => {
@@ -202,31 +204,78 @@ export default function OrderDetailScreen({ route, navigation }: any) {
     loadOrder();
   }, [loadOrder]);
 
+  // Smart polling for live order detail updates
+  useEffect(() => {
+    if (!token || !orderId) return;
+    const currentStatus = (order?.status || '').toLowerCase();
+    const isTerminal = currentStatus === 'delivered' || currentStatus === 'cancelled';
+    if (isTerminal) return;
+
+    const intervalId = setInterval(() => {
+      loadOrder(true);
+    }, 6000);
+
+    return () => clearInterval(intervalId);
+  }, [token, orderId, order?.status, loadOrder]);
+
   const load = useCallback(() => {
     loadConfig();
     loadOrder();
   }, [loadConfig, loadOrder]);
 
-  const handleReorder = () => {
+  const handleReorder = async () => {
     if (!order) return;
     setReordering(true);
     try {
-      const addedCount = addOrderItemsToCart(
+      const targetShopId = order.shop_id || selectedShop?.id;
+      const targetShopName = order.shop_name || selectedShop?.name || 'Store';
+      const isShopSwitch = Boolean(
+        targetShopId && selectedShop?.id && targetShopId !== selectedShop.id,
+      );
+
+      if (targetShopId) {
+        await setSelectedShop({
+          id: targetShopId,
+          name: targetShopName,
+        });
+        syncActiveShop(targetShopId, targetShopName);
+      }
+
+      const reorderResult = addOrderItemsToCart(
         order,
         addToCart,
         screenConfig?.default_product_name || 'Grocery Item',
       );
+
+      const addedCount = reorderResult.addedCount;
+      const outOfStockCount = reorderResult.outOfStockCount;
+
+      const toastTitle = isShopSwitch
+        ? `Switched to ${targetShopName}`
+        : (screenConfig?.reorder_success_title || 'Items added to basket!');
+
+      let toastMessage = '';
+      if (isShopSwitch) {
+        toastMessage = outOfStockCount > 0
+          ? `Switched to ${targetShopName}: ${addedCount} items added (${outOfStockCount} item${outOfStockCount > 1 ? 's were' : ' was'} out of stock).`
+          : `Active store switched to ${targetShopName} & ${addedCount} items added to your basket.`;
+      } else {
+        toastMessage = outOfStockCount > 0
+          ? `${addedCount} items added (${outOfStockCount} item${outOfStockCount > 1 ? 's were' : ' was'} out of stock in store).`
+          : formatOrdersTemplate(
+              screenConfig?.reorder_success_message_template ||
+                '{count} items from order {order_id} have been added to your basket.',
+              {
+                count: addedCount,
+                order_id: getOrderDisplayId(order),
+              },
+            );
+      }
+
       showToast({
         type: 'cart',
-        title: screenConfig?.reorder_success_title || 'Items added to basket!',
-        message: formatOrdersTemplate(
-          screenConfig?.reorder_success_message_template ||
-            '{count} items from order {order_id} have been added to your basket.',
-          {
-            count: addedCount,
-            order_id: getOrderDisplayId(order),
-          },
-        ),
+        title: toastTitle,
+        message: toastMessage,
         actionLabel: screenConfig?.reorder_view_cart_label || 'View basket',
         onAction: () => navigation.navigate('Cart'),
       });
@@ -510,6 +559,37 @@ export default function OrderDetailScreen({ route, navigation }: any) {
                   <Text style={styles.detailValueTxt}>{deliveryWindow}</Text>
                 </View>
               </View>
+
+              {/* Fulfilled by Store */}
+              {order.shop_name ? (
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIconCol}>
+                    <Text style={{ fontSize: 16 }}>🏪</Text>
+                  </View>
+                  <View style={styles.detailTextCol}>
+                    <Text style={styles.detailSubLabel}>Fulfilled by store</Text>
+                    <Text style={styles.detailValueTxt}>{order.shop_name}</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Delivery Partner (if assigned) */}
+              {order.delivery_partner_name ? (
+                <View style={styles.detailRow}>
+                  <View style={styles.detailIconCol}>
+                    <Text style={{ fontSize: 16 }}>🛵</Text>
+                  </View>
+                  <View style={styles.detailTextCol}>
+                    <Text style={styles.detailSubLabel}>
+                      {screenConfig?.delivery_partner_label || 'Delivery partner'}
+                    </Text>
+                    <Text style={styles.detailValueTxt}>
+                      {order.delivery_partner_name}
+                      {order.delivery_partner_phone ? ` (+91 ${order.delivery_partner_phone.slice(-10)})` : ''}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
 
               {/* Paid Via */}
               <View style={styles.detailRow}>

@@ -69,8 +69,9 @@ export default function CartScreen({
     appliedCoupon,
     clearAppliedCoupon,
     setAppliedCoupon,
+    cartShopName,
   } = useCart();
-  const { city, area, token } = useAuth();
+  const { city, area, token, selectedShop } = useAuth();
   const { showToast } = useToast();
 
   const [screenConfig, setScreenConfig] = useState<CartScreenConfig | null>(null);
@@ -130,6 +131,14 @@ export default function CartScreen({
   const amountNeeded = Math.max(0, minLimit - subtotal);
   const progressPct = minLimit > 0 ? Math.min(100, Math.round((subtotal / minLimit) * 100)) : 100;
 
+  const outOfStockItems = items.filter(
+    (it) =>
+      it.product.available === false ||
+      (it.product as any).in_stock === false ||
+      (it.product.stock !== undefined && it.product.stock !== null && Number(it.product.stock) <= 0),
+  );
+  const hasOutOfStockItems = outOfStockItems.length > 0;
+
   const headerCountLabel =
     totalItemCount === 1
       ? screenConfig?.cart_item_label ?? ''
@@ -138,6 +147,14 @@ export default function CartScreen({
         : '';
 
   const handleCheckout = () => {
+    if (hasOutOfStockItems) {
+      showToast({
+        type: 'error',
+        title: 'Items Out of Stock',
+        message: 'Some items in your cart are currently out of stock. Please remove them to proceed.',
+      });
+      return;
+    }
     if (!city?.trim() || !area?.trim()) {
       showToast({
         type: 'info',
@@ -319,6 +336,29 @@ export default function CartScreen({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Store Fulfillment Banner */}
+        <View style={styles.storeBadgeBanner}>
+          <View style={styles.storeBadgeLeft}>
+            <Text style={styles.storeBadgeIcon}>🏪</Text>
+            <View style={styles.storeBadgeTextWrap}>
+              <Text style={styles.storeBadgePrefix}>Ordering from</Text>
+              <Text style={styles.storeBadgeName} numberOfLines={1}>
+                {cartShopName || selectedShop?.name || 'Assigned Local Store'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.storeBadgeChangeBtn}
+            onPress={() => {
+              if (setActiveTab) setActiveTab('Home');
+              navigation.navigate('Shop', { initialTab: 'Home' });
+            }}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.storeBadgeChangeTxt}>Change</Text>
+          </TouchableOpacity>
+        </View>
+
         {isBelowMin ? (
           <View style={styles.belowMinBanner}>
             <View style={styles.belowMinHeaderRow}>
@@ -342,34 +382,50 @@ export default function CartScreen({
             const price = parseFloat(String(cartItem.product.price)) || 0;
             const lineTotal = price * cartItem.quantity;
             const packLabel = getProductPackLabel(cartItem.product);
+            const isOutOfStock =
+              cartItem.product.available === false ||
+              (cartItem.product as any).in_stock === false ||
+              (cartItem.product.stock !== undefined &&
+                cartItem.product.stock !== null &&
+                Number(cartItem.product.stock) <= 0);
 
             return (
               <View
                 key={cartItem.product.id}
-                style={[styles.itemRow, idx < items.length - 1 && styles.itemRowBorder]}
+                style={[
+                  styles.itemRow,
+                  idx < items.length - 1 && styles.itemRowBorder,
+                  isOutOfStock && { opacity: 0.8 },
+                ]}
               >
                 <View style={[styles.imgTile, { backgroundColor: homeDealBg(idx) }]}>
                   {cartItem.product.image_url ? (
                     <Image
                       source={{ uri: cartItem.product.image_url }}
-                      style={styles.imgTileImg}
+                      style={[styles.imgTileImg, isOutOfStock && { opacity: 0.4 }]}
                       resizeMode="contain"
                     />
                   ) : (
-                    <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
+                    <AppIcon name="shopping-bag" size={24} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
                   )}
                 </View>
 
                 <View style={styles.itemInfo}>
-                  <Text style={styles.itemName} numberOfLines={2}>{cartItem.product.name}</Text>
-                  {packLabel ? <Text style={styles.itemUnit}>{packLabel}</Text> : null}
+                  <Text style={[styles.itemName, isOutOfStock && { color: '#64748B' }]} numberOfLines={2}>{cartItem.product.name}</Text>
+                  {isOutOfStock ? (
+                    <Text style={{ ...FONTS.muktaBold, fontSize: 11, color: '#DC2626' }}>Out of stock</Text>
+                  ) : packLabel ? (
+                    <Text style={styles.itemUnit}>{packLabel}</Text>
+                  ) : null}
                   <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
                 </View>
 
                 <Stepper
                   quantity={cartItem.quantity}
                   onDecrement={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1)}
-                  onIncrement={() => addToCart(cartItem.product)}
+                  onIncrement={() => {
+                    if (!isOutOfStock) addToCart(cartItem.product);
+                  }}
                 />
               </View>
             );
@@ -445,7 +501,15 @@ export default function CartScreen({
             <Text style={styles.toPayAmount}>₹{toPay.toLocaleString('en-IN')}</Text>
           </View>
 
-          {isBelowMin ? (
+          {hasOutOfStockItems ? (
+            <TouchableOpacity
+              style={[styles.checkoutBtnDisabled, { backgroundColor: '#EF4444' }]}
+              onPress={handleCheckout}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.checkoutBtnTxt}>Remove out of stock items</Text>
+            </TouchableOpacity>
+          ) : isBelowMin ? (
             <TouchableOpacity
               style={styles.checkoutBtnDisabled}
               onPress={handleCheckout}
@@ -925,5 +989,55 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     color: '#FFFFFF',
+  },
+  storeBadgeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5EAE7',
+  },
+  storeBadgeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+    gap: 8,
+  },
+  storeBadgeIcon: {
+    fontSize: 20,
+  },
+  storeBadgeTextWrap: {
+    flex: 1,
+  },
+  storeBadgePrefix: {
+    ...FONTS.muktaMedium,
+    fontSize: 11,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  storeBadgeName: {
+    ...FONTS.balooBold,
+    fontSize: 14.5,
+    color: '#17251E',
+  },
+  storeBadgeChangeBtn: {
+    backgroundColor: '#EAF5EE',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#CBE5D5',
+  },
+  storeBadgeChangeTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: '#1E7A46',
   },
 });

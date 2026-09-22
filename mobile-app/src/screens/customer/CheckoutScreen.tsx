@@ -31,6 +31,8 @@ import {
   CheckoutFallbackEmoji,
   AddressRadioOnIcon,
   AddressRadioOffIcon,
+  LucideLiveGpsIcon,
+  LucideSearchBlackIcon,
   THUMB_BG,
 } from '../../components/CheckoutFigmaIcons';
 import { calculateCouponDiscount } from '../../utils/couponDiscount';
@@ -252,6 +254,23 @@ export default function CheckoutScreen({ route, navigation }: any) {
   };
 
   const handleProceedToPayment = async () => {
+    const outOfStockItems = items.filter(
+      (it) =>
+        it.product.available === false ||
+        (it.product as any).in_stock === false ||
+        (it.product.stock !== undefined && it.product.stock !== null && Number(it.product.stock) <= 0)
+    );
+    if (outOfStockItems.length > 0) {
+      showToast({
+        type: 'error',
+        title: 'Items Out of Stock',
+        message: 'Some items in your cart are out of stock. Please return to Cart to remove them before proceeding.',
+        actionLabel: 'Cart',
+        onAction: () => navigation.navigate('Cart'),
+      });
+      return;
+    }
+
     if (!city?.trim() || !area?.trim()) {
       showToast({
         type: 'info',
@@ -619,7 +638,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
               activeOpacity={0.8}
             >
               <View style={[styles.locOptionIconWrap, { backgroundColor: '#EAF5EE' }]}>
-                <AppIcon name="map-pin" size={22} color="#1E7A46" />
+                <LucideLiveGpsIcon size={22} color="#1E7A46" />
               </View>
               <View style={styles.locOptionTextWrap}>
                 <View style={styles.locOptionTitleRow}>
@@ -647,8 +666,8 @@ export default function CheckoutScreen({ route, navigation }: any) {
               }}
               activeOpacity={0.8}
             >
-              <View style={[styles.locOptionIconWrap, { backgroundColor: '#EFF6FF' }]}>
-                <AppIcon name="search" size={20} color="#2563EB" />
+              <View style={[styles.locOptionIconWrap, { backgroundColor: '#F1F5F9' }]}>
+                <LucideSearchBlackIcon size={20} color="#0F172A" />
               </View>
               <View style={styles.locOptionTextWrap}>
                 <Text style={styles.locOptionTitle}>Enter Another Location</Text>

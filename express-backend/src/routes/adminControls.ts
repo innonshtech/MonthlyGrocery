@@ -1692,18 +1692,17 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
       return res.status(404).json({ success: false, error: 'Merchant shop not found' });
     }
     const db = readDb();
-    const shopProds = db.shop_products.filter(sp => sp.shop_id === shopId);
-    
-    if (shopProds.length === 0) {
-      return res.json({ success: true, shop_products: [] });
+    if (!db.shop_products) db.shop_products = [];
+    const shopProds = db.shop_products.filter((sp: any) => sp.shop_id === shopId);
+    const shopProdMap = new Map<string, any>();
+    for (const sp of shopProds) {
+      shopProdMap.set(sp.product_id, sp);
     }
 
-    // Fetch product details from Supabase
-    const productIds = shopProds.map(sp => sp.product_id);
-    const { data: products, error } = await supabase
+    // Fetch all catalog products from Supabase
+    const { data: allProducts, error } = await supabase
       .from('products')
-      .select('id, name, sku, brand, primary_category, image_url, mrp, unit, short_description, description')
-      .in('id', productIds);
+      .select('id, name, sku, brand, primary_category, image_url, mrp, price, unit, short_description, description, available, stock');
 
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
@@ -1711,7 +1710,7 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
 
     // Build family media map for sibling fallback
     const familyMediaMap = new Map<string, { images: string[]; video_url: string | null }>();
-    (products || []).forEach((p: any) => {
+    (allProducts || []).forEach((p: any) => {
       const key = getProductFamilyKey(p);
       const media = parseProductMedia(p);
       if (!familyMediaMap.has(key)) {
@@ -1726,8 +1725,8 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
       }
     });
 
-    const joined = shopProds.map(sp => {
-      const p = products?.find((prod: any) => prod.id === sp.product_id);
+    const joined = (allProducts || []).map((p: any) => {
+      const sp = shopProdMap.get(p.id);
       const media = parseProductMedia(p || {});
       const key = getProductFamilyKey(p || {});
       const family = familyMediaMap.get(key);
@@ -1735,8 +1734,14 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
       const finalImageUrl = media.primary_image_url || p?.image_url || (family?.images?.[0] || '');
       const finalVideoUrl = media.video_url || family?.video_url || null;
 
+      const sellingPrice = sp ? sp.selling_price : (parseFloat(p.price) || parseFloat(p.mrp) || 0);
+      const stock = sp ? (sp.stock != null ? Number(sp.stock) : 0) : (p.stock != null ? Number(p.stock) : 50);
+      const isAvailable = sp ? (sp.available !== false && (sp.stock == null || Number(sp.stock) > 0)) : (p.available !== false);
+
       return {
-        ...sp,
+        id: sp?.id || `sp-${p.id}`,
+        shop_id: shopId,
+        product_id: p.id,
         name: p?.name || 'Unknown Product',
         sku: p?.sku || '',
         brand: p?.brand || '',
@@ -1744,7 +1749,13 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
         image_url: finalImageUrl,
         images: finalImages,
         video_url: finalVideoUrl,
-        mrp: p?.mrp || 0,
+        mrp: parseFloat(p?.mrp) || 0,
+        selling_price: sellingPrice,
+        price: sellingPrice,
+        discount_percentage: sp?.discount_percentage || 0,
+        stock: stock,
+        available: isAvailable,
+        status: sp?.status || 'approved',
         unit: resolvePackUnitLabel(p || {}) || p?.unit || '',
         short_description: p?.short_description || '',
         description: media.clean_description,
@@ -1792,9 +1803,10 @@ router.post('/shop-products/request', authMiddleware, requireRole(['admin', 'sup
     }
 
     const db = readDb();
+    if (!db.shop_products) db.shop_products = [];
     
     // Check if already requested or mapped
-    const existing = db.shop_products.find(sp => sp.shop_id === shopId && sp.product_id === product_id);
+    const existing = db.shop_products.find((sp: any) => sp.shop_id === shopId && sp.product_id === product_id);
     if (existing) {
       return res.status(400).json({ success: false, error: `SKU already has status: ${existing.status}` });
     }
@@ -1833,22 +1845,31 @@ router.post('/shop-products/configure', authMiddleware, requireRole(['admin', 's
     }
 
     const db = readDb();
-    const spIndex = db.shop_products.findIndex(sp => sp.shop_id === shopId && sp.product_id === product_id);
+    if (!db.shop_products) db.shop_products = [];
+    const spIndex = db.shop_products.findIndex((sp: any) => sp.shop_id === shopId && sp.product_id === product_id);
     
     if (spIndex === -1) {
-      return res.status(404).json({ success: false, error: 'Product not mapped or requested yet for your shop' });
+      const newSp: ShopProduct = {
+        id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        shop_id: shopId,
+        product_id: product_id,
+        selling_price: selling_price !== undefined ? (parseFloat(selling_price) || 0) : 0,
+        discount_percentage: discount_percentage !== undefined ? (parseInt(discount_percentage) || 0) : 0,
+        stock: stock !== undefined ? (parseInt(stock) || 0) : 0,
+        available: available !== undefined ? !!available : (stock !== undefined ? parseInt(stock) > 0 : true),
+        status: 'approved',
+      };
+      db.shop_products.push(newSp);
+      writeDb(db);
+      return res.json({ success: true, message: 'SKU configuration updated successfully', shop_product: newSp });
     }
 
     const sp = db.shop_products[spIndex];
-    if (sp.status !== 'approved') {
-      return res.status(403).json({ success: false, error: 'SKU is pending Super Admin approval. You cannot configure it yet.' });
-    }
-
-    // Update values
     if (selling_price !== undefined) sp.selling_price = parseFloat(selling_price) || 0;
     if (discount_percentage !== undefined) sp.discount_percentage = parseInt(discount_percentage) || 0;
     if (stock !== undefined) sp.stock = parseInt(stock) || 0;
     if (available !== undefined) sp.available = !!available;
+    sp.status = 'approved';
 
     db.shop_products[spIndex] = sp;
     writeDb(db);

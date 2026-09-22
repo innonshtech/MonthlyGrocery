@@ -16,6 +16,10 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
+import {
+  playOrderSuccessChime,
+} from '../services/soundAlert';
+import { BellRing } from 'lucide-react-native';
 
 export default function StoreSettingsScreen() {
   const navigation = useNavigation<any>();
@@ -33,6 +37,19 @@ export default function StoreSettingsScreen() {
   const [manualLng, setManualLng] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchingLocation, setSearchingLocation] = useState(false);
+  const [soundTesting, setSoundTesting] = useState(false);
+
+  const handleToggleSoundTest = async () => {
+    setSoundTesting(true);
+    try {
+      await playOrderSuccessChime();
+      Alert.alert('Silent Notification', '✓ Top notification banner with bell icon is active! Loud ringing bell is muted.');
+    } catch (e) {
+      // ignore
+    } finally {
+      setTimeout(() => setSoundTesting(false), 800);
+    }
+  };
 
   const fetchShopProfile = () => {
     if (!token) return;
@@ -553,6 +570,43 @@ export default function StoreSettingsScreen() {
                   <Text style={styles.actionSub}>Set capacity, mark full, recommended windows</Text>
                 </View>
                 <Text style={styles.actionArrow}>➔</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Realtime Silent Notifications */}
+            <View style={styles.sectionCard}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={styles.sectionTitle}>ORDER NOTIFICATIONS & ALERTS</Text>
+                <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#166534' }}>✓ ACTIVE (SILENT)</Text>
+                </View>
+              </View>
+
+              <Text style={[styles.formulaDesc, { marginTop: 6 }]}>
+                Incoming orders appear as a sleek top notification banner with a bell icon 🔔 at the top of your screen without loud continuous ringing sounds.
+              </Text>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#F1F5F9',
+                  borderWidth: 1.5,
+                  borderColor: '#CBD5E1',
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginTop: 10,
+                }}
+                onPress={handleToggleSoundTest}
+                activeOpacity={0.8}
+              >
+                <BellRing size={17} color="#0F172A" strokeWidth={2.2} />
+                <Text style={{ fontSize: 13.5, fontWeight: '800', color: '#0F172A' }}>
+                  {soundTesting ? 'Notification Active ✓' : 'Test Notification Alert ➔'}
+                </Text>
               </TouchableOpacity>
             </View>
           </>

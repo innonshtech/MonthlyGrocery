@@ -118,6 +118,8 @@ export interface OrderStatusStep {
 export interface ConsumerOrder {
   id: string;
   display_id?: string;
+  shop_id?: string;
+  shop_name?: string;
   status: string;
   total_amount: number;
   discount_amount?: number;
@@ -297,21 +299,42 @@ export function getTimelineStepTimeLabel(
   return step.time_label || config.timeline_pending_time;
 }
 
+export interface ReorderResult {
+  addedCount: number;
+  outOfStockCount: number;
+  totalItems: number;
+}
+
 export function addOrderItemsToCart(
   order: ConsumerOrder,
   addToCart: (product: Product) => void,
   defaultProductName?: string,
-): number {
+): ReorderResult {
   let addedCount = 0;
+  let outOfStockCount = 0;
+  let totalItems = 0;
   const fallbackName = defaultProductName || '';
+
   for (const item of order.order_items || []) {
+    totalItems += 1;
     const priceVal = parseFloat(String(item.unit_price ?? item.price)) || 0;
     const qty = parseInt(String(item.quantity), 10) || 1;
     const name = item.product_name || item.name || fallbackName;
     if (!name) continue;
+
+    const isOutOfStock =
+      (item as any).available === false ||
+      (item as any).in_stock === false ||
+      ((item as any).stock !== undefined && (item as any).stock !== null && Number((item as any).stock) <= 0);
+
+    if (isOutOfStock) {
+      outOfStockCount += 1;
+      continue;
+    }
+
     const product: Product = {
       id: item.product_id || `order-item-${addedCount}`,
-      shop_id: item.shop_id || '',
+      shop_id: item.shop_id || order.shop_id || '',
       name,
       brand: item.brand || '',
       primary_category: item.primary_category || '',
@@ -325,5 +348,5 @@ export function addOrderItemsToCart(
       addedCount += 1;
     }
   }
-  return addedCount;
+  return { addedCount, outOfStockCount, totalItems };
 }
