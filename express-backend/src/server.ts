@@ -96,6 +96,69 @@ app.get('/', (req, res) => {
   });
 });
 
+// Public Privacy Policy Webpage for Play Store & App Store compliance
+const renderPrivacyPolicy = (req: express.Request, res: express.Response) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Privacy Policy - EVER & EVER MERCHANT</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px 15px; background: #F8FAFC; }
+        .card { background: #FFFFFF; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        h1 { color: #0F172A; border-bottom: 2px solid #E2E8F0; padding-bottom: 12px; }
+        h2 { color: #1E293B; margin-top: 24px; }
+        p, li { color: #475569; font-size: 15px; }
+        ul { padding-left: 20px; }
+        .footer { margin-top: 30px; font-size: 13px; color: #94A3B8; text-align: center; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>Privacy Policy</h1>
+        <p><strong>Effective Date:</strong> January 1, 2026<br><strong>Apps Covered:</strong> EVER (Customer App) and EVER MERCHANT (Partner App)</p>
+        
+        <h2>1. Overview</h2>
+        <p>Welcome to EVER. We value your privacy and are committed to protecting your personal information. This Privacy Policy explains how our applications collect, use, disclose, and safeguard your data when you use our mobile applications and grocery ordering services.</p>
+
+        <h2>2. Information We Collect</h2>
+        <ul>
+          <li><strong>Personal Information:</strong> Name, phone number, and delivery addresses provided during registration and order checkout.</li>
+          <li><strong>Location Data:</strong> Approximate and precise geolocation (when permitted) to find nearby grocery stores, confirm delivery addresses, and enable real-time order tracking.</li>
+          <li><strong>Camera & Storage:</strong> Access to camera/photo gallery (optional) to allow merchant store registration, document verification, and customer profile updates.</li>
+          <li><strong>Order & Transaction Data:</strong> Items purchased, order history, scheduled delivery slots, and payment status.</li>
+        </ul>
+
+        <h2>3. How We Use Your Information</h2>
+        <ul>
+          <li>To process, fulfill, and deliver your grocery orders on time.</li>
+          <li>To authenticate user accounts via secure SMS OTP.</li>
+          <li>To provide customer support, order updates, and delivery alerts.</li>
+          <li>To improve application performance and prevent fraud.</li>
+        </ul>
+
+        <h2>4. Data Sharing & Security</h2>
+        <p>We do not sell your personal data. We only share necessary delivery details with our verified delivery partners and merchants strictly for order fulfillment. We use industry-standard encryption (HTTPS/SSL) and secure cloud infrastructure to protect all stored information.</p>
+
+        <h2>5. Account Deletion & Data Rights</h2>
+        <p>You have the right to access, update, or request permanent deletion of your account and personal data at any time via the in-app "Delete Account" feature or by contacting our support team.</p>
+
+        <h2>6. Contact Us</h2>
+        <p>If you have any questions or concerns regarding this Privacy Policy, please contact us at:<br><strong>Email:</strong> support@evergrocery.com / monthlygrocery7@gmail.com</p>
+      </div>
+      <div class="footer">&copy; 2026 EVER. All Rights Reserved.</div>
+    </body>
+    </html>
+  `);
+};
+app.get('/privacy-policy', renderPrivacyPolicy);
+app.get('/api/privacy-policy', renderPrivacyPolicy);
+app.get('/privacy', renderPrivacyPolicy);
+app.get('/api/privacy', renderPrivacyPolicy);
+
 // Automatically ensure all AWS RDS PostgreSQL tables and columns are created & aligned
 async function ensureDatabaseSchema() {
   try {
