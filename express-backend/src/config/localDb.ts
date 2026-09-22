@@ -400,6 +400,9 @@ export interface HelpSupportScreenConfig {
   title: string;
   chat_title: string;
   chat_subtitle: string;
+  email_title?: string;
+  email_subtitle?: string;
+  support_email?: string;
   call_title: string;
   call_subtitle: string;
   phone_number: string;
@@ -1617,13 +1620,16 @@ const defaultDb: LocalDbSchema = {
   },
   help_support_screen: {
     title: 'Help & support',
-    chat_title: 'Chat with us',
-    chat_subtitle: 'Avg reply: < 5 min',
+    chat_title: 'WhatsApp Chat',
+    chat_subtitle: 'Avg reply: < 2 min',
+    email_title: 'Email Support',
+    email_subtitle: 'monthlygrocery7@gmail.com',
     call_title: 'Call us',
     call_subtitle: '7:00 AM - 10:00 PM daily',
-    phone_number: '+918830480015',
-    whatsapp_phone: '918830480015',
-    whatsapp_message: 'Hi MonthlyGrocery Support',
+    phone_number: '+917758885145',
+    whatsapp_phone: '917758885145',
+    support_email: 'monthlygrocery7@gmail.com',
+    whatsapp_message: 'Hi MonthlyGrocery Support, I need assistance with MonthlyGrocery app.',
     chat_fallback_alert_title: 'Support chat',
     chat_fallback_alert_message: 'Could not open WhatsApp. Please try again later.',
     call_fallback_alert_title: 'Helpline',

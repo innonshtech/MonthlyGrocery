@@ -6,25 +6,9 @@ import { NativeModules, Platform } from 'react-native';
 export const AWS_SERVER_URL = 'http://13.233.159.143/api';
 
 /**
- * Local IP / Host for Wireless & ADB Debugging
+ * Production API Base URL (AWS EC2 Live Server)
  */
-export const DEV_MACHINE_IP = '192.168.1.15';
-
-/**
- * Toggle to connect the app to the live AWS EC2 Cloud Server.
- * Set to TRUE for production APK and cloud testing.
- */
-export const USE_AWS_SERVER = false;
-
-function resolveApiBase(): string {
-  if (USE_AWS_SERVER) {
-    return AWS_SERVER_URL;
-  }
-  // Direct computer local IP ensures 100% reliable connection over Wi-Fi & ADB
-  return `http://${DEV_MACHINE_IP}:8001/api`;
-}
-
-export const API_BASE = resolveApiBase();
+export const API_BASE = AWS_SERVER_URL;
 
 /**
  * Google Maps API Key for Static Maps, Geocoding & Places

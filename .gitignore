@@ -114,6 +114,10 @@ frontend/node_modules/.cache/default-development/34.pack
 **/android/app/.cxx/
 **/android/.gradle/
 **/android/local.properties
+*.keystore
+*.jks
+*.aab
+*.apk
 **/ios/build/
 **/ios/Pods/
 **/.expo/

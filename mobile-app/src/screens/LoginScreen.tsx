@@ -170,8 +170,6 @@ export default function LoginScreen({ route, navigation }: any) {
     }
   };
 
-  const handleGuest = () => navigation.navigate('CitySelection');
-
   const countryCode = phoneEntry?.country_code ?? '+91';
   const formattedMobile =
     mobile.length === 10
@@ -345,10 +343,6 @@ export default function LoginScreen({ route, navigation }: any) {
                 disabled={mobile.length < 10}
                 loading={loading}
               />
-              <TouchableOpacity onPress={handleGuest} style={styles.guestRow}>
-                <Text style={styles.guestText}>{phoneEntry.guest_label}</Text>
-                <AppIcon name="arrow-right" size={18} color={COLORS.green700} />
-              </TouchableOpacity>
               <Text style={styles.termsText}>{phoneEntry.terms_text}</Text>
             </>
           ) : step === 2 && otpVerification ? (
@@ -545,18 +539,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     gap: 14,
     backgroundColor: COLORS.paper,
-  },
-  guestRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  guestText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 13,
-    color: COLORS.green700,
   },
   termsText: {
     ...FONTS.muktaMedium,

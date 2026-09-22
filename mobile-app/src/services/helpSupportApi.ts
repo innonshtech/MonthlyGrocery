@@ -11,10 +11,13 @@ export interface HelpSupportScreenConfig {
   title: string;
   chat_title: string;
   chat_subtitle: string;
+  email_title?: string;
+  email_subtitle?: string;
   call_title: string;
   call_subtitle: string;
   phone_number: string;
   whatsapp_phone: string;
+  support_email?: string;
   whatsapp_message: string;
   chat_fallback_alert_title: string;
   chat_fallback_alert_message: string;
@@ -38,7 +41,14 @@ export function formatHelpTemplate(
 export function buildWhatsAppUrl(phone: string, message: string): string {
   const digits = phone.replace(/\D/g, '');
   const text = encodeURIComponent(message);
-  return `https://wa.me/${digits}?text=${text}`;
+  return `https://wa.me/${digits.length === 10 ? '91' + digits : digits}?text=${text}`;
+}
+
+export function buildEmailUrl(email: string, subject?: string, body?: string): string {
+  const cleanEmail = email.trim();
+  const sub = encodeURIComponent(subject || 'MonthlyGrocery Support Request');
+  const b = encodeURIComponent(body || 'Hi MonthlyGrocery Team,\n\nI need help regarding: ');
+  return `mailto:${cleanEmail}?subject=${sub}&body=${b}`;
 }
 
 export function buildTelUrl(phone: string): string {
