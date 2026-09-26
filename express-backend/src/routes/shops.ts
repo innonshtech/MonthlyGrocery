@@ -22,6 +22,8 @@ const s3MediaClient = new S3Client({
   },
 });
 
+const BASE_PUBLIC_API_URL = (process.env.PUBLIC_API_URL || 'http://13.233.159.143/api').replace(/\/+$/, '');
+
 export const formatDocUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
   const s = String(url).trim();
@@ -31,19 +33,19 @@ export const formatDocUrl = (url: string | null | undefined): string | null => {
   // Extract S3 key if raw AWS S3 URL
   const s3Match = s.match(/amazonaws\.com\/(.+)$/);
   if (s3Match) {
-    return `http://localhost:8001/api/shops/doc-file/${s3Match[1]}`;
+    return `${BASE_PUBLIC_API_URL}/shops/doc-file/${s3Match[1]}`;
   }
   if (s.startsWith('/api/shops/doc-file/')) {
-    return `http://localhost:8001${s}`;
+    return `${BASE_PUBLIC_API_URL}${s.replace(/^\/api/, '')}`;
   }
   if (s.startsWith('http://localhost:8001') || s.startsWith('http://10.0.2.2:8001')) {
-    return s;
+    return s.replace(/^http:\/\/(localhost|10\.0\.2\.2):8001\/api/, BASE_PUBLIC_API_URL);
   }
   if (s.startsWith('http://') || s.startsWith('https://')) {
     return s;
   }
   const cleanKey = s.replace(/^\/+/, '');
-  return `http://localhost:8001/api/shops/doc-file/${cleanKey.startsWith('merchant-documents/') ? cleanKey : 'merchant-documents/' + cleanKey}`;
+  return `${BASE_PUBLIC_API_URL}/shops/doc-file/${cleanKey.startsWith('merchant-documents/') ? cleanKey : 'merchant-documents/' + cleanKey}`;
 };
 
 // 0. GET /me & /my: Retrieve logged-in merchant's shop profile
@@ -666,8 +668,8 @@ router.post(
           upsert: true,
         });
 
-      // 3. Return robust local/proxied streaming URL
-      const proxyUrl = `http://localhost:8001/api/shops/doc-file/merchant-documents/${fileName}`;
+      // 3. Return robust proxied streaming URL
+      const proxyUrl = `${BASE_PUBLIC_API_URL}/shops/doc-file/merchant-documents/${fileName}`;
 
       return res.json({
         success: true,

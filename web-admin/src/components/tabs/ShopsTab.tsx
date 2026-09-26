@@ -156,10 +156,13 @@ export default function ShopsTab({
     if (s.startsWith('data:')) return s;
     const s3Match = s.match(/amazonaws\.com\/(.+)$/);
     if (s3Match) {
-      return `http://localhost:8001/api/shops/doc-file/${s3Match[1]}`;
+      return `/backend-api/shops/doc-file/${s3Match[1]}`;
     }
     if (s.startsWith('/api/shops/doc-file/')) {
-      return `http://localhost:8001${s}`;
+      return `/backend-api${s.replace(/^\/api/, '')}`;
+    }
+    if (s.startsWith('http://localhost:8001/api/shops/doc-file/')) {
+      return s.replace('http://localhost:8001/api', '/backend-api');
     }
     return s;
   };

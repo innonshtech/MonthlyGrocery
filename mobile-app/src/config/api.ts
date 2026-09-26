@@ -12,11 +12,10 @@ export const AWS_SERVER_URL = 'http://13.233.159.143/api';
 export const LOCAL_SERVER_URL = 'http://10.122.236.147:8001/api';
 
 /**
- * Change to:
- * - LOCAL_SERVER_URL: for testing your local laptop backend
- * - AWS_SERVER_URL: for testing live AWS production backend
+ * Active Backend API Endpoint
+ * Direct AWS EC2 Production Server
  */
-export const API_BASE = LOCAL_SERVER_URL;
+export const API_BASE = AWS_SERVER_URL;
 
 /**
  * Google Maps API Key for Static Maps, Geocoding & Places
