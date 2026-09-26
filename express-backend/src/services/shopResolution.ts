@@ -100,7 +100,7 @@ export function checkLocationServiceability(input: ShopResolutionInput): {
 
   // 1. Explicit Customer Store Selection Priority
   if (input.shopId) {
-    const shopTerritory = territories.find((t: any) => t.shop_id === input.shopId && t.is_open !== false);
+    const shopTerritory = territories.find((t: any) => t.shop_id === input.shopId);
     // Also verify if assigned in serviceable locations
     const assignedInLocation = locations.find(
       (loc: any) => loc.shop_id === input.shopId && loc.is_serviceable !== false

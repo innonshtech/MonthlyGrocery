@@ -125,17 +125,47 @@ export default function LoginScreen({ route, navigation }: any) {
     const cleanText = text.replace(/[^0-9]/g, '');
     const newDigits = [...otpDigits];
 
+    // Case 1: Pasting multi-digit code (e.g., 6-digit OTP copied from SMS/clipboard)
     if (cleanText.length > 1) {
+      // If user typed into a box that already had a digit (e.g. "12"), replace current box digit
+      if (cleanText.length === 2 && otpDigits[index]) {
+        const replacement = cleanText.replace(otpDigits[index], '').slice(-1) || cleanText.slice(-1);
+        newDigits[index] = replacement;
+        setOtpDigits(newDigits);
+        if (error) setError('');
+        if (index < 5) {
+          inputRefs.current[index + 1]?.focus();
+          setActiveOtpIndex(index + 1);
+        }
+        return;
+      }
+
+      // Pasted full OTP (e.g. 6 digits) -> distribute starting from box 0 if 6 digits or from current index
       const pasted = cleanText.slice(0, 6).split('');
-      for (let i = 0; i < 6; i++) newDigits[i] = pasted[i] || '';
-      setOtpDigits(newDigits);
-      const nextIndex = Math.min(pasted.length, 5);
-      inputRefs.current[nextIndex]?.focus();
-      setActiveOtpIndex(nextIndex);
+      if (pasted.length >= 4) {
+        // Full OTP pasted -> populate all boxes from 0
+        for (let i = 0; i < 6; i++) {
+          newDigits[i] = pasted[i] || '';
+        }
+        setOtpDigits(newDigits);
+        const lastIndex = Math.min(pasted.length - 1, 5);
+        inputRefs.current[lastIndex]?.focus();
+        setActiveOtpIndex(lastIndex);
+      } else {
+        // Partial paste starting from current index
+        for (let i = 0; i < pasted.length && index + i < 6; i++) {
+          newDigits[index + i] = pasted[i];
+        }
+        setOtpDigits(newDigits);
+        const nextIndex = Math.min(index + pasted.length, 5);
+        inputRefs.current[nextIndex]?.focus();
+        setActiveOtpIndex(nextIndex);
+      }
       if (error) setError('');
       return;
     }
 
+    // Case 2: Backspace / Empty
     if (!cleanText) {
       if (otpDigits[index]) {
         newDigits[index] = '';
@@ -153,6 +183,7 @@ export default function LoginScreen({ route, navigation }: any) {
       return;
     }
 
+    // Case 3: Single digit typed
     newDigits[index] = cleanText.slice(-1);
     setOtpDigits(newDigits);
     if (error) setError('');
@@ -165,6 +196,9 @@ export default function LoginScreen({ route, navigation }: any) {
 
   const handleOtpKeyPress = (e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      const newDigits = [...otpDigits];
+      newDigits[index - 1] = '';
+      setOtpDigits(newDigits);
       inputRefs.current[index - 1]?.focus();
       setActiveOtpIndex(index - 1);
     }
@@ -303,7 +337,7 @@ export default function LoginScreen({ route, navigation }: any) {
                     autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
                     importantForAutofill="yes"
                     selectTextOnFocus
-                    maxLength={1}
+                    maxLength={6}
                     textAlign="center"
                     autoFocus={idx === 0 && Platform.OS === 'ios'}
                   />

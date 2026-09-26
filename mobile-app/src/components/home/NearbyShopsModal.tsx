@@ -66,6 +66,7 @@ export default function NearbyShopsModal({
       distance_km: shop.distance_km,
       delivery_radius_km: shop.delivery_radius_km,
       address: shop.address_line || shop.area_name || shop.city,
+      is_open: shop.is_open !== false,
     };
     await setSelectedShop(info);
     syncActiveShop(shop.id, shop.shop_name);

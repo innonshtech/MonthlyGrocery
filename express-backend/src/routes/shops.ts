@@ -172,6 +172,7 @@ router.put('/me/settings', authMiddleware, requireRole(['admin', 'super_admin'])
       if (updatedTerritory.address_line) pgUpdate.address_line = updatedTerritory.address_line;
       if (updatedTerritory.pincode) pgUpdate.pincode = updatedTerritory.pincode;
       if (updatedTerritory.delivery_radius_km) pgUpdate.delivery_radius_km = updatedTerritory.delivery_radius_km;
+      if (updatedTerritory.is_open !== undefined) pgUpdate.is_open = updatedTerritory.is_open;
       
       if (Object.keys(pgUpdate).length > 0) {
         await supabase.from('shops').update(pgUpdate).eq('id', shop.id);
@@ -854,30 +855,26 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
       if (!db.areas) db.areas = [];
       if (!db.cities) db.cities = [];
 
-      const shopCity = (territory?.city || shop.city || city || 'Pune').trim();
+      const shopCity = (territory?.city || shop.city || city || '').trim();
       const shopArea = (territory?.area_name || shop.area_name || area_name || '').trim();
       const shopPin = (territory?.pincode || shop.pincode || pincode || '000000').trim();
 
-      // Ensure city exists in db.cities
+      // Find matched master city
       let matchedCityObj = db.cities.find(
-        (c: any) => c.name.trim().toLowerCase() === shopCity.toLowerCase()
+        (c: any) => c.name.trim().toLowerCase() === shopCity.toLowerCase() || c.id === shopCity
       );
-      if (!matchedCityObj && shopCity) {
-        matchedCityObj = { id: `city-${Date.now()}`, name: shopCity };
-        db.cities.push(matchedCityObj);
-      }
 
       // Collect all areas to assign: primary area + additional selected areas
       const allAreasToAssign: Array<{ area_name: string; city: string; pincode: string }> = [];
       if (shopArea) {
-        allAreasToAssign.push({ area_name: shopArea, city: shopCity, pincode: shopPin });
+        allAreasToAssign.push({ area_name: shopArea, city: matchedCityObj ? matchedCityObj.name : shopCity, pincode: shopPin });
       }
 
       const rawAdditional = assigned_areas || additional_areas || [];
       if (Array.isArray(rawAdditional)) {
         for (const item of rawAdditional) {
           const aName = typeof item === 'string' ? item.trim() : (item.area_name || '').trim();
-          const aCity = (typeof item === 'object' && item.city ? item.city : shopCity).trim();
+          const aCity = (typeof item === 'object' && item.city ? item.city : (matchedCityObj ? matchedCityObj.name : shopCity)).trim();
           const aPin = (typeof item === 'object' && item.pincode ? item.pincode : shopPin).trim();
           if (aName && !allAreasToAssign.some((x) => x.area_name.toLowerCase() === aName.toLowerCase() && x.city.toLowerCase() === aCity.toLowerCase())) {
             allAreasToAssign.push({ area_name: aName, city: aCity, pincode: aPin || '000000' });
@@ -885,7 +882,7 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
         }
       }
 
-      // Link each area in db.serviceable_locations and ensure present in db.areas
+      // Link each registered area in db.serviceable_locations
       for (const target of allAreasToAssign) {
         // 1. Sync in db.serviceable_locations
         const existingLoc = db.serviceable_locations.find(
@@ -906,23 +903,6 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
             is_serviceable: true,
             shop_id: shop_id,
           });
-        }
-
-        // 2. Sync in db.areas under matchedCityObj
-        if (matchedCityObj) {
-          const areaExistsInMaster = db.areas.some(
-            (a: any) =>
-              (a.city_id === matchedCityObj.id || String(a.city_name || '').toLowerCase() === target.city.toLowerCase()) &&
-              a.name.trim().toLowerCase() === target.area_name.toLowerCase()
-          );
-          if (!areaExistsInMaster) {
-            db.areas.push({
-              id: `area-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-              city_id: matchedCityObj.id,
-              name: target.area_name,
-              pincode: target.pincode || '000000',
-            });
-          }
         }
       }
     } else if (status === 'rejected' && db.serviceable_locations) {

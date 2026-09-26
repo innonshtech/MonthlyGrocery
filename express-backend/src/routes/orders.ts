@@ -301,7 +301,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       try {
         const { data } = await supabase
           .from('shops')
-          .select('id, shop_name, status')
+          .select('id, shop_name, status, is_open')
           .eq('id', targetShopId)
           .maybeSingle();
         if (data && data.status === 'approved') {
@@ -317,6 +317,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
             id: targetShopId,
             shop_name: territory?.shop_name || localShop?.shop_name || 'Assigned Kirana Store',
             status: 'approved',
+            is_open: territory?.is_open !== undefined ? territory.is_open : (localShop?.is_open !== undefined ? localShop.is_open : true),
           };
         }
       }
@@ -327,7 +328,7 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       try {
         const { data: fallbackShops } = await supabase
           .from('shops')
-          .select('id, shop_name, status')
+          .select('id, shop_name, status, is_open')
           .eq('status', 'approved')
           .order('created_at', { ascending: false })
           .limit(1);
@@ -348,6 +349,21 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Hard Guard: Validate that the store is currently Online (not offline / closed)
+    const territoryRecord = (db.shop_territories || []).find((t: any) => t.shop_id === targetShopId);
+    const isStoreOnline = targetShop.is_open !== false && territoryRecord?.is_open !== false;
+
+    if (!isStoreOnline) {
+      const storeTitle = targetShop.shop_name || 'This store';
+      return res.status(400).json({
+        success: false,
+        error: `${storeTitle} is currently Offline / Closed. Orders are temporarily paused. Please try again when the store is online.`,
+        code: 'STORE_OFFLINE',
+        shop_id: targetShopId,
+        shop_name: storeTitle,
+      });
+    }
+
     // Dynamic Distance & Delivery Fee Calculation (5 KM Free + Extra KM Rate)
     const feeCalculation = calculateDeliveryFee({
       shopId: targetShopId,
@@ -361,6 +377,18 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
     const calculatedDeliveryFee = feeCalculation.is_free ? 0 : feeCalculation.delivery_fee;
     const distanceKm = feeCalculation.distance_km;
+
+    // Hard Guard: Validate that customer is within the store's Maximum Delivery Radius
+    if (feeCalculation.is_serviceable === false) {
+      return res.status(400).json({
+        success: false,
+        error: `Out of Delivery Range: ${feeCalculation.free_delivery_message || `This store only delivers within ${feeCalculation.max_delivery_radius_km} km.`}`,
+        code: 'OUT_OF_DELIVERY_RANGE',
+        distance_km: feeCalculation.distance_km,
+        max_delivery_radius_km: feeCalculation.max_delivery_radius_km,
+      });
+    }
+
     finalPayableAmount = Math.max(0, baseAmount + calculatedDeliveryFee - validatedDiscount);
 
     // Validate delivery slot availability (dynamic capacity from merchant config)

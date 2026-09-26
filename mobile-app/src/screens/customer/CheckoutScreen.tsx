@@ -144,15 +144,23 @@ export default function CheckoutScreen({ route, navigation }: any) {
     is_free: boolean;
     distance_km: number | null;
     free_delivery_radius_km: number;
+    max_delivery_radius_km?: number;
+    is_serviceable?: boolean;
     delivery_fee_label: string;
     free_delivery_message: string;
+    is_store_open?: boolean;
+    shop_name?: string | null;
   }>({
     delivery_fee: 0,
     is_free: true,
     distance_km: null,
     free_delivery_radius_km: 5,
+    max_delivery_radius_km: 15,
+    is_serviceable: true,
     delivery_fee_label: 'FREE (within 5 km)',
     free_delivery_message: 'Delivery is FREE within 5 km',
+    is_store_open: true,
+    shop_name: null,
   });
 
   const itemTotalMrp = items.reduce((sum, item) => {
@@ -185,8 +193,12 @@ export default function CheckoutScreen({ route, navigation }: any) {
             is_free: Boolean(data.is_free),
             distance_km: data.distance_km != null ? data.distance_km : null,
             free_delivery_radius_km: data.free_delivery_radius_km || 5,
+            max_delivery_radius_km: data.max_delivery_radius_km || 15,
+            is_serviceable: data.is_serviceable !== false,
             delivery_fee_label: data.delivery_fee_label || 'FREE',
             free_delivery_message: data.free_delivery_message || 'Free Delivery',
+            is_store_open: data.is_store_open !== false,
+            shop_name: data.shop_name || null,
           });
         }
       } catch {
@@ -254,6 +266,24 @@ export default function CheckoutScreen({ route, navigation }: any) {
   };
 
   const handleProceedToPayment = async () => {
+    if (deliveryFeeInfo.is_store_open === false) {
+      showToast({
+        type: 'error',
+        title: 'Store is Offline',
+        message: `${deliveryFeeInfo.shop_name || 'This store'} is currently Offline / Closed. Orders cannot be placed at this time. Please try again when the store is back online.`,
+      });
+      return;
+    }
+
+    if (deliveryFeeInfo.is_serviceable === false) {
+      showToast({
+        type: 'error',
+        title: 'Out of Delivery Range',
+        message: deliveryFeeInfo.free_delivery_message || `This store only delivers up to ${deliveryFeeInfo.max_delivery_radius_km || 10} km. Your address is too far.`,
+      });
+      return;
+    }
+
     const outOfStockItems = items.filter(
       (it) =>
         it.product.available === false ||
@@ -363,6 +393,36 @@ export default function CheckoutScreen({ route, navigation }: any) {
               Add {formatInr(amountNeeded)} more to reach the {formatInr(minLimit)} minimum order
               value
             </Text>
+          </View>
+        )}
+
+        {/* Store Offline Alert Banner */}
+        {deliveryFeeInfo.is_store_open === false && (
+          <View style={styles.storeOfflineBanner}>
+            <View style={styles.storeOfflineIconWrap}>
+              <Text style={styles.storeOfflineIcon}>🔴</Text>
+            </View>
+            <View style={styles.storeOfflineTextWrap}>
+              <Text style={styles.storeOfflineTitle}>Store Currently Offline</Text>
+              <Text style={styles.storeOfflineDesc}>
+                {deliveryFeeInfo.shop_name || 'This store'} is currently closed and not accepting orders. Please try again when the store turns online.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Out of Delivery Range Alert Banner */}
+        {deliveryFeeInfo.is_serviceable === false && (
+          <View style={styles.storeOfflineBanner}>
+            <View style={styles.storeOfflineIconWrap}>
+              <Text style={styles.storeOfflineIcon}>📍</Text>
+            </View>
+            <View style={styles.storeOfflineTextWrap}>
+              <Text style={styles.storeOfflineTitle}>Out of Delivery Range</Text>
+              <Text style={styles.storeOfflineDesc}>
+                {deliveryFeeInfo.free_delivery_message || `This store only delivers up to ${deliveryFeeInfo.max_delivery_radius_km || 10} km. Your delivery location is outside our delivery area.`}
+              </Text>
+            </View>
           </View>
         )}
 
@@ -564,7 +624,19 @@ export default function CheckoutScreen({ route, navigation }: any) {
 
       {/* Sticky bottom bar — Figma height ~74, shows TO PAY & Proceed to pay, or disabled full-width button */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
-        {!selectedAddress || !selectedSlot ? (
+        {deliveryFeeInfo.is_store_open === false ? (
+          <View style={[styles.disabledBottomBtn, styles.storeOfflineBottomBtn]}>
+            <Text style={styles.storeOfflineBottomBtnText}>
+              Store is Offline · Cannot Place Order
+            </Text>
+          </View>
+        ) : deliveryFeeInfo.is_serviceable === false ? (
+          <View style={[styles.disabledBottomBtn, styles.storeOfflineBottomBtn]}>
+            <Text style={styles.storeOfflineBottomBtnText}>
+              Out of Delivery Range · Cannot Place Order
+            </Text>
+          </View>
+        ) : !selectedAddress || !selectedSlot ? (
           <View style={styles.disabledBottomBtn}>
             <Text style={styles.disabledBottomBtnText}>
               {!selectedAddress && !selectedSlot
@@ -1125,6 +1197,55 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 20,
     color: '#9CA3AF',
+  },
+  storeOfflineBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    gap: 12,
+  },
+  storeOfflineIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeOfflineIcon: {
+    fontSize: 16,
+  },
+  storeOfflineTextWrap: {
+    flex: 1,
+  },
+  storeOfflineTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
+    lineHeight: 19,
+    color: '#991B1B',
+  },
+  storeOfflineDesc: {
+    ...FONTS.muktaRegular,
+    fontSize: 12.5,
+    lineHeight: 16.5,
+    color: '#B91C1C',
+    marginTop: 2,
+  },
+  storeOfflineBottomBtn: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  storeOfflineBottomBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: '#B91C1C',
   },
   tagBadge: {
     backgroundColor: '#F1F5F9',

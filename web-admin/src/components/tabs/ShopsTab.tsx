@@ -193,15 +193,10 @@ export default function ShopsTab({
   // Approval & Area Assignment Modal State
   const [approveModalShop, setApproveModalShop] = useState<Shop | null>(null);
   const [approveSelectedCity, setApproveSelectedCity] = useState('');
-  const [approveCustomCity, setApproveCustomCity] = useState('');
-  const [approveIsCustomCity, setApproveIsCustomCity] = useState(false);
   const [approveSelectedArea, setApproveSelectedArea] = useState('');
-  const [approveCustomArea, setApproveCustomArea] = useState('');
-  const [approveIsCustomArea, setApproveIsCustomArea] = useState(false);
   const [approvePincode, setApprovePincode] = useState('');
   const [approveRadius, setApproveRadius] = useState('5.0');
   const [approveAdditionalAreas, setApproveAdditionalAreas] = useState<string[]>([]);
-  const [approveNewCustomZone, setApproveNewCustomZone] = useState('');
   const [approveSubmitting, setApproveSubmitting] = useState(false);
 
   // Open Approval with Area Assignment Dialog
@@ -212,42 +207,36 @@ export default function ShopsTab({
       (c) => c.name.toLowerCase() === shopCity.toLowerCase() || c.id === shopCity
     );
 
-    if (matchedCity) {
-      setApproveSelectedCity(matchedCity.name);
-      setApproveIsCustomCity(false);
-      setApproveCustomCity('');
-    } else if (shopCity) {
-      setApproveSelectedCity(shopCity);
-      setApproveIsCustomCity(false);
-      setApproveCustomCity('');
+    const selectedCityName = matchedCity ? matchedCity.name : (cities && cities.length > 0 ? cities[0].name : '');
+    setApproveSelectedCity(selectedCityName);
+
+    // Compute areas for this city to find matched registered area
+    const matchedCityObj = matchedCity || (cities || []).find((c) => c.name.toLowerCase() === selectedCityName.toLowerCase());
+    const validAreasForCity = (areas || []).filter((a) => {
+      if (matchedCityObj && a.city_id === matchedCityObj.id) return true;
+      if (a.city_id === selectedCityName) return true;
+      if ((a as any).city_name && (a as any).city_name.trim().toLowerCase() === selectedCityName.toLowerCase()) return true;
+      return false;
+    });
+
+    const shopArea = (shop.area_name || '').trim().toLowerCase();
+    const matchedArea = validAreasForCity.find((a) => a.name.trim().toLowerCase() === shopArea);
+
+    if (matchedArea) {
+      setApproveSelectedArea(matchedArea.name);
+      setApprovePincode(matchedArea.pincode || shop.pincode || '');
+      setApproveAdditionalAreas([matchedArea.name]);
+    } else if (validAreasForCity.length > 0) {
+      setApproveSelectedArea(validAreasForCity[0].name);
+      setApprovePincode(validAreasForCity[0].pincode || shop.pincode || '');
+      setApproveAdditionalAreas([validAreasForCity[0].name]);
     } else {
-      const defaultCity = cities && cities.length > 0 ? cities[0].name : 'Pimpri-Chinchwad';
-      setApproveSelectedCity(defaultCity);
-      setApproveIsCustomCity(false);
-      setApproveCustomCity('');
+      setApproveSelectedArea('');
+      setApprovePincode(shop.pincode || '');
+      setApproveAdditionalAreas([]);
     }
 
-    setApproveSelectedArea(shop.area_name || '');
-    setApproveCustomArea(shop.area_name || '');
-    setApproveIsCustomArea(false);
-    setApprovePincode(shop.pincode || '');
     setApproveRadius(String(shop.delivery_radius_km || '5.0'));
-
-    // Populate initial assigned zones from shop's detected area and locations table
-    const initialZones: string[] = [];
-    if (shop.area_name && shop.area_name.trim()) {
-      initialZones.push(shop.area_name.trim());
-    }
-    if (locations && shop.id) {
-      locations
-        .filter((l) => l.shop_id === shop.id && l.area_name)
-        .forEach((l) => {
-          if (!initialZones.includes(l.area_name)) {
-            initialZones.push(l.area_name);
-          }
-        });
-    }
-    setApproveAdditionalAreas(initialZones);
   };
 
   // Rejection Reason Modal State
@@ -386,8 +375,8 @@ export default function ShopsTab({
 
   // Cascading City -> Area computations for Store Approval Territory Mapping
   const approveEffectiveCity = useMemo(() => {
-    return (approveIsCustomCity ? approveCustomCity : approveSelectedCity).trim();
-  }, [approveIsCustomCity, approveCustomCity, approveSelectedCity]);
+    return approveSelectedCity.trim();
+  }, [approveSelectedCity]);
 
   const approveModalCityObj = useMemo(() => {
     if (!approveEffectiveCity) return undefined;
@@ -690,10 +679,23 @@ export default function ShopsTab({
   // Submit Approval with Assigned Delivery Area & Coordinates
   const handleConfirmApproval = async () => {
     if (!approveModalShop || !token) return;
-    const finalCity = (approveIsCustomCity ? approveCustomCity : approveSelectedCity).trim() || approveModalShop.city || 'Pimpri-Chinchwad';
-    const finalArea = (approveIsCustomArea ? approveCustomArea : approveSelectedArea).trim();
+    const finalCity = approveSelectedCity.trim();
+    const finalArea = approveSelectedArea.trim();
+    if (!finalCity) {
+      alert('Please select a registered Master City for this store.');
+      return;
+    }
     if (!finalArea) {
-      alert('Please select or type the Primary Delivery Area to assign to this merchant store.');
+      alert('Please select a registered Primary Locality to assign to this merchant store.');
+      return;
+    }
+
+    // Verify area belongs to master registered areas
+    const isAreaRegistered = approveModalAreas.some(
+      (a) => a.name.trim().toLowerCase() === finalArea.toLowerCase()
+    );
+    if (!isAreaRegistered && approveModalAreas.length > 0) {
+      alert(`The locality "${finalArea}" is not in the registered list for ${finalCity}. Please select from the registered dropdown or add it in the Master Cities & Localities tab first.`);
       return;
     }
 
@@ -701,7 +703,9 @@ export default function ShopsTab({
     const allAssignedSet = new Set<string>();
     allAssignedSet.add(finalArea);
     approveAdditionalAreas.forEach((a) => {
-      if (a && a.trim()) allAssignedSet.add(a.trim());
+      if (a && a.trim() && approveModalAreas.some((ma) => ma.name.toLowerCase() === a.trim().toLowerCase())) {
+        allAssignedSet.add(a.trim());
+      }
     });
 
     const assignedAreasList = Array.from(allAssignedSet).map((areaName) => {
@@ -2959,141 +2963,109 @@ export default function ShopsTab({
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1">
-                        <Building className="w-3.5 h-3.5 text-indigo-400" /> Master City *
+                        <Building className="w-3.5 h-3.5 text-indigo-400" /> Registered Master City *
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setApproveIsCustomCity(!approveIsCustomCity);
-                          if (!approveIsCustomCity) {
-                            setApproveCustomCity(approveSelectedCity);
-                          }
-                        }}
-                        className="text-[10px] text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
-                      >
-                        {approveIsCustomCity ? '← Select from Master Cities' : '✏️ Custom City'}
-                      </button>
+                      <span className="text-[10px] text-slate-400">
+                        {cities?.length || 0} Cities Available
+                      </span>
                     </div>
 
-                    {approveIsCustomCity ? (
-                      <input
-                        type="text"
-                        placeholder="e.g. Pimpri-Chinchwad, Pune, Mumbai"
-                        value={approveCustomCity}
-                        onChange={(e) => setApproveCustomCity(e.target.value)}
-                        className="w-full h-10 px-3.5 bg-slate-950 border border-indigo-500/50 text-white rounded-xl text-xs outline-none focus:border-indigo-400 font-medium"
-                        required
-                      />
-                    ) : (
-                      <select
-                        value={approveSelectedCity}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === '__custom__') {
-                            setApproveIsCustomCity(true);
-                            setApproveCustomCity('');
-                          } else {
-                            setApproveSelectedCity(val);
-                            setApproveSelectedArea('');
-                          }
-                        }}
-                        className="w-full h-10 px-3 bg-slate-950 border border-indigo-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-400 font-medium"
-                      >
-                        <option value="">-- Select Master City --</option>
-                        {(cities || []).map((c) => {
-                          const count = (areas || []).filter((a) => a.city_id === c.id).length;
-                          return (
-                            <option key={c.id} value={c.name}>
-                              🏙️ {c.name} {count > 0 ? `(${count} areas)` : ''}
-                            </option>
-                          );
-                        })}
-                        {approveModalShop.city &&
-                          !(cities || []).some(
-                            (c) => c.name.toLowerCase() === (approveModalShop.city || '').toLowerCase()
-                          ) && (
-                            <option value={approveModalShop.city}>
-                              📍 Store Detected City: {approveModalShop.city}
-                            </option>
-                          )}
-                        <option value="__custom__">➕ Type Custom / New City...</option>
-                      </select>
-                    )}
+                    <select
+                      value={approveSelectedCity}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setApproveSelectedCity(val);
+                        // Reset area selection when city changes
+                        const matchedCityObj = (cities || []).find((c) => c.name.toLowerCase() === val.toLowerCase());
+                        const validAreas = (areas || []).filter((a) => {
+                          if (matchedCityObj && a.city_id === matchedCityObj.id) return true;
+                          if (a.city_id === val) return true;
+                          if ((a as any).city_name && (a as any).city_name.trim().toLowerCase() === val.toLowerCase()) return true;
+                          return false;
+                        });
+                        if (validAreas.length > 0) {
+                          setApproveSelectedArea(validAreas[0].name);
+                          setApprovePincode(validAreas[0].pincode || '');
+                          setApproveAdditionalAreas([validAreas[0].name]);
+                        } else {
+                          setApproveSelectedArea('');
+                          setApprovePincode('');
+                          setApproveAdditionalAreas([]);
+                        }
+                      }}
+                      className="w-full h-10 px-3 bg-slate-950 border border-indigo-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-400 font-medium"
+                      required
+                    >
+                      <option value="">-- Choose Registered Master City --</option>
+                      {(cities || []).map((c) => {
+                        const count = (areas || []).filter((a) => a.city_id === c.id).length;
+                        return (
+                          <option key={c.id} value={c.name}>
+                            🏙️ {c.name} {count > 0 ? `(${count} localities)` : '(0 localities)'}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
 
                   {/* Primary Area Locality Selector */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Primary Locality / Hub *
+                        <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Primary Registered Locality / Hub *
                       </label>
+                      <span className="text-[10px] text-emerald-400 font-semibold">
+                        {approveModalAreas.length} Localities in {approveEffectiveCity || 'City'}
+                      </span>
+                    </div>
+
+                    <select
+                      value={approveSelectedArea}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setApproveSelectedArea(val);
+                        // Auto fill pincode from master locality
+                        const matchedAreaObj = approveModalAreas.find((a) => a.name === val);
+                        if (matchedAreaObj && matchedAreaObj.pincode) {
+                          setApprovePincode(matchedAreaObj.pincode);
+                        }
+                        if (val && !approveAdditionalAreas.includes(val)) {
+                          setApproveAdditionalAreas((prev) => [...prev, val]);
+                        }
+                      }}
+                      className="w-full h-10 px-3 bg-slate-950 border border-emerald-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-emerald-400 font-medium"
+                      required
+                    >
+                      <option value="">-- Select Master Locality from {approveEffectiveCity || 'City'} --</option>
+                      {approveModalAreas.map((a) => (
+                        <option key={a.id || `${a.name}-${a.pincode}`} value={a.name}>
+                          📍 {a.name} (PIN: {a.pincode || '—'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Notice if no registered localities found for selected city */}
+                {approveEffectiveCity && approveModalAreas.length === 0 && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between">
+                    <span>
+                      ⚠️ No registered master localities found for <strong>{approveEffectiveCity}</strong>.
+                    </span>
+                    {setActiveTab && (
                       <button
                         type="button"
                         onClick={() => {
-                          setApproveIsCustomArea(!approveIsCustomArea);
-                          if (!approveIsCustomArea) {
-                            setApproveCustomArea(approveSelectedArea);
-                          }
+                          setApproveModalShop(null);
+                          setActiveTab('cities');
                         }}
-                        className="text-[10px] text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                        className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                       >
-                        {approveIsCustomArea ? '← Pick from Master Localities' : '✏️ Custom Area'}
+                        + Add Localities in Master Tab ➔
                       </button>
-                    </div>
-
-                    {approveIsCustomArea ? (
-                      <input
-                        type="text"
-                        placeholder="e.g. Thergaon, Ravet, Wakad, Hinjawadi"
-                        value={approveCustomArea}
-                        onChange={(e) => {
-                          setApproveCustomArea(e.target.value);
-                          if (e.target.value && !approveAdditionalAreas.includes(e.target.value)) {
-                            setApproveAdditionalAreas((prev) => [...prev, e.target.value]);
-                          }
-                        }}
-                        className="w-full h-10 px-3.5 bg-slate-950 border border-emerald-500/50 text-white rounded-xl text-xs outline-none focus:border-emerald-400 font-medium"
-                        required
-                      />
-                    ) : (
-                      <select
-                        value={approveSelectedArea}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val === '__custom__') {
-                            setApproveIsCustomArea(true);
-                            setApproveCustomArea('');
-                          } else {
-                            setApproveSelectedArea(val);
-                            // Auto fill pincode
-                            const matchedAreaObj = approveModalAreas.find((a) => a.name === val);
-                            if (matchedAreaObj && matchedAreaObj.pincode) {
-                              setApprovePincode(matchedAreaObj.pincode);
-                            }
-                            if (val && !approveAdditionalAreas.includes(val)) {
-                              setApproveAdditionalAreas((prev) => [...prev, val]);
-                            }
-                          }
-                        }}
-                        className="w-full h-10 px-3 bg-slate-950 border border-emerald-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-emerald-400 font-medium"
-                        required
-                      >
-                        {approveModalShop.area_name && (
-                          <option value={approveModalShop.area_name}>
-                            📍 Store Detected Area: {approveModalShop.area_name}
-                          </option>
-                        )}
-                        <option value="">-- Select Master Locality Zone --</option>
-                        {approveModalAreas.map((a) => (
-                          <option key={a.id || `${a.name}-${a.pincode}`} value={a.name}>
-                            📍 {a.name} (PIN: {a.pincode || '—'})
-                          </option>
-                        ))}
-                        <option value="__custom__">➕ Type Custom / New Locality Area...</option>
-                      </select>
                     )}
                   </div>
-                </div>
+                )}
 
                 {/* 2. Pincode & Delivery Radius Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -3144,10 +3116,10 @@ export default function ShopsTab({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
                       <label className="text-[11px] font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
-                        <Zap className="w-3.5 h-3.5 text-indigo-400" /> Multi-Zone Serviceable Localities ({approveAdditionalAreas.length} Assigned)
+                        <Zap className="w-3.5 h-3.5 text-indigo-400" /> Registered Serviceable Coverage Localities ({approveAdditionalAreas.length} Selected)
                       </label>
                       <p className="text-[10px] text-slate-400">
-                        Check all localities/zones from {approveEffectiveCity || 'this city'} that this merchant store will service.
+                        Select which registered localities in {approveEffectiveCity || 'this city'} this merchant store will deliver to.
                       </p>
                     </div>
 
@@ -3166,22 +3138,22 @@ export default function ShopsTab({
                         <button
                           type="button"
                           onClick={() => {
-                            const primary = (approveIsCustomArea ? approveCustomArea : approveSelectedArea).trim();
+                            const primary = approveSelectedArea.trim();
                             setApproveAdditionalAreas(primary ? [primary] : []);
                           }}
                           className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px] font-bold cursor-pointer transition-all"
                         >
-                          Reset
+                          Reset to Primary
                         </button>
                       </div>
                     )}
                   </div>
 
-                  {/* Areas Chips Grid */}
+                  {/* Areas Chips Grid - ONLY registered master areas */}
                   <div className="max-h-48 overflow-y-auto p-2.5 bg-slate-950/80 rounded-xl border border-slate-800/80 flex flex-wrap gap-2">
                     {approveModalAreas.length === 0 ? (
-                      <div className="w-full py-3 text-center text-xs text-slate-500 italic">
-                        No registered master areas found for &quot;{approveEffectiveCity || 'selected city'}&quot;. You can type custom areas below or add them in the Master Cities tab.
+                      <div className="w-full py-4 text-center text-xs text-slate-500 italic">
+                        No registered master localities for &quot;{approveEffectiveCity || 'selected city'}&quot;. Please add them in the Master Cities & Localities tab.
                       </div>
                     ) : (
                       approveModalAreas.map((area) => {
@@ -3189,8 +3161,7 @@ export default function ShopsTab({
                           (a) => a.toLowerCase() === area.name.toLowerCase()
                         );
                         const isPrimary =
-                          (approveIsCustomArea ? approveCustomArea : approveSelectedArea).trim().toLowerCase() ===
-                          area.name.toLowerCase();
+                          approveSelectedArea.trim().toLowerCase() === area.name.toLowerCase();
 
                         return (
                           <button
@@ -3198,6 +3169,11 @@ export default function ShopsTab({
                             type="button"
                             onClick={() => {
                               if (isSelected) {
+                                // Do not unselect if it is the primary area
+                                if (isPrimary) {
+                                  alert('The primary locality must remain in the serviceable coverage list.');
+                                  return;
+                                }
                                 setApproveAdditionalAreas(
                                   approveAdditionalAreas.filter(
                                     (a) => a.toLowerCase() !== area.name.toLowerCase()
@@ -3229,8 +3205,8 @@ export default function ShopsTab({
                               <span className="text-[10px] opacity-60 font-mono">({area.pincode})</span>
                             )}
                             {isPrimary && (
-                              <span className="px-1 py-0.2 bg-emerald-500/30 text-emerald-300 text-[9px] font-bold rounded">
-                                Primary
+                              <span className="px-1.5 py-0.5 bg-emerald-500/30 text-emerald-300 text-[9px] font-bold rounded border border-emerald-500/40">
+                                Primary Hub
                               </span>
                             )}
                           </button>
@@ -3239,38 +3215,24 @@ export default function ShopsTab({
                     )}
                   </div>
 
-                  {/* Add Custom Area on the fly */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="text"
-                      placeholder="+ Add another serviceable zone name..."
-                      value={approveNewCustomZone}
-                      onChange={(e) => setApproveNewCustomZone(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          const val = approveNewCustomZone.trim();
-                          if (val && !approveAdditionalAreas.some((a) => a.toLowerCase() === val.toLowerCase())) {
-                            setApproveAdditionalAreas([...approveAdditionalAreas, val]);
-                            setApproveNewCustomZone('');
-                          }
-                        }
-                      }}
-                      className="flex-1 h-9 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs outline-none focus:border-indigo-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const val = approveNewCustomZone.trim();
-                        if (val && !approveAdditionalAreas.some((a) => a.toLowerCase() === val.toLowerCase())) {
-                          setApproveAdditionalAreas([...approveAdditionalAreas, val]);
-                          setApproveNewCustomZone('');
-                        }
-                      }}
-                      className="px-3 h-9 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add
-                    </button>
+                  {/* Strict Territory Rule Badge */}
+                  <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      Strict Location Rule: Shops can only be assigned to pre-registered Master Localities.
+                    </span>
+                    {setActiveTab && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setApproveModalShop(null);
+                          setActiveTab('cities');
+                        }}
+                        className="text-indigo-400 hover:text-indigo-300 font-bold hover:underline cursor-pointer"
+                      >
+                        Manage Cities & Areas ➔
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

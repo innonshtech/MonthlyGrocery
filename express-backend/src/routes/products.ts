@@ -200,9 +200,10 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
   return groupedList.slice(0, limitVal);
 }
 
-// 1. GET /all: Consumer Catalog (location-aware, based on city and area)
+// 1. GET /all: Consumer Catalog (location-aware & shop-aware, based on chosen shop, city, and area)
 router.get('/all', async (req, res) => {
   const area_name = (req.query.area_name as string) || (req.query.area as string);
+  const shop_id = (req.query.shop_id as string) || (req.query.shopId as string);
   const { city, category, secondary, q, limit, deals, pincode, raw, group } = req.query;
   const limitVal = parseInt(limit as string) || 100;
   const dealsOnly = deals === '1' || deals === 'true';
@@ -231,99 +232,11 @@ router.get('/all', async (req, res) => {
   };
 
   try {
-    // If location credentials are not provided, fallback to the old PostgreSQL pricing override behaviour
-    if (!city || !area_name) {
-      let query = supabase
-        .from('products')
-        .select(`
-          *,
-          product_city_prices (
-            city_name,
-            mrp,
-            price,
-            wholesaler_price,
-            is_live
-          )
-        `)
-        .eq('available', true);
-
-      if (category) {
-        query = query.eq('primary_category', category);
-      }
-      if (secondary) {
-        query = query.eq('secondary_category', secondary);
-      }
-      if (q) {
-        query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%,primary_category.ilike.%${q}%`);
-      }
-
-      const { data: products, error } = await query.limit(limitVal);
-
-      if (error) {
-        return res.status(500).json({ success: false, error: error.message });
-      }
-
-      const out: any[] = [];
-      const targetCity = city ? String(city).trim() : '';
-
-      for (const p of products || []) {
-        const cityPrices = p.product_city_prices || [];
-        const cp = cityPrices.find((c: any) => c.city_name.toLowerCase() === targetCity.toLowerCase());
-
-        let mrp = parseFloat(p.mrp);
-        let price = parseFloat(p.price);
-        let isLive = true;
-
-        if (cp) {
-          if (!cp.is_live) {
-            isLive = false;
-          } else {
-            mrp = parseFloat(cp.mrp) || mrp;
-            price = parseFloat(cp.price) || price;
-          }
-        } else if (targetCity && cityPrices.length > 0) {
-          const fallback = cityPrices.find((c: any) => c.is_live && parseFloat(c.price) > 0);
-          if (fallback) {
-            mrp = parseFloat(fallback.mrp) || mrp;
-            price = parseFloat(fallback.price) || price;
-          }
-        }
-
-        if (isLive) {
-          out.push(enrichProductPackFields({
-            id: p.id,
-            shop_id: p.shop_id,
-            name: p.name,
-            sku: p.sku,
-            brand: p.brand,
-            company: p.company,
-            primary_category: p.primary_category,
-            secondary_category: p.secondary_category,
-            short_description: p.short_description,
-            description: p.description,
-            place: p.place,
-            image_url: p.image_url,
-            quantity_value: p.quantity_value,
-            quantity_unit: p.quantity_unit,
-            unit: p.unit,
-            mrp,
-            price,
-            is_veg: p.is_veg,
-            featured: p.featured,
-            todays_deal: p.todays_deal,
-            best_seller: p.best_seller,
-            discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
-            you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-          }));
-        }
-      }
-      return res.json({ success: true, products: applyDealsFilter(out) });
-    }
-
     const { fetchProductsForLocation } = require('../services/shopCatalog');
     const catalog = await fetchProductsForLocation({
-      city: String(city),
-      areaName: String(area_name),
+      shopId: shop_id ? String(shop_id) : undefined,
+      city: city ? String(city) : undefined,
+      areaName: area_name ? String(area_name) : undefined,
       pincode: pincode ? String(pincode) : undefined,
       category: category as string | undefined,
       secondary: secondary as string | undefined,
@@ -343,79 +256,31 @@ router.get('/all', async (req, res) => {
   }
 });
 
-// 1.2 GET /search: Search Consumer Catalog (location-aware when city + area provided)
+// 1.2 GET /search: Search Consumer Catalog (location-aware & shop-aware)
 router.get('/search', async (req, res) => {
   const area_name = (req.query.area_name as string) || (req.query.area as string);
+  const shop_id = (req.query.shop_id as string) || (req.query.shopId as string);
   const { q, category, limit, city, pincode } = req.query;
   const limitVal = parseInt(limit as string) || 50;
 
   try {
-    if (city && area_name) {
-      const { fetchProductsForLocation } = require('../services/shopCatalog');
-      const catalog = await fetchProductsForLocation({
-        city: String(city),
-        areaName: String(area_name),
-        pincode: pincode ? String(pincode) : undefined,
-        category: category as string | undefined,
-        q: q as string | undefined,
-        limit: limitVal,
-      });
-
-      return res.json({
-        success: true,
-        products: groupProductsByFamily(catalog.products, false, limitVal),
-        shop_id: catalog.shopId,
-        shop_name: catalog.shopName,
-      });
-    }
-
-    const { searchProductsWithIntelligence } = require('../utils/intelligentSearch');
-    let query = supabase.from('products').select('*').eq('available', true);
-
-    if (category) {
-      query = query.eq('primary_category', category);
-    }
-
-    const { data: products, error } = await query.limit(Math.max(limitVal, 100));
-    if (error) {
-      return res.status(500).json({ success: false, error: error.message });
-    }
-
-    const out = (products || []).map((p: any) => {
-      const mrp = parseFloat(p.mrp) || 0;
-      const price = parseFloat(p.price) || 0;
-      return enrichProductPackFields({
-        id: p.id,
-        shop_id: p.shop_id || null,
-        name: p.name,
-        sku: p.sku,
-        brand: p.brand,
-        company: p.company,
-        primary_category: p.primary_category,
-        secondary_category: p.secondary_category,
-        description: p.description,
-        short_description: p.short_description,
-        place: p.place,
-        image_url: p.image_url,
-        mrp,
-        price,
-        discount_percent: mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0,
-        stock: p.stock || 50,
-        unit: p.unit,
-        is_veg: p.is_veg,
-        featured: p.featured,
-        todays_deal: p.todays_deal,
-        best_seller: p.best_seller,
-        you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-      });
+    const { fetchProductsForLocation } = require('../services/shopCatalog');
+    const catalog = await fetchProductsForLocation({
+      shopId: shop_id ? String(shop_id) : undefined,
+      city: city ? String(city) : undefined,
+      areaName: area_name ? String(area_name) : undefined,
+      pincode: pincode ? String(pincode) : undefined,
+      category: category as string | undefined,
+      q: q as string | undefined,
+      limit: limitVal,
     });
 
-    if (q && String(q).trim()) {
-      const ranked = searchProductsWithIntelligence(out, String(q).trim(), category as string | undefined);
-      return res.json({ success: true, products: groupProductsByFamily(ranked, false, limitVal) });
-    }
-
-    return res.json({ success: true, products: groupProductsByFamily(out, false, limitVal) });
+    return res.json({
+      success: true,
+      products: groupProductsByFamily(catalog.products, false, limitVal),
+      shop_id: catalog.shopId,
+      shop_name: catalog.shopName,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }

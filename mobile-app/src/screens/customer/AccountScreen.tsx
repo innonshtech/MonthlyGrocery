@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -77,6 +78,8 @@ export default function AccountScreen({ navigation }: any) {
   const [metricsError, setMetricsError] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  const [customDisplayName, setCustomDisplayName] = useState<string>('');
+
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
     const config = await fetchAccountScreenConfig();
@@ -105,6 +108,11 @@ export default function AccountScreen({ navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
+      AsyncStorage.getItem('@user_display_name').then((stored) => {
+        if (stored && stored.trim()) {
+          setCustomDisplayName(stored.trim());
+        }
+      });
       loadConfig().then(() => loadSummary());
     }, [loadConfig, loadSummary]),
   );
@@ -140,7 +148,7 @@ export default function AccountScreen({ navigation }: any) {
     );
   }
 
-  const displayName = user?.name?.trim() || '';
+  const displayName = customDisplayName || user?.name?.trim() || '';
   const displayPhone = formatDisplayPhone(user?.mobile);
   const initialLetter = displayName ? displayName.charAt(0).toUpperCase() : '';
 

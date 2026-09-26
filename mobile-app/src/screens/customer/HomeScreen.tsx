@@ -14,11 +14,14 @@ import {
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import { API_BASE } from '../../config/api';
 import { appendLocationParams } from '../../utils/locationParams';
+import { getCurrentCoordinates } from '../../services/locationService';
+import { reverseGeocodeLocation } from '../../services/addressApi';
 import AppIcon from '../../components/AppIcon';
 import {
   HomeSearchIcon,
@@ -63,15 +66,16 @@ function buildDisplayLocation(
   city?: string | null,
   area?: string | null,
   pincode?: string | null,
+  livePincode?: string | null,
 ): string {
-  if (!home) return '';
-  if (area && city) {
-    const base = `${home.location_prefix} ${area}, ${city}`;
-    return pincode ? `${base} · ${pincode}` : base;
+  const prefix = home?.location_prefix || 'Home ·';
+  const effectivePincode = livePincode || pincode;
+  if (effectivePincode) {
+    return `${prefix} ${effectivePincode}`;
   }
-  if (area) return `${home.location_prefix} ${area}`;
-  if (city) return `${home.location_prefix} ${city}`;
-  return home.choose_location_label;
+  if (area) return `${prefix} ${area}`;
+  if (city) return `${prefix} ${city}`;
+  return home?.choose_location_label || `${prefix} Set Location`;
 }
 
 function sortBanners(banners: PromotionalBanner[]): PromotionalBanner[] {
@@ -107,8 +111,33 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     orderCount: number;
     lastOrder: any | null;
   }>({ orderCount: 0, lastOrder: null });
+  const [livePincode, setLivePincode] = useState<string | null>(pincode || null);
 
-  const displayLocation = buildDisplayLocation(home, city, area, pincode);
+  useEffect(() => {
+    let isMounted = true;
+    const loadAndDetectPincode = async () => {
+      try {
+        const savedPin = await AsyncStorage.getItem('@user_pincode');
+        if (savedPin && isMounted) {
+          setLivePincode(savedPin);
+        }
+        const coords = await getCurrentCoordinates();
+        if (coords && isMounted) {
+          const geo = await reverseGeocodeLocation(coords.latitude, coords.longitude);
+          if (geo?.pincode && isMounted) {
+            setLivePincode(geo.pincode);
+            await AsyncStorage.setItem('@user_pincode', geo.pincode);
+          }
+        }
+      } catch {}
+    };
+    loadAndDetectPincode();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const displayLocation = buildDisplayLocation(home, city, area, pincode, livePincode);
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
   const userInitial = user?.name?.trim()?.[0]?.toUpperCase();
   const hasPastOrder = orderStats.orderCount > 0 && orderStats.lastOrder;
@@ -404,11 +433,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                       <HomeChevronDownIcon size={16} color="#FFFFFF" />
                     </View>
                     {selectedShop ? (
-                      <View style={styles.shopNameRow}>
-                        <Text style={styles.shopNameLabel} numberOfLines={1}>🏪 {selectedShop.name}</Text>
+                      <View style={styles.shopBadgePill}>
+                        <Text style={styles.shopBadgeIcon}>🏪</Text>
+                        <Text style={styles.shopNameLabel} numberOfLines={1}>
+                          {selectedShop.name}
+                        </Text>
                         <TouchableOpacity
                           onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
-                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={styles.changeShopBtn}
                         >
                           <Text style={styles.changeShopText}>Change</Text>
                         </TouchableOpacity>
@@ -647,7 +680,12 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       areaName={area ?? ''}
       city={city ?? ''}
       onShopSelected={async (shop: NearbyShop) => {
-        await setSelectedShop({ id: shop.id, name: shop.shop_name, delivery_radius_km: shop.delivery_radius_km });
+        await setSelectedShop({
+          id: shop.id,
+          name: shop.shop_name,
+          delivery_radius_km: shop.delivery_radius_km,
+          is_open: shop.is_open !== false,
+        });
         syncActiveShop(shop.id, shop.shop_name);
         setShopPickerVisible(false);
       }}
@@ -731,23 +769,38 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: -2,
   },
-  shopNameRow: {
+  shopBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 3,
-    gap: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.20)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 4,
+    gap: 5,
+    alignSelf: 'flex-start',
+    maxWidth: width * 0.75,
+  },
+  shopBadgeIcon: {
+    fontSize: 12,
   },
   shopNameLabel: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.88)',
-    flex: 1,
-  },
-  changeShopText: {
-    ...FONTS.muktaSemiBold,
+    ...FONTS.muktaMedium,
     fontSize: 12,
     color: '#FFFFFF',
-    textDecorationLine: 'underline',
+    flexShrink: 1,
+  },
+  changeShopBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginLeft: 3,
+  },
+  changeShopText: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: '#FFFFFF',
   },
   avatarBtn: {
     width: 38,

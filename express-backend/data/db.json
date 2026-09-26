@@ -1,14 +1,6 @@
 {
   "serviceable_locations": [
     {
-      "id": "loc-1789536002355",
-      "city": "pune",
-      "area_name": "Ravet",
-      "pincode": "412101",
-      "is_serviceable": true,
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350"
-    },
-    {
       "id": "loc-1789756039319-ewav",
       "city": "Pune",
       "area_name": "Kothrud",
@@ -23,6 +15,14 @@
       "pincode": "412101",
       "is_serviceable": true,
       "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350"
+    },
+    {
+      "id": "loc-1790408510111-isfm",
+      "city": "pune",
+      "area_name": "Ravet",
+      "pincode": "423605",
+      "is_serviceable": true,
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227"
     }
   ],
   "promotional_banners": [
@@ -92,6 +92,10 @@
     {
       "id": "city-1789823431303",
       "name": "Pimpri-Chinchwad"
+    },
+    {
+      "id": "city-1790404697730",
+      "name": "Javalke"
     }
   ],
   "areas": [
@@ -118,6 +122,12 @@
       "city_id": "city-1789466949121",
       "name": "Thergaon",
       "pincode": "412101"
+    },
+    {
+      "id": "area-1790404697730-xwy8",
+      "city_id": "city-1790404697730",
+      "name": "Javalke",
+      "pincode": "423605"
     }
   ],
   "shop_products": [
@@ -177,6 +187,196 @@
       "selling_price": 0,
       "discount_percentage": 0,
       "stock": 0,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409922191-rq58k7z0m",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "prod-atta-10kg",
+      "selling_price": 449,
+      "discount_percentage": 0,
+      "stock": 28,
+      "available": true,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409924531-zdk9nj3p6",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "prod-mustard-5l",
+      "selling_price": 799,
+      "discount_percentage": 0,
+      "stock": 50,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409928659-es398nau2",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "1cdaf9fb-f09f-4c24-9dc4-085af26dd6c3",
+      "selling_price": 24,
+      "discount_percentage": 0,
+      "stock": 200,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409932499-96j7bcx4g",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "prod-basmati-5kg",
+      "selling_price": 460,
+      "discount_percentage": 0,
+      "stock": 70,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409942082-r8bo5f0v6",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "a14ca4b2-8776-4537-87bd-62c5d439f159",
+      "selling_price": 168,
+      "discount_percentage": 0,
+      "stock": 150,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409942992-2lcykxo7j",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "048fd8ba-8f7b-4336-a6c3-608e8ccd55b1",
+      "selling_price": 599,
+      "discount_percentage": 0,
+      "stock": 60,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409944908-wd2sgvw6m",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "e1da1df2-5e81-4735-84ec-b01a2aaafaee",
+      "selling_price": 380,
+      "discount_percentage": 0,
+      "stock": 100,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409947828-smrhy2tf2",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "48642db6-1c94-4583-8fb0-ee8b7212e55b",
+      "selling_price": 145,
+      "discount_percentage": 0,
+      "stock": 50,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409948705-6dykxv07q",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "af08a1d1-d79f-4c59-8125-e52eb397617c",
+      "selling_price": 649,
+      "discount_percentage": 0,
+      "stock": 80,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409951918-bxus2j8xg",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "6b63e70e-c9f4-45b2-b7aa-3332a9778a1d",
+      "selling_price": 480,
+      "discount_percentage": 0,
+      "stock": 65,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409952397-fqrh9ryr8",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "d7472a47-ce80-4a47-ad8f-29afb36b3cff",
+      "selling_price": 425,
+      "discount_percentage": 0,
+      "stock": 120,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409955207-itrd90qo9",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "fcc6d068-51bf-4197-a958-9ff733c58e30",
+      "selling_price": 275,
+      "discount_percentage": 0,
+      "stock": 85,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409955670-3sbxo1n70",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "b716913b-a32c-43f3-90b0-92913d6f8ef0",
+      "selling_price": 265,
+      "discount_percentage": 0,
+      "stock": 90,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409957694-fw4i9zu61",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "9ccb0a58-d342-4dfe-bb15-6fb7aeb4c2dd",
+      "selling_price": 190,
+      "discount_percentage": 0,
+      "stock": 100,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409958168-alvj0v7cs",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "062155af-a2be-4a53-a9e4-c9725b0ae604",
+      "selling_price": 140,
+      "discount_percentage": 0,
+      "stock": 100,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409960325-emmj8y2qo",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "af5b114b-e9ae-4856-8896-95124d42f78a",
+      "selling_price": 110,
+      "discount_percentage": 0,
+      "stock": 150,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409961214-v4h10xhhp",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "94c25683-88ca-45ba-9eec-3a7998038912",
+      "selling_price": 280,
+      "discount_percentage": 0,
+      "stock": 120,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409962868-v0dt4resl",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "1777d976-045c-4ab8-9b47-26b9a9a0dea3",
+      "selling_price": 130,
+      "discount_percentage": 0,
+      "stock": 110,
+      "available": false,
+      "status": "approved"
+    },
+    {
+      "id": "sp-1790409964430-l8crea6g3",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "product_id": "0238045d-0434-4414-8da8-61792f53ecee",
+      "selling_price": 210,
+      "discount_percentage": 0,
+      "stock": 90,
       "available": false,
       "status": "approved"
     }
@@ -262,6 +462,111 @@
     }
   ],
   "orders": [
+    {
+      "id": "807c55c4-76ca-4248-81a0-c7389f57af3f",
+      "display_id": "MG69426",
+      "consumer_id": "47617701-f167-40ac-877f-750ea47a90d6",
+      "consumer_name": "918799809364",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "shop_name": "Holsel",
+      "items_total": 3592,
+      "delivery_fee": 0,
+      "delivery_fee_label": "FREE (0.0 km - within 5 km)",
+      "free_delivery_radius_km": 5,
+      "extra_delivery_fee_per_km": 10,
+      "total_amount": 3592,
+      "discount_amount": 0,
+      "product_savings": 0,
+      "total_savings": 0,
+      "coupon_code": null,
+      "shipping_address": "Hsbd, Ravet, Ravet, Pimpri-Chinchwad, Maharashtra, 412101",
+      "deliver_to_label": "Home · Ravet",
+      "delivery_flat": "Hsbd",
+      "delivery_street": "Ravet",
+      "delivery_landmark": "",
+      "delivery_area": "Ravet",
+      "delivery_city": "Pimpri-Chinchwad",
+      "delivery_district": "",
+      "delivery_state": "Maharashtra",
+      "delivery_pincode": "412101",
+      "delivery_latitude": 18.6606495,
+      "delivery_longitude": 73.73215850000001,
+      "distance_km": 0,
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-26",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "7699",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-09-26T10:15:41.210Z",
+      "order_items": [
+        {
+          "product_id": "prod-atta-10kg",
+          "product_name": "Aashirvaad Shudh Chakki Atta 10kg",
+          "name": "Aashirvaad Shudh Chakki Atta 10kg",
+          "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+          "quantity": 8,
+          "unit_price": 449,
+          "unit": "10 kg",
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
+        }
+      ]
+    },
+    {
+      "id": "2d418124-1fb8-41ff-b48f-654c38ba6853",
+      "display_id": "MG39197",
+      "consumer_id": "47617701-f167-40ac-877f-750ea47a90d6",
+      "consumer_name": "918799809364",
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "shop_name": "Holsel",
+      "items_total": 6286,
+      "delivery_fee": 0,
+      "delivery_fee_label": "FREE (0.0 km - within 5 km)",
+      "free_delivery_radius_km": 5,
+      "extra_delivery_fee_per_km": 10,
+      "total_amount": 6286,
+      "discount_amount": 0,
+      "product_savings": 700,
+      "total_savings": 700,
+      "coupon_code": null,
+      "shipping_address": "Bsbx x Hdbdb, Unnamed Road, Bahadarbad, Bahadarbad, Maharashtra, 423605",
+      "deliver_to_label": "Home · Unnamed Road",
+      "delivery_flat": "Bsbx x\n\nHdbdb",
+      "delivery_street": "Unnamed Road",
+      "delivery_landmark": "",
+      "delivery_area": "Bahadarbad",
+      "delivery_city": "Bahadarbad",
+      "delivery_district": "",
+      "delivery_state": "Maharashtra",
+      "delivery_pincode": "423605",
+      "delivery_latitude": 19.78714087126987,
+      "delivery_longitude": 74.35819068923593,
+      "distance_km": 0.03,
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-09-26",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "2986",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "cancelled",
+      "created_at": "2026-09-26T08:59:52.390Z",
+      "order_items": [
+        {
+          "product_id": "prod-atta-10kg",
+          "product_name": "Aashirvaad Shudh Chakki Atta 10kg",
+          "name": "Aashirvaad Shudh Chakki Atta 10kg",
+          "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+          "quantity": 14,
+          "unit_price": 449,
+          "unit": "10 kg",
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png"
+        }
+      ],
+      "cancelled_at": "2026-09-26T09:00:49.092Z",
+      "cancelled_by": "support",
+      "refund_message": "No payment was collected for this order."
+    },
     {
       "id": "49fa529c-fb83-4ecc-baba-f1949e0a8903",
       "display_id": "MG60932",
@@ -1018,6 +1323,26 @@
       "isDefault": true,
       "created_at": "2026-09-21T06:13:23.199Z",
       "updated_at": "2026-09-21T11:20:17.904Z"
+    },
+    {
+      "id": "addr-1790413182251",
+      "consumer_id": "47617701-f167-40ac-877f-750ea47a90d6",
+      "tag": "Home",
+      "flat": "Hsbd",
+      "street": "Ravet",
+      "landmark": "",
+      "area": "Ravet",
+      "city": "Pimpri-Chinchwad",
+      "district": "",
+      "state": "Maharashtra",
+      "pincode": "412101",
+      "phone": "8799809364",
+      "latitude": 18.6606495,
+      "longitude": 73.73215850000001,
+      "formatted_address": "",
+      "isDefault": true,
+      "created_at": "2026-09-26T08:59:42.251Z",
+      "updated_at": "2026-09-26T10:15:34.806Z"
     }
   ],
   "onboarding": {
@@ -2265,6 +2590,27 @@
       "free_delivery_radius_km": 5,
       "extra_delivery_fee_per_km": 10,
       "aadhaar_doc_url": "http://localhost:8001/api/shops/doc-file/merchant-documents/mock-aadhaar.jpg",
+      "fssai_doc_url": null,
+      "pan_doc_url": null,
+      "shop_photo_url": null,
+      "is_open": true
+    },
+    {
+      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
+      "state_name": "Maharashtra",
+      "district_name": "Nashik Division",
+      "city": "pune",
+      "area_name": "Ravet",
+      "address_line": "Unnamed Road, Javalke, Maharashtra 423605, India",
+      "street_address": "Unnamed Road, Javalke, Maharashtra 423605, India",
+      "detailed_address": "",
+      "pincode": "423605",
+      "latitude": 18.6606495,
+      "longitude": 73.73215850000001,
+      "delivery_radius_km": 15,
+      "free_delivery_radius_km": 5,
+      "extra_delivery_fee_per_km": 10,
+      "aadhaar_doc_url": "http://localhost:8001/api/shops/doc-file/merchant-documents/doc_1790408489554_shvyy4.jpg",
       "fssai_doc_url": null,
       "pan_doc_url": null,
       "shop_photo_url": null,

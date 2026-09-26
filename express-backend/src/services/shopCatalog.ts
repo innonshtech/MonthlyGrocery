@@ -73,7 +73,7 @@ function mergeShopProduct(
 
 import { searchProductsWithIntelligence } from '../utils/intelligentSearch';
 
-/** Load master catalog products for a shop, applying any approved shop-specific overrides (price, discount, stock). */
+/** Load master catalog products for a shop, applying strict merchant inventory whitelist. Only products explicitly enabled by the merchant are shown to customers. */
 export async function fetchProductsForShop(
   shopId: string,
   query: CatalogQuery = {},
@@ -81,6 +81,23 @@ export async function fetchProductsForShop(
   const db = readDb();
   const limitVal = query.limit ?? 100;
 
+  // 1. Get all shop_products explicitly configured / enabled for this specific shop
+  const shopOverrides =
+    (db.shop_products || []).filter(
+      (sp: any) => sp.shop_id === shopId && sp.status === 'approved' && sp.available !== false,
+    ) || [];
+
+  // If merchant has not added/enabled any products, their store is empty (no unauthorized master items leak)
+  if (shopOverrides.length === 0) {
+    return [];
+  }
+
+  const overrideMap = new Map<string, any>();
+  for (const sp of shopOverrides) {
+    overrideMap.set(sp.product_id, sp);
+  }
+
+  // 2. Fetch master products for only the enabled product IDs
   let supaQuery = supabase
     .from('products')
     .select('*');
@@ -92,71 +109,19 @@ export async function fetchProductsForShop(
     supaQuery = supaQuery.eq('secondary_category', query.secondary);
   }
 
-  const { data: masterProducts, error } = await supaQuery.limit(Math.max(limitVal, 200));
+  const { data: masterProducts, error } = await supaQuery.limit(Math.max(limitVal, 300));
   if (error) {
     throw new Error(error.message);
-  }
-
-  const shopOverrides =
-    (db.shop_products || []).filter(
-      (sp: any) => sp.shop_id === shopId && sp.status === 'approved',
-    ) || [];
-  const overrideMap = new Map<string, any>();
-  for (const sp of shopOverrides) {
-    overrideMap.set(sp.product_id, sp);
   }
 
   const out: Record<string, any>[] = [];
   for (const p of masterProducts || []) {
     const sp = overrideMap.get(p.id);
-    if (sp) {
-      // If merchant toggled this product OFF (available: false), HIDE IT completely from consumer app
-      if (sp.available === false) {
-        continue;
-      }
-      out.push(mergeShopProduct(shopId, sp, p));
-    } else {
-      // If master product is globally unavailable/hidden, skip it
-      if (p.available === false) {
-        continue;
-      }
-      const mrp = parseFloat(p.mrp) || 0;
-      const price = parseFloat(p.price) || mrp;
-      const discountPercent =
-        mrp > price && mrp > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0;
-      const isStockEmpty = p.stock !== undefined && p.stock !== null && Number(p.stock) <= 0;
-
-      out.push(
-        enrichProductPackFields({
-          id: p.id,
-          shop_id: shopId,
-          name: p.name,
-          sku: p.sku,
-          brand: p.brand,
-          company: p.company,
-          primary_category: p.primary_category,
-          secondary_category: p.secondary_category,
-          description: p.description,
-          short_description: p.short_description,
-          place: p.place,
-          image_url: p.image_url,
-          quantity_value: p.quantity_value,
-          quantity_unit: p.quantity_unit,
-          unit: p.unit,
-          mrp,
-          price,
-          discount_percent: discountPercent,
-          stock: p.stock != null ? Number(p.stock) : 50,
-          available: !isStockEmpty,
-          in_stock: !isStockEmpty,
-          is_veg: p.is_veg,
-          featured: p.featured,
-          todays_deal: p.todays_deal,
-          best_seller: p.best_seller,
-          you_save: mrp > price ? parseFloat((mrp - price).toFixed(2)) : 0,
-        }),
-      );
+    // Strict Merchant Inventory: Only show if this merchant has explicitly added and enabled it
+    if (!sp || sp.available === false) {
+      continue;
     }
+    out.push(mergeShopProduct(shopId, sp, p));
   }
 
   if (query.q && query.q.trim()) {
@@ -167,20 +132,27 @@ export async function fetchProductsForShop(
   return out.slice(0, limitVal);
 }
 
-/** Resolve area → shop, then return that shop's catalog. */
+/** Resolve area/shopId → shop, then return that shop's catalog. */
 export async function fetchProductsForLocation(input: {
+  shopId?: string;
   city?: string;
   areaName?: string;
   pincode?: string;
 } & CatalogQuery): Promise<CatalogResult> {
-  let shopId = resolveShopIdForLocation({
-    city: input.city,
-    areaName: input.areaName,
-    pincode: input.pincode,
-  });
+  let shopId: string | null = input.shopId || null;
+
+  if (!shopId) {
+    shopId = resolveShopIdForLocation({
+      shopId: input.shopId,
+      city: input.city,
+      areaName: input.areaName,
+      pincode: input.pincode,
+    });
+  }
 
   if (!shopId) {
     shopId = await resolveShopIdForLocationAsync({
+      shopId: input.shopId,
       city: input.city,
       areaName: input.areaName,
       pincode: input.pincode,

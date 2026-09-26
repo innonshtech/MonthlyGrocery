@@ -19,6 +19,7 @@ export interface SelectedStoreInfo {
   distance_km?: number | null;
   delivery_radius_km?: number;
   address?: string;
+  is_open?: boolean;
 }
 
 interface AuthContextType {

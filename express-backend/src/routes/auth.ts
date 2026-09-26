@@ -54,10 +54,20 @@ async function isRegisteredMerchant(normalizedPhone: string): Promise<boolean> {
     const { data: shopByPhone } = await supabase
       .from('shops')
       .select('id, status')
-      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
+      .eq('phone', normalizedPhone)
       .maybeSingle();
 
     if (shopByPhone) {
+      return true;
+    }
+
+    const { data: shopByPhonePlus } = await supabase
+      .from('shops')
+      .select('id, status')
+      .eq('phone', '+' + normalizedPhone)
+      .maybeSingle();
+
+    if (shopByPhonePlus) {
       return true;
     }
   } catch (err) {
@@ -233,15 +243,34 @@ router.post('/verify-otp', async (req, res) => {
       }
     }
 
-    // Merchant login: upgrade consumer accounts that own an approved shop
-    if (role === 'admin' && profile.role === 'consumer') {
-      const { data: ownedShop } = await supabase
-        .from('shops')
-        .select('id, status')
-        .eq('owner_id', profile.id)
-        .maybeSingle();
+    // Merchant login: upgrade profile to 'admin' role if owning a shop or registered merchant
+    if (role === 'admin' && profile.role !== 'super_admin') {
+      let isMerchant = profile.role === 'admin';
+      if (!isMerchant) {
+        // Check by owner_id
+        const { data: shopByOwner } = await supabase
+          .from('shops')
+          .select('id, status')
+          .eq('owner_id', profile.id)
+          .maybeSingle();
 
-      if (ownedShop?.status === 'approved') {
+        if (shopByOwner) {
+          isMerchant = true;
+        } else {
+          // Check by phone number
+          const { data: shopByPhone } = await supabase
+            .from('shops')
+            .select('id, status')
+            .eq('phone', normalized)
+            .maybeSingle();
+
+          if (shopByPhone) {
+            isMerchant = true;
+          }
+        }
+      }
+
+      if (isMerchant) {
         const { data: upgradedProfile, error: upgradeError } = await supabase
           .from('profiles')
           .update({ role: 'admin', ...(name ? { name: String(name).trim() } : {}) })
@@ -251,6 +280,8 @@ router.post('/verify-otp', async (req, res) => {
 
         if (!upgradeError && upgradedProfile) {
           profile = upgradedProfile;
+        } else {
+          profile.role = 'admin';
         }
       }
     }

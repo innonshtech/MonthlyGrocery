@@ -12,6 +12,7 @@ import {
   PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useToast } from '../context/ToastContext';
@@ -150,13 +151,10 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
           });
         }
       } else {
-        if (areas.length > 0 && areas[0].pincode) {
-          setSearchQuery(areas[0].pincode);
-        }
         showToast({
           type: 'info',
           title: 'Search Location',
-          message: 'GPS unavailable. Showing registered areas in this city.',
+          message: 'GPS unavailable. Please search your area or pincode below.',
         });
       }
       setGpsLocating(false);
@@ -190,13 +188,22 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   };
 
   const handleShopSelected = async (shop: NearbyShop) => {
-    await setSelectedShop({ id: shop.id, name: shop.shop_name, delivery_radius_km: shop.delivery_radius_km });
+    await setSelectedShop({
+      id: shop.id,
+      name: shop.shop_name,
+      delivery_radius_km: shop.delivery_radius_km,
+      is_open: shop.is_open !== false,
+    });
     syncActiveShop(shop.id, shop.shop_name);
     setShopPickerVisible(false);
-    if (token && user?.name) {
+
+    const savedDisplayName = await AsyncStorage.getItem('@user_display_name');
+    const hasPersonalName = Boolean(savedDisplayName && savedDisplayName.trim() !== '');
+
+    if (token && hasPersonalName) {
       navigation.navigate('Shop');
     } else {
-      navigation.navigate('ProfileSetup');
+      navigation.navigate('ProfileSetup', { redirect: 'Shop' });
     }
   };
 

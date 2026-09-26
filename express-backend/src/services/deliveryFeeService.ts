@@ -20,6 +20,7 @@ export interface DeliveryFeeResult {
   extra_delivery_fee_per_km: number;
   max_delivery_radius_km: number;
   is_serviceable: boolean;
+  is_store_open?: boolean;
   is_free: boolean;
   delivery_fee: number;
   extra_distance_km: number;
@@ -72,6 +73,7 @@ export function calculateDeliveryFee(input: DeliveryFeeCalculationInput): Delive
   }
 
   const territory = territories.find((t: any) => t.shop_id === resolvedShopId);
+  const isStoreOpen = territory?.is_open !== false;
   const freeRadius = territory?.free_delivery_radius_km != null && !isNaN(parseFloat(territory.free_delivery_radius_km))
     ? parseFloat(territory.free_delivery_radius_km)
     : DEFAULT_FREE_RADIUS;
@@ -109,6 +111,7 @@ export function calculateDeliveryFee(input: DeliveryFeeCalculationInput): Delive
       extra_delivery_fee_per_km: extraFeePerKm,
       max_delivery_radius_km: maxRadius,
       is_serviceable: true,
+      is_store_open: isStoreOpen,
       is_free: true,
       delivery_fee: 0,
       extra_distance_km: 0,
@@ -128,6 +131,7 @@ export function calculateDeliveryFee(input: DeliveryFeeCalculationInput): Delive
       extra_delivery_fee_per_km: extraFeePerKm,
       max_delivery_radius_km: maxRadius,
       is_serviceable: false,
+      is_store_open: isStoreOpen,
       is_free: false,
       delivery_fee: 0,
       extra_distance_km: 0,
@@ -147,6 +151,7 @@ export function calculateDeliveryFee(input: DeliveryFeeCalculationInput): Delive
       extra_delivery_fee_per_km: extraFeePerKm,
       max_delivery_radius_km: maxRadius,
       is_serviceable: true,
+      is_store_open: isStoreOpen,
       is_free: true,
       delivery_fee: 0,
       extra_distance_km: 0,
@@ -168,6 +173,7 @@ export function calculateDeliveryFee(input: DeliveryFeeCalculationInput): Delive
     extra_delivery_fee_per_km: extraFeePerKm,
     max_delivery_radius_km: maxRadius,
     is_serviceable: true,
+    is_store_open: isStoreOpen,
     is_free: false,
     delivery_fee: deliveryFee,
     extra_distance_km: extraKm,

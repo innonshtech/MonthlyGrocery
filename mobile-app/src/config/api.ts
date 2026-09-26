@@ -6,9 +6,17 @@ import { NativeModules, Platform } from 'react-native';
 export const AWS_SERVER_URL = 'http://13.233.159.143/api';
 
 /**
- * Production API Base URL (AWS EC2 Live Server)
+ * Local Development Server URL (For Wireless Phone Debugging)
+ * Your PC IP: 10.122.236.147 or use 'http://localhost:8001/api' with adb reverse
  */
-export const API_BASE = AWS_SERVER_URL;
+export const LOCAL_SERVER_URL = 'http://10.122.236.147:8001/api';
+
+/**
+ * Change to:
+ * - LOCAL_SERVER_URL: for testing your local laptop backend
+ * - AWS_SERVER_URL: for testing live AWS production backend
+ */
+export const API_BASE = LOCAL_SERVER_URL;
 
 /**
  * Google Maps API Key for Static Maps, Geocoding & Places
