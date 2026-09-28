@@ -303,7 +303,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
     }
   };
 
-  // Upload Document to AWS S3 / Cloud Storage via API (Max 5MB)
+  // Upload Document to AWS S3 / Cloud Storage via API (Max 5MB - Pure Binary PNG/JPG)
   const handleUploadDocument = async (docType: 'aadhaar' | 'fssai' | 'pan' | 'shop_photo') => {
     setError('');
     Alert.alert(
@@ -319,10 +319,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
             try {
               const result = await launchCamera({
                 mediaType: 'photo',
-                quality: 0.8,
+                quality: 0.85,
                 maxWidth: 1600,
                 maxHeight: 1600,
-                includeBase64: true,
+                includeBase64: false,
                 saveToPhotos: false,
               });
               if (result.assets && result.assets.length > 0) {
@@ -339,10 +339,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
             try {
               const result = await launchImageLibrary({
                 mediaType: 'photo',
-                quality: 0.8,
+                quality: 0.85,
                 maxWidth: 1600,
                 maxHeight: 1600,
-                includeBase64: true,
+                includeBase64: false,
               });
               if (result.assets && result.assets.length > 0) {
                 await uploadAsset(result.assets[0], docType);
@@ -359,7 +359,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
   };
 
   const uploadAsset = async (asset: any, docType: string) => {
-    if (!asset || (!asset.uri && !asset.base64)) return;
+    if (!asset || !asset.uri) return;
 
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
       Alert.alert('File Too Large', 'Maximum photo size is 5MB. Please choose an image under 5MB.');
@@ -371,30 +371,23 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 
     try {
       const formData = new FormData();
-      if (asset.uri) {
-        const fileData: any = {
-          uri: Platform.OS === 'android' ? asset.uri : asset.uri.replace('file://', ''),
-          name: asset.fileName || `${docType}_${Date.now()}.jpg`,
-          type: asset.type || 'image/jpeg',
-        };
-        formData.append('file', fileData);
-      } else if (asset.base64) {
-        formData.append('base64', `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
-      }
+      const fileData: any = {
+        uri: Platform.OS === 'android' ? asset.uri : asset.uri.replace('file://', ''),
+        name: asset.fileName || `${docType}_${Date.now()}.jpg`,
+        type: asset.type || 'image/jpeg',
+      };
+      formData.append('file', fileData);
+      formData.append('document', fileData);
       formData.append('doc_type', docType);
 
-      // DO NOT set Content-Type header in React Native when sending FormData
+      // Send pure multipart binary stream to S3 upload endpoint
       const res = await fetch(`${API_BASE}/shops/upload-doc`, {
         method: 'POST',
         body: formData,
       });
 
       const data = await res.json();
-      const uploadedUrl =
-        data.document_url ||
-        data.file_url ||
-        data.url ||
-        (asset.base64 ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}` : null);
+      const uploadedUrl = data.document_url || data.file_url || data.url;
 
       if (res.ok && data.success && uploadedUrl) {
         if (docType === 'aadhaar') setRegAadhaarDocUrl(uploadedUrl);
@@ -402,34 +395,16 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         else if (docType === 'pan') setRegPanDocUrl(uploadedUrl);
         else if (docType === 'shop_photo') setRegShopPhotoUrl(uploadedUrl);
         setError('');
-        Alert.alert('Document Uploaded', `${docType.toUpperCase()} document uploaded to AWS storage successfully!`);
+        Alert.alert('Upload Successful', `${docType.toUpperCase()} document uploaded to AWS S3 storage successfully!`);
       } else {
-        if (asset.base64) {
-          const fallbackDataUrl = `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`;
-          if (docType === 'aadhaar') setRegAadhaarDocUrl(fallbackDataUrl);
-          else if (docType === 'fssai') setRegFssaiDocUrl(fallbackDataUrl);
-          else if (docType === 'pan') setRegPanDocUrl(fallbackDataUrl);
-          else if (docType === 'shop_photo') setRegShopPhotoUrl(fallbackDataUrl);
-          setError('');
-        } else {
-          const uploadErr = data?.error || 'Failed to upload photo. Maximum allowed size is 5MB.';
-          setError(uploadErr);
-          Alert.alert('Upload Failed', uploadErr);
-        }
+        const uploadErr = data?.error || 'Failed to upload photo to server. Please try again.';
+        setError(uploadErr);
+        Alert.alert('Upload Failed', uploadErr);
       }
     } catch (e: any) {
-      if (asset.base64) {
-        const fallbackDataUrl = `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`;
-        if (docType === 'aadhaar') setRegAadhaarDocUrl(fallbackDataUrl);
-        else if (docType === 'fssai') setRegFssaiDocUrl(fallbackDataUrl);
-        else if (docType === 'pan') setRegPanDocUrl(fallbackDataUrl);
-        else if (docType === 'shop_photo') setRegShopPhotoUrl(fallbackDataUrl);
-        setError('');
-      } else {
-        const netErr = 'Network error while uploading photo. Please ensure backend is running.';
-        setError(netErr);
-        Alert.alert('Upload Error', netErr);
-      }
+      const netErr = 'Network error while uploading photo to AWS S3. Please ensure internet connection is active.';
+      setError(netErr);
+      Alert.alert('Upload Network Error', netErr);
     } finally {
       setUploadingDoc(null);
     }
@@ -455,6 +430,13 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       const err = 'Aadhaar Card photo upload is mandatory. Please upload a photo of your Aadhaar Card.';
       setError(err);
       Alert.alert('Aadhaar Photo Required', err);
+      setRegStep(3);
+      return;
+    }
+    if (regAadhaarDocUrl.startsWith('data:')) {
+      const err = 'Please upload a pure binary photo of your Aadhaar Card to AWS S3.';
+      setError(err);
+      Alert.alert('Upload Error', err);
       setRegStep(3);
       return;
     }
