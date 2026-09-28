@@ -18,7 +18,7 @@ import {
   LogIn
 } from 'lucide-react';
 
-const LOGO_URL = "https://customer-assets-agu9un31.emergentagent.net/job_zopin-preview/artifacts/ajjfrqqn_image.png";
+const LOGO_URL = "/ever-logo.png";
 
 export default function LandingPage() {
   useEffect(() => {
@@ -38,8 +38,8 @@ export default function LandingPage() {
 
       {/* HEADER */}
       <header className="w-full glass-nav sticky top-0 z-50">
-        <div className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-4 flex items-center justify-between">
-          <MonthlyGroceryLogo />
+        <div className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-3 flex items-center justify-between">
+          <EverLogo />
           <nav className="flex items-center gap-4 sm:gap-6">
             <a href="#how" className="hidden md:inline-flex text-sm font-semibold text-gray-700 hover:text-[#22C55E] px-3 transition-colors">
               How it works
@@ -158,7 +158,7 @@ export default function LandingPage() {
               Sirf 3 steps
             </div>
             <h2 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tighter font-display leading-tight text-[#0B1220]">
-              MonthlyGrocery kaise kaam karta hai
+              EVER kaise kaam karta hai
             </h2>
             <p className="mt-4 text-gray-600 text-base sm:text-lg">
               Ek mahine ka plan. Ek delivery slot. Kirana ki bhaag-daud khatam.
@@ -320,11 +320,11 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer className="w-full border-t border-[#F1EAD8] py-10 mt-8 bg-white/60">
         <div className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-gray-500">
-          <MonthlyGroceryLogo size="sm" />
+          <EverLogo size="sm" />
           <div className="flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5" /> Pan India delivery
           </div>
-          <div>© {new Date().getFullYear()} MonthlyGrocery · monthlygrocery.in</div>
+          <div>© {new Date().getFullYear()} EVER (Everyday Value and Essentials Retail) · monthlygrocery.in</div>
         </div>
       </footer>
     </div>
@@ -333,17 +333,17 @@ export default function LandingPage() {
 
 // ----------------- SUB-COMPONENTS -----------------
 
-function MonthlyGroceryLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const height = size === "lg" ? 56 : size === "sm" ? 32 : 44;
+function EverLogo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
+  const height = size === "lg" ? 56 : size === "sm" ? 38 : 46;
   return (
-    <Link href="/" className="inline-flex items-center group" aria-label="MonthlyGrocery">
-      <span className="inline-flex items-center rounded-2xl overflow-hidden bg-[#F7F3E9] px-2 py-1 ring-1 ring-[#F1EAD8]">
+    <Link href="/" className="inline-flex items-center group" aria-label="EVER - Everyday Value and Essentials Retail">
+      <span className="inline-flex items-center rounded-2xl overflow-hidden bg-white px-3 py-1 ring-1 ring-[#F1EAD8] shadow-sm">
         <img
           src={LOGO_URL}
-          alt="MonthlyGrocery"
+          alt="EVER - Everyday Value and Essentials Retail"
           height={height}
           style={{ height: `${height}px`, width: "auto", display: "block" }}
-          className="select-none"
+          className="select-none object-contain"
         />
       </span>
     </Link>

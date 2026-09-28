@@ -119,12 +119,12 @@ export default function AdminSidebar({
         <div className="md:hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col justify-between p-5 animate-in fade-in duration-200">
           <div className="flex items-center justify-between pb-4 border-b border-slate-800">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-500/30 shadow-md shadow-amber-500/15 flex-shrink-0 bg-[#0c120c] p-0.5 flex items-center justify-center">
-                <img src="/favicon.svg" alt="MonthlyGrocery Logo" className="w-full h-full object-contain rounded-lg" />
+              <div className="w-9 h-9 rounded-xl overflow-hidden border border-emerald-500/30 shadow-md shadow-emerald-500/15 flex-shrink-0 bg-white p-0.5 flex items-center justify-center">
+                <img src="/ever-logo.png" alt="EVER Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-white">Navigation Menu</h2>
-                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Super Admin Portal</p>
+                <h2 className="text-base font-bold text-white">EVER</h2>
+                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Portal</p>
               </div>
             </div>
             <button
@@ -202,12 +202,12 @@ export default function AdminSidebar({
         <div className="flex flex-col h-full min-h-0">
           {/* Logo Header */}
           <div className="flex items-center gap-3 pb-4 border-b border-slate-800/80 flex-shrink-0">
-            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl overflow-hidden border border-amber-500/30 shadow-lg shadow-amber-500/15 flex-shrink-0 bg-[#0c120c] p-0.5 flex items-center justify-center">
-              <img src="/favicon.svg" alt="MonthlyGrocery Logo" className="w-full h-full object-contain rounded-xl" />
+            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl overflow-hidden border border-emerald-500/30 shadow-lg shadow-emerald-500/15 flex-shrink-0 bg-white p-1 flex items-center justify-center">
+              <img src="/ever-logo.png" alt="EVER Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-sm lg:text-base font-bold text-white tracking-tight">MonthlyGrocery</h1>
-              <p className="text-[9px] text-amber-400 font-bold uppercase tracking-wider">Super Admin Console</p>
+              <h1 className="text-sm lg:text-base font-bold text-white tracking-tight">EVER</h1>
+              <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
             </div>
           </div>
 

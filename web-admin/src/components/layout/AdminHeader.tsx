@@ -90,12 +90,11 @@ export default function AdminHeader({
       {/* Mobile Top Navigation Bar */}
       <header className="md:hidden sticky top-0 z-40 bg-[#090D16]/95 backdrop-blur-xl border-b border-slate-800/80 px-4 py-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl overflow-hidden border border-amber-500/30 shadow-md shadow-amber-500/15 flex-shrink-0 bg-[#0c120c] p-0.5 flex items-center justify-center">
-            <img src="/favicon.svg" alt="MonthlyGrocery Logo" className="w-full h-full object-contain rounded-lg" />
+          <div className="w-8 h-8 rounded-xl overflow-hidden border border-emerald-500/30 shadow-md shadow-emerald-500/15 flex-shrink-0 bg-white p-0.5 flex items-center justify-center">
+            <img src="/ever-logo.png" alt="EVER Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-
-            <h1 className="text-sm font-bold text-white tracking-tight leading-tight">MonthlyGrocery</h1>
+            <h1 className="text-sm font-bold text-white tracking-tight leading-tight">EVER</h1>
             <div className="flex items-center gap-1.5">
               <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin</span>
               <span className="text-[10px] text-slate-600">•</span>

@@ -13,15 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MonthlyGrocery Super Admin Panel",
-  description: "Super Admin Dashboard for MonthlyGrocery",
+  title: "EVER - Everyday Value & Essentials Retail",
+  description: "Mahine ka Kirana, Wholesale Ke Daam - EVER (Everyday Value & Essentials Retail)",
   icons: {
     icon: [
+      { url: "/ever-logo.png", type: "image/png" },
       { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml" },
     ],
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    shortcut: "/ever-logo.png",
+    apple: "/ever-logo.png",
   },
 };
 
