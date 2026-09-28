@@ -20,10 +20,10 @@ function normalizePhone(phone: string): string {
   return clean;
 }
 
-// Check if a mobile number belongs to a registered merchant / store partner
-async function isRegisteredMerchant(normalizedPhone: string): Promise<boolean> {
+// Check if a mobile number belongs to a registered merchant / store partner with status check
+async function checkMerchantStatus(normalizedPhone: string): Promise<{ registered: boolean; status?: string; shopName?: string }> {
   if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN) {
-    return true;
+    return { registered: true, status: 'approved' };
   }
 
   try {
@@ -35,46 +35,65 @@ async function isRegisteredMerchant(normalizedPhone: string): Promise<boolean> {
       .maybeSingle();
 
     if (profile) {
-      if (profile.role === 'admin' || profile.role === 'super_admin') {
-        return true;
+      if (profile.role === 'super_admin') {
+        return { registered: true, status: 'approved' };
       }
       // Check if user owns a shop
       const { data: shop } = await supabase
         .from('shops')
-        .select('id, status')
+        .select('id, shop_name, status')
         .eq('owner_id', profile.id)
+        .order('created_at', { ascending: false })
         .maybeSingle();
 
       if (shop) {
-        return true;
+        return {
+          registered: true,
+          status: shop.status || 'approved',
+          shopName: shop.shop_name,
+        };
+      }
+
+      if (profile.role === 'admin') {
+        return { registered: true, status: 'approved' };
       }
     }
 
     // 2. Check shops table directly by phone number
     const { data: shopByPhone } = await supabase
       .from('shops')
-      .select('id, status')
+      .select('id, shop_name, status')
       .eq('phone', normalizedPhone)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (shopByPhone) {
-      return true;
+      return {
+        registered: true,
+        status: shopByPhone.status || 'approved',
+        shopName: shopByPhone.shop_name,
+      };
     }
 
     const { data: shopByPhonePlus } = await supabase
       .from('shops')
-      .select('id, status')
+      .select('id, shop_name, status')
       .eq('phone', '+' + normalizedPhone)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (shopByPhonePlus) {
-      return true;
+      return {
+        registered: true,
+        status: shopByPhonePlus.status || 'approved',
+        shopName: shopByPhonePlus.shop_name,
+      };
     }
   } catch (err) {
-    console.warn('[isRegisteredMerchant] Database check error:', err);
+    console.warn('[checkMerchantStatus] Database check error:', err);
   }
 
-  return false;
+  return { registered: false };
 }
 
 // Check if a mobile number is authorized as Super Admin
@@ -111,11 +130,26 @@ router.post('/send-otp', async (req, res) => {
 
   // Validate merchant / super_admin registration before sending SMS OTP
   if (role === 'admin') {
-    const isRegistered = await isRegisteredMerchant(normalized);
-    if (!isRegistered) {
+    const merchantCheck = await checkMerchantStatus(normalized);
+    if (!merchantCheck.registered) {
       return res.status(403).json({
         success: false,
-        error: 'This mobile number is not registered as a store partner. Please sign up and register your store first.',
+        code: 'NOT_REGISTERED',
+        error: 'This mobile number is not registered as an authorized Kirana Store with MonthlyGrocery. Please register your store first to get onboarded.',
+      });
+    }
+    if (merchantCheck.status === 'pending') {
+      return res.status(403).json({
+        success: false,
+        code: 'PENDING_APPROVAL',
+        error: `Your store registration ${merchantCheck.shopName ? `"${merchantCheck.shopName}" ` : ''}is currently under review. Please wait for Web Admin document verification and approval before signing in.`,
+      });
+    }
+    if (merchantCheck.status === 'rejected') {
+      return res.status(403).json({
+        success: false,
+        code: 'REJECTED',
+        error: 'Your store registration application was rejected by Web Admin. Please contact support or submit a fresh registration.',
       });
     }
   } else if (role === 'super_admin') {
@@ -123,6 +157,7 @@ router.post('/send-otp', async (req, res) => {
     if (!isSuperAdmin) {
       return res.status(403).json({
         success: false,
+        code: 'UNAUTHORIZED_ADMIN',
         error: 'Access Denied: This mobile number is not registered as an authorized Super Admin.',
       });
     }

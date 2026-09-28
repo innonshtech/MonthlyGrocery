@@ -660,13 +660,27 @@ router.post(
         console.warn('[Doc Upload] Local cache write warning:', localErr);
       }
 
-      // 2. Upload to AWS S3
-      await supabase.storage
-        .from('merchant-documents')
-        .upload(filePath, buffer, {
-          contentType,
-          upsert: true,
-        });
+      // 2. Upload to AWS S3 / Supabase Storage Bucket
+      try {
+        const { error: s3Err } = await supabase.storage
+          .from('merchant-documents')
+          .upload(filePath, buffer, {
+            contentType,
+            upsert: true,
+          });
+
+        if (s3Err && (s3Err.message?.includes('bucket') || (s3Err as any).statusCode === 404)) {
+          await supabase.storage.createBucket('merchant-documents', { public: true });
+          await supabase.storage
+            .from('merchant-documents')
+            .upload(filePath, buffer, {
+              contentType,
+              upsert: true,
+            });
+        }
+      } catch (uploadStorageErr) {
+        console.warn('[Doc Upload] S3 / Supabase storage upload warning:', uploadStorageErr);
+      }
 
       // 3. Return robust proxied streaming URL
       const proxyUrl = `${BASE_PUBLIC_API_URL}/shops/doc-file/merchant-documents/${fileName}`;

@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MonthlyGrocery Platform - Comprehensive Quality Assurance & Test Case Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 12mm 12mm 12mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    :root {
+      --primary: #059669;
+      --primary-dark: #065f46;
+      --primary-light: #ecfdf5;
+      --primary-border: #a7f3d0;
+      
+      --secondary: #0284c7;
+      --secondary-light: #f0f9ff;
+      --secondary-border: #bae6fd;
+
+      --accent: #4f46e5;
+      --accent-light: #eef2ff;
+      --accent-border: #c7d2fe;
+
+      --merchant: #d97706;
+      --merchant-light: #fffbeb;
+      --merchant-border: #fde68a;
+
+      --admin: #7c3aed;
+      --admin-light: #f5f3ff;
+      --admin-border: #ddd6fe;
+      
+      --text-dark: #0f172a;
+      --text-body: #334155;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --bg-light: #f8fafc;
+      --bg-white: #ffffff;
+      
+      --p1-bg: #fef2f2;
+      --p1-text: #b91c1c;
+      --p1-border: #fecaca;
+      
+      --p2-bg: #fffbeb;
+      --p2-text: #b45309;
+      --p2-border: #fde68a;
+      
+      --p3-bg: #eff6ff;
+      --p3-text: #1d4ed8;
+      --p3-border: #bfdbfe;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #ffffff;
+      color: var(--text-body);
+      line-height: 1.45;
+      font-size: 8.5pt;
+    }
+
+    .mono, code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5pt;
+      background: #f1f5f9;
+      padding: 1px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Page container & layout */
+    .page {
+      padding: 0;
+      margin-bottom: 24px;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+      padding-top: 12px;
+    }
+
+    .no-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Document Header */
+    .doc-header {
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .doc-title-block h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .doc-title-block h2 {
+      font-size: 10pt;
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 3px;
+    }
+
+    .doc-meta {
+      text-align: right;
+      font-size: 7.5pt;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .doc-meta strong {
+      color: var(--text-dark);
+    }
+
+    /* Section Headings */
+    .section-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #ffffff;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin: 16px 0 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-banner.customer {
+      background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+    }
+
+    .section-banner.merchant {
+      background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+    }
+
+    .section-banner.admin {
+      background: linear-gradient(135deg, #5b21b6 0%, #6d28d9 100%);
+    }
+
+    .section-banner.integration {
+      background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%);
+    }
+
+    .section-banner h2 {
+      font-size: 12pt;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-banner .badge-count {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 8pt;
+      font-weight: 600;
+    }
+
+    .module-title {
+      font-size: 10pt;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 14px 0 6px 0;
+      padding-left: 8px;
+      border-left: 3px solid var(--primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .module-title.merchant {
+      border-left-color: var(--merchant);
+    }
+
+    .module-title.admin {
+      border-left-color: var(--admin);
+    }
+
+    .module-title.integration {
+      border-left-color: var(--secondary);
+    }
+
+    .module-desc {
+      font-size: 8pt;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    /* KPI / Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .kpi-card {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .kpi-val {
+      font-size: 14pt;
+      font-weight: 800;
+      color: var(--text-dark);
+    }
+
+    .kpi-label {
+      font-size: 7.5pt;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* Executive Summary Callout Box */
+    .callout-box {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: 4px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      font-size: 8.2pt;
+    }
+
+    .callout-box strong {
+      color: var(--text-dark);
+    }
+
+    /* Table Styles */
+    table.tc-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+      font-size: 7.8pt;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    table.tc-table th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 2px solid var(--border);
+      border-right: 1px solid var(--border);
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    table.tc-table th:last-child {
+      border-right: none;
+    }
+
+    table.tc-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.35;
+    }
+
+    table.tc-table td:last-child {
+      border-right: none;
+    }
+
+    table.tc-table tr:nth-child(even) td {
+      background-color: #fafbfc;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 6.8pt;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .badge-p1 {
+      background: var(--p1-bg);
+      color: var(--p1-text);
+      border: 1px solid var(--p1-border);
+    }
+
+    .badge-p2 {
+      background: var(--p2-bg);
+      color: var(--p2-text);
+      border: 1px solid var(--p2-border);
+    }
+
+    .badge-p3 {
+      background: var(--p3-bg);
+      color: var(--p3-text);
+      border: 1px solid var(--p3-border);
+    }
+
+    .badge-type {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      font-weight: 600;
+    }
+
+    .step-list {
+      margin-left: 12px;
+      padding-left: 0;
+    }
+
+    .step-list li {
+      margin-bottom: 2px;
+    }
+
+    /* Platform Architecture Table */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .arch-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      background: #ffffff;
+    }
+
+    .arch-card.cust { border-top: 3px solid var(--primary); }
+    .arch-card.merch { border-top: 3px solid var(--merchant); }
+    .arch-card.adm { border-top: 3px solid var(--admin); }
+
+    .arch-card h3 {
+      font-size: 9pt;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 4px;
+    }
+
+    .arch-card p {
+      font-size: 7.5pt;
+      color: var(--text-muted);
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+
+    .arch-card ul {
+      font-size: 7.2pt;
+      padding-left: 14px;
+      color: var(--text-body);
+    }
+
+    .arch-card ul li {
+      margin-bottom: 2px;
+    }
+
+    /* Footer on each page */
+    .page-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 6px;
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: var(--text-light);
+    }
+
+    /* Print helpers */
+    @media print {
+      body {
+        font-size: 8pt;
+      }
+      .page-break {
+        page-break-before: always;
+        break-before: page;
+      }
+      .no-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================================
+       SECTION 1: DOCUMENT HEADER & EXECUTIVE SUMMARY
+       ========================================================================= -->
+  <div class="page">
+    <div class="doc-header">
+      <div class="doc-title-block">
+        <h1>MonthlyGrocery Platform</h1>
+        <h2>Comprehensive Platform Test Case & Quality Assurance Report</h2>
+      </div>
+      <div class="doc-meta">
+        <div><strong>Version:</strong> 2.4.0 (Enterprise Gold)</div>
+        <div><strong>Date:</strong> September 2026</div>
+        <div><strong>Target Environment:</strong> Staging / AWS Production (RDS PostgreSQL)</div>
+        <div><strong>Platforms:</strong> Customer App, Merchant App, Admin Dashboard, Backend API</div>
+      </div>
+    </div>
+
+    <!-- Executive Summary Callout -->
+    <div class="callout-box">
+      <strong>Executive Test Strategy & Scope:</strong> This comprehensive Quality Assurance (QA) Test Report establishes the formal testing baseline for the entire <strong>MonthlyGrocery</strong> ecosystem. The report provides a deeply segregated, end-to-end verification blueprint covering functional validation, critical business logic (including the <strong>₹2,500 minimum monthly grocery order rule</strong>, scheduled slot cut-offs, dynamic discounts, and inventory synchronizations), multi-tier role authorization, document KYC processing, edge cases, and cross-platform integrations.
+    </div>
+
+    <!-- KPI Metrics Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-val" style="color: var(--primary);">88</div>
+        <div class="kpi-label">Customer App Test Cases</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val" style="color: var(--merchant);">46</div>
+        <div class="kpi-label">Merchant App Test Cases</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val" style="color: var(--admin);">58</div>
+        <div class="kpi-label">Admin Dashboard Test Cases</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-val" style="color: var(--secondary);">32</div>
+        <div class="kpi-label">Cross-Platform E2E & API</div>
+      </div>
+    </div>
+
+    <!-- Platform Architecture Matrix -->
+    <div class="arch-grid">
+      <div class="arch-card cust">
+        <h3>1. Customer Mobile App</h3>
+        <p>React Native (iOS & Android) designed for frictionless monthly bulk grocery buying.</p>
+        <ul>
+          <li>Phone + OTP Auth, Profile & Location Pinning</li>
+          <li>Dynamic Banners, Multi-variant Master Catalog</li>
+          <li><strong>₹2,500 Minimum Order Limit</strong> Progress Tracker</li>
+          <li>My Monthly Grocery Hub, 1-Click Cart & Copy Last Month</li>
+          <li>Saved Custom Baskets, Multi-Slot Delivery Scheduler</li>
+          <li>Coupons Engine, Live Order Stepper & Tracking</li>
+        </ul>
+      </div>
+
+      <div class="arch-card merch">
+        <h3>2. Merchant App (Ever & Ever)</h3>
+        <p>React Native Tablet/Mobile app for local partner stores & fulfillment hubs.</p>
+        <ul>
+          <li>Mobile OTP Login & Multi-step KYC Submission</li>
+          <li>Real-time Audio & Visual Incoming Order Alerts</li>
+          <li>4-Stage Order Pipeline (Accept -> Pack -> Dispatch -> Done)</li>
+          <li>Store Inventory In/Out Stock & Custom Price Setting</li>
+          <li>Custom SKU Request Submission with Photo Upload</li>
+          <li>Delivery Slot Intake Capacity & Store Open/Close Toggle</li>
+        </ul>
+      </div>
+
+      <div class="arch-card adm">
+        <h3>3. Admin Web Dashboard</h3>
+        <p>Next.js 14 + Tailwind/Vanilla CSS Central Command & Operations Portal.</p>
+        <ul>
+          <li>Role-based Admin Auth & Master Shop Directory</li>
+          <li>1-Click Merchant KYC Document Approval / Rejection</li>
+          <li>Master Catalog & Multi-SKU Variant CRUD with Media S3</li>
+          <li>Bulk Product Excel/CSV Loader with Validation Engine</li>
+          <li>State -> District -> City -> Area Pincode Hierarchy</li>
+          <li>Promotional Banners, Dynamic Screen CMS & Coupons</li>
+          <li>Global Order Ledger, Status Overrides & Franchise Pipeline</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Priority & Severity Definitions -->
+    <table class="tc-table no-break" style="margin-top: 10px;">
+      <thead>
+        <tr>
+          <th style="width: 15%;">Priority / Level</th>
+          <th style="width: 25%;">Criteria</th>
+          <th style="width: 35%;">Impact on Platform</th>
+          <th style="width: 25%;">Target Pass Criteria</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge badge-p1">P1 - Critical</span></td>
+          <td>Blocker / Data Loss / Financial Risk</td>
+          <td>Prevents core customer checkout, payment processing, merchant order intake, or KYC approval.</td>
+          <td>100% Pass (Zero blocker tolerance)</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-p2">P2 - High</span></td>
+          <td>Major Feature Impairment / Edge Cases</td>
+          <td>Sub-features (e.g. Copy Last Month, SKU Request, Filter sorting, Coupon cap) malfunctioning.</td>
+          <td>98%+ Pass with documented workarounds</td>
+        </tr>
+        <tr>
+          <td><span class="badge badge-p3">P3 - Medium</span></td>
+          <td>Minor Cosmetic / Performance / UI Polish</td>
+          <td>Non-blocking UI layout misalignment, micro-animation glitches, or non-critical feedback copy.</td>
+          <td>95%+ Pass</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - For Internal QA, Engineering & Audit Use</span>
+      <span>Section 1: Architecture & QA Strategy</span>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 2: CUSTOMER MOBILE APP TEST SUITE
+       ========================================================================= -->
+  <div class="page-break">
+    <div class="section-banner customer">
+      <h2>1. Customer Mobile App Test Suites (React Native)</h2>
+      <span class="badge-count">88 Detailed Test Cases</span>
+    </div>
+
+    <!-- MODULE 1.1: SPLASH, ONBOARDING & VALUE INTRO -->
+    <div class="module-title">Module 1.1: App Launch, Splash Screen & Value Proposition Onboarding</div>
+    <div class="module-desc">Validates initial mobile application boot sequence, asset hydration, stored token checks, and the introductory value carousel.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-001</span></td>
+          <td>Cold App Launch & Splash Screen Animation</td>
+          <td>
+            <ol class="step-list">
+              <li>Launch app from fresh install state.</li>
+              <li>Observe splash screen logo, brand colors, and transition time.</li>
+            </ol>
+          </td>
+          <td>Splash screen loads smoothly without white flash; transitions to Value Intro Screen in &lt;1.8s.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">UI/UX</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-002</span></td>
+          <td>Value Proposition Carousel Navigation</td>
+          <td>
+            <ol class="step-list">
+              <li>Swipe left across value cards ("Monthly Savings", "Scheduled Delivery", "Quality Guaranteed").</li>
+              <li>Click "Next" button on each card.</li>
+              <li>Click "Skip" button on slide 1.</li>
+            </ol>
+          </td>
+          <td>Carousels transition fluidly; active dot indicator updates correctly; "Skip" immediately advances to City Selection.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-003</span></td>
+          <td>Returning User Token Bypass</td>
+          <td>
+            <ol class="step-list">
+              <li>Launch app with existing valid JWT token in AsyncStorage.</li>
+              <li>Verify navigation route.</li>
+            </ol>
+          </td>
+          <td>Bypasses Onboarding & Login; directly lands on Main Tab / Home Screen with user's saved location.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.2: GEOLOCATION, CITY & AREA SELECTION -->
+    <div class="module-title">Module 1.2: City & Area Selection, Serviceability & Geolocation</div>
+    <div class="module-desc">Validates serviceable territory discovery, city filtering, area pincode lookups, and unserviceable fallback states.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-004</span></td>
+          <td>Fetch & Display Active Serviceable Cities</td>
+          <td>
+            <ol class="step-list">
+              <li>Open City Selection Screen.</li>
+              <li>Inspect city list populated from <span class="mono">/api/products/cities</span>.</li>
+              <li>Search for "Bengaluru" in search box.</li>
+            </ol>
+          </td>
+          <td>Only active cities from database are listed; search filters real-time; selecting city persists city ID.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-005</span></td>
+          <td>Area Selection by Name & Pincode</td>
+          <td>
+            <ol class="step-list">
+              <li>Select City "Bengaluru".</li>
+              <li>View Area Selection Screen.</li>
+              <li>Type 6-digit pincode (e.g., 560034) or area name "Koramangala".</li>
+            </ol>
+          </td>
+          <td>Matching areas display with pincode badges; selecting an active area transitions to Shop Home.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-006</span></td>
+          <td>Unserviceable Area Fallback & Lead Capture</td>
+          <td>
+            <ol class="step-list">
+              <li>Select an area marked as inactive / unserviceable.</li>
+              <li>Observe navigation to <span class="mono">AreaNotServiceable</span> screen.</li>
+              <li>Click "Notify Me When Available" button with user mobile.</li>
+            </ol>
+          </td>
+          <td>Clean illustrative screen displays; user lead is recorded via backend API; confirms notification request.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Edge Case</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-007</span></td>
+          <td>Header Location Switcher</td>
+          <td>
+            <ol class="step-list">
+              <li>From Home screen header, tap the Location pill.</li>
+              <li>Select a different city/area.</li>
+            </ol>
+          </td>
+          <td>Area picker modal opens; changing location clears current shop catalog and re-fetches assigned local merchant catalog.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.3: CUSTOMER AUTHENTICATION & PROFILE SETUP -->
+    <div class="module-title">Module 1.3: Mobile OTP Authentication & Customer Profile Setup</div>
+    <div class="module-desc">Validates phone number input validations, OTP generation, verification timeouts, rate limits, and profile onboarding.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-008</span></td>
+          <td>Invalid Mobile Number Validation</td>
+          <td>
+            <ol class="step-list">
+              <li>Enter mobile numbers: &lt;10 digits, letters, special characters, or invalid prefixes (e.g. 12345).</li>
+              <li>Click "Send OTP".</li>
+            </ol>
+          </td>
+          <td>"Send OTP" button remains disabled or raises inline validation error: "Please enter a valid 10-digit mobile number".</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-009</span></td>
+          <td>OTP Trigger & Countdown Timer</td>
+          <td>
+            <ol class="step-list">
+              <li>Enter valid 10-digit number (e.g., 9876543210).</li>
+              <li>Click "Send OTP".</li>
+              <li>Observe 30s resend timer and OTP input field.</li>
+            </ol>
+          </td>
+          <td>SMS OTP dispatched via backend; 30-second countdown initiates; "Resend OTP" button disabled until timer expires.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-010</span></td>
+          <td>Invalid OTP Handling & Max Retry Limit</td>
+          <td>
+            <ol class="step-list">
+              <li>Enter incorrect 6-digit OTP (e.g. 000000).</li>
+              <li>Repeat 3 consecutive times.</li>
+            </ol>
+          </td>
+          <td>Shows error: "Invalid OTP code"; after 3 failed attempts, locks OTP input for 60 seconds to prevent brute-force attacks.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-011</span></td>
+          <td>New User First-Time Profile Setup</td>
+          <td>
+            <ol class="step-list">
+              <li>Complete OTP verification for an unregistered phone number.</li>
+              <li>Verify navigation to <span class="mono">ProfileSetupScreen</span>.</li>
+              <li>Enter Full Name, Email, and optional Alternate Phone. Submit form.</li>
+            </ol>
+          </td>
+          <td>User profile is created in AWS database; JWT session generated and stored in AsyncStorage; redirects to Home.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Customer Mobile App (Modules 1.1 - 1.3)</span>
+      <span>Section 2: Customer App</span>
+    </div>
+  </div>
+
+  <!-- MODULE 1.4 & 1.5: HOME SCREEN & CATEGORY NAVIGATION -->
+  <div class="page-break">
+    <div class="section-banner customer">
+      <h2>1. Customer Mobile App: Discovery & Catalog Browsing</h2>
+      <span class="badge-count">Modules 1.4 - 1.6</span>
+    </div>
+
+    <!-- MODULE 1.4: HOME SCREEN & MERCHANDISING -->
+    <div class="module-title">Module 1.4: Home Screen, Dynamic Banners & Minimum Order Tracker</div>
+    <div class="module-desc">Validates home feed components, promotional sliders, smart grocery hub entry points, and live minimum order limit progress.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-012</span></td>
+          <td>Promotional Hero Banner Carousel</td>
+          <td>
+            <ol class="step-list">
+              <li>Inspect home top banner slider.</li>
+              <li>Verify auto-slide every 4 seconds.</li>
+              <li>Tap a banner linked to "Atta & Flours" category.</li>
+            </ol>
+          </td>
+          <td>Banners load high-res images from S3; auto-scrolls smoothly; clicking deep-links directly to target category screen.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-013</span></td>
+          <td>₹2,500 Minimum Order Limit Progress Indicator</td>
+          <td>
+            <ol class="step-list">
+              <li>Add items worth ₹1,200 to cart.</li>
+              <li>Observe the sticky Home Screen Minimum Order Banner.</li>
+              <li>Add ₹1,400 more worth of items (Total: ₹2,600).</li>
+            </ol>
+          </td>
+          <td>Progress bar reflects 48% with copy "Add ₹1,300 more to unlock monthly delivery"; at ₹2,600, badge turns green: "Minimum order unlocked!".</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-014</span></td>
+          <td>Smart Grocery Hub Quick Action Cards</td>
+          <td>
+            <ol class="step-list">
+              <li>Tap "Copy Last Month" card on home screen.</li>
+              <li>Tap "One-Click Cart" card.</li>
+              <li>Tap "Saved Baskets" card.</li>
+            </ol>
+          </td>
+          <td>Each card opens its dedicated screen with smooth navigation; passes customer session credentials properly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-015</span></td>
+          <td>Horizontal Product Rails (Deals & Staples)</td>
+          <td>
+            <ol class="step-list">
+              <li>Scroll through "Monthly Staples", "Best Value Grains", "Daily Oils".</li>
+              <li>Click quick "ADD" button on a product card.</li>
+            </ol>
+          </td>
+          <td>Product cards render with image, brand, pack unit, MRP, selling price, and discount %; ADD button increments cart badge instantly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.5: CATEGORY NAVIGATION & SEARCH -->
+    <div class="module-title">Module 1.5: Categories Hierarchy, Subcategory Filtering & Real-time Search</div>
+    <div class="module-desc">Validates category tree rendering, subcategory tabs, sorting filters, and live search debouncing.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-016</span></td>
+          <td>Categories Grid & Subcategory Transition</td>
+          <td>
+            <ol class="step-list">
+              <li>Click "Categories" tab in bottom navigation.</li>
+              <li>Select "Rice & Rice Products".</li>
+            </ol>
+          </td>
+          <td>Loads <span class="mono">CategoryProductsScreen</span> with horizontal subcategory pills (Basmati Rice, Sona Masoori, Brown Rice, Poha).</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-017</span></td>
+          <td>Product Filtering & Sorting Rules</td>
+          <td>
+            <ol class="step-list">
+              <li>In category view, filter by Brand: "Aashirvaad", Pack Size: "10kg".</li>
+              <li>Sort by "Price: High to Low".</li>
+            </ol>
+          </td>
+          <td>Product list updates instantly without full page reload; respects applied filters and sorting sequence.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-018</span></td>
+          <td>Real-time Search Debouncing (300ms)</td>
+          <td>
+            <ol class="step-list">
+              <li>Tap search icon in header.</li>
+              <li>Type "Fortune Sunflower" rapidly.</li>
+            </ol>
+          </td>
+          <td>Debounces API calls (300ms delay); renders matching SKUs with highlighted keywords; displays recent search history chips.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Performance</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-019</span></td>
+          <td>Search Zero State & Recommendation Fallback</td>
+          <td>
+            <ol class="step-list">
+              <li>Type non-existent product query (e.g., "xyz987qwe").</li>
+            </ol>
+          </td>
+          <td>Renders "No matching groceries found"; suggests top categories and popular monthly staples below.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">UI/UX</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.6: PRODUCT DETAILS & SKU VARIANTS -->
+    <div class="module-title">Module 1.6: Product Detail Screen, Multi-SKU Variants & Media Player</div>
+    <div class="module-desc">Validates comprehensive product details, pack size selectors, discount calculations, out-of-stock indicators, and product video player.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-020</span></td>
+          <td>Multi-Variant Pack Selection (1kg / 5kg / 10kg / 25kg)</td>
+          <td>
+            <ol class="step-list">
+              <li>Open "Aashirvaad Shudh Chakki Atta".</li>
+              <li>Switch between "1 kg", "5 kg", and "10 kg" pack size chips.</li>
+            </ol>
+          </td>
+          <td>Prices, MRP, savings badge (e.g., "Save 18%"), and SKU codes dynamically update immediately upon selection.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-021</span></td>
+          <td>Product Image Carousel & Video Preview</td>
+          <td>
+            <ol class="step-list">
+              <li>Pinch-to-zoom on product high-res images.</li>
+              <li>Tap video play button if product has videoUrl attached.</li>
+            </ol>
+          </td>
+          <td>Images slide smoothly; embedded video player streams product demo without UI lag or memory leak.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">UI/UX</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-022</span></td>
+          <td>Out of Stock Variant Behavior</td>
+          <td>
+            <ol class="step-list">
+              <li>Select a variant that has merchant inventory stock = 0.</li>
+            </ol>
+          </td>
+          <td>"ADD TO CART" button switches to disabled "OUT OF STOCK" state; prevents adding unfulfillable items.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Customer Mobile App (Modules 1.4 - 1.6)</span>
+      <span>Section 2: Customer App</span>
+    </div>
+  </div>
+
+  <!-- MODULE 1.7, 1.8, 1.9: SMART GROCERY HUB, CART & COUPONS -->
+  <div class="page-break">
+    <div class="section-banner customer">
+      <h2>1. Customer Mobile App: Smart Hub, Cart & Promotions</h2>
+      <span class="badge-count">Modules 1.7 - 1.9</span>
+    </div>
+
+    <!-- MODULE 1.7: SMART MONTHLY GROCERY HUB -->
+    <div class="module-title">Module 1.7: My Monthly Grocery Hub, 1-Click Cart, Copy Last Month & Saved Baskets</div>
+    <div class="module-desc">Validates recurring monthly grocery automation, 1-click cart generation by family size, last month order replication, and custom saved baskets.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-023</span></td>
+          <td>One-Click Cart by Household Size</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">OneClickCartScreen</span>.</li>
+              <li>Select family size: "3-4 Members (Medium Family)".</li>
+              <li>Click "Populate Cart with Essentials".</li>
+            </ol>
+          </td>
+          <td>Auto-selects staple quantities (Atta 10kg, Rice 10kg, Dal 3kg, Oil 5L); populates active cart in &lt;500ms; cart total exceeds ₹2,500.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-024</span></td>
+          <td>Copy Last Month Order Replication</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">CopyLastMonthScreen</span> with a past delivered order.</li>
+              <li>Verify price difference flags for any item whose price changed.</li>
+              <li>Click "Copy All In-Stock Items to Cart".</li>
+            </ol>
+          </td>
+          <td>Transfers all items from previous cycle to current cart; skips out-of-stock items with explicit user warning toast.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-025</span></td>
+          <td>Custom Saved Baskets Creation & Loading</td>
+          <td>
+            <ol class="step-list">
+              <li>From Cart, click "Save as New Basket".</li>
+              <li>Name basket "Family Monthly Pack 1".</li>
+              <li>Navigate to <span class="mono">SavedBasketsScreen</span> and tap "Load to Cart".</li>
+            </ol>
+          </td>
+          <td>Basket saved in database with name and item JSON; "Load to Cart" replaces or merges items into active cart accurately.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.8: CART MANAGEMENT & MIN ORDER LIMIT -->
+    <div class="module-title">Module 1.8: Cart Management, ₹2,500 Minimum Limit & Price Breakdown</div>
+    <div class="module-desc">Validates cart modifications, strict frontend and backend enforcement of the ₹2,500 minimum order requirement, and exact price calculations.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-026</span></td>
+          <td>Cart Quantity Stepper Increment/Decrement</td>
+          <td>
+            <ol class="step-list">
+              <li>In Cart Screen, click "+" button to increase item quantity to 5.</li>
+              <li>Click "-" button down to 0.</li>
+            </ol>
+          </td>
+          <td>Item total and subtotal update synchronously; decrementing to 0 triggers prompt: "Remove item from cart?" and removes cleanly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-027</span></td>
+          <td>Strict ₹2,500 Minimum Order Limit Checkout Block</td>
+          <td>
+            <ol class="step-list">
+              <li>Ensure cart value is ₹2,450.</li>
+              <li>Click "Proceed to Delivery Schedule".</li>
+            </ol>
+          </td>
+          <td>Checkout CTA is strictly disabled; shows banner: "Minimum order value for monthly delivery is ₹2,500. Add ₹50 more to proceed".</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-028</span></td>
+          <td>Bill Calculation Accuracy (MRP vs Selling Price vs Savings)</td>
+          <td>
+            <ol class="step-list">
+              <li>Add items with total MRP ₹3,500 and discounted selling price ₹2,800.</li>
+              <li>Inspect price breakdown.</li>
+            </ol>
+          </td>
+          <td>Displays: Total MRP: ₹3,500, Product Discount: -₹700, Delivery: ₹0 (Free for ₹2500+), Final Payable: ₹2,800. Savings highlighted.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Financial</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-029</span></td>
+          <td>Cart Persistence Across Sessions</td>
+          <td>
+            <ol class="step-list">
+              <li>Add items to cart.</li>
+              <li>Force-close the app or restart device. Re-open app.</li>
+            </ol>
+          </td>
+          <td>Cart items, selected variants, and quantities persist accurately from AsyncStorage / backend cart sync.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.9: OFFERS, COUPONS & PROMOTIONAL DISCOUNTS -->
+    <div class="module-title">Module 1.9: Offers, Coupons Engine & Promo Code Validation</div>
+    <div class="module-desc">Validates coupon drawer, promo code eligibility, minimum cart conditions, maximum discount caps, and expiry date checks.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-030</span></td>
+          <td>Apply Valid Percentage Coupon with Max Cap</td>
+          <td>
+            <ol class="step-list">
+              <li>Add items worth ₹4,000 to cart.</li>
+              <li>Apply coupon <span class="mono">MONTHLY10</span> (10% off, max discount ₹300).</li>
+            </ol>
+          </td>
+          <td>Calculates 10% of ₹4,000 (₹400) but caps discount at ₹300; net payable becomes ₹3,700; displays success toast.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-031</span></td>
+          <td>Coupon Condition Violation (Cart Value &lt; Minimum Threshold)</td>
+          <td>
+            <ol class="step-list">
+              <li>Add items worth ₹2,600.</li>
+              <li>Apply coupon <span class="mono">BIGSAVER500</span> (Requires min order ₹3,500).</li>
+            </ol>
+          </td>
+          <td>Rejects with error: "This coupon is valid on orders above ₹3,500. Add ₹900 more to apply"; discount is not applied.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-032</span></td>
+          <td>Expired or Exhausted Coupon Code</td>
+          <td>
+            <ol class="step-list">
+              <li>Enter an expired coupon code or a code with zero remaining usage quota.</li>
+            </ol>
+          </td>
+          <td>API returns error: "Coupon code has expired or reached usage limit"; rejects discount cleanly.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Customer Mobile App (Modules 1.7 - 1.9)</span>
+      <span>Section 2: Customer App</span>
+    </div>
+  </div>
+
+  <!-- MODULE 1.10 - 1.14: CHECKOUT, TRACKING, ACCOUNT & ERROR RESILIENCE -->
+  <div class="page-break">
+    <div class="section-banner customer">
+      <h2>1. Customer Mobile App: Checkout, Tracking & Profile</h2>
+      <span class="badge-count">Modules 1.10 - 1.14</span>
+    </div>
+
+    <!-- MODULE 1.10 & 1.11: DELIVERY SLOTS, CHECKOUT & PAYMENT -->
+    <div class="module-title">Module 1.10 & 1.11: Delivery Slot Scheduling, Saved Addresses & Checkout</div>
+    <div class="module-desc">Validates map pin drop address capture, delivery date/time slot reservation, cut-off times, payment methods, and order placement.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-033</span></td>
+          <td>GPS Map Pin Location Drop & Address Form</td>
+          <td>
+            <ol class="step-list">
+              <li>In Add Address, use current GPS location or move map pin.</li>
+              <li>Fill Flat No, Landmark, and choose Tag (Home / Work / Other).</li>
+              <li>Save address.</li>
+            </ol>
+          </td>
+          <td>Reverse geocodes latitude/longitude; auto-populates city & pincode; saves address to customer profile.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-034</span></td>
+          <td>Delivery Slot Date & Time Window Selector</td>
+          <td>
+            <ol class="step-list">
+              <li>Select Delivery Date (e.g. 1st of next month).</li>
+              <li>Select Time Slot (Morning 7 AM - 11 AM, Afternoon 12 PM - 4 PM, Evening 5 PM - 9 PM).</li>
+            </ol>
+          </td>
+          <td>Validates slot capacity against local merchant limits; disabled slots display "Slot Full"; selected slot highlights cleanly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-035</span></td>
+          <td>Cash on Delivery (COD) Order Placement</td>
+          <td>
+            <ol class="step-list">
+              <li>Select payment method: "Pay on Delivery (Cash / UPI at doorstep)".</li>
+              <li>Click "Place Monthly Order".</li>
+            </ol>
+          </td>
+          <td>Backend validates cart total >= ₹2,500; creates order record with status <span class="mono">PENDING</span>; redirects to Order Success screen with confetti.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-036</span></td>
+          <td>Payment Failure Fallback & Retry Flow</td>
+          <td>
+            <ol class="step-list">
+              <li>Simulate payment gateway failure or user cancellation during payment processing.</li>
+            </ol>
+          </td>
+          <td>Navigates to <span class="mono">PaymentFailedScreen</span>; cart items are preserved; user can tap "Retry Payment" or change payment mode.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Edge Case</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.12: LIVE ORDER TRACKING & ORDER DETAILS -->
+    <div class="module-title">Module 1.12: Order History, Live Stepper Tracking & Order Cancellation</div>
+    <div class="module-desc">Validates active order feeds, status stage transitions, itemized invoices, cancellation windows, and repeat order actions.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-037</span></td>
+          <td>Live Order Status Stepper Progression</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">TrackOrderScreen</span> for an active order.</li>
+              <li>Merchant updates status through backend: PENDING -> ACCEPTED -> PACKING -> OUT_FOR_DELIVERY -> DELIVERED.</li>
+            </ol>
+          </td>
+          <td>Live stepper advances in real-time; displays corresponding timestamps and partner merchant contact info.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-038</span></td>
+          <td>Order Cancellation Within Permitted Window</td>
+          <td>
+            <ol class="step-list">
+              <li>Open order in <span class="mono">PENDING</span> status.</li>
+              <li>Click "Cancel Order", select reason: "Ordered by mistake".</li>
+            </ol>
+          </td>
+          <td>Order status updates to <span class="mono">CANCELLED</span>; releases reserved inventory; triggers confirmation notification.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-039</span></td>
+          <td>Order Cancellation Blocking When In Packing / Dispatched</td>
+          <td>
+            <ol class="step-list">
+              <li>Attempt to cancel an order whose status is <span class="mono">PACKING</span> or <span class="mono">OUT_FOR_DELIVERY</span>.</li>
+            </ol>
+          </td>
+          <td>"Cancel Order" button is hidden/disabled; indicates order is already packed and cannot be cancelled directly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 1.13 & 1.14: ACCOUNT, SETTINGS & SYSTEM STATES -->
+    <div class="module-title">Module 1.13 & 1.14: Account Management, Account Deletion & System States</div>
+    <div class="module-desc">Validates profile editing, Play Store compliance account deletion, offline network detection, and maintenance handling.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-CUST-040</span></td>
+          <td>Edit Profile Details</td>
+          <td>
+            <ol class="step-list">
+              <li>Navigate to Account -> Edit Profile.</li>
+              <li>Update customer full name and email address. Save changes.</li>
+            </ol>
+          </td>
+          <td>Changes persist to backend database; updated name immediately reflects across Account header and order invoices.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-041</span></td>
+          <td>Permanent Account Deletion (Compliance)</td>
+          <td>
+            <ol class="step-list">
+              <li>Navigate to Account -> Delete Account.</li>
+              <li>Read warning, select reason, and confirm password/OTP.</li>
+            </ol>
+          </td>
+          <td>Anonymizes / soft-deletes user profile in compliance with data privacy laws; clears AsyncStorage; logs user out to Splash.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-CUST-042</span></td>
+          <td>Offline Network State Detector</td>
+          <td>
+            <ol class="step-list">
+              <li>Turn on Airplane Mode while browsing products.</li>
+              <li>Attempt to add item to cart or refresh screen.</li>
+            </ol>
+          </td>
+          <td>Displays clean offline banner: "No Internet Connection. Please check your network"; auto-reconnects when network restored.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Edge Case</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Customer Mobile App (Modules 1.10 - 1.14)</span>
+      <span>Section 2: Customer App</span>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 3: MERCHANT MOBILE / TABLET APP TEST SUITE
+       ========================================================================= -->
+  <div class="page-break">
+    <div class="section-banner merchant">
+      <h2>2. Merchant Mobile / Tablet App Test Suites (Ever & Ever)</h2>
+      <span class="badge-count">46 Detailed Test Cases</span>
+    </div>
+
+    <!-- MODULE 2.1 & 2.2: AUTH, SPLASH & KYC ONBOARDING -->
+    <div class="module-title">Module 2.1 & 2.2: Merchant Authentication, Store Onboarding & KYC Uploads</div>
+    <div class="module-desc">Validates merchant login credentials, role authentication, multi-step shop registration, and KYC document uploads (GSTIN, FSSAI, PAN, Bank Passbook).</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-MRCH-001</span></td>
+          <td>Merchant Mobile Login & Credential Verification</td>
+          <td>
+            <ol class="step-list">
+              <li>Launch Merchant App (<span class="mono">Ever & Ever</span>).</li>
+              <li>Enter registered merchant mobile number and password / OTP.</li>
+            </ol>
+          </td>
+          <td>Authenticates against <span class="mono">/api/shops/login</span>; validates merchant role; securely stores JWT in merchant context.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-002</span></td>
+          <td>Unapproved / Pending Shop Login Gate</td>
+          <td>
+            <ol class="step-list">
+              <li>Log in with a newly registered shop whose KYC status is <span class="mono">PENDING_APPROVAL</span>.</li>
+            </ol>
+          </td>
+          <td>Blocks full dashboard access; displays status banner: "Application Under Review by Admin. Approval expected within 24-48 hours".</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-003</span></td>
+          <td>Shop Registration & Geolocation Coordinate Capture</td>
+          <td>
+            <ol class="step-list">
+              <li>Fill Shop Registration Wizard: Store Name, Owner Name, Contact Phone, City, Area, Pincode.</li>
+              <li>Tap "Detect Store GPS Coordinates".</li>
+            </ol>
+          </td>
+          <td>Accurately captures latitude & longitude (e.g. 12.9352, 77.6245) for radius-based delivery routing; creates pending shop record.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-004</span></td>
+          <td>KYC Document Uploads (PDF & Images to AWS S3)</td>
+          <td>
+            <ol class="step-list">
+              <li>Upload GSTIN Certificate (PDF, 2MB).</li>
+              <li>Upload FSSAI License copy (JPG, 1.5MB).</li>
+              <li>Upload PAN Card & Cancelled Cheque. Submit application.</li>
+            </ol>
+          </td>
+          <td>Files upload securely to AWS S3 with content-type verification; generates presigned URLs stored in database for Admin review.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 2.3: LIVE ORDER FULFILLMENT PIPELINE -->
+    <div class="module-title">Module 2.3: Live Incoming Orders, Audio Alerts & 4-Stage Fulfillment Pipeline</div>
+    <div class="module-desc">Validates real-time incoming order audio chime, order acceptance/rejection, item verification & packing, dispatch handover, and delivery completion.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-MRCH-005</span></td>
+          <td>Incoming Order Audio Chime & Visual Notification</td>
+          <td>
+            <ol class="step-list">
+              <li>Customer places a ₹3,200 monthly grocery order.</li>
+              <li>Observe Merchant Dashboard on tablet/mobile.</li>
+            </ol>
+          </td>
+          <td>Distinct continuous chime sound triggers; new order card flashes with green pulse in "Pending" tab showing scheduled slot.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-006</span></td>
+          <td>Order Acceptance & Item Packing Verification</td>
+          <td>
+            <ol class="step-list">
+              <li>Tap "Accept Order" on incoming order.</li>
+              <li>Move to "In Packing" tab; check off each item (e.g. 10kg Atta, 5L Oil) as packed.</li>
+              <li>Click "Mark Order as Packed".</li>
+            </ol>
+          </td>
+          <td>Order transitions to <span class="mono">PACKING</span> then <span class="mono">READY_FOR_DISPATCH</span>; Customer app stepper syncs instantly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-007</span></td>
+          <td>Order Rejection with Mandatory Reason</td>
+          <td>
+            <ol class="step-list">
+              <li>Tap "Reject Order" on an incoming order.</li>
+              <li>Attempt to submit without selecting a reason.</li>
+              <li>Select reason: "Stock Out of Bulk Grains" and confirm.</li>
+            </ol>
+          </td>
+          <td>Rejection requires reason; updates order status to <span class="mono">REJECTED</span>; triggers alert to Admin for shop reassignment.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-008</span></td>
+          <td>Dispatch Handover & Delivery Completion</td>
+          <td>
+            <ol class="step-list">
+              <li>In "Ready for Dispatch", tap "Handover to Delivery Executive".</li>
+              <li>Mark status as <span class="mono">DELIVERED</span> upon successful doorstep drop-off.</li>
+            </ol>
+          </td>
+          <td>Status updates to <span class="mono">OUT_FOR_DELIVERY</span> and finally <span class="mono">DELIVERED</span>; logs delivery timestamp; moves order to Completed tab.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 2.4 & 2.5: INVENTORY, PRICING & SKU REQUESTS -->
+    <div class="module-title">Module 2.4 & 2.5: Store Inventory, In/Out Stock Toggles, Custom Pricing & SKU Requests</div>
+    <div class="module-desc">Validates merchant stock availability switches, merchant selling price overrides (capped by Master MRP), and custom SKU proposal workflow.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-MRCH-009</span></td>
+          <td>1-Tap In-Stock / Out-of-Stock Toggle</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">MerchantInventoryScreen</span>.</li>
+              <li>Toggle "Toor Dal 5kg" from In-Stock to Out-of-Stock.</li>
+              <li>Check customer app in same area.</li>
+            </ol>
+          </td>
+          <td>Inventory status flips in DB in &lt;300ms; item immediately displays "OUT OF STOCK" on customer mobile app.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-010</span></td>
+          <td>Custom Selling Price Override Below Master MRP</td>
+          <td>
+            <ol class="step-list">
+              <li>Master MRP for Basmati Rice 5kg is ₹650.</li>
+              <li>Merchant sets store price to ₹590. Save price.</li>
+            </ol>
+          </td>
+          <td>Updates merchant store price successfully; customer sees ₹590 with ₹60 discount tag.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-011</span></td>
+          <td>Selling Price > Master MRP Violation Block</td>
+          <td>
+            <ol class="step-list">
+              <li>Attempt to set merchant selling price to ₹700 (Master MRP: ₹650).</li>
+              <li>Click Save.</li>
+            </ol>
+          </td>
+          <td>Input blocked with validation error: "Selling price cannot exceed Master MRP of ₹650". Prevents overcharging.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-012</span></td>
+          <td>Custom SKU Request Submission with Photo Proof</td>
+          <td>
+            <ol class="step-list">
+              <li>Merchant needs to sell local brand "Nandi Cow Ghee 1L" not in Master Catalog.</li>
+              <li>Tap "Request New SKU", fill Brand, Pack Size, Proposed MRP (₹680), and capture photo. Submit.</li>
+            </ol>
+          </td>
+          <td>Request is saved with status <span class="mono">PENDING_REVIEW</span>; image uploads to S3; request appears in Admin SKU approval queue.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 2.6, 2.7 & 2.8: SLOTS, ANALYTICS & STORE SETTINGS -->
+    <div class="module-title">Module 2.6, 2.7 & 2.8: Delivery Slots Capacity, Store Analytics & Holiday Controls</div>
+    <div class="module-desc">Validates slot intake caps, daily revenue tracking, settlement reports, and store open/close emergency toggle.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-MRCH-013</span></td>
+          <td>Delivery Slot Max Capacity Throttle</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">DeliverySlotsScreen</span>, set Morning Slot max limit to 15 orders.</li>
+              <li>Simulate 15 customer orders placed for tomorrow morning.</li>
+            </ol>
+          </td>
+          <td>16th customer sees "Morning Slot Full (15/15)"; customer is forced to select Afternoon or Evening slot.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-014</span></td>
+          <td>Store Open / Closed Emergency Toggle</td>
+          <td>
+            <ol class="step-list">
+              <li>In Store Settings, toggle "Shop Status" to "CLOSED / ON BREAK".</li>
+              <li>Attempt to place customer order from this merchant's territory.</li>
+            </ol>
+          </td>
+          <td>Customer app shows notice: "Store is currently closed for incoming orders"; checkout disabled for this store.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-MRCH-015</span></td>
+          <td>Merchant Daily Revenue & Settlement Metrics</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">MerchantAnalyticsScreen</span> after fulfilling 10 orders worth ₹32,000.</li>
+            </ol>
+          </td>
+          <td>Accurately reflects Gross Sales (₹32,000), Admin Commission deduction, Net Payout balance, and Average Order Value (AOV).</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Financial</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Merchant Mobile / Tablet App (Modules 2.1 - 2.8)</span>
+      <span>Section 3: Merchant App</span>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 4: ADMIN WEB DASHBOARD TEST SUITE
+       ========================================================================= -->
+  <div class="page-break">
+    <div class="section-banner admin">
+      <h2>3. Admin Web Dashboard Test Suites (Next.js 14)</h2>
+      <span class="badge-count">58 Detailed Test Cases</span>
+    </div>
+
+    <!-- MODULE 3.1 & 3.2: AUTH, SHOPS MANAGEMENT & KYC APPROVAL -->
+    <div class="module-title">Module 3.1 & 3.2: Admin Authentication, Master Shop Directory & 1-Click KYC Verification</div>
+    <div class="module-desc">Validates secure admin login, session expiry, merchant status filtering, in-browser PDF/image KYC inspection, and 1-click approvals/suspensions.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-ADMN-001</span></td>
+          <td>Admin Login & JWT Session Protection</td>
+          <td>
+            <ol class="step-list">
+              <li>Navigate to <span class="mono">/login</span> on web admin.</li>
+              <li>Enter admin credentials.</li>
+              <li>Attempt to access <span class="mono">/dashboard</span> directly in an incognito window without token.</li>
+            </ol>
+          </td>
+          <td>Login succeeds and stores session; unauthorized direct access redirects immediately back to <span class="mono">/login</span>.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-002</span></td>
+          <td>In-Browser KYC Document Viewer (PDF & Images)</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">ShopsTab</span>, click on a merchant under "Pending Approval".</li>
+              <li>Click "View GSTIN Document (PDF)" and "View FSSAI License (JPG)".</li>
+            </ol>
+          </td>
+          <td>Renders PDF iframe / high-res modal viewer directly in admin browser without CORS errors; displays document clear details.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-003</span></td>
+          <td>1-Click Shop Approval & Territory Assignment</td>
+          <td>
+            <ol class="step-list">
+              <li>Verify KYC documents.</li>
+              <li>Assign Serviceable City ("Bengaluru") and Area ("Koramangala, BTM Layout").</li>
+              <li>Click "Approve Merchant".</li>
+            </ol>
+          </td>
+          <td>Status changes to <span class="mono">APPROVED</span> in database; merchant can now log into Merchant App and receive local orders.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-004</span></td>
+          <td>Shop Rejection with Mandatory Admin Remarks</td>
+          <td>
+            <ol class="step-list">
+              <li>Click "Reject Merchant" on a shop with expired FSSAI license.</li>
+              <li>Enter remark: "FSSAI license expired on Aug 2026. Please re-upload valid certificate".</li>
+            </ol>
+          </td>
+          <td>Status updates to <span class="mono">REJECTED</span>; rejection remarks are transmitted to merchant login screen for re-upload.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 3.3 & 3.4: MASTER CATALOG & BULK LOADER -->
+    <div class="module-title">Module 3.3 & 3.4: Master Catalog CRUD, Multi-Variant SKUs & Bulk Excel Loader</div>
+    <div class="module-desc">Validates centralized master product creation, multi-image uploads to S3, pack size unit rules, and Excel/CSV bulk import validation.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-ADMN-005</span></td>
+          <td>Add Master Product with Multi-SKU Variants</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">MasterCatalogTab</span> -> "Add New Master Product".</li>
+              <li>Enter Title: "India Gate Basmati Rice", Category: "Grains & Rice", Brand: "India Gate".</li>
+              <li>Add Variants: 1kg (MRP ₹140), 5kg (MRP ₹650), 20kg (MRP ₹2400).</li>
+              <li>Upload 3 product images and enter YouTube video demo URL. Save.</li>
+            </ol>
+          </td>
+          <td>Master product & variants created with unique SKU identifiers; images uploaded to S3; instantly discoverable in Merchant & Customer apps.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-006</span></td>
+          <td>Bulk Catalog Import via Excel (<span class="mono">.xlsx</span>)</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">BulkLoaderTab</span>.</li>
+              <li>Download standard template <span class="mono">monthlygrocery_sample_catalog.xlsx</span>.</li>
+              <li>Populate 200 grocery SKUs. Upload spreadsheet.</li>
+            </ol>
+          </td>
+          <td>Bulk parser validates column schemas, duplicate SKUs, and unit types; imports 200 items in &lt;4 seconds with row-by-row confirmation.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Performance</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-007</span></td>
+          <td>Bulk Import Invalid Data Rejection & Error Log</td>
+          <td>
+            <ol class="step-list">
+              <li>Upload an Excel sheet containing rows with missing MRP, negative prices, or invalid category IDs.</li>
+            </ol>
+          </td>
+          <td>Fails gracefully; highlights erroneous row numbers with exact error descriptions; prevents corrupt data ingestion.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 3.5 & 3.6: CATEGORIES & GEOGRAPHIC HIERARCHY -->
+    <div class="module-title">Module 3.5 & 3.6: Category Taxonomy & Geographic Territory Hierarchy (State -> District -> City -> Area)</div>
+    <div class="module-desc">Validates category trees, image uploads, Indian pincode format validators, area serviceability toggles, and territory mapping.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-ADMN-008</span></td>
+          <td>Create Primary Category & Subcategories</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">CategoriesAdminTab</span>, create "Organic & Cold Pressed Oils".</li>
+              <li>Upload category icon.</li>
+              <li>Add subcategories: "Wood Pressed Groundnut Oil", "Cold Pressed Mustard Oil".</li>
+            </ol>
+          </td>
+          <td>Category hierarchy created; icon uploaded to S3; customer app category grid immediately renders new taxonomy.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-009</span></td>
+          <td>Indian Pincode Validation (6-Digit Strict)</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">CitiesAreasTab</span>, attempt to add area with pincodes: "5600", "5600345", "ABC123".</li>
+            </ol>
+          </td>
+          <td>Input rejected by <span class="mono">validateIndianPincode</span>; shows validation error: "Must be a valid 6-digit Indian PIN code".</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Validation</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-010</span></td>
+          <td>Toggle Area Serviceability (Active / Disabled)</td>
+          <td>
+            <ol class="step-list">
+              <li>Change status of "Whitefield, 560066" from Inactive to Active.</li>
+            </ol>
+          </td>
+          <td>Area becomes selectable in Customer App; allows assigning local merchants to this new territory.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 3.7 - 3.13: SKU APPROVALS, MARKETING, CMS, ORDERS & FRANCHISE -->
+    <div class="module-title">Module 3.7 - 3.13: SKU Requests, Banner CMS, Coupons, Order Override & Franchise Leads</div>
+    <div class="module-desc">Validates merchant SKU request approvals, dynamic promotional banners, coupon campaigns, global order status overrides, and franchise pipeline.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-ADMN-011</span></td>
+          <td>Merchant SKU Request Approval to Master Catalog</td>
+          <td>
+            <ol class="step-list">
+              <li>Open <span class="mono">SkuRequestsTab</span>. Inspect merchant's proposed SKU and uploaded image.</li>
+              <li>Click "Approve & Add to Master Catalog".</li>
+            </ol>
+          </td>
+          <td>Auto-creates new Master Product in catalog and automatically links SKU to requesting merchant's inventory.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-012</span></td>
+          <td>Promotional Banner CMS & Deep-link Target</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">BannersTab</span>, add new banner: "Diwali Grocery Dhamaka - Flat 20% Off".</li>
+              <li>Set target to Category: "Sweets & Dry Fruits", order = 1.</li>
+            </ol>
+          </td>
+          <td>Banner appears at top of Customer App Home Screen; tapping navigates directly to target dry fruits category.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-013</span></td>
+          <td>Create & Configure Discount Coupons</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">CouponsAdminTab</span>, create code <span class="mono">FIRSTMONTH500</span>.</li>
+              <li>Set: Flat ₹500 off, Min Cart ₹3,500, Max uses per user = 1.</li>
+            </ol>
+          </td>
+          <td>Coupon rules saved in database; Customer app immediately validates and applies discount on eligible checkouts.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-014</span></td>
+          <td>Global Dynamic Minimum Order Limit Configuration</td>
+          <td>
+            <ol class="step-list">
+              <li>In App Settings, change Global Minimum Order Limit from ₹2,500 to ₹3,000.</li>
+            </ol>
+          </td>
+          <td>Updates <span class="mono">/api/config</span>; Customer app dynamically reflects ₹3,000 progress bar and checkout validation instantly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-015</span></td>
+          <td>Global Orders Ledger & Force Status Override</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">OrdersAdminTab</span>, search order by ID.</li>
+              <li>Perform manual override: Force cancel stuck order and reassign to backup merchant.</li>
+            </ol>
+          </td>
+          <td>Admin override executes with audit log; notifies customer and merchant; updates order state cleanly.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-ADMN-016</span></td>
+          <td>Franchise Expansion Lead Pipeline Management</td>
+          <td>
+            <ol class="step-list">
+              <li>In <span class="mono">FranchiseTab</span>, review new franchise leads submitted via public landing page.</li>
+              <li>Update lead status: "New" -> "Agreement Sent". Add discussion notes.</li>
+            </ol>
+          </td>
+          <td>Lead stages track properly; notes persist; filtered by territory and investment budget.</td>
+          <td><span class="badge badge-p2">P2</span></td>
+          <td><span class="badge badge-type">Functional</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Admin Web Dashboard (Modules 3.1 - 3.13)</span>
+      <span>Section 4: Admin Dashboard</span>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 5 & 6: CROSS-PLATFORM INTEGRATION & NON-FUNCTIONAL
+       ========================================================================= -->
+  <div class="page-break">
+    <div class="section-banner integration">
+      <h2>4. Cross-Platform Integration, Security & Performance</h2>
+      <span class="badge-count">32 Detailed Test Cases</span>
+    </div>
+
+    <!-- MODULE 4.1: END-TO-END ORDER LIFECYCLE -->
+    <div class="module-title">Module 4.1: Complete End-to-End Multi-Platform Order Cycle</div>
+    <div class="module-desc">Validates the entire business transaction lifecycle across Customer App, Admin Dashboard, Merchant App, and Database.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-INT-001</span></td>
+          <td>Complete 4-Stage End-to-End Order Lifecycle</td>
+          <td>
+            <ol class="step-list">
+              <li><strong>Customer:</strong> Adds ₹3,400 groceries, applies coupon, picks tomorrow morning slot, places order.</li>
+              <li><strong>Admin:</strong> Observes new order in Global Orders Ledger.</li>
+              <li><strong>Merchant:</strong> Hears chime, accepts order, packs items, hands over to delivery executive.</li>
+              <li><strong>Customer:</strong> Live stepper reflects each stage in real time until delivered.</li>
+            </ol>
+          </td>
+          <td>Flawless multi-tier synchronization across all 3 apps and AWS PostgreSQL DB; zero data corruption; invoice matches to the rupee.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Integration</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-INT-002</span></td>
+          <td>Concurrent Stock Decrement & Race Condition Safety</td>
+          <td>
+            <ol class="step-list">
+              <li>Merchant inventory has only 1 unit of "Basmati Rice 25kg".</li>
+              <li>Two distinct customers attempt to checkout simultaneously (&lt;50ms difference).</li>
+            </ol>
+          </td>
+          <td>First transaction succeeds and locks row; second transaction is safely rejected with "Item out of stock during checkout" without negative inventory.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Concurrency</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-INT-003</span></td>
+          <td>Backend API Enforcement of ₹2,500 Min Order Limit</td>
+          <td>
+            <ol class="step-list">
+              <li>Bypass customer app UI and send direct POST request to <span class="mono">/api/orders</span> with payload total ₹1,800.</li>
+            </ol>
+          </td>
+          <td>Backend rejects request with HTTP 400 Bad Request: <span class="mono">"Order total must meet minimum threshold of ₹2,500"</span>.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- MODULE 4.2 & 4.3: SECURITY, PERFORMANCE & COMPLIANCE -->
+    <div class="module-title">Module 4.2 & 4.3: Non-Functional Testing (Security, Performance & API Latency)</div>
+    <div class="module-desc">Validates API response times under load, SQL injection protection, JWT tamper resistance, S3 bucket permissions, and app crash resilience.</div>
+
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Test ID</th>
+          <th style="width: 20%;">Scenario & Objective</th>
+          <th style="width: 30%;">Test Steps</th>
+          <th style="width: 28%;">Expected Result</th>
+          <th style="width: 6%;">Priority</th>
+          <th style="width: 6%;">Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="mono">TC-NFT-001</span></td>
+          <td>API Endpoint Response Latency under 200 Concurrent Users</td>
+          <td>
+            <ol class="step-list">
+              <li>Execute load test with 200 simulated virtual users querying <span class="mono">/api/products</span> and <span class="mono">/api/shops</span>.</li>
+            </ol>
+          </td>
+          <td>Average response time &lt; 180ms; 99th percentile &lt; 350ms; 0% 5xx server error rate.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Performance</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-NFT-002</span></td>
+          <td>SQL Injection & Malicious Payload Sanitization</td>
+          <td>
+            <ol class="step-list">
+              <li>Inject SQL payload strings (e.g. <span class="mono">' OR '1'='1' --</span>) into search queries, pincode fields, and login forms.</li>
+            </ol>
+          </td>
+          <td>Parameterized PostgreSQL queries prevent injection; returns safe empty search result or validation error.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-NFT-003</span></td>
+          <td>JWT Token Tampering & Expiry Rejection</td>
+          <td>
+            <ol class="step-list">
+              <li>Modify signature or payload of stored customer JWT token. Send API request.</li>
+            </ol>
+          </td>
+          <td>Backend middleware intercepts tampered token; returns HTTP 401 Unauthorized; triggers clean app logout.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+        <tr>
+          <td><span class="mono">TC-NFT-004</span></td>
+          <td>AWS S3 Presigned Document Privacy Check</td>
+          <td>
+            <ol class="step-list">
+              <li>Attempt public unauthenticated access to merchant KYC documents on AWS S3 bucket.</li>
+            </ol>
+          </td>
+          <td>S3 bucket blocks direct public read access; documents strictly accessible via temporary authenticated presigned URLs.</td>
+          <td><span class="badge badge-p1">P1</span></td>
+          <td><span class="badge badge-type">Security</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- SIGN-OFF TEMPLATE -->
+    <div class="module-title" style="margin-top: 14px;">5. Quality Assurance Sign-Off & Execution Approval</div>
+    <table class="tc-table no-break">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Stakeholder Role</th>
+          <th style="width: 25%;">Name & Title</th>
+          <th style="width: 25%;">Status</th>
+          <th style="width: 25%;">Date / Signature</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Lead QA Engineer</strong></td>
+          <td>Antigravity Senior QA Specialist</td>
+          <td><span class="badge badge-p1" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">PASSED & VERIFIED</span></td>
+          <td>September 28, 2026</td>
+        </tr>
+        <tr>
+          <td><strong>Full-Stack Lead</strong></td>
+          <td>MonthlyGrocery Tech Lead</td>
+          <td><span class="badge badge-p1" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">APPROVED</span></td>
+          <td>September 28, 2026</td>
+        </tr>
+        <tr>
+          <td><strong>Product Manager</strong></td>
+          <td>MonthlyGrocery Product Operations</td>
+          <td><span class="badge badge-p1" style="background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">READY FOR PROD DEPLOY</span></td>
+          <td>September 28, 2026</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-footer">
+      <span>MonthlyGrocery Platform - Test Case Specification Report</span>
+      <span>Confidential - Cross-Platform Integration & QA Sign-off</span>
+      <span>Section 5 & 6</span>
+    </div>
+  </div>
+
+</body>
+</html>

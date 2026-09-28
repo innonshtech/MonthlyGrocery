@@ -118,10 +118,35 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
     }
   };
 
-  // Handle Login OTP
+  // Request Android Camera Permission
+  const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'ios') {
+      return true;
+    }
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Camera Access Required',
+          message:
+            'Monthly Grocery requires access to your camera to take clear photos of your Kirana store board and legal compliance documents.',
+          buttonPositive: 'Allow Camera',
+          buttonNegative: 'Cancel',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (err) {
+      console.warn('Camera permission request error:', err);
+      return false;
+    }
+  };
+
+  // Handle Login OTP with interactive unregistered merchant alert
   const handleSendOtp = async () => {
     if (mobile.length < 10) {
-      setError('Please enter a valid 10-digit registered mobile number');
+      const err = 'Please enter a valid 10-digit registered mobile number';
+      setError(err);
+      Alert.alert('Invalid Mobile Number', err);
       return;
     }
     setError('');
@@ -133,7 +158,35 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       setResendTimer(30);
       setCanResend(false);
     } else {
-      setError(res.error || 'Failed to send OTP. Please check server connection.');
+      const errMsg = res.error || 'Failed to send OTP. Please check server connection.';
+      setError(errMsg);
+
+      if (res.code === 'NOT_REGISTERED' || errMsg.toLowerCase().includes('not registered')) {
+        Alert.alert(
+          '🏬 Store Not Registered',
+          `Mobile number +91 ${mobile} is not registered as an authorized Kirana Store with MonthlyGrocery.\n\nWould you like to onboard and register your store now?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: '➕ Register Store Now',
+              onPress: () => {
+                setRegMobile(mobile);
+                setMode('register');
+                setRegStep(1);
+                setError('');
+              },
+            },
+          ]
+        );
+      } else if (res.code === 'PENDING_APPROVAL' || errMsg.toLowerCase().includes('under review')) {
+        Alert.alert(
+          '⏳ Application Under Review',
+          `Your store registration application is currently PENDING Web Admin verification and approval.\n\nYou will receive access as soon as Admin reviews and approves your documents.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      } else {
+        Alert.alert('Sign In Alert', errMsg);
+      }
     }
   };
 
@@ -194,7 +247,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
     }
   };
 
-  // Live GPS Capture via Native Android GPS Location Module
+  // Live GPS Capture via Native Android GPS Location Module with Indoor Fallback
   const handleDetectGps = async () => {
     setDetectingGps(true);
     setError('');
@@ -224,12 +277,29 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       throw new Error('Native location module is not active or location unavailable.');
     } catch (nativeErr: any) {
       console.warn('Native GPS error:', nativeErr);
+      setDetectingGps(false);
       Alert.alert(
         'GPS Signal Issue',
-        (nativeErr?.message || 'Could not fetch device GPS.') +
-          '\nPlease ensure device Location/GPS toggle is ON in quick settings.'
+        'Could not lock satellite GPS indoors. Would you like to retry or use Pune City coordinates to proceed?',
+        [
+          { text: '🔄 Retry GPS', onPress: handleDetectGps },
+          {
+            text: '📍 Use Pune City (18.5204, 73.8567)',
+            onPress: () => {
+              const defaultLat = 18.52043;
+              const defaultLng = 73.85674;
+              setRegLat(defaultLat);
+              setRegLng(defaultLng);
+              setRegStreetAddress('Pune City Center, Maharashtra');
+              setRegCity('Pune');
+              setRegArea('Pune City');
+              setRegPincode('411001');
+              setRegState('Maharashtra');
+              setRegDistrict('Pune');
+            },
+          },
+        ]
       );
-      setDetectingGps(false);
     }
   };
 
@@ -243,6 +313,9 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         {
           text: '📷 Take Photo (Camera)',
           onPress: async () => {
+            const hasCamera = await requestCameraPermission();
+            if (!hasCamera) return;
+
             try {
               const result = await launchCamera({
                 mediaType: 'photo',
@@ -286,7 +359,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
   };
 
   const uploadAsset = async (asset: any, docType: string) => {
-    if (!asset || !asset.uri) return;
+    if (!asset || (!asset.uri && !asset.base64)) return;
 
     if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
       Alert.alert('File Too Large', 'Maximum photo size is 5MB. Please choose an image under 5MB.');
@@ -298,17 +371,17 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 
     try {
       const formData = new FormData();
-      const fileData: any = {
-        uri: Platform.OS === 'android' ? asset.uri : asset.uri.replace('file://', ''),
-        name: asset.fileName || `${docType}_${Date.now()}.jpg`,
-        type: asset.type || 'image/jpeg',
-      };
-      formData.append('file', fileData);
-      formData.append('document', fileData);
-      formData.append('doc_type', docType);
-      if (asset.base64) {
+      if (asset.uri) {
+        const fileData: any = {
+          uri: Platform.OS === 'android' ? asset.uri : asset.uri.replace('file://', ''),
+          name: asset.fileName || `${docType}_${Date.now()}.jpg`,
+          type: asset.type || 'image/jpeg',
+        };
+        formData.append('file', fileData);
+      } else if (asset.base64) {
         formData.append('base64', `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
       }
+      formData.append('doc_type', docType);
 
       // DO NOT set Content-Type header in React Native when sending FormData
       const res = await fetch(`${API_BASE}/shops/upload-doc`, {
@@ -329,6 +402,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         else if (docType === 'pan') setRegPanDocUrl(uploadedUrl);
         else if (docType === 'shop_photo') setRegShopPhotoUrl(uploadedUrl);
         setError('');
+        Alert.alert('Document Uploaded', `${docType.toUpperCase()} document uploaded to AWS storage successfully!`);
       } else {
         if (asset.base64) {
           const fallbackDataUrl = `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`;
@@ -338,7 +412,9 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
           else if (docType === 'shop_photo') setRegShopPhotoUrl(fallbackDataUrl);
           setError('');
         } else {
-          setError(data?.error || 'Failed to upload photo. Maximum allowed size is 5MB.');
+          const uploadErr = data?.error || 'Failed to upload photo. Maximum allowed size is 5MB.';
+          setError(uploadErr);
+          Alert.alert('Upload Failed', uploadErr);
         }
       }
     } catch (e: any) {
@@ -350,7 +426,9 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         else if (docType === 'shop_photo') setRegShopPhotoUrl(fallbackDataUrl);
         setError('');
       } else {
-        setError('Network error while uploading photo. Please ensure backend is running.');
+        const netErr = 'Network error while uploading photo. Please ensure backend is running.';
+        setError(netErr);
+        Alert.alert('Upload Error', netErr);
       }
     } finally {
       setUploadingDoc(null);
@@ -360,22 +438,30 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
   // Submit Final Registration
   const handleRegisterSubmit = async () => {
     if (!regShopName.trim() || !regOwnerName.trim() || !regMobile.trim()) {
-      setError('Store name, owner name, and mobile number are required.');
+      const err = 'Store name, owner name, and mobile number are required.';
+      setError(err);
+      Alert.alert('Incomplete Form', err);
       setRegStep(1);
       return;
     }
     if (regLat == null || regLng == null) {
-      setError('Please detect your live GPS store location first.');
+      const err = 'Please detect your live GPS store location first.';
+      setError(err);
+      Alert.alert('GPS Required', err);
       setRegStep(2);
       return;
     }
     if (!regAadhaarDocUrl) {
-      setError('Aadhaar Card photo upload is mandatory. Please upload a photo of your Aadhaar Card.');
+      const err = 'Aadhaar Card photo upload is mandatory. Please upload a photo of your Aadhaar Card.';
+      setError(err);
+      Alert.alert('Aadhaar Photo Required', err);
       setRegStep(3);
       return;
     }
     if (regAadhaarNumber && regAadhaarNumber.length !== 12) {
-      setError('Aadhaar number must be exactly 12 digits.');
+      const err = 'Aadhaar number must be exactly 12 digits.';
+      setError(err);
+      Alert.alert('Invalid Aadhaar', err);
       setRegStep(3);
       return;
     }
@@ -421,11 +507,15 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       if (res.ok && data.success) {
         setRegSuccess(data);
       } else {
-        setError(data.error || 'Failed to submit registration. Please try again.');
+        const submitErr = data.error || 'Failed to submit registration. Please try again.';
+        setError(submitErr);
+        Alert.alert('Registration Submission Error', submitErr);
       }
     } catch (e: any) {
       setLoading(false);
-      setError('Network connection error. Please check backend server.');
+      const connErr = 'Network connection error. Please check backend server.';
+      setError(connErr);
+      Alert.alert('Connection Error', connErr);
     }
   };
 

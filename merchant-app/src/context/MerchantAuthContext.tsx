@@ -13,8 +13,8 @@ interface MerchantAuthContextType {
   token: string | null;
   user: MerchantUser | null;
   loading: boolean;
-  sendOtp: (mobile: string) => Promise<{ success: boolean; error?: string }>;
-  verifyOtp: (mobile: string, code: string, name?: string) => Promise<{ success: boolean; error?: string }>;
+  sendOtp: (mobile: string) => Promise<{ success: boolean; error?: string; code?: string }>;
+  verifyOtp: (mobile: string, code: string, name?: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -65,14 +65,18 @@ export const MerchantAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Failed to send OTP' };
+        return { 
+          success: false, 
+          error: data.error || 'Failed to send OTP',
+          code: data.code || undefined,
+        };
       }
       return { success: true };
     } catch (err: any) {
       return {
         success: false,
         error:
-          'Cannot reach server. Ensure express-backend is running, phone and PC are on the same Wi‑Fi, and DEV_MACHINE_IP in merchant-app/src/config/api.ts matches your PC IP (ipconfig).',
+          'Cannot reach server. Ensure express-backend is running and server connection is available.',
       };
     }
   };
