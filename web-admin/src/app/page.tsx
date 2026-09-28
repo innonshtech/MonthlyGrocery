@@ -44,11 +44,13 @@ import { CategoriesAdminTab } from '../components/tabs/CategoriesAdminTab';
 import { MasterCatalogTab } from '../components/tabs/MasterCatalogTab';
 import { CouponsAdminTab } from '../components/tabs/CouponsAdminTab';
 import { OrdersAdminTab } from '../components/tabs/OrdersAdminTab';
+import LandingPage from '../components/landing/LandingPage';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('shops');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -190,30 +192,37 @@ export default function DashboardPage() {
   const [cartScreenDraft, setCartScreenDraft] = useState<CartScreenConfig | null>(null);
   const [offersCouponsDraft, setOffersCouponsDraft] = useState<OffersCouponsScreenConfig | null>(null);
 
-  // 1. Guard check on mount — validate token against local backend
+  // 1. Guard check on mount — validate token against live backend
   useEffect(() => {
-    const savedToken = localStorage.getItem('@admin_token');
-    const savedUserStr = localStorage.getItem('@admin_user');
+    const savedToken = typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null;
+    const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('@admin_user') : null;
     if (!savedToken || !savedUserStr) {
-      router.replace('/login');
+      setToken(null);
+      setUser(null);
+      setAuthChecking(false);
       return;
     }
 
     apiFetch('/auth/me')
       .then((data) => {
-        if (data.user?.role !== 'super_admin') {
+        if (data.user?.role !== 'super_admin' && data.user?.role !== 'admin') {
           clearAdminSession();
-          router.replace('/login');
-          return;
+          setToken(null);
+          setUser(null);
+        } else {
+          setToken(savedToken);
+          setUser(data.user || JSON.parse(savedUserStr));
         }
-        setToken(savedToken);
-        setUser(data.user || JSON.parse(savedUserStr));
       })
       .catch(() => {
         clearAdminSession();
-        router.replace('/login');
+        setToken(null);
+        setUser(null);
+      })
+      .finally(() => {
+        setAuthChecking(false);
       });
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (!regStateId) {
@@ -1284,12 +1293,16 @@ export default function DashboardPage() {
     router.replace('/login');
   };
 
-  if (!user || !token) {
+  if (authChecking) {
     return (
-      <div className="min-h-screen bg-[#090D16] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-[#10B981] animate-spin" />
+      <div className="min-h-screen bg-[#FAFAF7] flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#1E7A46] animate-spin" />
       </div>
     );
+  }
+
+  if (!user || !token) {
+    return <LandingPage />;
   }
 
   return (
