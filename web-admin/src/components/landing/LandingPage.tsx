@@ -21,17 +21,26 @@ import {
 const LOGO_URL = "https://customer-assets-agu9un31.emergentagent.net/job_zopin-preview/artifacts/ajjfrqqn_image.png";
 
 export default function LandingPage() {
+  useEffect(() => {
+    // Ensure document body is styled correctly for landing page
+    const prevBg = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#FFF8ED';
+    return () => {
+      document.body.style.backgroundColor = prevBg;
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#FFF8ED] text-[#0B1220] relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full bg-[#FFF8ED] text-[#0B1220] relative overflow-x-hidden font-sans">
       {/* Background decorations */}
       <div className="absolute top-40 -left-32 w-96 h-96 rounded-full bg-[#22C55E]/10 blur-3xl pointer-events-none" />
       <div className="absolute top-96 -right-24 w-96 h-96 rounded-full bg-[#F97316]/10 blur-3xl pointer-events-none" />
 
       {/* HEADER */}
-      <header className="glass-nav sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <header className="w-full glass-nav sticky top-0 z-50">
+        <div className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-4 flex items-center justify-between">
           <MonthlyGroceryLogo />
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-4 sm:gap-6">
             <a href="#how" className="hidden md:inline-flex text-sm font-semibold text-gray-700 hover:text-[#22C55E] px-3 transition-colors">
               How it works
             </a>
@@ -52,16 +61,16 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main className="relative">
+      <main className="w-full relative">
         {/* --------- HERO --------- */}
-        <section className="max-w-7xl mx-auto px-6 pt-12 lg:pt-20 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white border border-[#F1EAD8] text-[#0B1220] px-4 py-1.5 text-xs font-bold uppercase tracking-widest mg-shadow-soft">
+        <section className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 pt-10 lg:pt-16 pb-16 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          <div className="lg:col-span-7 flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white border border-[#F1EAD8] text-[#0B1220] px-4 py-1.5 text-xs font-bold uppercase tracking-widest mg-shadow-soft self-start">
               <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
               Now delivering Pan India
             </div>
 
-            <h1 className="mt-6 text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tighter font-display leading-[1.02] text-[#0B1220]">
+            <h1 className="mt-6 text-4xl sm:text-6xl lg:text-6xl xl:text-7xl font-bold tracking-tighter font-display leading-[1.05] text-[#0B1220]">
               Ghar ka <em className="not-italic bg-gradient-to-r from-[#22C55E] to-[#16A34A] bg-clip-text text-transparent">poora</em>
               <br />
               <span className="relative inline-block">
@@ -72,7 +81,7 @@ export default function LandingPage() {
               </span>
             </h1>
 
-            <p className="mt-8 text-lg text-gray-700 leading-relaxed max-w-2xl">
+            <p className="mt-6 sm:mt-8 text-base sm:text-lg text-gray-700 leading-relaxed max-w-2xl">
               Aata, chawal, dal, tel, ghee, chai, masale, sabun — <span className="font-semibold text-[#0B1220]">poora mahine ka saamaan</span>, sealed packs mein, aapke <span className="font-bold text-[#22C55E]">ghar par 4 ghante mein</span>. Har order par upto 20% ki bachat.
             </p>
 
@@ -92,7 +101,7 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            <div className="mt-10 grid grid-cols-3 gap-2 sm:gap-4 max-w-lg">
+            <div className="mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-lg">
               <TrustPill icon={Truck} label="4-hour delivery" />
               <TrustPill icon={Percent} label="Upto 20% OFF" />
               <TrustPill icon={ShieldCheck} label="OTP login" />
@@ -100,14 +109,14 @@ export default function LandingPage() {
           </div>
 
           {/* HERO CARD STACK */}
-          <div className="lg:col-span-5 relative h-[520px] sm:h-[560px]">
+          <div className="lg:col-span-5 relative h-[480px] sm:h-[540px] lg:h-[580px] w-full mt-6 lg:mt-0">
             {/* Editorial photo carousel */}
             <div className="absolute inset-0 rounded-[32px] overflow-hidden border border-[#F1EAD8] mg-shadow-hover bg-[#FDF3DE]">
               <HeroImage />
             </div>
 
             {/* Floating stat card */}
-            <div className="absolute -bottom-5 -left-4 sm:-bottom-6 sm:-left-6 rounded-2xl bg-white border border-[#F1EAD8] mg-shadow-soft p-4 flex items-center gap-3 floaty z-10">
+            <div className="absolute -bottom-5 -left-3 sm:-bottom-6 sm:-left-6 rounded-2xl bg-white border border-[#F1EAD8] mg-shadow-soft p-4 flex items-center gap-3 floaty z-10">
               <div className="w-11 h-11 rounded-xl bg-[#DCFCE7] flex items-center justify-center text-2xl">🛒</div>
               <div>
                 <div className="text-xs uppercase tracking-widest font-bold text-[#22C55E]">Minimum order</div>
@@ -133,7 +142,7 @@ export default function LandingPage() {
 
             {/* Delivery timer chip */}
             <div
-              className="absolute top-1/2 -left-4 -translate-y-1/2 rounded-2xl bg-[#0B1220] text-white p-3 mg-shadow-hover flex items-center gap-2 z-10"
+              className="absolute top-1/2 -left-3 sm:-left-4 -translate-y-1/2 rounded-2xl bg-[#0B1220] text-white p-3 mg-shadow-hover flex items-center gap-2 z-10"
               style={{ animation: "floaty 5s ease-in-out infinite 0.4s" }}
             >
               <Clock className="w-4 h-4 text-[#FCD34D]" />
@@ -143,20 +152,20 @@ export default function LandingPage() {
         </section>
 
         {/* --------- HOW IT WORKS --------- */}
-        <section id="how" className="max-w-7xl mx-auto px-6 py-20">
+        <section id="how" className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-16 sm:py-24">
           <div className="text-center max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-full bg-white border border-[#F1EAD8] text-[#0B1220] px-4 py-1.5 text-xs font-bold uppercase tracking-widest">
               Sirf 3 steps
             </div>
-            <h2 className="mt-5 text-4xl sm:text-5xl font-bold tracking-tighter font-display leading-tight text-[#0B1220]">
+            <h2 className="mt-5 text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tighter font-display leading-tight text-[#0B1220]">
               MonthlyGrocery kaise kaam karta hai
             </h2>
-            <p className="mt-4 text-gray-600 text-lg">
+            <p className="mt-4 text-gray-600 text-base sm:text-lg">
               Ek mahine ka plan. Ek delivery slot. Kirana ki bhaag-daud khatam.
             </p>
           </div>
 
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+          <div className="mt-12 sm:mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 relative">
             {/* Connecting dotted line */}
             <div className="hidden md:block absolute top-14 left-[16.67%] right-[16.67%] h-0.5 border-t-2 border-dashed border-[#22C55E]/30 z-0" />
             
@@ -196,35 +205,35 @@ export default function LandingPage() {
         </section>
 
         {/* --------- WHY US BENTO --------- */}
-        <section id="benefits" className="max-w-7xl mx-auto px-6 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <section id="benefits" className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
             {/* Big feature card */}
-            <div className="md:col-span-4 md:row-span-2 rounded-[24px] p-8 relative overflow-hidden bg-gradient-to-br from-[#0B1220] to-[#1F2937] text-white grain">
-              <div className="absolute -bottom-16 -right-16 w-72 h-72 rounded-full bg-[#22C55E]/20 blur-3xl" />
+            <div className="md:col-span-4 md:row-span-2 rounded-[28px] p-8 sm:p-10 relative overflow-hidden bg-gradient-to-br from-[#0B1220] to-[#1F2937] text-white grain">
+              <div className="absolute -bottom-16 -right-16 w-80 h-80 rounded-full bg-[#22C55E]/20 blur-3xl" />
               <div className="relative">
                 <div className="inline-flex items-center gap-2 rounded-full bg-[#FCD34D]/20 text-[#FCD34D] px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
                   Har mahine bachao
                 </div>
-                <h3 className="mt-4 text-4xl sm:text-5xl font-bold tracking-tighter font-display leading-tight text-white">
+                <h3 className="mt-4 text-3xl sm:text-5xl font-bold tracking-tighter font-display leading-tight text-white">
                   Kirana wale se<br />upto 20% sasta.
                 </h3>
-                <p className="mt-4 text-white/70 max-w-xl leading-relaxed">
+                <p className="mt-4 text-white/70 max-w-xl text-base sm:text-lg leading-relaxed">
                   Kyunki hum poore mahine ka bulk order lete hain, middlemen ka margin bachta hai — aur woh saving aap tak pahunchti hai. Pehle mahine mein hi ₹1,000+ ki bachat.
                 </p>
-                <div className="mt-8 flex items-center gap-6 text-sm">
+                <div className="mt-8 sm:mt-10 flex items-center gap-6 sm:gap-8 text-sm">
                   <div>
-                    <div className="font-display text-3xl font-bold text-[#FCD34D]">23+</div>
-                    <div className="text-white/60 text-xs uppercase tracking-widest">Kirana SKUs</div>
+                    <div className="font-display text-3xl sm:text-4xl font-bold text-[#FCD34D]">23+</div>
+                    <div className="text-white/60 text-xs uppercase tracking-widest mt-1">Kirana SKUs</div>
                   </div>
-                  <div className="h-8 w-px bg-white/20" />
+                  <div className="h-10 w-px bg-white/20" />
                   <div>
-                    <div className="font-display text-3xl font-bold text-[#FCD34D]">4hr</div>
-                    <div className="text-white/60 text-xs uppercase tracking-widest">Home delivery</div>
+                    <div className="font-display text-3xl sm:text-4xl font-bold text-[#FCD34D]">4hr</div>
+                    <div className="text-white/60 text-xs uppercase tracking-widest mt-1">Home delivery</div>
                   </div>
-                  <div className="h-8 w-px bg-white/20" />
+                  <div className="h-10 w-px bg-white/20" />
                   <div>
-                    <div className="font-display text-3xl font-bold text-[#FCD34D]">100%</div>
-                    <div className="text-white/60 text-xs uppercase tracking-widest">OTP secure</div>
+                    <div className="font-display text-3xl sm:text-4xl font-bold text-[#FCD34D]">100%</div>
+                    <div className="text-white/60 text-xs uppercase tracking-widest mt-1">OTP secure</div>
                   </div>
                 </div>
               </div>
@@ -262,9 +271,9 @@ export default function LandingPage() {
         </section>
 
         {/* --------- SOCIAL PROOF STRIP --------- */}
-        <section className="max-w-7xl mx-auto px-6 py-14">
-          <div className="rounded-[32px] bg-[#22C55E] text-white p-8 sm:p-12 mg-shadow-brand relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-white/10 blur-3xl -translate-y-24 translate-x-24" />
+        <section className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-14">
+          <div className="rounded-[32px] bg-[#22C55E] text-white p-8 sm:p-12 lg:p-14 mg-shadow-brand relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 rounded-full bg-white/10 blur-3xl -translate-y-24 translate-x-24" />
             <div className="relative grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/15 text-[#FCD34D] px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
@@ -281,7 +290,7 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
                 <ProofStat n="₹1.2L" label="families ne is saal bachaya" />
                 <ProofStat n="4.9★" label="average rating" />
                 <ProofStat n="98%" label="har mahine wapas order karte hain" />
@@ -291,16 +300,16 @@ export default function LandingPage() {
         </section>
 
         {/* --------- FINAL CTA --------- */}
-        <section className="max-w-4xl mx-auto px-6 py-20 text-center">
+        <section className="max-w-4xl 2xl:max-w-5xl w-full mx-auto px-4 sm:px-8 py-20 text-center">
           <h2 className="text-4xl sm:text-5xl font-bold tracking-tighter font-display leading-tight text-[#0B1220]">
             Pantry planned.<br />Mahina simplified.
           </h2>
-          <p className="mt-4 text-gray-600 text-lg max-w-xl mx-auto">
+          <p className="mt-4 text-gray-600 text-base sm:text-lg max-w-xl mx-auto">
             Pehla monthly cart 4 ghante mein ghar. No subscription. No commitment. Sirf sealed pantry packs.
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center mt-8 rounded-full bg-[#0B1220] hover:bg-[#1F2937] text-white h-14 px-10 text-base font-semibold group transition-all"
+            className="inline-flex items-center mt-8 rounded-full bg-[#0B1220] hover:bg-[#1F2937] text-white h-14 px-10 text-base font-semibold group transition-all shadow-xl"
           >
             <span>Free mein shuru karo</span>
             <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
@@ -309,8 +318,8 @@ export default function LandingPage() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-[#F1EAD8] py-10 mt-8 bg-white/60">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-gray-500">
+      <footer className="w-full border-t border-[#F1EAD8] py-10 mt-8 bg-white/60">
+        <div className="max-w-[1440px] 2xl:max-w-[1600px] w-full mx-auto px-4 sm:px-8 lg:px-12 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-sm text-gray-500">
           <MonthlyGroceryLogo size="sm" />
           <div className="flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5" /> Pan India delivery
