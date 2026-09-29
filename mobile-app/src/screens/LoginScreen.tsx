@@ -268,7 +268,14 @@ export default function LoginScreen({ route, navigation }: any) {
                   maxLength={10}
                   value={mobile}
                   onChangeText={(val) => {
-                    setMobile(val.replace(/[^\d]/g, ''));
+                    const clean = val.replace(/[^\d]/g, '');
+                    let sanitized = clean;
+                    if (sanitized.startsWith('91') && sanitized.length > 10) {
+                      sanitized = sanitized.slice(2);
+                    } else if (sanitized.startsWith('0') && sanitized.length > 10) {
+                      sanitized = sanitized.slice(1);
+                    }
+                    setMobile(sanitized.slice(0, 10));
                     if (error) setError('');
                   }}
                   autoFocus={Platform.OS === 'ios'}

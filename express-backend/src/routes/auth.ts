@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import { sendOtp, verifyOtp } from '../services/twilioOtpService';
+import { sendOtp, verifyOtp, isTestPhoneNumber } from '../services/twilioOtpService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-token-key-change-me';
@@ -22,8 +22,8 @@ function normalizePhone(phone: string): string {
 
 // Check if a mobile number belongs to a registered merchant / store partner with status check
 async function checkMerchantStatus(normalizedPhone: string): Promise<{ registered: boolean; status?: string; shopName?: string }> {
-  if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN) {
-    return { registered: true, status: 'approved' };
+  if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN || isTestPhoneNumber(normalizedPhone)) {
+    return { registered: true, status: 'approved', shopName: 'MonthlyGrocery Test Store' };
   }
 
   try {

@@ -584,9 +584,18 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       placeholder="9876543210"
                       placeholderTextColor="#475569"
                       keyboardType="number-pad"
-                      maxLength={10}
                       value={mobile}
-                      onChangeText={(t) => setMobile(t.replace(/[^\d]/g, ''))}
+                      onChangeText={(t) => {
+                        const clean = t.replace(/[^\d]/g, '');
+                        let sanitized = clean;
+                        if (sanitized.startsWith('91') && sanitized.length > 10) {
+                          sanitized = sanitized.slice(2);
+                        } else if (sanitized.startsWith('0') && sanitized.length > 10) {
+                          sanitized = sanitized.slice(1);
+                        }
+                        setMobile(sanitized.slice(0, 10));
+                        if (error) setError('');
+                      }}
                     />
                   </View>
 

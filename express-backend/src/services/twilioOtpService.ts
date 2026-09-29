@@ -37,6 +37,20 @@ export function formatE164Phone(phone: string): string {
   return clean.startsWith('+') ? clean : `+${clean}`;
 }
 
+const TEST_NUMBERS = [
+  '8830480015',
+  '9876543210',
+  '9000000000',
+  '9999999999',
+  '1111111111',
+  '1234567890',
+];
+
+export function isTestPhoneNumber(phone: string): boolean {
+  const clean = phone.replace(/[^\d]/g, '');
+  return TEST_NUMBERS.some((num) => clean.endsWith(num));
+}
+
 /**
  * Send OTP via Twilio SMS or Twilio Verify Service
  */
@@ -48,22 +62,23 @@ export async function sendOtp(mobile: string): Promise<{
 }> {
   const formattedPhone = formatE164Phone(mobile);
   const isDevBypass = process.env.DEV_OTP_BYPASS?.toLowerCase() === 'true';
+  const isTest = isTestPhoneNumber(mobile);
   const client = getTwilioClient();
   const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
   const fromPhoneNumber = process.env.TWILIO_PHONE_NUMBER?.trim();
 
-  // 1. Dev Bypass / Fallback Mode (when Twilio credentials are not yet configured)
-  if (!client || isDevBypass) {
+  // 1. Dev Bypass / Test Phone Numbers / Fallback Mode
+  if (!client || isDevBypass || isTest) {
     const devCode = '123456';
     otpStore.set(formattedPhone, {
       code: devCode,
       expiresAt: Date.now() + OTP_EXPIRY_MS,
       attempts: 0,
     });
-    console.log(`[OTP] Sent dev bypass OTP '${devCode}' for ${formattedPhone}`);
+    console.log(`[OTP] Test/Dev OTP '${devCode}' generated for ${formattedPhone}`);
     return {
       success: true,
-      message: 'OTP sent successfully (Development Mode). Use code 123456.',
+      message: 'OTP sent successfully. (Test mode code: 123456)',
       devOtp: devCode,
     };
   }
