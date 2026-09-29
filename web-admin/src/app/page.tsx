@@ -663,9 +663,13 @@ export default function DashboardPage() {
   };
 
   const uploadAdminImage = async (file: File): Promise<string> => {
-    const freshToken = token || localStorage.getItem('@admin_token');
+    const freshToken = token || (typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null);
+    if (!freshToken) {
+      throw new Error('Not authenticated. Please log in again.');
+    }
     const formData = new FormData();
     formData.append('image', file);
+    formData.append('folder', 'categories');
     const uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${freshToken}` },
@@ -746,6 +750,7 @@ export default function DashboardPage() {
           ...(imageUrl ? { image_url: imageUrl } : {}),
         }),
       });
+      alert('Category added successfully!');
       setNewCategoryName('');
       setNewCategoryImageFile(null);
       fetchData();
@@ -756,7 +761,12 @@ export default function DashboardPage() {
   };
 
   const handleCategoryImageChange = async (catId: string, file: File) => {
-    if (!token || !file) return;
+    const freshToken = token || (typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null);
+    if (!freshToken) {
+      alert('Please log in as admin to update category PNG.');
+      return;
+    }
+    if (!file) return;
     setCategoryImageUploadingId(catId);
     try {
       const imageUrl = await uploadAdminImage(file);
@@ -764,6 +774,7 @@ export default function DashboardPage() {
         method: 'PUT',
         body: JSON.stringify({ image_url: imageUrl }),
       });
+      alert('Category PNG updated successfully!');
       fetchData();
     } catch (err: any) {
       alert(err.message || 'Error updating category image');
@@ -800,6 +811,7 @@ export default function DashboardPage() {
           ...(imageUrl ? { image_url: imageUrl } : {}),
         }),
       });
+      alert('Subcategory added successfully!');
       setNewSubcategoryName('');
       setNewSubcategoryImageFile(null);
       fetchData();
@@ -811,6 +823,11 @@ export default function DashboardPage() {
   };
 
   const handleSubcategoryImageChange = async (subId: string, file: File) => {
+    const freshToken = token || (typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null);
+    if (!freshToken) {
+      alert('Please log in as admin to update subcategory PNG.');
+      return;
+    }
     if (!file) return;
     setSubcategoryImageUploadingId(subId);
     try {
@@ -819,6 +836,7 @@ export default function DashboardPage() {
         method: 'PUT',
         body: JSON.stringify({ image_url: imageUrl }),
       });
+      alert('Subcategory PNG updated successfully!');
       fetchData();
     } catch (err: any) {
       alert(err.message || 'Error updating subcategory image');

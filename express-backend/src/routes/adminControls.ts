@@ -2332,8 +2332,8 @@ router.get('/categories', async (req, res) => {
   }
 });
 
-// POST /categories: Create a new category (Super Admin only)
-router.post('/categories', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+// POST /categories: Create a new category (Admin / Super Admin)
+router.post('/categories', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { name, image_url } = req.body;
   if (!name || !name.trim()) {
     return res.status(400).json({ success: false, error: 'Category name is required' });
@@ -2365,8 +2365,8 @@ router.post('/categories', authMiddleware, requireRole(['super_admin']), async (
   }
 });
 
-// PUT /categories/:id: Update category name or tile image (Super Admin only)
-router.put('/categories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+// PUT /categories/:id: Update category name or tile image (Admin / Super Admin)
+router.put('/categories/:id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
   const { name, image_url } = req.body;
 
@@ -2412,8 +2412,8 @@ router.put('/categories/:id', authMiddleware, requireRole(['super_admin']), asyn
   }
 });
 
-// DELETE /categories/:id: Delete a category (Super Admin only)
-router.delete('/categories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+// DELETE /categories/:id: Delete a category (Admin / Super Admin)
+router.delete('/categories/:id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
 
   try {
@@ -2456,8 +2456,8 @@ router.get('/subcategories', async (req, res) => {
   }
 });
 
-// POST /subcategories: Create subcategory (Super Admin only)
-router.post('/subcategories', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+// POST /subcategories: Create subcategory (Admin / Super Admin)
+router.post('/subcategories', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { category_id, name, image_url, sort_order, active } = req.body;
   if (!category_id || !name?.trim()) {
     return res.status(400).json({ success: false, error: 'Category and subcategory name are required' });
@@ -2498,8 +2498,8 @@ router.post('/subcategories', authMiddleware, requireRole(['super_admin']), asyn
   }
 });
 
-// PUT /subcategories/:id: Update subcategory (Super Admin only)
-router.put('/subcategories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+// PUT /subcategories/:id: Update subcategory (Admin / Super Admin)
+router.put('/subcategories/:id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
   const { name, image_url, sort_order, active } = req.body;
 
@@ -2552,8 +2552,8 @@ router.put('/subcategories/:id', authMiddleware, requireRole(['super_admin']), a
   }
 });
 
-// DELETE /subcategories/:id: Delete subcategory (Super Admin only)
-router.delete('/subcategories/:id', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
+// DELETE /subcategories/:id: Delete subcategory (Admin / Super Admin)
+router.delete('/subcategories/:id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
 
   try {
