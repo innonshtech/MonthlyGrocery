@@ -36,20 +36,31 @@ export async function uploadBufferToS3(
     console.warn('[S3 Service] Local disk cache write warning:', fsErr);
   }
 
-  // 2. Upload to AWS S3
-  const putCommand = new PutObjectCommand({
-    Bucket: AWS_S3_BUCKET_NAME,
-    Key: cleanKey,
-    Body: buffer,
-    ContentType: contentType,
-  });
-
+  // 2. Upload to AWS S3 with public-read ACL
   try {
+    const putCommand = new PutObjectCommand({
+      Bucket: AWS_S3_BUCKET_NAME,
+      Key: cleanKey,
+      Body: buffer,
+      ContentType: contentType,
+      ACL: 'public-read',
+    });
     await s3Client.send(putCommand);
-    console.log(`[S3 Service] Successfully uploaded ${cleanKey} to S3 bucket ${AWS_S3_BUCKET_NAME}`);
+    console.log(`[S3 Service] Successfully uploaded ${cleanKey} with public-read to S3 bucket ${AWS_S3_BUCKET_NAME}`);
   } catch (s3Err: any) {
-    console.error(`[S3 Service] S3 upload error for ${cleanKey}:`, s3Err.message);
-    // If S3 Put fails, still proceed if local cache exists
+    console.warn(`[S3 Service] S3 upload with ACL failed (${s3Err.message}), retrying without ACL...`);
+    try {
+      const fallbackPut = new PutObjectCommand({
+        Bucket: AWS_S3_BUCKET_NAME,
+        Key: cleanKey,
+        Body: buffer,
+        ContentType: contentType,
+      });
+      await s3Client.send(fallbackPut);
+      console.log(`[S3 Service] Successfully uploaded ${cleanKey} to S3 bucket ${AWS_S3_BUCKET_NAME}`);
+    } catch (fallbackErr: any) {
+      console.error(`[S3 Service] S3 fallback upload error for ${cleanKey}:`, fallbackErr.message);
+    }
   }
 
   // 3. Return direct AWS S3 Public URL
