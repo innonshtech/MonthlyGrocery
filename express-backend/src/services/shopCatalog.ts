@@ -27,19 +27,23 @@ async function fetchShopName(shopId: string): Promise<string | null> {
 
 function mergeShopProduct(
   shopId: string,
-  sp: Record<string, any>,
+  sp: Record<string, any> | undefined,
   p: Record<string, any>,
 ): Record<string, any> {
   const mrp = parseFloat(p.mrp) || 0;
-  const price = parseFloat(sp.selling_price) || 0;
-  const discountPercent =
-    sp.discount_percentage && sp.discount_percentage > 0
-      ? sp.discount_percentage
-      : mrp > price && mrp > 0
-        ? Math.round(((mrp - price) / mrp) * 100)
-        : 0;
+  const price =
+    sp && sp.selling_price && parseFloat(sp.selling_price) > 0
+      ? parseFloat(sp.selling_price)
+      : parseFloat(p.price) || mrp;
 
-  const isStockEmpty = sp.stock !== undefined && sp.stock !== null && Number(sp.stock) <= 0;
+  const discountPercent =
+    sp && sp.discount_percentage && sp.discount_percentage > 0
+      ? sp.discount_percentage
+      : p.discount_percent || (mrp > price && mrp > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0);
+
+  const stock = sp && sp.stock != null ? Number(sp.stock) : (p.stock != null ? Number(p.stock) : 50);
+  const isStockEmpty = stock <= 0;
+  const isAvailable = (sp ? sp.available !== false : p.available !== false) && !isStockEmpty;
 
   return enrichProductPackFields({
     id: p.id,
@@ -60,9 +64,9 @@ function mergeShopProduct(
     mrp,
     price,
     discount_percent: discountPercent,
-    stock: sp.stock != null ? Number(sp.stock) : 0,
-    available: !isStockEmpty,
-    in_stock: !isStockEmpty,
+    stock,
+    available: isAvailable,
+    in_stock: isAvailable,
     is_veg: p.is_veg,
     featured: p.featured,
     todays_deal: p.todays_deal,
@@ -73,7 +77,7 @@ function mergeShopProduct(
 
 import { searchProductsWithIntelligence } from '../utils/intelligentSearch';
 
-/** Load master catalog products for a shop, applying strict merchant inventory whitelist. Only products explicitly enabled by the merchant are shown to customers. */
+/** Load master catalog products for a shop with merchant-specific overrides applied. */
 export async function fetchProductsForShop(
   shopId: string,
   query: CatalogQuery = {},
@@ -81,23 +85,18 @@ export async function fetchProductsForShop(
   const db = readDb();
   const limitVal = query.limit ?? 100;
 
-  // 1. Get all shop_products explicitly configured / enabled for this specific shop
+  // 1. Get all shop_products overrides explicitly configured for this specific shop
   const shopOverrides =
     (db.shop_products || []).filter(
-      (sp: any) => sp.shop_id === shopId && sp.status === 'approved' && sp.available !== false,
+      (sp: any) => sp.shop_id === shopId,
     ) || [];
-
-  // If merchant has not added/enabled any products, their store is empty (no unauthorized master items leak)
-  if (shopOverrides.length === 0) {
-    return [];
-  }
 
   const overrideMap = new Map<string, any>();
   for (const sp of shopOverrides) {
     overrideMap.set(sp.product_id, sp);
   }
 
-  // 2. Fetch master products for only the enabled product IDs
+  // 2. Fetch master products from Supabase
   let supaQuery = supabase
     .from('products')
     .select('*');
@@ -117,8 +116,8 @@ export async function fetchProductsForShop(
   const out: Record<string, any>[] = [];
   for (const p of masterProducts || []) {
     const sp = overrideMap.get(p.id);
-    // Strict Merchant Inventory: Only show if this merchant has explicitly added and enabled it
-    if (!sp || sp.available === false) {
+    // If merchant explicitly disabled this item for their shop, omit it
+    if (sp && sp.available === false) {
       continue;
     }
     out.push(mergeShopProduct(shopId, sp, p));

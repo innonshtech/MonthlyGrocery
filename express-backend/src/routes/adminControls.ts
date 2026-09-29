@@ -1894,14 +1894,24 @@ router.post('/shop-products/product-content', authMiddleware, requireRole(['admi
     }
 
     const db = readDb();
-    const mapping = db.shop_products.find(
-      (sp) => sp.shop_id === shopId && sp.product_id === product_id && sp.status === 'approved',
+    if (!db.shop_products) db.shop_products = [];
+    let mapping = db.shop_products.find(
+      (sp: any) => sp.shop_id === shopId && sp.product_id === product_id,
     );
     if (!mapping) {
-      return res.status(403).json({
-        success: false,
-        error: 'Product is not approved in your shop inventory. Map the SKU first.',
-      });
+      const newSp: ShopProduct = {
+        id: `sp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        shop_id: shopId,
+        product_id: product_id,
+        selling_price: 0,
+        discount_percentage: 0,
+        stock: 50,
+        available: true,
+        status: 'approved',
+      };
+      db.shop_products.push(newSp);
+      writeDb(db);
+      mapping = newSp;
     }
 
     const updatePayload: Record<string, unknown> = {};
