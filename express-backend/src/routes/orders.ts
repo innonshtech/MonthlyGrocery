@@ -15,6 +15,7 @@ import { resolveShopIdForLocation, resolveShopIdForLocationAsync, getMerchantSho
 import { calculateHaversineDistanceKm } from '../services/geocodingService';
 import { calculateDeliveryFee } from '../services/deliveryFeeService';
 import { deductShopInventory, restoreShopInventory } from '../services/inventoryService';
+import { validateIndianPincode } from '../utils/pincodeValidator';
 
 const router = Router();
 
@@ -206,6 +207,15 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
 
   if (!finalAddress) {
     return res.status(400).json({ success: false, error: 'Delivery address is required' });
+  }
+
+  const pinValidation = validateIndianPincode(resolvedPin);
+  if (!pinValidation.isValid) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid Delivery PIN Code: ${pinValidation.error || 'Please provide a valid 6-digit Indian postal PIN code.'}`,
+      code: 'INVALID_PINCODE',
+    });
   }
 
   if (!delivery_slot?.trim()) {
@@ -550,6 +560,41 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     };
 
     db.orders.unshift(enrichedOrder);
+
+    // Auto-save delivery address as default for future checkouts if not present
+    if (finalAddress && pinValidation.isValid) {
+      if (!db.user_addresses) db.user_addresses = [];
+      const consumerId = req.user!.id;
+      const existingAddrIdx = db.user_addresses.findIndex(
+        (a: any) => a.consumer_id === consumerId && (a.pincode === resolvedPin || a.formatted_address === finalAddress),
+      );
+      if (existingAddrIdx === -1) {
+        db.user_addresses = db.user_addresses.map((a: any) =>
+          a.consumer_id === consumerId ? { ...a, isDefault: false } : a,
+        );
+        db.user_addresses.unshift({
+          id: `addr-${Date.now()}`,
+          consumer_id: consumerId,
+          tag: 'Home',
+          flat: finalFlat || finalAddress.split(',')[0]?.trim() || '',
+          street: finalStreet || resolvedArea || '',
+          landmark: finalLandmark || '',
+          area: resolvedArea || '',
+          city: resolvedCity || '',
+          state: finalState || 'Maharashtra',
+          district: finalDistrict || '',
+          pincode: resolvedPin,
+          phone: req.user!.mobile || '',
+          latitude: finalLat,
+          longitude: finalLng,
+          formatted_address: finalAddress,
+          isDefault: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+
     writeDb(db);
 
     // Auto-deduct inventory from merchant store stock

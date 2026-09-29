@@ -36,6 +36,7 @@ import {
   THUMB_BG,
 } from '../../components/CheckoutFigmaIcons';
 import { calculateCouponDiscount } from '../../utils/couponDiscount';
+import { isValidIndianPincode } from '../../utils/locationParams';
 import { API_BASE } from '../../config/api';
 
 /** Figma E1 Checkout canvas background */
@@ -86,12 +87,18 @@ export default function CheckoutScreen({ route, navigation }: any) {
       const loadAddresses = async () => {
         if (!token) return;
         try {
-          const list = await fetchUserAddresses(token);
-          await cacheAddressesLocally(list);
-          setSavedAddresses(list);
-          if (!selectedAddress && !route?.params?.selectedAddress && list.length > 0) {
-            const defAddr = list.find((a) => a.isDefault) || list[0];
+          const rawList = await fetchUserAddresses(token);
+          // Only keep valid addresses with a proper 6-digit Indian PIN code (reject 000000 or dummy)
+          const validList = (rawList || []).filter(
+            (a) => a.pincode && isValidIndianPincode(a.pincode) && a.flat?.trim(),
+          );
+          await cacheAddressesLocally(validList);
+          setSavedAddresses(validList);
+          if (!selectedAddress && !route?.params?.selectedAddress && validList.length > 0) {
+            const defAddr = validList.find((a) => a.isDefault) || validList[0];
             setSelectedAddress(defAddr);
+          } else if (validList.length === 0 && !route?.params?.selectedAddress) {
+            setSelectedAddress(null);
           }
         } catch {
           /* ignore */
@@ -637,15 +644,25 @@ export default function CheckoutScreen({ route, navigation }: any) {
             </Text>
           </View>
         ) : !selectedAddress || !selectedSlot ? (
-          <View style={styles.disabledBottomBtn}>
-            <Text style={styles.disabledBottomBtnText}>
+          <TouchableOpacity
+            style={[styles.disabledBottomBtn, { backgroundColor: '#1E7A46' }]}
+            onPress={() => {
+              if (!selectedAddress) {
+                setShowAddressModal(true);
+              } else if (!selectedSlot) {
+                handleSelectSlot();
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.disabledBottomBtnText, { color: '#FFFFFF', fontWeight: 'bold' }]}>
               {!selectedAddress && !selectedSlot
-                ? 'Add address & slot to continue'
+                ? 'Add Delivery Address & Slot ➔'
                 : !selectedAddress
-                ? 'Add delivery address to continue'
-                : 'Select delivery slot to continue'}
+                ? 'Add Delivery Address ➔'
+                : 'Select Delivery Slot ➔'}
             </Text>
-          </View>
+          </TouchableOpacity>
         ) : (
           <View style={styles.paymentRow}>
             <View style={styles.payableSummary}>

@@ -205,6 +205,11 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (!db.user_addresses) db.user_addresses = [];
     const consumerId = req.user!.id;
 
+    // Purge any legacy dummy/000000 address records
+    db.user_addresses = (db.user_addresses || []).filter(
+      (a: UserAddressRecord) => a.pincode && validateIndianPincode(a.pincode).isValid,
+    );
+
     const prevCount = db.user_addresses.length;
     db.user_addresses = cleanupUserAddresses(db.user_addresses, consumerId);
     if (db.user_addresses.length !== prevCount) {
