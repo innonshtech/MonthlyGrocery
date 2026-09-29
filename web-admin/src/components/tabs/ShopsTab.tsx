@@ -170,6 +170,87 @@ export default function ShopsTab({
   // Tab View Mode: 'table' vs 'register' vs 'coverage' vs 'map'
   const [viewMode, setViewMode] = useState<'table' | 'register' | 'coverage' | 'map'>('table');
   const [selectedShopForZones, setSelectedShopForZones] = useState<Shop | null>(null);
+  const [modalZoneArea, setModalZoneArea] = useState('');
+  const [modalZonePin, setModalZonePin] = useState('');
+  const [modalZoneCity, setModalZoneCity] = useState('');
+  const [modalZoneLoading, setModalZoneLoading] = useState(false);
+  const [modalBulkPin, setModalBulkPin] = useState('');
+  const [modalBulkLoading, setModalBulkLoading] = useState(false);
+
+  const openShopZonesModal = (shop: Shop) => {
+    setSelectedShopForZones(shop);
+    setModalZoneCity(shop.city || '');
+    setModalZonePin(shop.pincode || '');
+    setModalZoneArea('');
+    setModalBulkPin(shop.pincode || '');
+  };
+
+  const handleModalAddZone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShopForZones) return;
+    if (!modalZoneArea.trim() || !modalZonePin.trim()) {
+      alert('Please enter both Area / Locality name and 6-digit PIN code.');
+      return;
+    }
+    const pinVal = validateIndianPincode(modalZonePin.trim());
+    if (!pinVal.isValid) {
+      alert(`Invalid PIN Code: ${pinVal.error}`);
+      return;
+    }
+    setModalZoneLoading(true);
+    try {
+      const targetCity = (modalZoneCity.trim() || selectedShopForZones.city || 'Pune').trim();
+      await apiFetch('/admin/locations', {
+        method: 'POST',
+        body: JSON.stringify({
+          city: targetCity,
+          area_name: modalZoneArea.trim(),
+          pincode: pinVal.formatted || modalZonePin.trim(),
+          shop_id: selectedShopForZones.id,
+        }),
+      });
+      setModalZoneArea('');
+      fetchData();
+      alert(`Locality "${modalZoneArea.trim()}" mapped to ${selectedShopForZones.shop_name} successfully!`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add delivery zone');
+    } finally {
+      setModalZoneLoading(false);
+    }
+  };
+
+  const handleModalBulkPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShopForZones) return;
+    if (!modalBulkPin.trim() || modalBulkPin.trim().length !== 6) {
+      alert('Please enter a valid 6-digit PIN code.');
+      return;
+    }
+    const pinVal = validateIndianPincode(modalBulkPin.trim());
+    if (!pinVal.isValid) {
+      alert(`Invalid PIN Code: ${pinVal.error}`);
+      return;
+    }
+    setModalBulkLoading(true);
+    try {
+      const data = await apiFetch('/admin/locations/assign-pincode', {
+        method: 'POST',
+        body: JSON.stringify({
+          pincode: pinVal.formatted || modalBulkPin.trim(),
+          shop_id: selectedShopForZones.id,
+          city: selectedShopForZones.city || undefined,
+        }),
+      });
+      setModalBulkPin('');
+      fetchData();
+      alert(data.message || `Successfully mapped PIN code ${modalBulkPin} to ${selectedShopForZones.shop_name}!`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to bulk assign PIN code');
+    } finally {
+      setModalBulkLoading(false);
+    }
+  };
+
   const [shopSearchQuery, setShopSearchQuery] = useState('');
   const [shopStatusFilter, setShopStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
   const [coverageSearchQuery, setCoverageSearchQuery] = useState('');
@@ -1341,7 +1422,7 @@ export default function ShopsTab({
                           );
                           return (
                             <button
-                              onClick={() => setSelectedShopForZones(shop)}
+                              onClick={() => openShopZonesModal(shop)}
                               className="text-xs font-bold px-3 py-1.5 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
                               title="Manage Delivery Coverage Zones"
                             >
@@ -3688,15 +3769,16 @@ export default function ShopsTab({
       {/* STORE-LEVEL DELIVERY COVERAGE MODAL */}
       {selectedShopForZones && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/40">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-indigo-400" /> {selectedShopForZones.shop_name} — Coverage Zones
+                  <MapPin className="w-5 h-5 text-indigo-400" /> {selectedShopForZones.shop_name} — Delivery Zones
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Base: {selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'} (PIN:{' '}
-                  {selectedShopForZones.pincode || '—'})
+                  Base Store Location: <span className="text-slate-200 font-semibold">{selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'}</span> (PIN:{' '}
+                  <span className="font-mono text-emerald-400 font-bold">{selectedShopForZones.pincode || '—'}</span>)
                 </p>
               </div>
               <button
@@ -3707,68 +3789,170 @@ export default function ShopsTab({
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-4 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300">
-                  Assigned Delivery Localities ({locations.filter((l) => l.shop_id === selectedShopForZones.id).length})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedShopForZones(null);
-                    setViewMode('coverage');
-                    setCoverageShopFilter(selectedShopForZones.id);
-                  }}
-                  className="text-xs text-indigo-400 hover:underline font-semibold"
-                >
-                  Open in Matrix →
-                </button>
+            <div className="p-5 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
+              {/* Quick Add Custom Locality Zone */}
+              <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-emerald-400" /> Add Locality / Area to this Store
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                    Direct Map
+                  </span>
+                </div>
+
+                <form onSubmit={handleModalAddZone} className="space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Area / Locality *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Ravet, Kiwale"
+                        value={modalZoneArea}
+                        onChange={(e) => setModalZoneArea(e.target.value)}
+                        className="w-full mt-1 h-9 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">PIN Code *</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 412101"
+                        value={modalZonePin}
+                        onChange={(e) => setModalZonePin(e.target.value.replace(/[^\d]/g, ''))}
+                        className="w-full mt-1 h-9 px-3 bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold rounded-xl text-xs outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">City *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Pune"
+                        value={modalZoneCity}
+                        onChange={(e) => setModalZoneCity(e.target.value)}
+                        className="w-full mt-1 h-9 px-3 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={modalZoneLoading}
+                    className="w-full h-9 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {modalZoneLoading ? 'Adding Locality...' : `+ Add Area to ${selectedShopForZones.shop_name}`}
+                  </button>
+                </form>
               </div>
 
-              <div className="divide-y divide-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden">
-                {locations
-                  .filter((l) => l.shop_id === selectedShopForZones.id)
-                  .map((loc) => (
-                    <div key={loc.id} className="p-3 bg-slate-900/40 flex items-center justify-between text-xs">
-                      <div>
-                        <p className="font-bold text-white">📍 {loc.area_name}</p>
-                        <p className="text-[11px] text-slate-400">
-                          {loc.city} · PIN: <span className="font-mono text-emerald-400 font-bold">{loc.pincode}</span>
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                          Active Zone
-                        </span>
-                        {handleDeleteLocation && (
-                          <button
-                            onClick={() => handleDeleteLocation(loc.id)}
-                            className="text-rose-400 hover:text-rose-300 p-1"
-                            title="Unassign this area"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              {/* Bulk Assign Whole PIN Code Hub to this Store */}
+              <div className="bg-slate-900/60 rounded-2xl p-4 border border-indigo-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-indigo-400" /> Bulk Map Entire PIN Code to this Store
+                  </h4>
+                  <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md">
+                    1-Click Hub
+                  </span>
+                </div>
 
-                {locations.filter((l) => l.shop_id === selectedShopForZones.id).length === 0 && (
-                  <div className="p-6 text-center text-slate-500 text-xs italic">
-                    No extra localities mapped to this store yet. Orders from its base area (
-                    {selectedShopForZones.area_name || '—'}) will be fulfilled automatically.
-                  </div>
-                )}
+                <form onSubmit={handleModalBulkPin} className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter 6-digit PIN code (e.g. 412101)"
+                    value={modalBulkPin}
+                    onChange={(e) => setModalBulkPin(e.target.value.replace(/[^\d]/g, ''))}
+                    className="flex-1 h-9 px-3 bg-slate-950 border border-slate-800 text-indigo-300 font-mono font-bold rounded-xl text-xs outline-none focus:border-indigo-500"
+                    required
+                  />
+                  <button
+                    type="submit"
+                    disabled={modalBulkLoading}
+                    className="px-4 h-9 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-60"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    {modalBulkLoading ? 'Mapping PIN...' : '⚡ Bulk Map PIN'}
+                  </button>
+                </form>
+              </div>
+
+              {/* Active Assigned Localities List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Map className="w-3.5 h-3.5 text-slate-400" />
+                    Active Delivery Localities ({locations.filter((l) => l.shop_id === selectedShopForZones.id).length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedShopForZones(null);
+                      setViewMode('coverage');
+                      setCoverageShopFilter(selectedShopForZones.id);
+                    }}
+                    className="text-xs text-indigo-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    Open Global Coverage Matrix →
+                  </button>
+                </div>
+
+                <div className="divide-y divide-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden bg-slate-950/40">
+                  {locations
+                    .filter((l) => l.shop_id === selectedShopForZones.id)
+                    .map((loc) => (
+                      <div key={loc.id} className="p-3 bg-slate-900/30 flex items-center justify-between text-xs hover:bg-slate-900/60 transition-colors">
+                        <div>
+                          <p className="font-bold text-white flex items-center gap-1.5">📍 {loc.area_name}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {loc.city} · PIN: <span className="font-mono text-emerald-400 font-bold">{loc.pincode}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                            Active Zone
+                          </span>
+                          {handleDeleteLocation && (
+                            <button
+                              onClick={() => handleDeleteLocation(loc.id)}
+                              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
+                              title="Unassign this area from store"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                  {locations.filter((l) => l.shop_id === selectedShopForZones.id).length === 0 && (
+                    <div className="p-6 text-center text-slate-400 text-xs space-y-1">
+                      <p className="font-semibold text-slate-300">No extra delivery zones mapped yet.</p>
+                      <p className="text-[11px] text-slate-500">
+                        Orders from its base area (<span className="text-slate-300 font-semibold">{selectedShopForZones.area_name || '—'}</span>) are fulfilled automatically. Use the forms above to add more delivery localities or entire PIN codes!
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">
+                Total Localities: <strong className="text-slate-300">{locations.filter((l) => l.shop_id === selectedShopForZones.id).length} mapped</strong>
+              </span>
               <button
                 type="button"
                 onClick={() => setSelectedShopForZones(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
-                Close
+                Done / Close
               </button>
             </div>
           </div>
