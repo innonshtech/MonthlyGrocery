@@ -268,9 +268,13 @@ export default function LocationsTab({
                   onChange={(e) => {
                     const selectedAreaName = e.target.value;
                     setLocArea(selectedAreaName);
-                    const cityObj = cities.find((c) => c.name === locCity);
+                    const cityObj = cities.find((c) => c.name.toLowerCase() === (locCity || '').toLowerCase() || c.id === locCity);
                     const matchedArea = areas.find(
-                      (a) => a.name === selectedAreaName && (cityObj ? a.city_id === cityObj.id : true)
+                      (a) =>
+                        a.name.toLowerCase() === selectedAreaName.toLowerCase() &&
+                        (cityObj
+                          ? a.city_id === cityObj.id || (a as any).city_name?.toLowerCase() === cityObj.name.toLowerCase()
+                          : true)
                     );
                     if (matchedArea?.pincode) {
                       setLocPin(matchedArea.pincode);
@@ -280,12 +284,17 @@ export default function LocationsTab({
                   <option value="">Select locality...</option>
                   {areas
                     .filter((area) => {
-                      const cityObj = cities.find((c) => c.name === locCity);
-                      return cityObj ? area.city_id === cityObj.id : false;
+                      const cityObj = cities.find((c) => c.name.toLowerCase() === (locCity || '').toLowerCase() || c.id === locCity);
+                      if (!cityObj) return false;
+                      return (
+                        area.city_id === cityObj.id ||
+                        (area as any).city_name?.toLowerCase() === cityObj.name.toLowerCase() ||
+                        area.city_id?.toLowerCase() === cityObj.name.toLowerCase()
+                      );
                     })
                     .map((area) => (
                       <option key={area.id} value={area.name}>
-                        {area.name}
+                        📍 {area.name} {area.pincode ? `(${area.pincode})` : ''}
                       </option>
                     ))}
                 </select>

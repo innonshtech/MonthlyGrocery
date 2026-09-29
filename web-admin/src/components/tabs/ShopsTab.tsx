@@ -170,82 +170,139 @@ export default function ShopsTab({
   // Tab View Mode: 'table' vs 'register' vs 'coverage' vs 'map'
   const [viewMode, setViewMode] = useState<'table' | 'register' | 'coverage' | 'map'>('table');
   const [selectedShopForZones, setSelectedShopForZones] = useState<Shop | null>(null);
-  const [modalZoneArea, setModalZoneArea] = useState('');
-  const [modalZonePin, setModalZonePin] = useState('');
-  const [modalZoneCity, setModalZoneCity] = useState('');
+  // Coverage Zones Modal Local State (Reference-Driven from Registered Cities & Areas)
+  const [modalSelectedCityId, setModalSelectedCityId] = useState('');
+  const [modalSelectedAreaId, setModalSelectedAreaId] = useState('');
+  const [modalAreaSearch, setModalAreaSearch] = useState('');
   const [modalZoneLoading, setModalZoneLoading] = useState(false);
-  const [modalBulkPin, setModalBulkPin] = useState('');
   const [modalBulkLoading, setModalBulkLoading] = useState(false);
+
+  // Compute matching City object for modal
+  const modalCityObj = useMemo(() => {
+    if (!selectedShopForZones) return null;
+    const target = modalSelectedCityId || selectedShopForZones.city || '';
+    return (
+      (cities || []).find(
+        (c) =>
+          c.id === target ||
+          c.name.toLowerCase() === target.toLowerCase() ||
+          (c.id && target && c.id.toLowerCase() === target.toLowerCase())
+      ) || (cities && cities.length > 0 ? cities[0] : null)
+    );
+  }, [cities, modalSelectedCityId, selectedShopForZones]);
+
+  // Compute all registered Areas under the selected City (tolerance for city_id or city_name)
+  const modalAvailableAreas = useMemo(() => {
+    if (!modalCityObj) {
+      const storeCity = (selectedShopForZones?.city || '').toLowerCase().trim();
+      return (areas || []).filter((a) => {
+        const parentCity = (cities || []).find((c) => c.id === a.city_id);
+        return parentCity
+          ? parentCity.name.toLowerCase() === storeCity
+          : (a as any).city_name?.toLowerCase() === storeCity;
+      });
+    }
+    return (areas || []).filter(
+      (a) =>
+        a.city_id === modalCityObj.id ||
+        (a as any).city_name?.toLowerCase() === modalCityObj.name.toLowerCase() ||
+        a.city_id?.toLowerCase() === modalCityObj.name.toLowerCase()
+    );
+  }, [areas, cities, modalCityObj, selectedShopForZones]);
+
+  // Unique PIN codes present in this city's registered areas & existing mapped locations
+  const modalUniquePincodes = useMemo(() => {
+    const pinSet = new Set<string>();
+    modalAvailableAreas.forEach((a) => {
+      if (a.pincode && a.pincode.trim().length === 6) pinSet.add(a.pincode.trim());
+    });
+    if (modalCityObj) {
+      const cityName = modalCityObj.name.toLowerCase();
+      (locations || []).forEach((l) => {
+        if (l.city?.toLowerCase() === cityName && l.pincode && l.pincode.trim().length === 6) {
+          pinSet.add(l.pincode.trim());
+        }
+      });
+    }
+    return Array.from(pinSet).sort();
+  }, [modalAvailableAreas, locations, modalCityObj]);
+
+  // Filtered areas based on search query inside modal
+  const filteredModalAreas = useMemo(() => {
+    if (!modalAreaSearch.trim()) return modalAvailableAreas;
+    const q = modalAreaSearch.toLowerCase().trim();
+    return modalAvailableAreas.filter(
+      (a) => a.name.toLowerCase().includes(q) || (a.pincode && a.pincode.includes(q))
+    );
+  }, [modalAvailableAreas, modalAreaSearch]);
 
   const openShopZonesModal = (shop: Shop) => {
     setSelectedShopForZones(shop);
-    setModalZoneCity(shop.city || '');
-    setModalZonePin(shop.pincode || '');
-    setModalZoneArea('');
-    setModalBulkPin(shop.pincode || '');
+    const shopCity = (shop.city || '').trim().toLowerCase();
+    const matchedCity = (cities || []).find(
+      (c) => c.name.toLowerCase() === shopCity || c.id.toLowerCase() === shopCity
+    );
+    setModalSelectedCityId(matchedCity ? matchedCity.id : (cities && cities[0] ? cities[0].id : ''));
+    setModalSelectedAreaId('');
+    setModalAreaSearch('');
   };
 
-  const handleModalAddZone = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Direct assign a specific area reference to this store
+  const handleAssignSpecificArea = async (area: Area) => {
     if (!selectedShopForZones) return;
-    if (!modalZoneArea.trim() || !modalZonePin.trim()) {
-      alert('Please enter both Area / Locality name and 6-digit PIN code.');
-      return;
-    }
-    const pinVal = validateIndianPincode(modalZonePin.trim());
-    if (!pinVal.isValid) {
-      alert(`Invalid PIN Code: ${pinVal.error}`);
-      return;
-    }
+    const cityName = modalCityObj?.name || selectedShopForZones.city || 'Pune';
+    const pincode = area.pincode || selectedShopForZones.pincode || '412101';
     setModalZoneLoading(true);
     try {
-      const targetCity = (modalZoneCity.trim() || selectedShopForZones.city || 'Pune').trim();
       await apiFetch('/admin/locations', {
         method: 'POST',
         body: JSON.stringify({
-          city: targetCity,
-          area_name: modalZoneArea.trim(),
-          pincode: pinVal.formatted || modalZonePin.trim(),
+          city: cityName,
+          area_name: area.name,
+          pincode: pincode,
           shop_id: selectedShopForZones.id,
         }),
       });
-      setModalZoneArea('');
       fetchData();
-      alert(`Locality "${modalZoneArea.trim()}" mapped to ${selectedShopForZones.shop_name} successfully!`);
+      alert(`Locality "${area.name}" assigned to ${selectedShopForZones.shop_name} successfully!`);
     } catch (err: any) {
-      alert(err.message || 'Failed to add delivery zone');
+      alert(err.message || 'Failed to assign area');
     } finally {
       setModalZoneLoading(false);
     }
   };
 
-  const handleModalBulkPin = async (e: React.FormEvent) => {
+  // Assign dropdown selected area
+  const handleAssignSelectedAreaFromDropdown = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedShopForZones) return;
-    if (!modalBulkPin.trim() || modalBulkPin.trim().length !== 6) {
-      alert('Please enter a valid 6-digit PIN code.');
+    if (!selectedShopForZones || !modalSelectedAreaId) {
+      alert('Please select a registered locality from the dropdown');
       return;
     }
-    const pinVal = validateIndianPincode(modalBulkPin.trim());
-    if (!pinVal.isValid) {
-      alert(`Invalid PIN Code: ${pinVal.error}`);
-      return;
-    }
+    const areaObj = modalAvailableAreas.find((a) => a.id === modalSelectedAreaId);
+    if (!areaObj) return;
+    await handleAssignSpecificArea(areaObj);
+    setModalSelectedAreaId('');
+  };
+
+  // 1-Click Bulk Assign entire PIN code
+  const handleAssignPincodeDirect = async (pincode: string) => {
+    if (!selectedShopForZones || !pincode) return;
     setModalBulkLoading(true);
     try {
+      const cityName = modalCityObj?.name || selectedShopForZones.city;
       const data = await apiFetch('/admin/locations/assign-pincode', {
         method: 'POST',
         body: JSON.stringify({
-          pincode: pinVal.formatted || modalBulkPin.trim(),
+          pincode: pincode.trim(),
           shop_id: selectedShopForZones.id,
-          city: selectedShopForZones.city || undefined,
+          city: cityName || undefined,
         }),
       });
-      setModalBulkPin('');
       fetchData();
-      alert(data.message || `Successfully mapped PIN code ${modalBulkPin} to ${selectedShopForZones.shop_name}!`);
+      alert(data.message || `Successfully mapped PIN ${pincode} to ${selectedShopForZones.shop_name}!`);
     } catch (err: any) {
-      alert(err.message || 'Failed to bulk assign PIN code');
+      alert(err.message || 'Failed to assign PIN code');
     } finally {
       setModalBulkLoading(false);
     }
@@ -263,6 +320,56 @@ export default function ShopsTab({
   const [pincodeSearchQuery, setPincodeSearchQuery] = useState('');
   const [manualPincodeMode, setManualPincodeMode] = useState(false);
   const [manualCityMode, setManualCityMode] = useState(false);
+  const [manualAreaMode, setManualAreaMode] = useState(false);
+  const [customLocalityMode, setCustomLocalityMode] = useState(false);
+  const [customBulkPinMode, setCustomBulkPinMode] = useState(false);
+
+  // Available Areas for Registration Form
+  const regAvailableAreas = useMemo(() => {
+    if (!regCity) return [];
+    const cityObj = (cities || []).find((c) => c.name.toLowerCase() === regCity.toLowerCase() || c.id === regCity);
+    return (areas || []).filter((a) => {
+      if (cityObj && a.city_id === cityObj.id) return true;
+      if ((a as any).city_name && (a as any).city_name.toLowerCase() === regCity.toLowerCase()) return true;
+      if (a.city_id?.toLowerCase() === regCity.toLowerCase()) return true;
+      return false;
+    });
+  }, [cities, areas, regCity]);
+
+  // Unique PIN codes across registered areas & locations for Matrix
+  const matrixUniquePincodes = useMemo(() => {
+    const pinSet = new Set<string>();
+    const filterCityName = (locCity || '').toLowerCase().trim();
+
+    (areas || []).forEach((a) => {
+      if (filterCityName) {
+        const parentCity = (cities || []).find((c) => c.id === a.city_id);
+        const matchesCity = parentCity?.name.toLowerCase() === filterCityName || (a as any).city_name?.toLowerCase() === filterCityName;
+        if (!matchesCity) return;
+      }
+      if (a.pincode && a.pincode.trim().length === 6) pinSet.add(a.pincode.trim());
+    });
+
+    (locations || []).forEach((l) => {
+      if (filterCityName && l.city?.toLowerCase() !== filterCityName) return;
+      if (l.pincode && l.pincode.trim().length === 6) pinSet.add(l.pincode.trim());
+    });
+
+    return Array.from(pinSet).sort();
+  }, [areas, locations, cities, locCity]);
+
+  // Areas available for the Matrix "Add Locality Zone" form
+  const matrixAvailableAreas = useMemo(() => {
+    const targetCity = (locCity || '').toLowerCase().trim();
+    if (!targetCity) return areas || [];
+    const cityObj = (cities || []).find((c) => c.name.toLowerCase() === targetCity || c.id === targetCity);
+    return (areas || []).filter((a) => {
+      if (cityObj && a.city_id === cityObj.id) return true;
+      if ((a as any).city_name && (a as any).city_name.toLowerCase() === targetCity) return true;
+      if (a.city_id?.toLowerCase() === targetCity) return true;
+      return false;
+    });
+  }, [cities, areas, locCity]);
 
   // Review Application Modal State (tracked by ID for clean React state without re-render loops)
   const [selectedReviewShopId, setSelectedReviewShopId] = useState<string | null>(null);
@@ -1773,33 +1880,68 @@ export default function ShopsTab({
                 )}
               </div>
 
-              {/* Pincode & Base Locality */}
+              {/* Base Locality & Pincode Selection (Reference Driven) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
-                      <span>Pincode *</span>
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                      Base Locality / Area *
                     </label>
+                    {regAvailableAreas.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setManualAreaMode(!manualAreaMode)}
+                        className="text-[10px] text-slate-400 hover:text-emerald-400 underline transition-colors cursor-pointer"
+                      >
+                        {manualAreaMode ? '← Pick Registered Area' : '✏️ Custom Area'}
+                      </button>
+                    )}
                   </div>
+
+                  {regAvailableAreas.length > 0 && !manualAreaMode ? (
+                    <select
+                      className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer font-medium"
+                      value={regArea}
+                      onChange={(e) => {
+                        const chosenAreaName = e.target.value;
+                        if (setRegArea) setRegArea(chosenAreaName);
+                        const matchedAreaObj = regAvailableAreas.find(
+                          (a) => a.name.toLowerCase() === chosenAreaName.toLowerCase()
+                        );
+                        if (matchedAreaObj?.pincode && setRegPincode) {
+                          setRegPincode(matchedAreaObj.pincode);
+                        }
+                      }}
+                      required
+                    >
+                      <option value="">-- Choose Registered Locality ({regAvailableAreas.length} in {regCity || 'City'}) --</option>
+                      {regAvailableAreas.map((a) => (
+                        <option key={a.id} value={a.name}>
+                          📍 {a.name} {a.pincode ? `(PIN: ${a.pincode})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      placeholder="e.g. Ravet, Kothrud"
+                      className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
+                      value={regArea}
+                      onChange={(e) => setRegArea && setRegArea(e.target.value)}
+                      required
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Pincode *</label>
                   <input
                     type="text"
                     maxLength={6}
                     placeholder="e.g. 412101"
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-emerald-400 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono font-bold"
                     value={regPincode}
                     onChange={(e) => setRegPincode && setRegPincode(e.target.value.replace(/[^\d]/g, ''))}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Base Locality / Area *</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ravet, Kothrud"
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
-                    value={regArea}
-                    onChange={(e) => setRegArea && setRegArea(e.target.value)}
                     required
                   />
                 </div>
@@ -2083,16 +2225,25 @@ export default function ShopsTab({
                 <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
                   <Zap className="w-4 h-4 text-indigo-400" /> Bulk Assign Entire PIN Code Hub
                 </h4>
-                <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full">
-                  1-Click Hub
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomBulkPinMode(!customBulkPinMode)}
+                    className="text-[10px] text-slate-400 hover:text-indigo-300 underline cursor-pointer"
+                  >
+                    {customBulkPinMode ? '← Pick Registered PIN' : '✏️ Custom PIN'}
+                  </button>
+                  <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full">
+                    1-Click Hub
+                  </span>
+                </div>
               </div>
 
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (!bulkPin || bulkPin.length !== 6) {
-                    alert('Please enter a valid 6-digit PIN code');
+                    alert('Please select or enter a valid 6-digit PIN code');
                     return;
                   }
                   if (!bulkShop) {
@@ -2102,7 +2253,7 @@ export default function ShopsTab({
                   if (handleBulkAssignPincode) {
                     setBulkSubmitting(true);
                     try {
-                      await handleBulkAssignPincode(bulkPin, bulkShop);
+                      await handleBulkAssignPincode(bulkPin, bulkShop, locCity || undefined);
                       setBulkPin('');
                       setBulkShop('');
                     } finally {
@@ -2112,24 +2263,45 @@ export default function ShopsTab({
                 }}
                 className="space-y-3"
               >
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">PIN Code *</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      placeholder="e.g. 412101"
-                      className={`w-full mt-1 h-10 px-3 bg-slate-950 border ${
-                        bulkPinValidation && !bulkPinValidation.isValid && bulkPin.length === 6
-                          ? 'border-rose-500 focus:border-rose-400'
-                          : bulkPinValidation?.isValid
-                          ? 'border-indigo-500 focus:border-indigo-400'
-                          : 'border-slate-800 focus:border-indigo-500'
-                      } text-white rounded-xl text-xs font-mono font-bold outline-none`}
-                      value={bulkPin}
-                      onChange={(e) => setBulkPin(e.target.value.replace(/[^\d]/g, ''))}
-                      required
-                    />
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                      Select PIN Code Hub *
+                    </label>
+                    {!customBulkPinMode && matrixUniquePincodes.length > 0 ? (
+                      <select
+                        className="w-full mt-1 h-10 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-500 cursor-pointer"
+                        value={bulkPin}
+                        onChange={(e) => setBulkPin(e.target.value)}
+                        required
+                      >
+                        <option value="">-- Choose Registered PIN ({matrixUniquePincodes.length}) --</option>
+                        {matrixUniquePincodes.map((pin) => {
+                          const count = (areas || []).filter((a) => (a.pincode || '').trim() === pin).length;
+                          return (
+                            <option key={pin} value={pin}>
+                              PIN {pin} ({count} {count === 1 ? 'locality' : 'localities'})
+                            </option>
+                          );
+                        })}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 412101"
+                        className={`w-full mt-1 h-10 px-3 bg-slate-950 border ${
+                          bulkPinValidation && !bulkPinValidation.isValid && bulkPin.length === 6
+                            ? 'border-rose-500 focus:border-rose-400'
+                            : bulkPinValidation?.isValid
+                            ? 'border-indigo-500 focus:border-indigo-400'
+                            : 'border-slate-800 focus:border-indigo-500'
+                        } text-white rounded-xl text-xs font-mono font-bold outline-none`}
+                        value={bulkPin}
+                        onChange={(e) => setBulkPin(e.target.value.replace(/[^\d]/g, ''))}
+                        required
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Assign To Store *</label>
@@ -2151,12 +2323,32 @@ export default function ShopsTab({
                   </div>
                 </div>
 
+                {/* 1-Click Quick PIN Buttons */}
+                {matrixUniquePincodes.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {matrixUniquePincodes.slice(0, 8).map((pin) => (
+                      <button
+                        key={pin}
+                        type="button"
+                        onClick={() => setBulkPin(pin)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                          bulkPin === pin
+                            ? 'bg-indigo-600 text-white border border-indigo-400 shadow-sm'
+                            : 'bg-slate-950/80 hover:bg-slate-800 text-indigo-300 border border-slate-800'
+                        }`}
+                      >
+                        ⚡ {pin}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  disabled={bulkSubmitting}
-                  className="w-full h-10 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  disabled={bulkSubmitting || !bulkPin || !bulkShop}
+                  className="w-full h-10 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {bulkSubmitting ? 'Assigning...' : '⚡ Bulk Assign All Areas in PIN Code'}
+                  {bulkSubmitting ? 'Assigning...' : `⚡ Bulk Assign All Areas in PIN ${bulkPin || '...'}`}
                 </button>
               </form>
             </section>
@@ -2166,44 +2358,93 @@ export default function ShopsTab({
               <section className="lg:col-span-6 bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-emerald-400" /> Add Custom Locality Zone
+                    <Plus className="w-4 h-4 text-emerald-400" /> Assign Registered Locality Zone
                   </h4>
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                    Single Zone
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCustomLocalityMode(!customLocalityMode)}
+                      className="text-[10px] text-slate-400 hover:text-emerald-400 underline cursor-pointer"
+                    >
+                      {customLocalityMode ? '← Pick Registered Locality' : '✏️ Custom Area'}
+                    </button>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      1-Click
+                    </span>
+                  </div>
                 </div>
 
                 <form onSubmit={handleAddLocation} className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                       <label className="text-[10px] font-bold text-slate-400 uppercase">City *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Pune"
-                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none"
+                      <select
                         value={locCity}
-                        onChange={(e) => setLocCity && setLocCity(e.target.value)}
+                        onChange={(e) => {
+                          const newCity = e.target.value;
+                          if (setLocCity) setLocCity(newCity);
+                          if (setLocArea) setLocArea('');
+                          if (setLocPin) setLocPin('');
+                        }}
+                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-semibold"
                         required
-                      />
+                      >
+                        <option value="">Select City...</option>
+                        {(cities || []).map((c) => (
+                          <option key={c.id} value={c.name}>
+                            🏙️ {c.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Area *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Ravet"
-                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none"
-                        value={locArea}
-                        onChange={(e) => setLocArea && setLocArea(e.target.value)}
-                        required
-                      />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">Locality / Area *</label>
+                      {!customLocalityMode ? (
+                        <select
+                          value={locArea}
+                          onChange={(e) => {
+                            const chosenAreaName = e.target.value;
+                            if (setLocArea) setLocArea(chosenAreaName);
+                            const found = matrixAvailableAreas.find(
+                              (a) => a.name.toLowerCase() === chosenAreaName.toLowerCase()
+                            );
+                            if (found?.pincode && setLocPin) {
+                              setLocPin(found.pincode);
+                            }
+                          }}
+                          disabled={!locCity && (cities || []).length > 0}
+                          className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50 font-medium"
+                          required
+                        >
+                          <option value="">
+                            {locCity ? `-- Select Locality (${matrixAvailableAreas.length}) --` : '-- Choose City first --'}
+                          </option>
+                          {matrixAvailableAreas.map((a) => (
+                            <option key={a.id} value={a.name}>
+                              📍 {a.name} {a.pincode ? `(${a.pincode})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="e.g. Ravet"
+                          className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                          value={locArea}
+                          onChange={(e) => setLocArea && setLocArea(e.target.value)}
+                          required
+                        />
+                      )}
                     </div>
+
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">PIN *</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase">PIN Code *</label>
                       <input
                         type="text"
                         maxLength={6}
                         placeholder="412101"
-                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs font-mono outline-none"
+                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold rounded-xl text-xs outline-none focus:border-emerald-500"
                         value={locPin}
                         onChange={(e) => setLocPin && setLocPin(e.target.value.replace(/[^\d]/g, ''))}
                         required
@@ -2213,7 +2454,7 @@ export default function ShopsTab({
 
                   <div className="flex gap-2">
                     <select
-                      className="flex-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none cursor-pointer"
+                      className="flex-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer"
                       value={locShop}
                       onChange={(e) => setLocShop && setLocShop(e.target.value)}
                       required
@@ -2230,7 +2471,8 @@ export default function ShopsTab({
 
                     <button
                       type="submit"
-                      className="px-4 h-9 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      disabled={!locCity || !locArea || !locPin || !locShop}
+                      className="px-4 h-9 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
                     >
                       Save Zone
                     </button>
@@ -3766,19 +4008,19 @@ export default function ShopsTab({
         </div>
       )}
 
-      {/* STORE-LEVEL DELIVERY COVERAGE MODAL */}
+      {/* STORE-LEVEL DELIVERY COVERAGE MODAL (REFERENCE DRIVEN) */}
       {selectedShopForZones && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/40">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-indigo-400" /> {selectedShopForZones.shop_name} — Delivery Zones
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Base Store Location: <span className="text-slate-200 font-semibold">{selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'}</span> (PIN:{' '}
-                  <span className="font-mono text-emerald-400 font-bold">{selectedShopForZones.pincode || '—'}</span>)
+                  Base Store: <span className="text-slate-200 font-semibold">{selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'}</span> · PIN:{' '}
+                  <span className="font-mono text-emerald-400 font-bold">{selectedShopForZones.pincode || '—'}</span>
                 </p>
               </div>
               <button
@@ -3790,104 +4032,205 @@ export default function ShopsTab({
             </div>
 
             <div className="p-5 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
-              {/* Quick Add Custom Locality Zone */}
-              <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 space-y-3">
+              {/* Reference City Selector */}
+              <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                    Select Reference City
+                  </label>
+                  <select
+                    value={modalSelectedCityId}
+                    onChange={(e) => {
+                      setModalSelectedCityId(e.target.value);
+                      setModalSelectedAreaId('');
+                    }}
+                    className="w-full sm:w-72 h-10 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-semibold outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {cities && cities.length > 0 ? (
+                      cities.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          🏙️ {c.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">{selectedShopForZones.city || 'Default City'}</option>
+                    )}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-xl text-xs font-bold">
+                    {modalAvailableAreas.length} Localities in {modalCityObj?.name || selectedShopForZones.city}
+                  </span>
+                </div>
+              </div>
+
+              {/* 1-Click Dropdown Locality Assign (NO TYPING) */}
+              <div className="bg-slate-900/60 rounded-2xl p-4 border border-emerald-500/20 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5 text-emerald-400" /> Add Locality / Area to this Store
+                    <Plus className="w-3.5 h-3.5 text-emerald-400" /> Select & Assign Registered Locality (1-Click)
                   </h4>
                   <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                    Direct Map
+                    From Database
                   </span>
                 </div>
 
-                <form onSubmit={handleModalAddZone} className="space-y-2.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Area / Locality *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Ravet, Kiwale"
-                        value={modalZoneArea}
-                        onChange={(e) => setModalZoneArea(e.target.value)}
-                        className="w-full mt-1 h-9 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs outline-none focus:border-emerald-500"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">PIN Code *</label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        placeholder="e.g. 412101"
-                        value={modalZonePin}
-                        onChange={(e) => setModalZonePin(e.target.value.replace(/[^\d]/g, ''))}
-                        className="w-full mt-1 h-9 px-3 bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold rounded-xl text-xs outline-none focus:border-emerald-500"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">City *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Pune"
-                        value={modalZoneCity}
-                        onChange={(e) => setModalZoneCity(e.target.value)}
-                        className="w-full mt-1 h-9 px-3 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
-                        required
-                      />
-                    </div>
+                <form onSubmit={handleAssignSelectedAreaFromDropdown} className="flex flex-col sm:flex-row gap-2.5">
+                  <select
+                    value={modalSelectedAreaId}
+                    onChange={(e) => setModalSelectedAreaId(e.target.value)}
+                    className="flex-1 h-10 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-medium"
+                    required
+                  >
+                    <option value="">-- Choose Registered Locality ({modalAvailableAreas.length} available) --</option>
+                    {modalAvailableAreas.map((a) => {
+                      const isAssignedToThis = locations.some(
+                        (l) => l.shop_id === selectedShopForZones.id && l.area_name.toLowerCase() === a.name.toLowerCase()
+                      );
+                      return (
+                        <option key={a.id} value={a.id}>
+                          📍 {a.name} {a.pincode ? `· PIN: ${a.pincode}` : ''} {isAssignedToThis ? '✓ (Already Mapped)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <button
+                    type="submit"
+                    disabled={modalZoneLoading || !modalSelectedAreaId}
+                    className="px-5 h-10 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {modalZoneLoading ? 'Mapping...' : `+ Assign to ${selectedShopForZones.shop_name}`}
+                  </button>
+                </form>
+              </div>
+
+              {/* 1-Click Bulk PIN Code Hubs Available in this City */}
+              {modalUniquePincodes.length > 0 && (
+                <div className="bg-slate-900/60 rounded-2xl p-4 border border-indigo-500/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-indigo-400" /> 1-Click Bulk Map PIN Code Hubs in {modalCityObj?.name || selectedShopForZones.city}
+                    </h4>
+                    <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md">
+                      Bulk Auto-Map
+                    </span>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={modalZoneLoading}
-                    className="w-full h-9 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    {modalZoneLoading ? 'Adding Locality...' : `+ Add Area to ${selectedShopForZones.shop_name}`}
-                  </button>
-                </form>
-              </div>
+                  <p className="text-xs text-slate-400">
+                    Click any PIN badge below to automatically assign all registered localities under that PIN code to this store:
+                  </p>
 
-              {/* Bulk Assign Whole PIN Code Hub to this Store */}
-              <div className="bg-slate-900/60 rounded-2xl p-4 border border-indigo-500/20 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5 text-indigo-400" /> Bulk Map Entire PIN Code to this Store
-                  </h4>
-                  <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md">
-                    1-Click Hub
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {modalUniquePincodes.map((pin) => {
+                      const count = modalAvailableAreas.filter((a) => (a.pincode || '').trim() === pin).length;
+                      return (
+                        <button
+                          key={pin}
+                          type="button"
+                          disabled={modalBulkLoading}
+                          onClick={() => handleAssignPincodeDirect(pin)}
+                          className="px-3.5 py-2 bg-indigo-950/50 hover:bg-indigo-900/80 text-indigo-200 border border-indigo-700/50 hover:border-indigo-500 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                        >
+                          <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>PIN {pin}</span>
+                          <span className="text-[10px] bg-indigo-500/30 px-1.5 py-0.5 rounded-md text-indigo-300 font-mono">
+                            {count} {count === 1 ? 'area' : 'areas'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Interactive Locality Reference Grid */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-slate-400" />
+                    Registered Localities Reference in {modalCityObj?.name || selectedShopForZones.city} ({modalAvailableAreas.length})
                   </span>
+
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Quick filter locality or PIN..."
+                      value={modalAreaSearch}
+                      onChange={(e) => setModalAreaSearch(e.target.value)}
+                      className="w-60 h-8 pl-8 pr-3 bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-500 rounded-xl text-xs outline-none focus:border-indigo-500"
+                    />
+                  </div>
                 </div>
 
-                <form onSubmit={handleModalBulkPin} className="flex gap-2">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    placeholder="Enter 6-digit PIN code (e.g. 412101)"
-                    value={modalBulkPin}
-                    onChange={(e) => setModalBulkPin(e.target.value.replace(/[^\d]/g, ''))}
-                    className="flex-1 h-9 px-3 bg-slate-950 border border-slate-800 text-indigo-300 font-mono font-bold rounded-xl text-xs outline-none focus:border-indigo-500"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    disabled={modalBulkLoading}
-                    className="px-4 h-9 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 shrink-0 disabled:opacity-60"
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    {modalBulkLoading ? 'Mapping PIN...' : '⚡ Bulk Map PIN'}
-                  </button>
-                </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                  {filteredModalAreas.map((area) => {
+                    const isMappedToThis = locations.some(
+                      (l) => l.shop_id === selectedShopForZones.id && l.area_name.toLowerCase() === area.name.toLowerCase()
+                    );
+                    const mappedOtherShopId = locations.find(
+                      (l) => l.area_name.toLowerCase() === area.name.toLowerCase() && l.shop_id !== selectedShopForZones.id
+                    )?.shop_id;
+                    const otherShopName = mappedOtherShopId ? shops.find((s) => s.id === mappedOtherShopId)?.shop_name : null;
+
+                    return (
+                      <div
+                        key={area.id}
+                        className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-all ${
+                          isMappedToThis
+                            ? 'bg-emerald-950/20 border-emerald-500/30'
+                            : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1 pr-2">
+                          <p className="font-bold text-white truncate">📍 {area.name}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            PIN: <span className="font-mono text-emerald-400 font-bold">{area.pincode || '—'}</span>
+                            {otherShopName && (
+                              <span className="text-[10px] text-amber-400 block truncate">
+                                (Mapped to: {otherShopName})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+
+                        <div>
+                          {isMappedToThis ? (
+                            <span className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                              ✓ Mapped
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={modalZoneLoading}
+                              onClick={() => handleAssignSpecificArea(area)}
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                            >
+                              + Assign
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {filteredModalAreas.length === 0 && (
+                    <div className="col-span-2 py-6 text-center text-slate-500 text-xs italic">
+                      No localities found matching "{modalAreaSearch}".
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Active Assigned Localities List */}
-              <div className="space-y-2">
+              {/* Active Assigned Localities for this Store */}
+              <div className="space-y-2 pt-2 border-t border-slate-800/80">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Map className="w-3.5 h-3.5 text-slate-400" />
-                    Active Delivery Localities ({locations.filter((l) => l.shop_id === selectedShopForZones.id).length})
+                    <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                    Active Localities Mapped to {selectedShopForZones.shop_name} ({locations.filter((l) => l.shop_id === selectedShopForZones.id).length})
                   </span>
                   <button
                     type="button"
@@ -3896,9 +4239,9 @@ export default function ShopsTab({
                       setViewMode('coverage');
                       setCoverageShopFilter(selectedShopForZones.id);
                     }}
-                    className="text-xs text-indigo-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-indigo-400 hover:underline font-semibold cursor-pointer"
                   >
-                    Open Global Coverage Matrix →
+                    Open in Global Matrix →
                   </button>
                 </div>
 
@@ -3908,7 +4251,7 @@ export default function ShopsTab({
                     .map((loc) => (
                       <div key={loc.id} className="p-3 bg-slate-900/30 flex items-center justify-between text-xs hover:bg-slate-900/60 transition-colors">
                         <div>
-                          <p className="font-bold text-white flex items-center gap-1.5">📍 {loc.area_name}</p>
+                          <p className="font-bold text-white">📍 {loc.area_name}</p>
                           <p className="text-[11px] text-slate-400 mt-0.5">
                             {loc.city} · PIN: <span className="font-mono text-emerald-400 font-bold">{loc.pincode}</span>
                           </p>
@@ -3921,7 +4264,7 @@ export default function ShopsTab({
                             <button
                               onClick={() => handleDeleteLocation(loc.id)}
                               className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
-                              title="Unassign this area from store"
+                              title="Unassign this locality"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -3932,9 +4275,9 @@ export default function ShopsTab({
 
                   {locations.filter((l) => l.shop_id === selectedShopForZones.id).length === 0 && (
                     <div className="p-6 text-center text-slate-400 text-xs space-y-1">
-                      <p className="font-semibold text-slate-300">No extra delivery zones mapped yet.</p>
+                      <p className="font-semibold text-slate-300">0 extra localities mapped yet.</p>
                       <p className="text-[11px] text-slate-500">
-                        Orders from its base area (<span className="text-slate-300 font-semibold">{selectedShopForZones.area_name || '—'}</span>) are fulfilled automatically. Use the forms above to add more delivery localities or entire PIN codes!
+                        Base area (<span className="text-slate-300 font-semibold">{selectedShopForZones.area_name || '—'}</span>) is auto-fulfilled. Click any locality above to add it to this store!
                       </p>
                     </div>
                   )}
@@ -3944,8 +4287,8 @@ export default function ShopsTab({
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
-              <span className="text-[11px] text-slate-500">
-                Total Localities: <strong className="text-slate-300">{locations.filter((l) => l.shop_id === selectedShopForZones.id).length} mapped</strong>
+              <span className="text-[11px] text-slate-400">
+                Total Mapped for Store: <strong className="text-emerald-400">{locations.filter((l) => l.shop_id === selectedShopForZones.id).length} zones</strong>
               </span>
               <button
                 type="button"
