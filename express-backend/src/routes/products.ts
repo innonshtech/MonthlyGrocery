@@ -16,6 +16,10 @@ import {
   enrichProductWithMedia,
 } from '../utils/productMedia';
 import { getMerchantShopForUser } from '../services/shopResolution';
+import {
+  uploadMulterFileToS3,
+  uploadMultipleMulterFilesToS3,
+} from '../services/s3Service';
 
 const router = Router();
 const upload = multer({
@@ -1185,44 +1189,28 @@ router.post('/coupons/validate', async (req, res) => {
   }
 });
 
-// 12. POST /upload-image: Upload image directly to Supabase Storage bucket
+// 12. POST /upload-image: Upload image directly to AWS S3 bucket
 router.post('/upload-image', authMiddleware, requireRole(['admin', 'super_admin']), upload.single('image'), async (req: AuthRequest, res: Response) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'No image file uploaded' });
   }
 
   try {
-    const fileExt = req.file.originalname.split('.').pop() || 'png';
-    const fileName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-    const filePath = `products/${fileName}`;
-
-    // Upload to Supabase storage bucket 'product-images'
-    const { error: uploadError } = await supabase.storage
-      .from('product-images')
-      .upload(filePath, req.file.buffer, {
-        contentType: req.file.mimetype || (fileExt === 'svg' ? 'image/svg+xml' : 'image/png'),
-        upsert: true
-      });
-
-    if (uploadError) {
-      return res.status(500).json({ success: false, error: uploadError.message });
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from('product-images')
-      .getPublicUrl(filePath);
+    const folder = (req.body?.folder || req.query?.folder || 'categories') as string;
+    const s3Url = await uploadMulterFileToS3(req.file, folder);
 
     return res.json({
       success: true,
-      image_url: publicUrlData.publicUrl,
-      url: publicUrlData.publicUrl,
+      image_url: s3Url,
+      url: s3Url,
     });
   } catch (error: any) {
+    console.error('[Upload Image Error]:', error);
     return res.status(500).json({ success: false, error: error.message || 'Image upload failed' });
   }
 });
 
-// 13. POST /upload-media: Upload multiple images/media directly to Supabase Storage
+// 13. POST /upload-media: Upload multiple images/media directly to AWS S3 bucket
 router.post('/upload-media', authMiddleware, requireRole(['admin', 'super_admin']), upload.array('files', 10), async (req: AuthRequest, res: Response) => {
   const files = (req.files as Express.Multer.File[]) || [];
   if (files.length === 0) {
@@ -1230,27 +1218,8 @@ router.post('/upload-media', authMiddleware, requireRole(['admin', 'super_admin'
   }
 
   try {
-    const uploadedUrls: string[] = [];
-
-    for (const file of files) {
-      const fileExt = file.originalname.split('.').pop() || 'png';
-      const fileName = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-      const filePath = `products/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype || (fileExt === 'svg' ? 'image/svg+xml' : 'image/png'),
-          upsert: true,
-        });
-
-      if (!uploadError) {
-        const { data: publicUrlData } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-        uploadedUrls.push(publicUrlData.publicUrl);
-      }
-    }
+    const folder = (req.body?.folder || req.query?.folder || 'products') as string;
+    const uploadedUrls = await uploadMultipleMulterFilesToS3(files, folder);
 
     return res.json({
       success: true,
@@ -1259,6 +1228,7 @@ router.post('/upload-media', authMiddleware, requireRole(['admin', 'super_admin'
       image_url: uploadedUrls[0] || '',
     });
   } catch (error: any) {
+    console.error('[Upload Media Error]:', error);
     return res.status(500).json({ success: false, error: error.message || 'Media upload failed' });
   }
 });

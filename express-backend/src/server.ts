@@ -33,6 +33,10 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static local assets fallback
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Routes (Supports both /api/* and root /*)
 app.use('/api/auth', authRouter);
 app.use('/auth', authRouter);
