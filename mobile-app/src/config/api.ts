@@ -13,9 +13,9 @@ export const LOCAL_SERVER_URL = 'http://192.168.1.15:8001/api';
 
 /**
  * Active Backend API Endpoint
- * Local Development Server (Direct Wi-Fi IP: 192.168.1.15:8001)
+ * Live AWS EC2 Production Server
  */
-export const API_BASE = LOCAL_SERVER_URL;
+export const API_BASE = AWS_SERVER_URL;
 
 /**
  * Google Maps API Key for Static Maps, Geocoding & Places
