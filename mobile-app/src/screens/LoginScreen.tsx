@@ -38,6 +38,8 @@ export default function LoginScreen({ route, navigation }: any) {
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(28);
   const [canResend, setCanResend] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const { sendOtp, verifyOtp } = useAuth();
   const inputRefs = useRef<any[]>([]);
   const { bottomPadding: bottomPad, insets, keyboardBehavior } = useOnboardingLayout();
@@ -80,16 +82,44 @@ export default function LoginScreen({ route, navigation }: any) {
     };
   }, [step, resendTimer]);
 
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    if (lockoutSeconds > 0) {
+      interval = setInterval(() => {
+        setLockoutSeconds((prev) => {
+          if (prev <= 1) {
+            setFailedAttempts(0);
+            setError('');
+            if (interval) clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [lockoutSeconds]);
+
   const formattedTimer = `0:${resendTimer < 10 ? `0${resendTimer}` : resendTimer}`;
+  const formattedLockout = `0:${lockoutSeconds < 10 ? `0${lockoutSeconds}` : lockoutSeconds}`;
+
+  const isValidIndianMobile = (num: string) => /^[6-9]\d{9}$/.test(num.replace(/[^\d]/g, ''));
 
   const handleSendOtp = async () => {
-    if (mobile.length < 10) {
-      setError(phoneEntry?.invalid_phone_error || '');
+    if (lockoutSeconds > 0) {
+      setError(`Too many failed attempts. Please wait ${lockoutSeconds}s.`);
+      return;
+    }
+    const clean = mobile.replace(/[^\d]/g, '');
+    if (clean.length !== 10 || !/^[6-9]\d{9}$/.test(clean)) {
+      setError(phoneEntry?.invalid_phone_error || 'Please enter a valid 10-digit mobile number.');
       return;
     }
     setError('');
     setLoading(true);
-    const res = await sendOtp(mobile, 'consumer');
+    const res = await sendOtp(clean, 'consumer');
     setLoading(false);
     if (res.success) {
       setStep(2);
@@ -99,14 +129,20 @@ export default function LoginScreen({ route, navigation }: any) {
       setOtpDigits(['', '', '', '', '', '']);
       setActiveOtpIndex(0);
     } else {
+      if (res.locked || res.remainingSeconds) {
+        const secs = res.remainingSeconds || 60;
+        setLockoutSeconds(secs);
+        setFailedAttempts(3);
+      }
       setError(res.error || 'Failed to send OTP');
     }
   };
 
   const handleVerifyOtp = async () => {
+    if (lockoutSeconds > 0) return;
     const fullCode = otpDigits.join('');
     if (fullCode.length < 6) {
-      setError(otpVerification?.incomplete_error || '');
+      setError(otpVerification?.incomplete_error || 'Please enter the complete 6-digit code.');
       return;
     }
     setError('');
@@ -114,10 +150,31 @@ export default function LoginScreen({ route, navigation }: any) {
     const res = await verifyOtp(mobile, fullCode, undefined, 'consumer');
     setLoading(false);
     if (res.success) {
+      setFailedAttempts(0);
+      setLockoutSeconds(0);
       const redirect = route.params?.redirect || 'CitySelection';
-      navigation.replace(redirect);
+      if (res.isNewUser) {
+        navigation.replace('ProfileSetup', { redirect });
+      } else {
+        navigation.replace(redirect);
+      }
     } else {
-      setError(res.error || otpVerification?.invalid_otp_error || '');
+      if (res.locked || (res.remainingSeconds && res.remainingSeconds > 0) || failedAttempts + 1 >= 3) {
+        const lockSecs = res.remainingSeconds || 60;
+        setLockoutSeconds(lockSecs);
+        setFailedAttempts(3);
+        setError(`Too many failed attempts. OTP input is locked for ${lockSecs} seconds.`);
+      } else {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        const remaining = res.remainingAttempts ?? Math.max(0, 3 - newAttempts);
+        setError(
+          res.error ||
+            `Incorrect OTP code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+        );
+      }
+      setOtpDigits(['', '', '', '', '', '']);
+      setActiveOtpIndex(0);
     }
   };
 
@@ -278,9 +335,10 @@ export default function LoginScreen({ route, navigation }: any) {
                     setMobile(sanitized.slice(0, 10));
                     if (error) setError('');
                   }}
+                  onSubmitEditing={handleSendOtp}
                   autoFocus={Platform.OS === 'ios'}
                 />
-                {mobile.length === 10 ? (
+                {isValidIndianMobile(mobile) ? (
                   <AppIcon name="check" size={22} color={COLORS.green700} />
                 ) : null}
               </View>
@@ -334,6 +392,7 @@ export default function LoginScreen({ route, navigation }: any) {
                       styles.otpBox,
                       activeOtpIndex === idx && styles.otpBoxFocused,
                       error ? styles.otpBoxError : null,
+                      lockoutSeconds > 0 ? styles.otpBoxLocked : null,
                     ]}
                     value={digit}
                     onChangeText={(text) => handleOtpChange(text, idx)}
@@ -346,7 +405,8 @@ export default function LoginScreen({ route, navigation }: any) {
                     selectTextOnFocus
                     maxLength={6}
                     textAlign="center"
-                    autoFocus={idx === 0 && Platform.OS === 'ios'}
+                    editable={lockoutSeconds === 0}
+                    autoFocus={idx === 0 && Platform.OS === 'ios' && lockoutSeconds === 0}
                   />
                 ))}
               </View>
@@ -360,13 +420,15 @@ export default function LoginScreen({ route, navigation }: any) {
 
               <View style={styles.resendRow}>
                 <AppIcon name="clock" size={16} color={COLORS.ink500} />
-                {canResend ? (
+                {canResend && lockoutSeconds === 0 ? (
                   <TouchableOpacity onPress={handleSendOtp}>
                     <Text style={styles.resendActive}>{otpVerification.resend_label}</Text>
                   </TouchableOpacity>
                 ) : (
                   <Text style={styles.resendTimer}>
-                    {otpVerification.resend_timer_label} {formattedTimer}
+                    {lockoutSeconds > 0
+                      ? `Locked for ${lockoutSeconds}s`
+                      : `${otpVerification.resend_timer_label} ${formattedTimer}`}
                   </Text>
                 )}
               </View>
@@ -381,16 +443,19 @@ export default function LoginScreen({ route, navigation }: any) {
               <OnboardingPrimaryButton
                 label={phoneEntry.continue_label}
                 onPress={handleSendOtp}
-                disabled={mobile.length < 10}
                 loading={loading}
               />
               <Text style={styles.termsText}>{phoneEntry.terms_text}</Text>
             </>
           ) : step === 2 && otpVerification ? (
             <OnboardingPrimaryButton
-              label={otpVerification.verify_label}
+              label={
+                lockoutSeconds > 0
+                  ? `Locked (${formattedLockout})`
+                  : otpVerification.verify_label
+              }
               onPress={handleVerifyOtp}
-              disabled={otpDigits.join('').length < 6}
+              disabled={lockoutSeconds > 0 || otpDigits.join('').length < 6}
               loading={loading}
             />
           ) : null}
@@ -556,6 +621,11 @@ const styles = StyleSheet.create({
   otpBoxError: {
     borderColor: COLORS.error,
     backgroundColor: COLORS.errorBg,
+  },
+  otpBoxLocked: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#D1D5DB',
+    opacity: 0.6,
   },
   resendRow: {
     flexDirection: 'row',

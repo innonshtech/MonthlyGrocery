@@ -6,11 +6,27 @@ interface StoredOtp {
   attempts: number;
 }
 
-// In-memory OTP store (10-minute expiry, max 5 verification attempts)
+// In-memory OTP store (10-minute expiry, max 3 verification attempts)
 const otpStore = new Map<string, StoredOtp>();
 
+// In-memory lockout store (60-second lock after 3 failed attempts)
+const lockoutStore = new Map<string, number>();
+
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_DURATION_MS = 60 * 1000; // 60 seconds
+
+export function getLockoutRemainingSeconds(phone: string): number {
+  const formattedPhone = formatE164Phone(phone);
+  const lockUntil = lockoutStore.get(formattedPhone);
+  if (!lockUntil) return 0;
+  const remaining = Math.ceil((lockUntil - Date.now()) / 1000);
+  if (remaining <= 0) {
+    lockoutStore.delete(formattedPhone);
+    return 0;
+  }
+  return remaining;
+}
 
 function getTwilioClient(): twilio.Twilio | null {
   const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim();
@@ -42,8 +58,8 @@ const TEST_NUMBERS = [
   '9876543210',
   '9000000000',
   '9999999999',
-  '1111111111',
-  '1234567890',
+  '7777777777',
+  '6666666666',
 ];
 
 export function isTestPhoneNumber(phone: string): boolean {
@@ -61,6 +77,14 @@ export async function sendOtp(mobile: string): Promise<{
   error?: string;
 }> {
   const formattedPhone = formatE164Phone(mobile);
+  const remainingLock = getLockoutRemainingSeconds(mobile);
+  if (remainingLock > 0) {
+    return {
+      success: false,
+      error: `Too many failed attempts. Please wait ${remainingLock} seconds before requesting a new OTP.`,
+    };
+  }
+
   const isDevBypass = process.env.DEV_OTP_BYPASS?.toLowerCase() === 'true';
   const isTest = isTestPhoneNumber(mobile);
   const client = getTwilioClient();
@@ -91,6 +115,11 @@ export async function sendOtp(mobile: string): Promise<{
         .verifications.create({ to: formattedPhone, channel: 'sms' });
 
       console.log(`[Twilio Verify] Verification SID: ${verification.sid}, status: ${verification.status}`);
+      otpStore.set(formattedPhone, {
+        code: 'TWILIO_VERIFY',
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        attempts: 0,
+      });
       return {
         success: true,
         message: 'OTP sent successfully to your mobile number.',
@@ -145,52 +174,41 @@ export async function sendOtp(mobile: string): Promise<{
  */
 export async function verifyOtp(mobile: string, code: string): Promise<{
   success: boolean;
+  locked?: boolean;
+  remainingSeconds?: number;
+  remainingAttempts?: number;
   error?: string;
 }> {
   const formattedPhone = formatE164Phone(mobile);
   const enteredCode = code.trim();
   const isDevBypass = process.env.DEV_OTP_BYPASS?.toLowerCase() === 'true';
 
-  // Universal master/test OTP code for development and local testing
-  if (enteredCode === '123456' || isDevBypass) {
-    console.log(`[OTP] Verified successfully with test code '123456' for ${formattedPhone}`);
-    return { success: true };
+  // 1. Check if user is currently locked out
+  const remainingLock = getLockoutRemainingSeconds(mobile);
+  if (remainingLock > 0) {
+    return {
+      success: false,
+      locked: true,
+      remainingSeconds: remainingLock,
+      remainingAttempts: 0,
+      error: `Too many failed attempts. OTP input is locked for ${remainingLock} seconds.`,
+    };
   }
 
-  const client = getTwilioClient();
-  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
-
-  // 1. Verify via Twilio Verify API
-  if (client && verifyServiceSid && !isDevBypass) {
-    try {
-      const check = await client.verify.v2
-        .services(verifyServiceSid)
-        .verificationChecks.create({ to: formattedPhone, code: enteredCode });
-
-      if (check.status === 'approved') {
-        return { success: true };
-      }
-      return { success: false, error: 'Incorrect OTP code. Please check and try again.' };
-    } catch (err: any) {
-      console.error('[Twilio Verify] Verification error:', err.status, err.code, err.message);
-      if (err.status === 404 || err.code === 20404) {
-        return { 
-          success: false, 
-          error: 'This OTP has expired or already been used. Please tap "Resend OTP Code" to get a fresh OTP.' 
-        };
-      }
-      return { 
-        success: false, 
-        error: err.message || 'Failed to verify OTP with Twilio. Please try requesting a new OTP.' 
-      };
-    }
-  }
-
-  // 2. Verify via In-memory / Direct SMS store
-  const record = otpStore.get(formattedPhone);
+  // 2. Look up active OTP record or initialize
+  let record = otpStore.get(formattedPhone);
   if (!record) {
-    if (enteredCode === '123456') return { success: true };
-    return { success: false, error: 'No OTP requested for this number or OTP has expired.' };
+    // If in test/dev mode without prior sendOtp call
+    if (isTestPhoneNumber(mobile) || isDevBypass) {
+      record = {
+        code: '123456',
+        expiresAt: Date.now() + OTP_EXPIRY_MS,
+        attempts: 0,
+      };
+      otpStore.set(formattedPhone, record);
+    } else {
+      return { success: false, error: 'No OTP requested for this number or OTP has expired.' };
+    }
   }
 
   if (Date.now() > record.expiresAt) {
@@ -198,17 +216,57 @@ export async function verifyOtp(mobile: string, code: string): Promise<{
     return { success: false, error: 'OTP has expired. Please request a new one.' };
   }
 
-  if (record.attempts >= MAX_ATTEMPTS) {
-    otpStore.delete(formattedPhone);
-    return { success: false, error: 'Maximum verification attempts exceeded. Please request a new OTP.' };
+  const client = getTwilioClient();
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
+
+  let isCorrect = false;
+
+  if (client && verifyServiceSid && !isDevBypass && record.code === 'TWILIO_VERIFY') {
+    try {
+      const check = await client.verify.v2
+        .services(verifyServiceSid)
+        .verificationChecks.create({ to: formattedPhone, code: enteredCode });
+
+      if (check.status === 'approved') {
+        isCorrect = true;
+      }
+    } catch (err: any) {
+      console.error('[Twilio Verify] Verification check error:', err);
+    }
+  } else {
+    // Direct or Dev code check
+    if (record.code === enteredCode || (isDevBypass && enteredCode === '123456')) {
+      isCorrect = true;
+    }
   }
 
-  record.attempts += 1;
-
-  if (record.code === enteredCode || (isDevBypass && enteredCode === '123456')) {
+  if (isCorrect) {
     otpStore.delete(formattedPhone);
+    lockoutStore.delete(formattedPhone);
     return { success: true };
   }
 
-  return { success: false, error: 'Incorrect OTP code. Please check and try again.' };
+  // Handle Incorrect Attempt
+  record.attempts += 1;
+  const remainingAttempts = Math.max(0, MAX_ATTEMPTS - record.attempts);
+
+  if (record.attempts >= MAX_ATTEMPTS) {
+    lockoutStore.set(formattedPhone, Date.now() + LOCKOUT_DURATION_MS);
+    otpStore.delete(formattedPhone);
+    console.warn(`[OTP Lockout] Phone ${formattedPhone} locked for 60s after ${MAX_ATTEMPTS} failed attempts.`);
+    return {
+      success: false,
+      locked: true,
+      remainingSeconds: 60,
+      remainingAttempts: 0,
+      error: 'Too many failed attempts. OTP input is locked for 60 seconds.',
+    };
+  }
+
+  return {
+    success: false,
+    locked: false,
+    remainingAttempts,
+    error: `Incorrect OTP code. ${remainingAttempts} attempt${remainingAttempts === 1 ? '' : 's'} remaining.`,
+  };
 }

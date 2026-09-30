@@ -3,6 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
@@ -19,7 +20,11 @@ export default function LandingScreen({ navigation }: any) {
         
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logoText}>MonthlyGrocery</Text>
+          <Image
+            source={require('../assets/ever-logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
           <TouchableOpacity
             style={styles.signInBtn}
             onPress={() => navigation.navigate('Login')}
@@ -155,6 +160,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
+  },
+  headerLogo: {
+    width: 130,
+    height: 38,
   },
   logoText: {
     fontSize: 20,

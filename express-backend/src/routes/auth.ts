@@ -10,6 +10,18 @@ const SUPER_ADMIN_MOBILE = process.env.SUPER_ADMIN_MOBILE || '+918830480015';
 const SUPER_ADMIN_MOBILE_CLEAN = SUPER_ADMIN_MOBILE.replace(/[^\d]/g, '');
 
 // Helper to normalize phone to digits only (e.g. 918830480015)
+export function isValidIndianPhone(phone: string): boolean {
+  if (!phone || typeof phone !== 'string') return false;
+  const clean = phone.replace(/[^\d]/g, '');
+  let base10 = clean;
+  if (clean.length === 12 && clean.startsWith('91')) {
+    base10 = clean.slice(2);
+  } else if (clean.length === 11 && clean.startsWith('0')) {
+    base10 = clean.slice(1);
+  }
+  return base10.length === 10 && /^[6-9]\d{9}$/.test(base10);
+}
+
 function normalizePhone(phone: string): string {
   let clean = phone.replace(/[^\d]/g, '');
   if (clean.length === 10) {
@@ -122,8 +134,11 @@ async function isAuthorizedSuperAdmin(normalizedPhone: string): Promise<boolean>
 // 1. Send OTP Endpoint
 router.post('/send-otp', async (req, res) => {
   const { mobile, role } = req.body;
-  if (!mobile) {
-    return res.status(400).json({ success: false, error: 'Mobile number is required' });
+  if (!mobile || !isValidIndianPhone(String(mobile))) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter a valid 10-digit mobile number',
+    });
   }
 
   const normalized = normalizePhone(mobile);
@@ -190,8 +205,17 @@ router.post('/send-otp', async (req, res) => {
 // 2. Verify OTP Endpoint
 router.post('/verify-otp', async (req, res) => {
   const { mobile, code, name, role } = req.body;
-  if (!mobile || !code) {
-    return res.status(400).json({ success: false, error: 'Mobile number and OTP code are required' });
+  if (!mobile || !isValidIndianPhone(String(mobile))) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter a valid 10-digit mobile number',
+    });
+  }
+  if (!code || String(code).trim().length < 4) {
+    return res.status(400).json({
+      success: false,
+      error: 'Please enter the verification code',
+    });
   }
 
   const normalized = normalizePhone(mobile);
@@ -201,66 +225,98 @@ router.post('/verify-otp', async (req, res) => {
     if (!verification.success) {
       return res.status(400).json({
         success: false,
+        locked: verification.locked,
+        remainingSeconds: verification.remainingSeconds,
+        remainingAttempts: verification.remainingAttempts,
         error: verification.error || 'Invalid or expired OTP code',
       });
     }
+
+    let isNewUser = false;
 
     // Check if profile already exists in Supabase
     let { data: profile, error: fetchError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('phone', normalized)
+      .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
       .maybeSingle();
 
     if (fetchError) {
-      return res.status(500).json({ success: false, error: fetchError.message });
+      console.warn('[verify-otp] fetch profile warning:', fetchError.message);
     }
 
     const selectedRole = normalized === SUPER_ADMIN_MOBILE_CLEAN ? 'super_admin' : (role || 'consumer');
 
     // If profile does not exist, create user in Supabase Auth & ensure row in profiles table
     if (!profile) {
+      isNewUser = true;
       let createdUserId: string | undefined;
 
-      const { data: authUser } = await supabase.auth.admin.createUser({
-        phone: '+' + normalized,
-        phone_confirm: true,
-        user_metadata: {
-          name: name || 'User',
-          role: selectedRole,
-        }
-      });
+      try {
+        const { data: authUser } = await supabase.auth.admin.createUser({
+          phone: '+' + normalized,
+          phone_confirm: true,
+          user_metadata: {
+            name: name || 'User',
+            role: selectedRole,
+          },
+        });
 
-      if (authUser?.user) {
-        createdUserId = authUser.user.id;
+        if (authUser?.user) {
+          createdUserId = authUser.user.id;
+        }
+      } catch (authErr) {
+        console.warn('[verify-otp] createUser warning:', authErr);
       }
 
       // Fetch the profile if created by auth trigger
       const { data: newProfile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('phone', normalized)
+        .or(`phone.eq.${normalized},phone.eq.+${normalized}${createdUserId ? `,id.eq.${createdUserId}` : ''}`)
         .maybeSingle();
 
       if (newProfile) {
+        if (newProfile.phone !== normalized) {
+          await supabase.from('profiles').update({ phone: normalized }).eq('id', newProfile.id);
+          newProfile.phone = normalized;
+        }
         profile = newProfile;
       } else {
-        // Insert directly into profiles table
+        // Upsert into profiles table with conflict handling to avoid duplicate key errors
         const { data: directProfile, error: directError } = await supabase
           .from('profiles')
-          .insert({
-            id: createdUserId,
+          .upsert({
+            ...(createdUserId ? { id: createdUserId } : {}),
             phone: normalized,
             name: name || 'User',
             role: selectedRole,
-          })
+          }, { onConflict: 'id' })
           .select()
           .single();
 
         if (directError) {
-          return res.status(500).json({ success: false, error: directError.message });
+          // Fallback check if it was inserted concurrently
+          const { data: fallbackProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+            .maybeSingle();
+
+          if (fallbackProfile) {
+            profile = fallbackProfile;
+          } else {
+            console.error('[verify-otp] Error creating profile:', directError);
+            return res.status(500).json({ success: false, error: directError.message });
+          }
+        } else {
+          profile = directProfile;
         }
-        profile = directProfile;
+      }
+    } else {
+      // If user exists but hasn't set their custom name yet, flag as new/incomplete user
+      if (!profile.name || profile.name.trim() === 'User') {
+        isNewUser = true;
       }
     }
 
@@ -331,6 +387,7 @@ router.post('/verify-otp', async (req, res) => {
     return res.json({
       success: true,
       token,
+      isNewUser,
       user: {
         id: profile.id,
         mobile: profile.phone,

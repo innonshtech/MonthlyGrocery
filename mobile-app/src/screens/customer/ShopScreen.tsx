@@ -175,7 +175,7 @@ export default function ShopScreen({ navigation }: any) {
       {/* Header bar */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>MonthlyGrocery</Text>
+          <Text style={styles.headerTitle}>EVER</Text>
           <Text style={styles.headerSubtitle}>Fresh groceries delivered in 4 hrs</Text>
         </View>
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>

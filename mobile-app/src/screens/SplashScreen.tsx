@@ -3,6 +3,7 @@ import {
   StyleSheet,
   View,
   Text,
+  Image,
   StatusBar,
   useWindowDimensions,
   Animated,
@@ -40,42 +41,14 @@ const LOGO = { width: 238, height: 89 };
 const TAGLINE = { left: 6.5, top: 105, width: 225, height: 20 };
 const FOOTNOTE = { left: 95, top: 792, width: 189, height: 20 };
 
-function MonthlyGroceryLogo({ width, height }: { width: number; height: number }) {
-  const iconSize = Math.round(height * 0.4);
-  const deepGreen = COLORS.green900;
-  const limeGreen = '#8BE354';
-
+function EverLogo({ width, height }: { width: number; height: number }) {
   return (
-    <View style={[styles.logoCard, { width, height, borderRadius: height * 0.2 }]}>
-      <View style={[styles.logoMark, { width: iconSize + 10, height: iconSize + 10 }]}>
-        <Svg width={iconSize} height={iconSize} viewBox="0 0 48 48" fill="none">
-          <Path
-            d="M8 12 h6 v2 l3 11 h15 l4 -13"
-            stroke={deepGreen}
-            strokeWidth={3}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path
-            d="M21 24 C18.5 21, 15.5 22.5, 15 23 C16.5 25, 19.5 25.5, 21 24.5 Z"
-            fill={limeGreen}
-          />
-          <Path
-            d="M22 23 C24.5 17.5, 29.5 16, 31.5 16.5 C29.5 21, 26 23.5, 22.5 23.5 Z"
-            fill={limeGreen}
-          />
-          <Circle cx={18} cy={32} r={2.5} stroke={deepGreen} strokeWidth={3} fill="none" />
-          <Circle cx={30} cy={32} r={2.5} stroke={deepGreen} strokeWidth={3} fill="none" />
-        </Svg>
-      </View>
-      <View style={styles.logoTextCol}>
-        <Text style={[styles.logoTitleMonthly, { fontSize: height * 0.27, lineHeight: height * 0.3 }]}>
-          Monthly
-        </Text>
-        <Text style={[styles.logoTitleGrocery, { fontSize: height * 0.27, lineHeight: height * 0.3 }]}>
-          Grocery
-        </Text>
-      </View>
+    <View style={[styles.logoCard, { width, height }]}>
+      <Image
+        source={require('../assets/ever-logo.png')}
+        style={styles.logoImage}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -87,6 +60,9 @@ export default function SplashScreen({ navigation }: any) {
   const sx = width / FIGMA_W;
   const sy = availableHeight / FIGMA_H;
   const footnoteBottom = bottomOffset;
+
+  const logoCardWidth = Math.min(width * 0.88, 350);
+  const logoCardHeight = Math.round(logoCardWidth / 2.74) + 14;
 
   const [splashConfig, setSplashConfig] = useState<OnboardingSplashConfig | null>(null);
   const [configReady, setConfigReady] = useState(false);
@@ -136,13 +112,9 @@ export default function SplashScreen({ navigation }: any) {
       if (hasNavigated.current) return;
       hasNavigated.current = true;
 
-      const { token: activeToken, city: activeCity, area: activeArea } = authRef.current;
+      const { token: activeToken } = authRef.current;
       if (activeToken) {
-        if (!activeCity || !activeArea) {
-          navigation.replace('CitySelection');
-        } else {
-          navigation.replace('Shop');
-        }
+        navigation.replace('Shop');
       } else {
         navigation.replace('ValueIntro');
       }
@@ -222,32 +194,31 @@ export default function SplashScreen({ navigation }: any) {
           <Animated.View
             style={{
               position: 'absolute',
-              left: CENTER.left * sx,
-              top: CENTER.top * sy,
-              width: CENTER.width * sx,
-              height: CENTER.height * sy,
+              top: availableHeight * 0.35,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
               opacity: contentAnim,
               transform: [
                 {
                   translateY: contentAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [8, 0],
+                    outputRange: [12, 0],
                   }),
                 },
               ],
-              alignItems: 'center',
             }}
           >
-            <MonthlyGroceryLogo width={LOGO.width * sx} height={LOGO.height * sy} />
+            <EverLogo width={logoCardWidth} height={logoCardHeight} />
             {splashConfig?.tagline ? (
               <Text
                 style={[
                   styles.tagline,
                   {
-                    marginTop: (TAGLINE.top - LOGO.height) * sy,
-                    width: TAGLINE.width * sx,
-                    fontSize: 14 * Math.min(sx, sy),
-                    lineHeight: TAGLINE.height * sy,
+                    marginTop: 18,
+                    width: width * 0.88,
+                    fontSize: 15 * Math.min(sx, sy),
+                    lineHeight: 22 * sy,
                   },
                 ]}
               >
@@ -261,9 +232,9 @@ export default function SplashScreen({ navigation }: any) {
               style={[
                 styles.footnote,
                 {
-                  left: FOOTNOTE.left * sx,
+                  left: 0,
+                  right: 0,
                   bottom: footnoteBottom,
-                  width: FOOTNOTE.width * sx,
                   fontSize: 13 * Math.min(sx, sy),
                   lineHeight: FOOTNOTE.height * sy,
                   opacity: contentAnim,
@@ -278,7 +249,7 @@ export default function SplashScreen({ navigation }: any) {
 
       {configReady && !showContent ? (
         <View style={styles.fallbackCenter}>
-          <MonthlyGroceryLogo width={LOGO.width * sx} height={LOGO.height * sy} />
+          <EverLogo width={logoCardWidth} height={logoCardHeight} />
         </View>
       ) : null}
     </View>
@@ -300,38 +271,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoCard: {
-    backgroundColor: COLORS.surface,
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
-    gap: 12,
-    shadowColor: '#17251E',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: COLORS.line,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.85)',
   },
-  logoMark: {
-    borderRadius: RADIUS.md,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoTextCol: {
-    justifyContent: 'center',
-  },
-  logoTitleMonthly: {
-    ...FONTS.balooExtraBold,
-    color: COLORS.green900,
-    letterSpacing: -0.4,
-  },
-  logoTitleGrocery: {
-    ...FONTS.balooExtraBold,
-    color: '#8BE354',
-    letterSpacing: -0.4,
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   tagline: {
     ...FONTS.muktaMedium,

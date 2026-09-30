@@ -152,14 +152,20 @@ export interface OtpVerificationConfig {
 }
 
 export async function fetchOnboardingConfig(): Promise<OnboardingConfig | null> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3500);
   try {
-    const res = await fetch(`${API_BASE}/admin/onboarding`);
+    const res = await fetch(`${API_BASE}/admin/onboarding`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
     const data = await res.json();
     if (!res.ok || !data.success || !data.onboarding) {
       return null;
     }
     return data.onboarding as OnboardingConfig;
   } catch {
+    clearTimeout(timeoutId);
     return null;
   }
 }

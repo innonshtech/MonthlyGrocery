@@ -261,7 +261,7 @@ export class TableQueryBuilder {
       }
     }
 
-    // Process OR expressions: e.g. "name.ilike.%q%,description.ilike.%q%"
+    // Process OR expressions: e.g. "name.ilike.%q%,description.ilike.%q%" or "phone.eq.917777777777"
     for (const rawOr of this.orFilters) {
       const parts = rawOr.split(',').map(p => p.trim());
       const orClauses: string[] = [];
@@ -269,8 +269,19 @@ export class TableQueryBuilder {
         const segs = part.split('.');
         if (segs.length >= 3) {
           const col = segs[0];
-          const op = segs[1].toUpperCase();
+          const rawOp = segs[1].toLowerCase();
           const val = segs.slice(2).join('.');
+          let op = '=';
+          if (rawOp === 'eq') op = '=';
+          else if (rawOp === 'neq') op = '!=';
+          else if (rawOp === 'gt') op = '>';
+          else if (rawOp === 'gte') op = '>=';
+          else if (rawOp === 'lt') op = '<';
+          else if (rawOp === 'lte') op = '<=';
+          else if (rawOp === 'like') op = 'LIKE';
+          else if (rawOp === 'ilike') op = 'ILIKE';
+          else op = rawOp.toUpperCase();
+
           params.push(val);
           orClauses.push(`"${col}" ${op} $${params.length}`);
         }
@@ -562,19 +573,44 @@ export class TableQueryBuilder {
 const authAdmin = {
   async createUser(params: { phone?: string; email?: string; phone_confirm?: boolean; user_metadata?: Record<string, any> }) {
     const id = randomUUID();
-    const phone = params.phone || '';
-    const name = params.user_metadata?.full_name || params.user_metadata?.name || '';
-    const role = params.user_metadata?.role || 'customer';
+    const rawPhone = params.phone || '';
+    const cleanPhone = rawPhone.replace(/[^\d]/g, '') || rawPhone;
+    const name = params.user_metadata?.full_name || params.user_metadata?.name || 'User';
+    const role = params.user_metadata?.role || 'consumer';
     const email = params.email || params.user_metadata?.email || '';
     const avatarUrl = params.user_metadata?.avatar_url || '';
 
     try {
+      if (cleanPhone) {
+        const existing = await query('SELECT * FROM profiles WHERE phone = $1 OR phone = $2 LIMIT 1;', [cleanPhone, '+' + cleanPhone]);
+        if (existing.rows.length > 0) {
+          const row = existing.rows[0];
+          return {
+            data: {
+              user: {
+                id: row.id,
+                phone: row.phone,
+                email: row.email,
+                user_metadata: {
+                  full_name: row.name,
+                  name: row.name,
+                  role: row.role,
+                  email: row.email,
+                  avatar_url: row.avatar_url || '',
+                } as any,
+              },
+            },
+            error: null,
+          };
+        }
+      }
+
       const res = await query(
         `INSERT INTO profiles (id, phone, name, role, email, avatar_url, status, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, 'active', NOW(), NOW())
          ON CONFLICT (id) DO UPDATE SET phone = EXCLUDED.phone, name = EXCLUDED.name, role = EXCLUDED.role, email = EXCLUDED.email
          RETURNING *;`,
-        [id, phone, name, role, email, avatarUrl]
+        [id, cleanPhone, name, role, email, avatarUrl]
       );
       const row = res.rows[0];
       return {

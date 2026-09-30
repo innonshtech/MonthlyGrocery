@@ -106,6 +106,9 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [banners, setBanners] = useState<PromotionalBanner[]>([]);
+  const bannerScrollRef = React.useRef<ScrollView>(null);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [isBannerInteracting, setIsBannerInteracting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orderStats, setOrderStats] = useState<{
     orderCount: number;
@@ -208,6 +211,22 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       loadBanners();
     }, [loadBanners]),
   );
+
+  useEffect(() => {
+    if (banners.length <= 1 || isBannerInteracting) return;
+    const timer = setInterval(() => {
+      setActiveBannerIndex((prev) => {
+        const nextIndex = (prev + 1) % banners.length;
+        bannerScrollRef.current?.scrollTo({
+          x: nextIndex * contentWidth,
+          animated: true,
+        });
+        return nextIndex;
+      });
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [banners.length, isBannerInteracting, contentWidth]);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -477,15 +496,50 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               </TouchableOpacity>
 
               {banners.length > 0 ? (
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  style={[styles.bannerScrollView, { width: contentWidth }]}
-                  contentContainerStyle={styles.bannerScrollContent}
-                >
-                  {banners.map((banner) => renderPromoBanner(banner))}
-                </ScrollView>
+                <View style={styles.bannerWrapper}>
+                  <ScrollView
+                    ref={bannerScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    style={[styles.bannerScrollView, { width: contentWidth }]}
+                    contentContainerStyle={styles.bannerScrollContent}
+                    onScrollBeginDrag={() => setIsBannerInteracting(true)}
+                    onMomentumScrollEnd={(e) => {
+                      const offset = e.nativeEvent.contentOffset.x;
+                      const index = Math.round(offset / contentWidth);
+                      setActiveBannerIndex(index);
+                      setIsBannerInteracting(false);
+                    }}
+                    onScrollEndDrag={() => {
+                      setTimeout(() => setIsBannerInteracting(false), 2000);
+                    }}
+                  >
+                    {banners.map((banner) => renderPromoBanner(banner))}
+                  </ScrollView>
+
+                  {banners.length > 1 ? (
+                    <View style={styles.bannerDotsContainer}>
+                      {banners.map((_, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            setActiveBannerIndex(idx);
+                            bannerScrollRef.current?.scrollTo({
+                              x: idx * contentWidth,
+                              animated: true,
+                            });
+                          }}
+                          style={[
+                            styles.bannerDot,
+                            activeBannerIndex === idx ? styles.bannerDotActive : styles.bannerDotInactive,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
               ) : null}
 
               <TouchableOpacity
@@ -856,6 +910,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     color: '#6B7772',
   },
+  bannerWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
   bannerScrollView: {
     width: '100%',
     height: 130,
@@ -863,6 +921,26 @@ const styles = StyleSheet.create({
   },
   bannerScrollContent: {
     alignItems: 'center',
+  },
+  bannerDotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  bannerDot: {
+    height: 5,
+    borderRadius: 3,
+  },
+  bannerDotActive: {
+    width: 18,
+    backgroundColor: '#FFFFFF',
+  },
+  bannerDotInactive: {
+    width: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
   },
   bannerItem: {
     height: 130,

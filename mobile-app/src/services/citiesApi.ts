@@ -22,11 +22,15 @@ export async function fetchServiceableCities(): Promise<ServiceableCity[]> {
     }
 
     return citiesData.cities
-      .map((city: { id: string; name: string; region?: string }) => ({
-        id: city.id,
-        name: city.name,
-        region: city.region?.trim() || '',
-      }))
+      .map((city: { id: string; name: string; region?: string }) => {
+        const raw = city.name?.trim() || '';
+        const capitalized = raw.length > 0 ? raw.charAt(0).toUpperCase() + raw.slice(1) : raw;
+        return {
+          id: city.id,
+          name: capitalized,
+          region: city.region?.trim() || '',
+        };
+      })
       .sort((a: ServiceableCity, b: ServiceableCity) =>
         a.name.localeCompare(b.name),
       );

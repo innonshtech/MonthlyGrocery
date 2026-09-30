@@ -1104,7 +1104,7 @@ const defaultDb: LocalDbSchema = {
       continue_label: 'Continue',
       guest_label: 'Browse as a guest',
       terms_text: 'By continuing you agree to our Terms & Privacy Policy.',
-      invalid_phone_error: 'Enter a valid 10-digit mobile number.',
+      invalid_phone_error: 'Please enter a valid 10-digit mobile number.',
       load_error_message: 'Could not load login screen. Check that the backend is running.',
       retry_label: 'Retry',
     },

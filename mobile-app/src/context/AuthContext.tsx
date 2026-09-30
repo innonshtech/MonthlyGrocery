@@ -36,8 +36,8 @@ interface AuthContextType {
     area: string | null,
     pincode?: string | null,
   ) => Promise<void>;
-  sendOtp: (mobile: string, role: string) => Promise<{ success: boolean; error?: string }>;
-  verifyOtp: (mobile: string, code: string, name?: string, role?: string) => Promise<{ success: boolean; error?: string }>;
+  sendOtp: (mobile: string, role: string) => Promise<{ success: boolean; error?: string; locked?: boolean; remainingSeconds?: number }>;
+  verifyOtp: (mobile: string, code: string, name?: string, role?: string) => Promise<{ success: boolean; error?: string; locked?: boolean; remainingSeconds?: number; remainingAttempts?: number; isNewUser?: boolean }>;
   updateUser: (updatedFields: Partial<User>) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -91,12 +91,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch {}
           }
 
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3500);
           try {
             const res = await fetch(`${API_BASE}/auth/me`, {
+              signal: controller.signal,
               headers: {
                 Authorization: `Bearer ${savedToken}`,
               },
             });
+            clearTimeout(timeoutId);
             if (res.status === 401 || res.status === 403) {
               await AsyncStorage.removeItem('@auth_token');
               await AsyncStorage.removeItem('@auth_user');
@@ -107,9 +111,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (data.success && data.user) {
                 setUser(data.user);
                 await AsyncStorage.setItem('@auth_user', JSON.stringify(data.user));
+                if (!savedCity && data.user.city) {
+                  setCityState(data.user.city);
+                  await AsyncStorage.setItem('@user_city', data.user.city);
+                }
+                if (!savedPincode && data.user.pincode) {
+                  setPincodeState(data.user.pincode);
+                  await AsyncStorage.setItem('@user_pincode', data.user.pincode);
+                }
               }
             }
           } catch (netErr) {
+            clearTimeout(timeoutId);
             console.log('Background auth verify network fallback:', netErr);
           }
         }
@@ -131,7 +144,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Failed to send OTP' };
+        return {
+          success: false,
+          error: data.error || 'Failed to send OTP',
+          locked: data.locked,
+          remainingSeconds: data.remainingSeconds,
+        };
       }
       return { success: true };
     } catch {
@@ -152,7 +170,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Verification failed' };
+        return {
+          success: false,
+          error: data.error || 'Verification failed',
+          locked: data.locked,
+          remainingSeconds: data.remainingSeconds,
+          remainingAttempts: data.remainingAttempts,
+        };
       }
 
       await AsyncStorage.setItem('@auth_token', data.token);
@@ -161,7 +185,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setToken(data.token);
       setUser(data.user);
-      return { success: true };
+      return { success: true, isNewUser: data.isNewUser ?? false };
     } catch {
       return {
         success: false,

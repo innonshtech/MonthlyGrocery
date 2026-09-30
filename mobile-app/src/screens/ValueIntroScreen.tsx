@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   StatusBar,
-  ActivityIndicator,
+  FlatList,
+  useWindowDimensions,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,14 +33,17 @@ import { useAuth } from '../context/AuthContext';
 /**
  * A2 · Value Intro 1–3 — Redesign (Figma nodes 391:602, 392:602, 393:602)
  * All copy, gradients, and chip layout from /api/admin/onboarding.
+ * Full touch swiping (left/right) with real-time active dot updates.
  */
 export default function ValueIntroScreen({ navigation }: any) {
   const { token, user, city, area } = useAuth();
+  const { width: windowWidth } = useWindowDimensions();
   const [slides, setSlides] = useState<ValueIntroSlideConfig[]>([]);
   const [introMeta, setIntroMeta] = useState<ValueIntroMetaConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
   const { widthScale: scale, illustrationHeight, bottomPadding: footerBottomPad } =
     useOnboardingLayout();
 
@@ -61,7 +65,6 @@ export default function ValueIntroScreen({ navigation }: any) {
     loadSlides();
   }, [loadSlides]);
 
-  const slide = slides[currentIndex];
   const isLastSlide = slides.length > 0 && currentIndex === slides.length - 1;
 
   const goToLogin = async (markCompleted = true) => {
@@ -81,11 +84,27 @@ export default function ValueIntroScreen({ navigation }: any) {
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      const nextIndex = currentIndex + 1;
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      setCurrentIndex(nextIndex);
     } else {
-      goToLogin();
+      goToLogin(true);
     }
   };
+
+  const handleScrollEnd = (e: any) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / windowWidth);
+    if (index >= 0 && index < slides.length && index !== currentIndex) {
+      setCurrentIndex(index);
+    }
+  };
+
+  const getItemLayout = (_: any, index: number) => ({
+    length: windowWidth,
+    offset: windowWidth * index,
+    index,
+  });
 
   if (loading) {
     return (
@@ -96,7 +115,7 @@ export default function ValueIntroScreen({ navigation }: any) {
     );
   }
 
-  if (loadError || !slide) {
+  if (loadError || slides.length === 0) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
         <StatusBar barStyle="dark-content" />
@@ -119,95 +138,115 @@ export default function ValueIntroScreen({ navigation }: any) {
     );
   }
 
+  const renderSlideItem = ({ item: slide }: { item: ValueIntroSlideConfig }) => {
+    return (
+      <View style={{ width: windowWidth, flex: 1 }}>
+        <View style={[styles.illustrationArea, { height: illustrationHeight }]}>
+          <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+            <Defs>
+              <LinearGradient id={`grad-${slide.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                <Stop offset="0%" stopColor={slide.gradient_start} />
+                <Stop offset="100%" stopColor={slide.gradient_end} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill={`url(#grad-${slide.id})`} />
+          </Svg>
+
+          {slide.show_skip ? (
+            <TouchableOpacity
+              style={styles.skipBtn}
+              onPress={() => goToLogin(true)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.skipPlaceholder} />
+          )}
+
+          {slide.emoji_chips.map((chip, chipIdx) => (
+            <OnboardingEmojiChip
+              key={`${slide.id}-chip-${chipIdx}`}
+              emoji={chip.emoji}
+              size={chip.size * scale}
+              style={{ left: chip.left * scale, top: chip.top * scale }}
+            />
+          ))}
+
+          {slide.center_emoji && slide.center_size ? (
+            <View
+              style={[
+                styles.centerChip,
+                {
+                  width: slide.center_size * scale,
+                  height: slide.center_size * scale,
+                  borderRadius: slide.center_size * scale * 0.5,
+                  left: (195 - slide.center_size / 2) * scale,
+                  top: 150 * scale,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: slide.center_size * scale * 0.42 }}>
+                {slide.center_emoji}
+              </Text>
+            </View>
+          ) : null}
+
+          {slide.badge_label && slide.badge_left != null && slide.badge_top != null ? (
+            <View
+              style={[
+                styles.floatingBadge,
+                { left: slide.badge_left * scale, top: slide.badge_top * scale },
+              ]}
+            >
+              <Text style={styles.sparkle}>✦</Text>
+              <Text style={styles.floatingBadgeText}>{slide.badge_label}</Text>
+            </View>
+          ) : null}
+
+          {slide.secondary_badge_label &&
+          slide.secondary_badge_left != null &&
+          slide.secondary_badge_top != null ? (
+            <View
+              style={[
+                styles.floatingBadge,
+                {
+                  left: slide.secondary_badge_left * scale,
+                  top: slide.secondary_badge_top * scale,
+                },
+              ]}
+            >
+              <Text style={styles.floatingBadgeText}>{slide.secondary_badge_label}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.copyBlock}>
+          <OnboardingCategoryBadge label={slide.category} />
+          <Text style={styles.title}>{slide.title}</Text>
+          <Text style={styles.subtitle}>{slide.subtitle}</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={[styles.illustrationArea, { height: illustrationHeight }]}>
-        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-          <Defs>
-            <LinearGradient id={`grad-${slide.id}`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <Stop offset="0%" stopColor={slide.gradient_start} />
-              <Stop offset="100%" stopColor={slide.gradient_end} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill={`url(#grad-${slide.id})`} />
-        </Svg>
-
-        {slide.show_skip ? (
-          <TouchableOpacity
-            style={styles.skipBtn}
-            onPress={() => goToLogin(true)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.skipPlaceholder} />
-        )}
-
-        {slide.emoji_chips.map((item, index) => (
-          <OnboardingEmojiChip
-            key={`${slide.id}-chip-${index}`}
-            emoji={item.emoji}
-            size={item.size * scale}
-            style={{ left: item.left * scale, top: item.top * scale }}
-          />
-        ))}
-
-        {slide.center_emoji && slide.center_size ? (
-          <View
-            style={[
-              styles.centerChip,
-              {
-                width: slide.center_size * scale,
-                height: slide.center_size * scale,
-                borderRadius: slide.center_size * scale * 0.5,
-                left: (195 - slide.center_size / 2) * scale,
-                top: 150 * scale,
-              },
-            ]}
-          >
-            <Text style={{ fontSize: slide.center_size * scale * 0.42 }}>
-              {slide.center_emoji}
-            </Text>
-          </View>
-        ) : null}
-
-        {slide.badge_label && slide.badge_left != null && slide.badge_top != null ? (
-          <View
-            style={[
-              styles.floatingBadge,
-              { left: slide.badge_left * scale, top: slide.badge_top * scale },
-            ]}
-          >
-            <Text style={styles.sparkle}>✦</Text>
-            <Text style={styles.floatingBadgeText}>{slide.badge_label}</Text>
-          </View>
-        ) : null}
-
-        {slide.secondary_badge_label &&
-        slide.secondary_badge_left != null &&
-        slide.secondary_badge_top != null ? (
-          <View
-            style={[
-              styles.floatingBadge,
-              {
-                left: slide.secondary_badge_left * scale,
-                top: slide.secondary_badge_top * scale,
-              },
-            ]}
-          >
-            <Text style={styles.floatingBadgeText}>{slide.secondary_badge_label}</Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.copyBlock}>
-        <OnboardingCategoryBadge label={slide.category} />
-        <Text style={styles.title}>{slide.title}</Text>
-        <Text style={styles.subtitle}>{slide.subtitle}</Text>
-      </View>
+      <FlatList
+        ref={flatListRef}
+        data={slides}
+        keyExtractor={(item) => item.id}
+        renderItem={renderSlideItem}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        bounces={false}
+        onMomentumScrollEnd={handleScrollEnd}
+        getItemLayout={getItemLayout}
+        style={{ flex: 1 }}
+      />
 
       <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
         {isLastSlide ? (
