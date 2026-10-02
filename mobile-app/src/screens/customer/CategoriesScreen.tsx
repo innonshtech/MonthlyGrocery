@@ -11,6 +11,8 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { ArrowLeft } from 'lucide-react-native';
 import AppLoader from '../../components/AppLoader';
 import AppIcon from '../../components/AppIcon';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
@@ -100,12 +102,12 @@ function TileRow({
 
   return (
     <View style={styles.tileRow}>
-      {slots.map((t) =>
+      {slots.map((t, idx) =>
         t.name === '' ? (
-          <View key={t.id} style={styles.tile} />
+          <View key={`empty-${idx}`} style={styles.tile} />
         ) : (
           <CategoryTileItem
-            key={t.id}
+            key={`${t.id || t.name}-${idx}`}
             item={t}
             onPress={() =>
               navigation.navigate('CategoryProducts', {
@@ -120,13 +122,23 @@ function TileRow({
   );
 }
 
-export default function CategoriesScreen({ navigation }: any) {
+export default function CategoriesScreen({ navigation, setActiveTab }: any) {
   const [screenConfig, setScreenConfig] = useState<CategoriesScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
   const [categories, setCategories] = useState<CategoryTile[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleBack = () => {
+    if (setActiveTab) {
+      setActiveTab('Home');
+    } else if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Shop', { initialTab: 'Home' });
+    }
+  };
 
   const loadConfig = useCallback(async () => {
     const result = await fetchCategoriesConfigWithStatus();
@@ -157,6 +169,12 @@ export default function CategoriesScreen({ navigation }: any) {
     loadAll();
   }, [loadAll]);
 
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [loadAll]),
+  );
+
   const sectionGroups = useMemo(
     () => (screenConfig ? buildSectionGroups(screenConfig) : []),
     [screenConfig],
@@ -170,23 +188,53 @@ export default function CategoriesScreen({ navigation }: any) {
 
   const sections = useMemo((): SectionData[] => {
     if (!screenConfig) return [];
+    const defaultLabel = screenConfig.section_default_label || 'More Categories';
     const map: Record<string, CategoryTile[]> = {};
     for (const sec of sectionGroups) map[sec.label] = [];
+    if (!map[defaultLabel]) map[defaultLabel] = [];
 
     for (const cat of filtered) {
-      const sec = getSectionLabel(cat.name, sectionGroups, screenConfig.section_default_label);
+      const sec = getSectionLabel(cat.name, sectionGroups, defaultLabel);
       if (!map[sec]) map[sec] = [];
       map[sec].push(cat);
     }
 
     const result: SectionData[] = [];
+    const processedLabels = new Set<string>();
+
     for (const sec of sectionGroups) {
+      if (processedLabels.has(sec.label)) continue;
+      processedLabels.add(sec.label);
       const cats = map[sec.label];
       if (!cats || cats.length === 0) continue;
       const rows: CategoryTile[][] = [];
       for (let i = 0; i < cats.length; i += 4) rows.push(cats.slice(i, i + 4));
       result.push({ label: sec.label, rows });
     }
+
+    // Include the default section if not already processed
+    if (!processedLabels.has(defaultLabel)) {
+      processedLabels.add(defaultLabel);
+      const defaultCats = map[defaultLabel];
+      if (defaultCats && defaultCats.length > 0) {
+        const rows: CategoryTile[][] = [];
+        for (let i = 0; i < defaultCats.length; i += 4) rows.push(defaultCats.slice(i, i + 4));
+        result.push({ label: defaultLabel, rows });
+      }
+    }
+
+    // Include any other dynamic custom category groups
+    for (const key of Object.keys(map)) {
+      if (processedLabels.has(key)) continue;
+      processedLabels.add(key);
+      const otherCats = map[key];
+      if (otherCats && otherCats.length > 0) {
+        const rows: CategoryTile[][] = [];
+        for (let i = 0; i < otherCats.length; i += 4) rows.push(otherCats.slice(i, i + 4));
+        result.push({ label: key, rows });
+      }
+    }
+
     return result;
   }, [filtered, sectionGroups, screenConfig]);
 
@@ -215,7 +263,17 @@ export default function CategoriesScreen({ navigation }: any) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <Text style={styles.mainTitle}>{screenConfig?.title}</Text>
+        <View style={styles.headerTitleRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color={COLORS.ink900} strokeWidth={2.4} />
+          </TouchableOpacity>
+          <Text style={styles.mainTitle}>{screenConfig?.title || 'All Categories'}</Text>
+        </View>
 
         <View style={styles.searchBar}>
           <HomeSearchIcon size={18} color={COLORS.ink300} />
@@ -251,8 +309,8 @@ export default function CategoriesScreen({ navigation }: any) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {sections.map((section) => (
-            <View key={section.label} style={styles.section}>
+          {sections.map((section, sIdx) => (
+            <View key={`${section.label}-${sIdx}`} style={styles.section}>
               <SectionHeader label={section.label} />
               {section.rows.map((row, ri) => (
                 <TileRow key={ri} tiles={row} navigation={navigation} />
@@ -281,10 +339,25 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: H_PADDING,
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 8,
-    gap: 12,
+    gap: 10,
     backgroundColor: '#FBFAF6',
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.line,
   },
   mainTitle: {
     ...FONTS.muktaBold,

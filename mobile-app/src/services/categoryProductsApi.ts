@@ -60,6 +60,7 @@ export type FetchCategoryProductsParams = {
   city?: string;
   area?: string;
   pincode?: string;
+  shopId?: string;
 };
 
 export type CategoryProductsFetchResult = {
@@ -174,6 +175,7 @@ export async function fetchCategoryProducts(
       city: params.city,
       area: params.area,
       pincode: params.pincode,
+      shop_id: params.shopId,
     });
 
     const res = await fetch(url);

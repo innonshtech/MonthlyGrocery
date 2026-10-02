@@ -1,6 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Dimensions,
+  StatusBar,
+  BackHandler,
+  ToastAndroid,
+  Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import HomeScreen from './HomeScreen';
 import CategoriesScreen from './CategoriesScreen';
 import CartScreen from './CartScreen';
@@ -18,12 +29,41 @@ export default function MainTabScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
   const initialTab = route?.params?.initialTab || 'Home';
   const [activeTab, setActiveTab] = useState<'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account'>(initialTab);
+  const lastBackPressRef = useRef<number>(0);
 
   useEffect(() => {
     if (route?.params?.initialTab) {
       setActiveTab(route.params.initialTab);
     }
   }, [route?.params?.initialTab]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // If not on Home tab, switch back to Home tab first
+        if (activeTab !== 'Home') {
+          setActiveTab('Home');
+          return true;
+        }
+
+        // If on Home tab, require double back press to exit
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+
+        lastBackPressRef.current = now;
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+        }
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [activeTab])
+  );
   const { items } = useCart();
 
   const totalCartCount = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -33,13 +73,13 @@ export default function MainTabScreen({ route, navigation }: any) {
       case 'Home':
         return <HomeScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Categories':
-        return <CategoriesScreen navigation={navigation} />;
+        return <CategoriesScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Cart':
         return <CartScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Orders':
         return <OrdersScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Account':
-        return <AccountScreen navigation={navigation} />;
+        return <AccountScreen navigation={navigation} setActiveTab={setActiveTab} />;
       default:
         return <HomeScreen navigation={navigation} setActiveTab={setActiveTab} />;
     }

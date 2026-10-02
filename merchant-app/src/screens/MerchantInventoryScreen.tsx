@@ -204,6 +204,15 @@ export default function MerchantInventoryScreen() {
       return;
     }
 
+    const masterMrp = parseFloat(String(editingProduct.mrp)) || 0;
+    if (masterMrp > 0 && priceVal > masterMrp) {
+      Alert.alert(
+        'Invalid Price',
+        `Selling price cannot exceed Master MRP of ₹${Math.round(masterMrp)}`,
+      );
+      return;
+    }
+
     const calculatedDiscount = mrpVal > priceVal 
       ? Math.round(((mrpVal - priceVal) / mrpVal) * 100) 
       : 0;

@@ -13,6 +13,7 @@ export interface CopyLastMonthScreenConfig {
   add_to_cart_label: string;
   add_success_title: string;
   add_success_message_template: string;
+  add_success_message_skipped_template?: string;
   keep_browsing_label: string;
   view_cart_label: string;
   empty_title: string;

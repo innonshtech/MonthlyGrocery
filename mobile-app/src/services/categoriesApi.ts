@@ -50,18 +50,30 @@ export async function fetchCategoryList(): Promise<CategoriesListResult> {
     }
 
     const full = data.categoriesFull || [];
-    if (full.length > 0) {
-      return {
-        items: full.map((item: { id: string; name: string; image_url?: string }) => ({
-          id: item.id,
+    const rawCategories: string[] = Array.isArray(data.categories) ? data.categories : [];
+    const itemMap = new Map<string, CategoryItem>();
+
+    for (const item of full) {
+      if (item && item.name) {
+        itemMap.set(item.name.toLowerCase(), {
+          id: item.id || `cat-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
           name: item.name,
           image_url: (item.image_url || '').trim(),
-        })),
-        error: false,
-      };
+        });
+      }
     }
 
-    return { items: [], error: false };
+    for (const name of rawCategories) {
+      if (name && !itemMap.has(name.toLowerCase())) {
+        itemMap.set(name.toLowerCase(), {
+          id: `cat-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+          name,
+          image_url: '',
+        });
+      }
+    }
+
+    return { items: Array.from(itemMap.values()), error: false };
   } catch {
     return { items: [], error: true };
   }

@@ -8,6 +8,7 @@ export type CatalogQuery = {
   secondary?: string;
   q?: string;
   limit?: number;
+  city?: string;
 };
 
 export type CatalogResult = {
@@ -29,12 +30,16 @@ function mergeShopProduct(
   shopId: string,
   sp: Record<string, any> | undefined,
   p: Record<string, any>,
+  cp?: Record<string, any> | undefined,
 ): Record<string, any> {
-  const mrp = parseFloat(p.mrp) || 0;
+  const baseMrp = cp && cp.mrp && parseFloat(cp.mrp) > 0 ? parseFloat(cp.mrp) : (parseFloat(p.mrp) || 0);
+  const basePrice = cp && cp.price && parseFloat(cp.price) > 0 ? parseFloat(cp.price) : (parseFloat(p.price) || baseMrp);
+
+  const mrp = baseMrp;
   const price =
     sp && sp.selling_price && parseFloat(sp.selling_price) > 0
       ? parseFloat(sp.selling_price)
-      : parseFloat(p.price) || mrp;
+      : basePrice;
 
   const discountPercent =
     sp && sp.discount_percentage && sp.discount_percentage > 0
@@ -43,21 +48,25 @@ function mergeShopProduct(
 
   const stock = sp && sp.stock != null ? Number(sp.stock) : (p.stock != null ? Number(p.stock) : 50);
   const isStockEmpty = stock <= 0;
-  const isAvailable = (sp ? sp.available !== false : p.available !== false) && !isStockEmpty;
+  const isAvailable = (sp ? sp.available !== false : p.available !== false) && (!cp || cp.is_live !== false) && !isStockEmpty;
+  const media = parseProductMedia(p);
 
   return enrichProductPackFields({
     id: p.id,
     shop_id: shopId,
+    family_key: p.family_key,
     name: p.name,
     sku: p.sku,
     brand: p.brand,
     company: p.company,
     primary_category: p.primary_category,
     secondary_category: p.secondary_category,
-    description: p.description,
+    description: media.clean_description || p.description,
     short_description: p.short_description,
     place: p.place,
-    image_url: p.image_url,
+    image_url: media.primary_image_url || p.image_url,
+    images: media.images,
+    video_url: media.video_url,
     quantity_value: p.quantity_value,
     quantity_unit: p.quantity_unit,
     unit: p.unit,
@@ -76,6 +85,7 @@ function mergeShopProduct(
 }
 
 import { searchProductsWithIntelligence } from '../utils/intelligentSearch';
+import { parseProductMedia } from '../utils/productMedia';
 
 /** Load master catalog products for a shop with merchant-specific overrides applied. */
 export async function fetchProductsForShop(
@@ -94,6 +104,23 @@ export async function fetchProductsForShop(
   const overrideMap = new Map<string, any>();
   for (const sp of shopOverrides) {
     overrideMap.set(sp.product_id, sp);
+  }
+
+  // 1b. Fetch city price overrides if city name is specified in query
+  const cityPriceMap = new Map<string, any>();
+  if (query.city && String(query.city).trim()) {
+    try {
+      const cleanCity = String(query.city).trim();
+      const { data: cityPrices } = await supabase
+        .from('product_city_prices')
+        .select('*')
+        .ilike('city_name', cleanCity);
+      if (cityPrices) {
+        for (const cp of cityPrices) {
+          cityPriceMap.set(cp.product_id, cp);
+        }
+      }
+    } catch {}
   }
 
   // 2. Fetch master products from Supabase
@@ -116,11 +143,18 @@ export async function fetchProductsForShop(
   const out: Record<string, any>[] = [];
   for (const p of masterProducts || []) {
     const sp = overrideMap.get(p.id);
+    const cp = cityPriceMap.get(p.id);
+
+    // If city pricing override marks item not live for this city, omit it
+    if (cp && cp.is_live === false) {
+      continue;
+    }
+
     // If merchant explicitly disabled this item for their shop, omit it
     if (sp && sp.available === false) {
       continue;
     }
-    out.push(mergeShopProduct(shopId, sp, p));
+    out.push(mergeShopProduct(shopId, sp, p, cp));
   }
 
   if (query.q && query.q.trim()) {

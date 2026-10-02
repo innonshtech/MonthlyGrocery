@@ -45,7 +45,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
     dealsOnly = false,
   } = route?.params || {};
 
-  const { city, area, pincode } = useAuth();
+  const { city, area, pincode, selectedShop } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
   const insets = useSafeAreaInsets();
 
@@ -88,6 +88,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       city: city ?? undefined,
       area: area ?? undefined,
       pincode: pincode ?? undefined,
+      shopId: selectedShop?.id ?? undefined,
     });
 
     if (result.error) {
@@ -97,7 +98,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       setProducts(result.products);
     }
     setLoading(false);
-  }, [hasDeliveryArea, dealsOnly, categoryName, categoryId, city, area, pincode]);
+  }, [hasDeliveryArea, dealsOnly, categoryName, categoryId, city, area, pincode, selectedShop]);
 
   const loadAll = useCallback(async () => {
     await loadConfig();
@@ -338,7 +339,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                     width={CARD_W}
                     quantity={qty}
                     addButtonLabel={screenConfig?.add_button_label}
-                    onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                    onPress={() => navigation.navigate('ProductDetail', { productId: item.id, initialProduct: item })}
                     onAdd={() => addToCart(item)}
                     onIncrement={() => addToCart(item)}
                     onDecrement={() => updateQuantity(item.id, qty - 1)}

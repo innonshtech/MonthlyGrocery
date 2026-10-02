@@ -10,6 +10,7 @@ import {
   StatusBar,
   ActivityIndicator,
   ScrollView,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
@@ -101,6 +102,27 @@ export default function LoginScreen({ route, navigation }: any) {
       if (interval) clearInterval(interval);
     };
   }, [lockoutSeconds]);
+
+  const handleBack = useCallback(() => {
+    if (step === 2) {
+      setStep(1);
+      setError('');
+      return true;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+    navigation.navigate('ValueIntro');
+    return true;
+  }, [step, navigation]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      return handleBack();
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
 
   const formattedTimer = `0:${resendTimer < 10 ? `0${resendTimer}` : resendTimer}`;
   const formattedLockout = `0:${lockoutSeconds < 10 ? `0${lockoutSeconds}` : lockoutSeconds}`;
@@ -300,7 +322,7 @@ export default function LoginScreen({ route, navigation }: any) {
               </View>
             ) : (
             <>
-              <OnboardingBackButton onPress={() => navigation.goBack()} />
+              <OnboardingBackButton onPress={handleBack} />
 
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>{phoneEntry.title}</Text>
@@ -357,12 +379,7 @@ export default function LoginScreen({ route, navigation }: any) {
             </View>
           ) : (
             <>
-              <OnboardingBackButton
-                onPress={() => {
-                  setStep(1);
-                  setError('');
-                }}
-              />
+              <OnboardingBackButton onPress={handleBack} />
 
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>{otpVerification.title}</Text>
@@ -370,12 +387,7 @@ export default function LoginScreen({ route, navigation }: any) {
                   <Text style={styles.subtitle}>
                     {otpVerification.subtitle_prefix} {formattedMobile}
                   </Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setStep(1);
-                      setError('');
-                    }}
-                  >
+                  <TouchableOpacity onPress={handleBack}>
                     <Text style={styles.editLink}>{otpVerification.edit_label}</Text>
                   </TouchableOpacity>
                 </View>

@@ -711,19 +711,40 @@ router.get('/registration-status/:mobile', async (req, res) => {
       .eq('phone', cleanMobile)
       .maybeSingle();
 
-    if (!profile) {
-      return res.json({ success: true, status: 'not_found', message: 'No registration application found for this mobile number.' });
+    let shop: any = null;
+
+    if (profile) {
+      const { data: shopByOwner } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('owner_id', profile.id)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+      shop = shopByOwner;
     }
 
-    const { data: shop } = await supabase
-      .from('shops')
-      .select('*')
-      .eq('owner_id', profile.id)
-      .order('created_at', { ascending: false })
-      .maybeSingle();
+    if (!shop) {
+      const { data: shopByPhone } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('phone', cleanMobile)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+      shop = shopByPhone;
+    }
 
     if (!shop) {
-      return res.json({ success: true, status: 'not_found', message: 'No shop registered for this user.' });
+      const { data: shopByPhonePlus } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('phone', '+' + cleanMobile)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+      shop = shopByPhonePlus;
+    }
+
+    if (!shop) {
+      return res.json({ success: true, status: 'not_found', message: 'No registration application found for this mobile number.' });
     }
 
     return res.json({
@@ -732,8 +753,8 @@ router.get('/registration-status/:mobile', async (req, res) => {
       shop: {
         id: shop.id,
         shop_name: shop.shop_name,
-        owner_name: shop.owner_name || profile.name,
-        phone: profile.phone,
+        owner_name: shop.owner_name || profile?.name,
+        phone: shop.phone || profile?.phone || cleanMobile,
         status: shop.status,
         rejection_reason: shop.rejection_reason || null,
         city: shop.city,
@@ -776,6 +797,10 @@ router.post('/:shop_id/status', authMiddleware, requireRole(['super_admin']), as
 
   if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
     return res.status(400).json({ success: false, error: 'Invalid status value' });
+  }
+
+  if (status === 'rejected' && (!rejection_reason || !String(rejection_reason).trim())) {
+    return res.status(400).json({ success: false, error: 'Rejection reason is mandatory when rejecting a shop.' });
   }
 
   try {
@@ -1020,11 +1045,24 @@ router.post('/self-register', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Aadhaar Card document upload is mandatory for store registration.' });
   }
 
-  if (pincode && String(pincode).trim()) {
-    const pinVal = validateIndianPincode(String(pincode));
-    if (!pinVal.isValid) {
-      return res.status(400).json({ success: false, error: pinVal.error });
-    }
+  const resolvedCityInput = String(city || '').trim();
+  const resolvedAreaInput = String(area_name || '').trim();
+  const resolvedPinInput = String(pincode || '').trim();
+
+  if (!resolvedCityInput || !resolvedAreaInput) {
+    return res.status(400).json({
+      success: false,
+      error: 'City and locality/area are required. Detect GPS or enter them manually in the onboarding form.',
+    });
+  }
+
+  if (!resolvedPinInput) {
+    return res.status(400).json({ success: false, error: '6-digit delivery pincode is required for store onboarding.' });
+  }
+
+  const pinVal = validateIndianPincode(resolvedPinInput);
+  if (!pinVal.isValid) {
+    return res.status(400).json({ success: false, error: pinVal.error });
   }
 
   let cleanMobile = String(resolvedMobile).replace(/[^\d]/g, '');
@@ -1050,16 +1088,15 @@ router.post('/self-register', async (req, res) => {
         .from('shops')
         .select('id, shop_name, status')
         .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false })
         .maybeSingle();
 
       if (existingShop && existingShop.status === 'approved') {
         return res.status(400).json({ success: false, error: 'A store with this mobile number is already approved and registered.' });
       }
-      if (existingShop && existingShop.status === 'pending') {
-        // Update the pending shop application with newly uploaded details
+      if (existingShop && (existingShop.status === 'pending' || existingShop.status === 'rejected')) {
         const parsedLat = latitude != null && !isNaN(parseFloat(String(latitude))) ? parseFloat(String(latitude)) : null;
         const parsedLng = longitude != null && !isNaN(parseFloat(String(longitude))) ? parseFloat(String(longitude)) : null;
-
         await supabase
           .from('shops')
           .update({
@@ -1067,13 +1104,13 @@ router.post('/self-register', async (req, res) => {
             owner_name: owner_name.trim(),
             phone: cleanMobile,
             email: email?.trim() || null,
-            city: city?.trim() || 'Pune',
-            area_name: area_name?.trim() || '',
+            city: resolvedCityInput,
+            area_name: resolvedAreaInput,
             address: (detailed_address || address_line || '').trim(),
             address_line: (address_line || detailed_address || '').trim(),
             street_address: street_address?.trim() || null,
             detailed_address: detailed_address?.trim() || null,
-            pincode: pincode?.trim() || '',
+            pincode: resolvedPinInput,
             state_name: state_name?.trim() || 'Maharashtra',
             district_name: district_name?.trim() || 'Pune',
             latitude: parsedLat,
@@ -1088,6 +1125,7 @@ router.post('/self-register', async (req, res) => {
             shop_photo_url: shop_photo_url || null,
             onboarding_source: 'merchant_app',
             status: 'pending',
+            rejection_reason: null,
           })
           .eq('id', existingShop.id);
 
@@ -1097,12 +1135,12 @@ router.post('/self-register', async (req, res) => {
           shop_id: existingShop.id,
           state_name: state_name?.trim() || 'Maharashtra',
           district_name: district_name?.trim() || 'Pune',
-          city: city?.trim() || 'Pune',
-          area_name: area_name?.trim() || '',
+          city: resolvedCityInput,
+          area_name: resolvedAreaInput,
           address_line: (detailed_address || address_line || '').trim(),
           street_address: street_address?.trim() || '',
           detailed_address: detailed_address?.trim() || '',
-          pincode: pincode?.trim() || '',
+          pincode: resolvedPinInput,
           latitude: parsedLat,
           longitude: parsedLng,
           delivery_radius_km: delivery_radius_km || 5.0,
@@ -1116,11 +1154,22 @@ router.post('/self-register', async (req, res) => {
         });
         writeDb(db);
 
-        return res.status(200).json({ 
-          success: true, 
-          message: 'Your registration application was updated and is pending Admin approval.',
+        const wasRejected = existingShop.status === 'rejected';
+        return res.status(200).json({
+          success: true,
+          message: wasRejected
+            ? 'Your store application was re-submitted and is pending Admin approval.'
+            : 'Your registration application was updated and is pending Admin approval.',
           status: 'pending',
-          shop_id: existingShop.id
+          shop_id: existingShop.id,
+          shop: {
+            id: existingShop.id,
+            shop_name: shop_name.trim(),
+            street_address: street_address?.trim() || null,
+            city: resolvedCityInput,
+            area_name: resolvedAreaInput,
+            status: 'pending',
+          },
         });
       }
     } else {
@@ -1155,13 +1204,13 @@ router.post('/self-register', async (req, res) => {
         owner_name: owner_name.trim(),
         phone: cleanMobile,
         email: email?.trim() || null,
-        city: city?.trim() || 'Pune',
-        area_name: area_name?.trim() || '',
+        city: resolvedCityInput,
+        area_name: resolvedAreaInput,
         address: fullAddr,
         address_line: address_line?.trim() || fullAddr,
         street_address: street_address?.trim() || null,
         detailed_address: detailed_address?.trim() || null,
-        pincode: pincode?.trim() || '',
+        pincode: resolvedPinInput,
         state_name: state_name?.trim() || 'Maharashtra',
         district_name: district_name?.trim() || 'Pune',
         latitude: parsedLat,
@@ -1191,12 +1240,12 @@ router.post('/self-register', async (req, res) => {
       shop_id: newShop.id,
       state_name: state_name?.trim() || 'Maharashtra',
       district_name: district_name?.trim() || 'Pune',
-      city: city?.trim() || 'Pune',
-      area_name: area_name?.trim() || '',
+      city: resolvedCityInput,
+      area_name: resolvedAreaInput,
       address_line: fullAddr,
       street_address: street_address?.trim() || '',
       detailed_address: detailed_address?.trim() || '',
-      pincode: pincode?.trim() || '',
+      pincode: resolvedPinInput,
       latitude: parsedLat,
       longitude: parsedLng,
       delivery_radius_km: radius,
@@ -1221,8 +1270,8 @@ router.post('/self-register', async (req, res) => {
         status: 'pending',
         latitude: parsedLat,
         longitude: parsedLng,
-        city: city?.trim() || '',
-        area_name: area_name?.trim() || '',
+        city: resolvedCityInput,
+        area_name: resolvedAreaInput,
         street_address: street_address?.trim() || '',
         detailed_address: detailed_address?.trim() || '',
         aadhaar_number: newShop.aadhaar_number,

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   PermissionsAndroid,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
@@ -122,6 +123,26 @@ export default function CitySelectionScreen({ navigation }: any) {
     c.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const handleBack = useCallback(() => {
+    if (searchQuery.trim().length > 0) {
+      setSearchQuery('');
+      return true;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+    navigation.navigate('Login');
+    return true;
+  }, [searchQuery, navigation]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      return handleBack();
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
@@ -150,11 +171,7 @@ export default function CitySelectionScreen({ navigation }: any) {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <OnboardingBackButton
-        onPress={() => {
-          if (navigation.canGoBack()) navigation.goBack();
-        }}
-      />
+      <OnboardingBackButton onPress={handleBack} />
 
       <View style={styles.headerBlock}>
         <Text style={styles.mainTitle}>{config.title}</Text>

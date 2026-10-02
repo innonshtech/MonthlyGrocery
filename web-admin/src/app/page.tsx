@@ -1298,7 +1298,11 @@ export default function DashboardPage() {
       });
       setExcelReport(data);
       setExcelFile(null);
-      alert('Spreadsheet processing completed successfully!');
+      if (data.failed > 0 || (data.errors && data.errors.length > 0)) {
+        alert(`Spreadsheet processed: ${data.created || 0} created, ${data.updated || 0} updated, ${data.failed || data.errors.length} invalid rows rejected. See error log below.`);
+      } else {
+        alert('Spreadsheet processing completed successfully!');
+      }
     } catch (err: any) {
       setExcelError(err.message || 'Excel processing failed');
     } finally {

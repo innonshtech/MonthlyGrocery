@@ -148,22 +148,36 @@ export default function ShopsTab({
   token,
   setActiveTab,
 }: ShopsTabProps) {
-  // Helper to safely resolve document URLs (rewriting S3 403 URLs to backend media stream proxy)
+  // Helper to safely resolve document URLs (rewriting S3 / AWS / backend URLs to same-origin media stream proxy)
   const getSafeDocUrl = (url?: string | null): string => {
     if (!url) return '';
     const s = String(url).trim();
     if (!s) return '';
     if (s.startsWith('data:')) return s;
+
+    // 1. AWS S3 raw bucket URL
     const s3Match = s.match(/amazonaws\.com\/(.+)$/);
     if (s3Match) {
       return `/backend-api/shops/doc-file/${s3Match[1]}`;
     }
-    if (s.startsWith('/api/shops/doc-file/')) {
-      return `/backend-api${s.replace(/^\/api/, '')}`;
+
+    // 2. Any absolute or relative URL containing /shops/doc-file/ (AWS EC2, localhost, etc.)
+    const docMatch = s.match(/\/(?:api\/)?shops\/doc-file\/(.+)$/);
+    if (docMatch) {
+      return `/backend-api/shops/doc-file/${docMatch[1]}`;
     }
-    if (s.startsWith('http://localhost:8001/api/shops/doc-file/')) {
-      return s.replace('http://localhost:8001/api', '/backend-api');
+
+    // 3. Any URL referencing merchant-documents/
+    const merchMatch = s.match(/merchant-documents\/(.+)$/);
+    if (merchMatch) {
+      return `/backend-api/shops/doc-file/merchant-documents/${merchMatch[1]}`;
     }
+
+    // 4. Same-origin proxies and relative paths
+    if (s.startsWith('/backend-api/')) return s;
+    if (s.startsWith('/api/')) return `/backend-api${s.replace(/^\/api/, '')}`;
+    if (s.startsWith('/')) return `/backend-api${s}`;
+
     return s;
   };
 

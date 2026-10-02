@@ -3,16 +3,119 @@ import { readDb, writeDb } from './config/localDb';
 
 type InsertedProduct = {
   id: string;
+  sku: string;
   mrp: number;
   price: number;
   todays_deal: boolean;
 };
 
+/** Merchant inventory overrides for local catalog (TC-CUST-020 / 022 demo). */
+function upsertLocalShopProductOverrides(
+  shopId: string,
+  items: Array<{ product_id: string; selling_price: number; stock: number; available: boolean }>,
+) {
+  const db = readDb();
+  if (!db.shop_products) db.shop_products = [];
+
+  for (const item of items) {
+    const idx = db.shop_products.findIndex(
+      (sp) => sp.shop_id === shopId && sp.product_id === item.product_id,
+    );
+    const base = {
+      shop_id: shopId,
+      product_id: item.product_id,
+      selling_price: item.selling_price,
+      discount_percentage: 0,
+      stock: item.stock,
+      available: item.available,
+      status: 'approved' as const,
+    };
+    if (idx >= 0) {
+      db.shop_products[idx] = { ...db.shop_products[idx], ...base };
+    } else {
+      db.shop_products.push({
+        id: `sp-seed-${item.product_id}`,
+        ...base,
+      });
+    }
+  }
+
+  writeDb(db);
+  console.log(
+    'Local shop_products synced: Aashirvaad Shudh 1kg/10kg in stock, 5kg merchant stock=0 (TC-CUST-022).',
+  );
+}
+
+async function resolveSeededBySkus(
+  seeded: InsertedProduct[],
+  skus: string[],
+): Promise<Map<string, InsertedProduct>> {
+  const map = new Map(seeded.map((p) => [p.sku, p]));
+  for (const sku of skus) {
+    if (map.has(sku)) continue;
+    const { data: row } = await supabase.from('products').select('id, sku').eq('sku', sku).maybeSingle();
+    if (row?.id) {
+      const dummy = dummyProducts.find((d) => d.sku === sku);
+      map.set(sku, {
+        id: row.id,
+        sku,
+        mrp: dummy?.mrp ?? 0,
+        price: dummy?.price ?? 0,
+        todays_deal: dummy?.todays_deal ?? false,
+      });
+    }
+  }
+  return map;
+}
+
+async function syncAashirvaadShudhDemoInventory(shopId: string, seeded: InsertedProduct[]) {
+  const bySku = await resolveSeededBySkus(seeded, ['AASH-ATTA-1KG', 'AASH-ATTA-5KG', 'AASH-ATTA-10KG']);
+  const oneKg = bySku.get('AASH-ATTA-1KG');
+  const fiveKg = bySku.get('AASH-ATTA-5KG');
+  const tenKg = bySku.get('AASH-ATTA-10KG');
+  if (!oneKg || !fiveKg || !tenKg) {
+    console.warn(
+      'Aashirvaad Shudh SKUs missing — skip shop_products demo inventory.',
+      { oneKg: !!oneKg, fiveKg: !!fiveKg, tenKg: !!tenKg },
+    );
+    return;
+  }
+
+  const overrides = [
+    { product_id: oneKg.id, selling_price: oneKg.price, stock: 100, available: true },
+    { product_id: fiveKg.id, selling_price: fiveKg.price, stock: 0, available: true },
+    { product_id: tenKg.id, selling_price: tenKg.price, stock: 80, available: true },
+  ];
+
+  upsertLocalShopProductOverrides(shopId, overrides);
+
+  for (const row of overrides) {
+    const { error } = await supabase.from('shop_products').upsert(
+      {
+        shop_id: shopId,
+        product_id: row.product_id,
+        selling_price: row.selling_price,
+        discount_percentage: 0,
+        stock: row.stock,
+        available: row.available,
+        status: 'approved',
+      },
+      { onConflict: 'shop_id,product_id' },
+    );
+    if (error && !error.message.includes('does not exist')) {
+      console.warn(`Supabase shop_products upsert (${row.product_id}):`, error.message);
+    }
+  }
+}
+
+const AASHIRVAAD_SHUDH_FAMILY = "aashirvaad-shudh-chakki-atta";
+
 const dummyProducts = [
   {
-    name: "Aashirvaad Shudh Chakki Atta 10kg",
-    sku: "AASH-ATTA-10KG",
-    barcode: "8901725181222",
+    name: "Aashirvaad Shudh Chakki Atta 1kg",
+    sku: "AASH-ATTA-1KG",
+    family_key: AASHIRVAAD_SHUDH_FAMILY,
+    barcode: "8901725181208",
     primary_category: "Atta & Rice",
     secondary_category: "Atta",
     brand: "Aashirvaad",
@@ -21,10 +124,71 @@ const dummyProducts = [
     short_description: "100% whole wheat chakki flour",
     place: "Madhya Pradesh",
     image_url: "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png",
+    mrp: 65.0,
+    price: 58.0,
+    stock: 100,
+    unit: "1 Kg",
+    quantity_value: 1,
+    quantity_unit: "kg",
+    available: true,
+    is_veg: true,
+    featured: false,
+    todays_deal: false,
+    best_seller: true,
+    city_prices: [
+      { city_name: "Mumbai", mrp: 65.0, price: 58.0, wholesaler_price: 48.0, is_live: true },
+      { city_name: "Pune", mrp: 65.0, price: 56.0, wholesaler_price: 48.0, is_live: true }
+    ]
+  },
+  {
+    name: "Aashirvaad Shudh Chakki Atta 5kg",
+    sku: "AASH-ATTA-5KG",
+    family_key: AASHIRVAAD_SHUDH_FAMILY,
+    barcode: "8901725181215",
+    primary_category: "Atta & Rice",
+    secondary_category: "Atta",
+    brand: "Aashirvaad",
+    company: "ITC",
+    description: "100% whole wheat chakki atta with zero maida. Stays soft for up to 6 hours.",
+    short_description: "100% whole wheat chakki flour",
+    place: "Madhya Pradesh",
+    image_url: "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png",
+    mrp: 299.0,
+    price: 269.0,
+    stock: 100,
+    unit: "5 Kg",
+    quantity_value: 5,
+    quantity_unit: "kg",
+    available: true,
+    is_veg: true,
+    featured: true,
+    todays_deal: false,
+    best_seller: true,
+    city_prices: [
+      { city_name: "Mumbai", mrp: 299.0, price: 269.0, wholesaler_price: 220.0, is_live: true },
+      { city_name: "Pune", mrp: 299.0, price: 259.0, wholesaler_price: 220.0, is_live: true }
+    ]
+  },
+  {
+    name: "Aashirvaad Shudh Chakki Atta 10kg",
+    sku: "AASH-ATTA-10KG",
+    family_key: AASHIRVAAD_SHUDH_FAMILY,
+    barcode: "8901725181222",
+    primary_category: "Atta & Rice",
+    secondary_category: "Atta",
+    brand: "Aashirvaad",
+    company: "ITC",
+    description:
+      '100% whole wheat chakki atta with zero maida. Stays soft for up to 6 hours.\n<!--media:{"images":["https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png","https://images.unsplash.com/photo-1586201375761-83865001e26c?w=800&q=80","https://images.unsplash.com/photo-1596797038530-2c107229654b?w=800&q=80"],"video_url":"https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"}-->',
+    short_description: "100% whole wheat chakki flour",
+    place: "Madhya Pradesh",
+    image_url: "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/aashirvaad_atta_10kg.png",
     mrp: 499.0,
     price: 449.0,
     stock: 100,
     unit: "10 Kg",
+    quantity_value: 10,
+    quantity_unit: "kg",
     available: true,
     is_veg: true,
     featured: true,
@@ -566,10 +730,11 @@ async function seed() {
 
   // Upsert catalog products (no mass delete — orders reference product rows)
   for (const dp of dummyProducts) {
-    const productData = {
+    const productData: Record<string, unknown> = {
       shop_id: shopId,
       name: dp.name,
       sku: dp.sku,
+      family_key: (dp as any).family_key || null,
       barcode: dp.barcode,
       primary_category: dp.primary_category,
       secondary_category: dp.secondary_category,
@@ -583,12 +748,17 @@ async function seed() {
       price: dp.price,
       stock: dp.stock,
       unit: dp.unit,
+      quantity_value: (dp as any).quantity_value ?? null,
+      quantity_unit: (dp as any).quantity_unit ?? null,
       available: dp.available,
       is_veg: dp.is_veg,
       featured: dp.featured,
       todays_deal: dp.todays_deal,
-      best_seller: dp.best_seller
+      best_seller: dp.best_seller,
     };
+    if ((dp as any).video_url) {
+      productData.video_url = (dp as any).video_url;
+    }
 
     const { data: existing } = await supabase
       .from('products')
@@ -628,6 +798,7 @@ async function seed() {
     if (inserted) {
       insertedProducts.push({
         id: inserted.id,
+        sku: dp.sku,
         mrp: dp.mrp,
         price: dp.price,
         todays_deal: dp.todays_deal,
@@ -655,6 +826,8 @@ async function seed() {
     }
 
   }
+
+  await syncAashirvaadShudhDemoInventory(shopId, insertedProducts);
 
   console.log("Product database seeding completed successfully!");
   process.exit(0);

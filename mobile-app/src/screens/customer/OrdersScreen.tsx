@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SvgXml } from 'react-native-svg';
+import { ArrowLeft } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
@@ -131,7 +132,17 @@ export default function OrdersScreen({
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
-  const [filterMode, setFilterMode] = useState<'current_shop' | 'all'>('current_shop');
+  const [filterMode, setFilterMode] = useState<'current_shop' | 'all'>('all');
+
+  const handleBack = () => {
+    if (setActiveTab) {
+      setActiveTab('Home');
+    } else if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Shop', { initialTab: 'Home' });
+    }
+  };
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -159,6 +170,17 @@ export default function OrdersScreen({
     }
     setOrdersLoading(false);
   }, [token]);
+
+  useEffect(() => {
+    if (!ordersLoading && token && selectedShop?.id && orders.length > 0) {
+      const hasCurrentShopOrder = orders.some(
+        (o) => o.shop_id === selectedShop.id || !o.shop_id,
+      );
+      if (!hasCurrentShopOrder && filterMode === 'current_shop') {
+        setFilterMode('all');
+      }
+    }
+  }, [orders, ordersLoading, token, selectedShop?.id, filterMode]);
 
   useEffect(() => {
     loadConfig();
@@ -289,7 +311,17 @@ export default function OrdersScreen({
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Your orders</Text>
+        <View style={styles.headerTitleRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color={COLORS.ink900} strokeWidth={2.4} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Your orders</Text>
+        </View>
         {selectedShop?.id && safeOrders.length > 0 ? (
           <View style={styles.filterPillsRow}>
             <TouchableOpacity
@@ -641,6 +673,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 14,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   headerTitle: {
     ...FONTS.balooBold,

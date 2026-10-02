@@ -18,10 +18,49 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
+import {
+  Store,
+  LogIn,
+  UserPlus,
+  AlertTriangle,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Info,
+  ClipboardList,
+  MapPin,
+  Navigation,
+  Camera,
+  FileText,
+  CreditCard,
+  ShieldCheck,
+  ArrowRight,
+  ArrowLeft,
+  ChevronRight,
+  ChevronUp,
+  RefreshCw,
+  ExternalLink,
+  Check,
+} from 'lucide-react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 import { API_BASE } from '../config/api';
 
 const { NativeLocation } = NativeModules;
+
+const getDocTitle = (type: string) => {
+  switch (type) {
+    case 'aadhaar':
+      return 'Aadhaar Card';
+    case 'fssai':
+      return 'FSSAI License';
+    case 'pan':
+      return 'PAN Card';
+    case 'shop_photo':
+      return 'Storefront Photo';
+    default:
+      return 'Document';
+  }
+};
 
 export default function MerchantLoginScreen({ navigation: _navigation }: any) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -44,7 +83,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
   const [regEmail, setRegEmail] = useState('');
 
   // Location / GPS States (Street is locked via Google Maps reverse geocode)
-  const [regCity, setRegCity] = useState('Pune');
+  const [regCity, setRegCity] = useState('');
   const [regArea, setRegArea] = useState('');
   const [regStreetAddress, setRegStreetAddress] = useState(''); // Auto-detected from Google Maps, Locked / Read-Only
   const [regDetailedAddress, setRegDetailedAddress] = useState(''); // Merchant manual detailed address (Shop No, Floor, Building)
@@ -68,6 +107,12 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 
   // Registration Outcome
   const [regSuccess, setRegSuccess] = useState<any | null>(null);
+  const [regApplicationStatus, setRegApplicationStatus] = useState<string | null>(null);
+  const [regStatusLoading, setRegStatusLoading] = useState(false);
+  const [regStatusMessage, setRegStatusMessage] = useState('');
+  const [regRejectionReason, setRegRejectionReason] = useState<string | null>(null);
+  const [statusCheckMobile, setStatusCheckMobile] = useState('');
+  const [showStatusSection, setShowStatusSection] = useState(false);
 
   const { sendOtp, verifyOtp } = useMerchantAuth();
 
@@ -163,12 +208,12 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 
       if (res.code === 'NOT_REGISTERED' || errMsg.toLowerCase().includes('not registered')) {
         Alert.alert(
-          '🏬 Store Not Registered',
+          'Store Not Registered',
           `Mobile number +91 ${mobile} is not registered as an authorized Kirana Store with MonthlyGrocery.\n\nWould you like to onboard and register your store now?`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
-              text: '➕ Register Store Now',
+              text: 'Register Store Now',
               onPress: () => {
                 setRegMobile(mobile);
                 setMode('register');
@@ -180,9 +225,34 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         );
       } else if (res.code === 'PENDING_APPROVAL' || errMsg.toLowerCase().includes('under review')) {
         Alert.alert(
-          '⏳ Application Under Review',
-          `Your store registration application is currently PENDING Web Admin verification and approval.\n\nYou will receive access as soon as Admin reviews and approves your documents.`,
+          'Application Under Review',
+          `Your store registration application is currently PENDING Web Admin verification and approval.\n\nApplication Under Review by Admin. Approval expected within 24–48 hours.`,
           [{ text: 'OK', style: 'default' }]
+        );
+      } else if (res.code === 'REJECTED' || errMsg.toLowerCase().includes('rejected')) {
+        const rejectionReason =
+          res.rejection_reason ||
+          (errMsg.includes('Reason:') ? errMsg.split('Reason:')[1]?.replace(/Please contact.*/i, '')?.trim() : '');
+        const alertMsg = rejectionReason
+          ? `Your store application was rejected by Web Admin.\n\nReason: "${rejectionReason}"\n\nPlease re-apply from the Onboard Store tab with corrected documents/details.`
+          : (errMsg || 'Your previous store application was rejected. Open the Onboard Store tab and submit again with the same mobile number.');
+
+        Alert.alert(
+          'Application Rejected',
+          alertMsg,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Re-onboard Store',
+              onPress: () => {
+                setRegMobile(mobile);
+                setMode('register');
+                setRegStep(1);
+                setError('');
+                setRegSuccess(null);
+              },
+            },
+          ]
         );
       } else {
         Alert.alert('Sign In Alert', errMsg);
@@ -200,7 +270,80 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
     const res = await verifyOtp(mobile, code, name);
     setLoading(false);
     if (!res.success) {
-      setError(res.error || 'Invalid OTP code. Please enter 123456 in dev mode.');
+      const errMsg = res.error || 'Invalid OTP code. Please enter 123456 in dev mode.';
+      setError(errMsg);
+      if (res.code === 'PENDING_APPROVAL') {
+        Alert.alert('Approval Pending', errMsg);
+      } else if (res.code === 'REJECTED') {
+        const rejectionReason =
+          res.rejection_reason ||
+          (errMsg.includes('Reason:') ? errMsg.split('Reason:')[1]?.replace(/Please submit.*/i, '')?.trim() : '');
+        const alertMsg = rejectionReason
+          ? `Your store application was rejected by Web Admin.\n\nReason: "${rejectionReason}"\n\nPlease submit a fresh onboarding application.`
+          : errMsg;
+
+        Alert.alert(
+          'Application Rejected',
+          alertMsg,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Re-onboard Store',
+              onPress: () => {
+                setRegMobile(mobile);
+                setMode('register');
+                setRegStep(1);
+              },
+            },
+          ]
+        );
+      }
+    }
+  };
+
+  const fetchRegistrationStatus = async (mobileInput: string) => {
+    const digits = mobileInput.replace(/[^\d]/g, '').slice(-10);
+    if (digits.length !== 10) {
+      const err = 'Enter a valid 10-digit mobile number to check application status.';
+      setError(err);
+      Alert.alert('Invalid Mobile', err);
+      return;
+    }
+    setRegStatusLoading(true);
+    setRegStatusMessage('');
+    setRegApplicationStatus(null);
+    setRegRejectionReason(null);
+    try {
+      const res = await fetch(`${API_BASE}/shops/registration-status/${digits}`);
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setRegStatusMessage(data.error || 'Could not fetch application status.');
+        return;
+      }
+      const status = String(data.status || 'not_found');
+      setRegApplicationStatus(status);
+      if (status === 'not_found') {
+        setRegStatusMessage('No onboarding application found for this mobile. Please use Onboard Store to apply.');
+      } else if (status === 'pending') {
+        setRegStatusMessage(
+          `Application for "${data.shop?.shop_name || 'your store'}" is pending Super Admin approval.`,
+        );
+      } else if (status === 'approved') {
+        setRegStatusMessage(
+          `Store "${data.shop?.shop_name || 'your store'}" is approved. You can sign in with OTP now.`,
+        );
+      } else if (status === 'rejected') {
+        setRegRejectionReason(data.shop?.rejection_reason || null);
+        setRegStatusMessage(
+          `Application was rejected.${data.shop?.rejection_reason ? ` Reason: ${data.shop.rejection_reason}` : ' Please re-onboard from the Onboard Store tab.'}`,
+        );
+      } else {
+        setRegStatusMessage(`Application status: ${status}`);
+      }
+    } catch {
+      setRegStatusMessage('Network error while checking status. Please check your internet connection.');
+    } finally {
+      setRegStatusLoading(false);
     }
   };
 
@@ -233,7 +376,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         if (loc.state) setRegState(loc.state);
         if (loc.district) setRegDistrict(loc.district);
         Alert.alert(
-          '📍 Store Location Verified',
+          'Store Location Verified',
           `Google Maps Street:\n${street}`
         );
       } else {
@@ -280,38 +423,22 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       setDetectingGps(false);
       Alert.alert(
         'GPS Signal Issue',
-        'Could not lock satellite GPS indoors. Would you like to retry or use Pune City coordinates to proceed?',
-        [
-          { text: '🔄 Retry GPS', onPress: handleDetectGps },
-          {
-            text: '📍 Use Pune City (18.5204, 73.8567)',
-            onPress: () => {
-              const defaultLat = 18.52043;
-              const defaultLng = 73.85674;
-              setRegLat(defaultLat);
-              setRegLng(defaultLng);
-              setRegStreetAddress('Pune City Center, Maharashtra');
-              setRegCity('Pune');
-              setRegArea('Pune City');
-              setRegPincode('411001');
-              setRegState('Maharashtra');
-              setRegDistrict('Pune');
-            },
-          },
-        ]
+        'Could not lock your store GPS. Please move near a window/outdoor area and retry. You must enter correct city, area, and pincode manually below before continuing.',
+        [{ text: 'Retry GPS', onPress: handleDetectGps }]
       );
     }
   };
 
-  // Upload Document to AWS S3 / Cloud Storage via API (Max 5MB - Pure Binary PNG/JPG)
+  // Upload Document via Cloud API (Max 5MB - Binary PNG/JPG)
   const handleUploadDocument = async (docType: 'aadhaar' | 'fssai' | 'pan' | 'shop_photo') => {
     setError('');
+    const docLabel = getDocTitle(docType);
     Alert.alert(
-      'Upload Document (Max 5MB)',
+      `Upload ${docLabel} (Max 5MB)`,
       'Select upload source:',
       [
         {
-          text: '📷 Take Photo (Camera)',
+          text: 'Take Photo (Camera)',
           onPress: async () => {
             const hasCamera = await requestCameraPermission();
             if (!hasCamera) return;
@@ -319,7 +446,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
             try {
               const result = await launchCamera({
                 mediaType: 'photo',
-                quality: 0.85,
+                quality: 0.8,
                 maxWidth: 1600,
                 maxHeight: 1600,
                 includeBase64: false,
@@ -334,12 +461,12 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
           },
         },
         {
-          text: '🖼️ Choose from Gallery',
+          text: 'Choose from Gallery',
           onPress: async () => {
             try {
               const result = await launchImageLibrary({
                 mediaType: 'photo',
-                quality: 0.85,
+                quality: 0.8,
                 maxWidth: 1600,
                 maxHeight: 1600,
                 includeBase64: false,
@@ -380,7 +507,6 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       formData.append('document', fileData);
       formData.append('doc_type', docType);
 
-      // Send pure multipart binary stream to S3 upload endpoint
       const res = await fetch(`${API_BASE}/shops/upload-doc`, {
         method: 'POST',
         body: formData,
@@ -395,14 +521,15 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         else if (docType === 'pan') setRegPanDocUrl(uploadedUrl);
         else if (docType === 'shop_photo') setRegShopPhotoUrl(uploadedUrl);
         setError('');
-        Alert.alert('Upload Successful', `${docType.toUpperCase()} document uploaded to AWS S3 storage successfully!`);
+        const title = getDocTitle(docType);
+        Alert.alert('Upload Successful', `${title} uploaded and attached successfully.`);
       } else {
         const uploadErr = data?.error || 'Failed to upload photo to server. Please try again.';
         setError(uploadErr);
         Alert.alert('Upload Failed', uploadErr);
       }
     } catch (e: any) {
-      const netErr = 'Network error while uploading photo to AWS S3. Please ensure internet connection is active.';
+      const netErr = 'Network error while uploading photo. Please ensure your internet connection is active.';
       setError(netErr);
       Alert.alert('Upload Network Error', netErr);
     } finally {
@@ -426,15 +553,29 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
       setRegStep(2);
       return;
     }
+    if (!regCity.trim() || !regArea.trim()) {
+      const err = 'City and locality/area are required. Fill them in Step 2 after GPS detect.';
+      setError(err);
+      Alert.alert('Location Required', err);
+      setRegStep(2);
+      return;
+    }
+    if (!/^\d{6}$/.test(regPincode.trim())) {
+      const err = 'Enter a valid 6-digit pincode in Step 2.';
+      setError(err);
+      Alert.alert('Pincode Required', err);
+      setRegStep(2);
+      return;
+    }
     if (!regAadhaarDocUrl) {
-      const err = 'Aadhaar Card photo upload is mandatory. Please upload a photo of your Aadhaar Card.';
+      const err = 'Aadhaar Card photo upload is mandatory. Please upload a clear photo of your Aadhaar Card.';
       setError(err);
       Alert.alert('Aadhaar Photo Required', err);
       setRegStep(3);
       return;
     }
     if (regAadhaarDocUrl.startsWith('data:')) {
-      const err = 'Please upload a pure binary photo of your Aadhaar Card to AWS S3.';
+      const err = 'Please upload a clear photo of your Aadhaar Card.';
       setError(err);
       Alert.alert('Upload Error', err);
       setRegStep(3);
@@ -456,12 +597,12 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
         owner_name: regOwnerName.trim(),
         owner_mobile: regMobile.trim(),
         email: regEmail.trim() || undefined,
-        city: regCity.trim() || 'Pune',
-        area_name: regArea.trim() || 'Ravet',
+        city: regCity.trim(),
+        area_name: regArea.trim(),
         street_address: regStreetAddress.trim() || `${regArea}, ${regCity}`,
         detailed_address: regDetailedAddress.trim() || '',
         address_line: (regDetailedAddress ? `${regDetailedAddress}, ${regStreetAddress}` : regStreetAddress).trim(),
-        pincode: regPincode.trim() || '',
+        pincode: regPincode.trim(),
         state_name: regState,
         district_name: regDistrict,
         latitude: regLat,
@@ -488,6 +629,9 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 
       if (res.ok && data.success) {
         setRegSuccess(data);
+        setRegApplicationStatus('pending');
+        setRegStatusMessage('Application submitted. Status: pending Super Admin approval.');
+        void fetchRegistrationStatus(regMobile);
       } else {
         const submitErr = data.error || 'Failed to submit registration. Please try again.';
         setError(submitErr);
@@ -503,7 +647,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -516,7 +660,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
           {/* Top Brand Header */}
           <View style={styles.brandHeader}>
             <View style={styles.iconCircle}>
-              <Text style={{ fontSize: 28 }}>🏬</Text>
+              <Store size={26} color="#059669" strokeWidth={2.2} />
             </View>
             <Text style={styles.brandTitle}>MonthlyGrocery</Text>
             <View style={styles.roleChip}>
@@ -535,9 +679,12 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.modeTabText, mode === 'login' && styles.modeTabTextActive]}>
-                🔑 Sign In
-              </Text>
+              <View style={styles.tabContentRow}>
+                <LogIn size={15} color={mode === 'login' ? '#059669' : '#64748B'} strokeWidth={2.2} />
+                <Text style={[styles.modeTabText, mode === 'login' && styles.modeTabTextActive]}>
+                  Sign In
+                </Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -549,27 +696,31 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
               }}
               activeOpacity={0.8}
             >
-              <Text style={[styles.modeTabText, mode === 'register' && styles.modeTabTextActive]}>
-                ➕ Onboard Store
-              </Text>
+              <View style={styles.tabContentRow}>
+                <UserPlus size={15} color={mode === 'register' ? '#059669' : '#64748B'} strokeWidth={2.2} />
+                <Text style={[styles.modeTabText, mode === 'register' && styles.modeTabTextActive]}>
+                  Onboard Store
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
 
           {/* Error Banner */}
           {error ? (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
+              <AlertTriangle size={15} color="#DC2626" style={{ marginTop: 1 }} />
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
 
-          {/* MODE 1: SIGN IN */}
+          {/* MODE 1: SIGN IN (100% CLEAN & MINIMAL) */}
           {mode === 'login' && (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Merchant Sign In</Text>
               <Text style={styles.cardSubtitle}>
                 {step === 1
-                  ? 'Access your shop inventory, orders, and customer dispatching'
-                  : `Enter 6-digit OTP sent to +91 ${mobile}`}
+                  ? 'Access your store dashboard, inventory & live orders'
+                  : `Enter the 6-digit OTP code sent to +91 ${mobile}`}
               </Text>
 
               {step === 1 ? (
@@ -577,13 +728,14 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                   <Text style={styles.inputLabel}>REGISTERED MOBILE NUMBER</Text>
                   <View style={styles.phoneInputRow}>
                     <View style={styles.countryCodeBadge}>
-                      <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                      <Text style={styles.countryCodeText}>+91</Text>
                     </View>
                     <TextInput
                       style={styles.phoneInput}
                       placeholder="9876543210"
-                      placeholderTextColor="#475569"
+                      placeholderTextColor="#94A3B8"
                       keyboardType="number-pad"
+                      maxLength={10}
                       value={mobile}
                       onChangeText={(t) => {
                         const clean = t.replace(/[^\d]/g, '');
@@ -608,7 +760,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                     {loading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.primaryBtnText}>Get OTP Code ➔</Text>
+                      <View style={styles.btnIconRow}>
+                        <Text style={styles.primaryBtnText}>Get OTP Code</Text>
+                        <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />
+                      </View>
                     )}
                   </TouchableOpacity>
 
@@ -627,7 +782,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                   <TextInput
                     style={styles.otpInput}
                     placeholder="• • • • • •"
-                    placeholderTextColor="#475569"
+                    placeholderTextColor="#94A3B8"
                     keyboardType="number-pad"
                     maxLength={6}
                     value={code}
@@ -644,7 +799,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                     {loading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.primaryBtnText}>Verify & Open Store 🚀</Text>
+                      <View style={styles.btnIconRow}>
+                        <Text style={styles.primaryBtnText}>Verify & Open Store</Text>
+                        <CheckCircle2 size={16} color="#FFFFFF" strokeWidth={2.5} />
+                      </View>
                     )}
                   </TouchableOpacity>
 
@@ -679,30 +837,139 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
           {/* MODE 2: ONBOARD STORE */}
           {mode === 'register' && (
             <View style={styles.card}>
+              {/* Top Sleek Track Application Status Banner */}
+              <TouchableOpacity
+                style={styles.trackStatusBanner}
+                onPress={() => setShowStatusSection((prev) => !prev)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.trackStatusLeft}>
+                  <View style={styles.trackStatusIconBadge}>
+                    <ClipboardList size={16} color="#0284C7" strokeWidth={2.2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.trackStatusTitle}>Already submitted application?</Text>
+                    <Text style={styles.trackStatusSubtitle}>Check store onboarding & approval status</Text>
+                  </View>
+                </View>
+                <View style={styles.trackStatusActionRow}>
+                  <Text style={styles.trackStatusAction}>{showStatusSection ? 'Hide' : 'Track Status'}</Text>
+                  {showStatusSection ? (
+                    <ChevronUp size={14} color="#0284C7" strokeWidth={2.5} />
+                  ) : (
+                    <ChevronRight size={14} color="#0284C7" strokeWidth={2.5} />
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {showStatusSection && (
+                <View style={styles.statusCheckDrawer}>
+                  <Text style={styles.inputLabel}>ENTER REGISTERED MOBILE NUMBER</Text>
+                  <View style={styles.phoneInputRow}>
+                    <View style={styles.countryCodeBadge}>
+                      <Text style={styles.countryCodeText}>+91</Text>
+                    </View>
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder="10-digit mobile number"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="number-pad"
+                      maxLength={10}
+                      value={statusCheckMobile}
+                      onChangeText={(t) => setStatusCheckMobile(t.replace(/[^\d]/g, '').slice(0, 10))}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.trackStatusSubmitBtn, statusCheckMobile.length < 10 && styles.btnDisabled]}
+                    disabled={statusCheckMobile.length < 10 || regStatusLoading}
+                    onPress={() => fetchRegistrationStatus(statusCheckMobile)}
+                    activeOpacity={0.85}
+                  >
+                    {regStatusLoading ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <View style={styles.btnIconRow}>
+                        <Text style={styles.trackStatusSubmitBtnText}>Check Live Status</Text>
+                        <ArrowRight size={15} color="#FFFFFF" strokeWidth={2.5} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  {regStatusMessage ? (
+                    <View style={styles.statusResultBox}>
+                      {regApplicationStatus === 'pending' ? (
+                        <Clock size={15} color="#D97706" style={{ marginTop: 2 }} />
+                      ) : regApplicationStatus === 'approved' ? (
+                        <CheckCircle2 size={15} color="#16A34A" style={{ marginTop: 2 }} />
+                      ) : regApplicationStatus === 'rejected' ? (
+                        <AlertCircle size={15} color="#DC2626" style={{ marginTop: 2 }} />
+                      ) : (
+                        <Info size={15} color="#0284C7" style={{ marginTop: 2 }} />
+                      )}
+                      <Text style={styles.statusResultText}>{regStatusMessage}</Text>
+                    </View>
+                  ) : null}
+                </View>
+              )}
+
               {regSuccess ? (
                 <View style={styles.successCard}>
                   <View style={styles.successIconCircle}>
-                    <Text style={{ fontSize: 36 }}>✅</Text>
+                    <CheckCircle2 size={36} color="#16A34A" strokeWidth={2.5} />
                   </View>
                   <Text style={styles.successTitle}>Application Submitted!</Text>
                   <Text style={styles.successMessage}>
                     Your Kirana store "{regSuccess.shop?.shop_name || regShopName}" registration has been submitted to Web Admin for document verification and map approval.
                   </Text>
                   <View style={styles.successGpsBadge}>
+                    <MapPin size={15} color="#15803D" style={{ marginTop: 1 }} />
                     <Text style={styles.successGpsText}>
-                      📍 Pinned Street: {regSuccess.shop?.street_address || regStreetAddress}
+                      Pinned Street: {regSuccess.shop?.street_address || regStreetAddress}
                     </Text>
                   </View>
+                  {regStatusMessage ? (
+                    <View style={styles.successGpsBadge}>
+                      {regApplicationStatus === 'pending' ? (
+                        <Clock size={15} color="#D97706" style={{ marginTop: 1 }} />
+                      ) : regApplicationStatus === 'approved' ? (
+                        <CheckCircle2 size={15} color="#16A34A" style={{ marginTop: 1 }} />
+                      ) : regApplicationStatus === 'rejected' ? (
+                        <AlertCircle size={15} color="#DC2626" style={{ marginTop: 1 }} />
+                      ) : (
+                        <Info size={15} color="#0284C7" style={{ marginTop: 1 }} />
+                      )}
+                      <Text style={styles.successGpsText}>{regStatusMessage}</Text>
+                    </View>
+                  ) : null}
+                  <TouchableOpacity
+                    style={[styles.successSignInBtn, { marginBottom: 10 }]}
+                    onPress={() => fetchRegistrationStatus(regMobile)}
+                    disabled={regStatusLoading}
+                    activeOpacity={0.85}
+                  >
+                    {regStatusLoading ? (
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                      <View style={styles.btnIconRow}>
+                        <RefreshCw size={16} color="#FFFFFF" strokeWidth={2.2} />
+                        <Text style={styles.successSignInBtnText}>Refresh Application Status</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.successSignInBtn}
                     onPress={() => {
                       setMode('login');
                       setMobile(regMobile);
+                      setStatusCheckMobile(regMobile);
                       setError('');
                     }}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.successSignInBtnText}>🔑 Back to Sign In ➔</Text>
+                    <View style={styles.btnIconRow}>
+                      <LogIn size={16} color="#FFFFFF" strokeWidth={2.2} />
+                      <Text style={styles.successSignInBtnText}>Back to Sign In</Text>
+                      <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.2} />
+                    </View>
                   </TouchableOpacity>
                 </View>
               ) : (
@@ -773,7 +1040,8 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                   {regStep === 1 && (
                     <View style={styles.stepContent}>
                       <View style={styles.stepHeaderBanner}>
-                        <Text style={styles.stepHeaderBannerTitle}>🏪 STEP 1: STORE & OWNER IDENTITY</Text>
+                        <Store size={14} color="#0284C7" strokeWidth={2.2} />
+                        <Text style={styles.stepHeaderBannerTitle}>STEP 1: STORE & OWNER IDENTITY</Text>
                       </View>
 
                       <Text style={styles.inputLabel}>STORE / SHOP NAME *</Text>
@@ -797,7 +1065,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       <Text style={styles.inputLabel}>OWNER MOBILE NUMBER (+91) *</Text>
                       <View style={styles.phoneInputRow}>
                         <View style={styles.countryCodeBadge}>
-                          <Text style={styles.countryCodeText}>🇮🇳 +91</Text>
+                          <Text style={styles.countryCodeText}>+91</Text>
                         </View>
                         <TextInput
                           style={styles.phoneInput}
@@ -833,7 +1101,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                         }}
                         activeOpacity={0.85}
                       >
-                        <Text style={styles.submitApprovalBtnText}>Continue to GPS Location ➔</Text>
+                        <View style={styles.btnIconRow}>
+                          <Text style={styles.submitApprovalBtnText}>Continue to GPS Location</Text>
+                          <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -855,7 +1126,8 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                   {regStep === 2 && (
                     <View style={styles.stepContent}>
                       <View style={styles.stepHeaderBanner}>
-                        <Text style={styles.stepHeaderBannerTitle}>📍 STEP 2: STORE GPS & STREET LOCATION</Text>
+                        <MapPin size={14} color="#0284C7" strokeWidth={2.2} />
+                        <Text style={styles.stepHeaderBannerTitle}>STEP 2: STORE GPS & STREET LOCATION</Text>
                       </View>
 
                       {/* GPS Status & Google Maps Card */}
@@ -863,27 +1135,35 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                         <View style={styles.verifiedAddressCard}>
                           <View style={styles.verifiedHeaderRow}>
                             <View style={styles.verifiedBadge}>
-                              <Text style={styles.verifiedBadgeText}>✓ GOOGLE MAPS PIN LOCKED</Text>
+                              <Check size={11} color="#059669" strokeWidth={3} />
+                              <Text style={styles.verifiedBadgeText}>GOOGLE MAPS PIN LOCKED</Text>
                             </View>
                             <View style={styles.verifiedAccuracyBadge}>
-                              <Text style={styles.verifiedAccuracyText}>🛰️ High Accuracy</Text>
+                              <Navigation size={11} color="#0284C7" strokeWidth={2.2} />
+                              <Text style={styles.verifiedAccuracyText}>High Accuracy</Text>
                             </View>
                           </View>
 
                           {/* Full Locked Street Address Display */}
                           <View style={styles.addressDisplayBox}>
-                            <Text style={styles.addressPinIcon}>📍</Text>
+                            <MapPin size={16} color="#059669" style={{ marginRight: 8, marginTop: 2 }} />
                             <Text style={styles.addressDisplayText}>{regStreetAddress}</Text>
                           </View>
 
                           {/* Prominent Coordinates Badge Grid */}
                           <View style={styles.coordsGridRow}>
                             <View style={styles.coordBox}>
-                              <Text style={styles.coordBoxLabel}>📍 LATITUDE</Text>
+                              <View style={styles.coordBoxHeader}>
+                                <MapPin size={10} color="#0284C7" />
+                                <Text style={styles.coordBoxLabel}>LATITUDE</Text>
+                              </View>
                               <Text style={styles.coordBoxValue}>{regLat.toFixed(6)}</Text>
                             </View>
                             <View style={styles.coordBox}>
-                              <Text style={styles.coordBoxLabel}>📍 LONGITUDE</Text>
+                              <View style={styles.coordBoxHeader}>
+                                <MapPin size={10} color="#0284C7" />
+                                <Text style={styles.coordBoxLabel}>LONGITUDE</Text>
+                              </View>
                               <Text style={styles.coordBoxValue}>{regLng.toFixed(6)}</Text>
                             </View>
                           </View>
@@ -897,7 +1177,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                               }
                               activeOpacity={0.8}
                             >
-                              <Text style={styles.openMapsBtnText}>🗺️ View on Maps ↗</Text>
+                              <View style={styles.btnIconRow}>
+                                <ExternalLink size={12} color="#0284C7" strokeWidth={2.2} />
+                                <Text style={styles.openMapsBtnText}>View on Maps</Text>
+                              </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -907,9 +1190,12 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                               activeOpacity={0.8}
                             >
                               {detectingGps ? (
-                                <ActivityIndicator color="#06B6D4" size="small" />
+                                <ActivityIndicator color="#0284C7" size="small" />
                               ) : (
-                                <Text style={styles.redetectBtnText}>🔄 Re-detect GPS</Text>
+                                <View style={styles.btnIconRow}>
+                                  <RefreshCw size={12} color="#0284C7" strokeWidth={2.2} />
+                                  <Text style={styles.redetectBtnText}>Re-detect GPS</Text>
+                                </View>
                               )}
                             </TouchableOpacity>
                           </View>
@@ -917,7 +1203,9 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       ) : (
                         <View style={styles.gpsDetectCard}>
                           <View style={styles.gpsDetectHeader}>
-                            <Text style={styles.gpsDetectIcon}>🛰️</Text>
+                            <View style={styles.gpsIconCircle}>
+                              <Navigation size={22} color="#0284C7" strokeWidth={2.2} />
+                            </View>
                             <View style={{ flex: 1, marginLeft: 10 }}>
                               <Text style={styles.gpsDetectTitle}>LIVE GPS LOCATION CAPTURE</Text>
                               <Text style={styles.gpsDetectSubtitle}>
@@ -938,7 +1226,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                                 <Text style={styles.detectGpsPrimaryBtnText}>Detecting High-Accuracy GPS...</Text>
                               </View>
                             ) : (
-                              <Text style={styles.detectGpsPrimaryBtnText}>📡 Detect & Lock Store GPS Location</Text>
+                              <View style={styles.btnIconRow}>
+                                <Navigation size={15} color="#FFFFFF" strokeWidth={2.2} />
+                                <Text style={styles.detectGpsPrimaryBtnText}>Detect & Lock Store GPS Location</Text>
+                              </View>
                             )}
                           </TouchableOpacity>
                         </View>
@@ -956,9 +1247,41 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                         value={regDetailedAddress}
                         onChangeText={setRegDetailedAddress}
                       />
-                      <Text style={styles.fieldHint}>
-                        💡 Enter your specific shop number or building name. Street, locality, city, and pincode are auto-locked by Google Maps above.
-                      </Text>
+                      <View style={styles.hintRow}>
+                        <Info size={12} color="#64748B" style={{ marginTop: 2 }} />
+                        <Text style={styles.fieldHint}>
+                          Enter shop number/building name. Confirm city, area, and pincode below (auto-filled from GPS when available).
+                        </Text>
+                      </View>
+
+                      <Text style={styles.inputLabel}>CITY *</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Pune"
+                        placeholderTextColor="#475569"
+                        value={regCity}
+                        onChangeText={setRegCity}
+                      />
+
+                      <Text style={styles.inputLabel}>LOCALITY / AREA *</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Ravet, Baner"
+                        placeholderTextColor="#475569"
+                        value={regArea}
+                        onChangeText={setRegArea}
+                      />
+
+                      <Text style={styles.inputLabel}>6-DIGIT PINCODE *</Text>
+                      <TextInput
+                        style={styles.input}
+                        placeholder="411057"
+                        placeholderTextColor="#475569"
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        value={regPincode}
+                        onChangeText={(t) => setRegPincode(t.replace(/[^\d]/g, '').slice(0, 6))}
+                      />
 
                       {/* Navigation Buttons */}
                       <View style={styles.actionButtonsContainer}>
@@ -968,7 +1291,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                             onPress={() => setRegStep(1)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.backBtnSecondaryText}>⬅ Back</Text>
+                            <View style={styles.btnIconRow}>
+                              <ArrowLeft size={14} color="#475569" strokeWidth={2.2} />
+                              <Text style={styles.backBtnSecondaryText}>Back</Text>
+                            </View>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -978,12 +1304,23 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                                 setError('Please detect your Store GPS Location first.');
                                 return;
                               }
+                              if (!regCity.trim() || !regArea.trim()) {
+                                setError('City and locality/area are required.');
+                                return;
+                              }
+                              if (!/^\d{6}$/.test(regPincode.trim())) {
+                                setError('Enter a valid 6-digit pincode.');
+                                return;
+                              }
                               setError('');
                               setRegStep(3);
                             }}
                             activeOpacity={0.85}
                           >
-                            <Text style={styles.submitApprovalBtnText}>Next: KYC Docs ➔</Text>
+                            <View style={styles.btnIconRow}>
+                              <Text style={styles.submitApprovalBtnText}>Next: KYC Docs</Text>
+                              <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />
+                            </View>
                           </TouchableOpacity>
                         </View>
 
@@ -1007,19 +1344,26 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                   {regStep === 3 && (
                     <View style={styles.stepContent}>
                       <View style={styles.stepHeaderBanner}>
-                        <Text style={styles.stepHeaderBannerTitle}>📄 STEP 3: COMPLIANCE & KYC DOCUMENTS</Text>
+                        <FileText size={14} color="#0284C7" strokeWidth={2.2} />
+                        <Text style={styles.stepHeaderBannerTitle}>STEP 3: COMPLIANCE & KYC DOCUMENTS</Text>
                       </View>
 
                       {/* Pinned Store Location & GPS Coordinates Summary */}
                       {regLat && regLng ? (
                         <View style={styles.locationReviewHeader}>
                           <View style={styles.locationReviewTopRow}>
-                            <Text style={styles.locationReviewTitle}>📍 PINNED STORE GPS LOCATION</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <MapPin size={13} color="#0369A1" strokeWidth={2.2} />
+                              <Text style={styles.locationReviewTitle}>PINNED STORE GPS LOCATION</Text>
+                            </View>
                             <TouchableOpacity
                               onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${regLat},${regLng}`)}
                               style={styles.locationReviewMapsBtn}
                             >
-                              <Text style={styles.locationReviewMapsBtnText}>Maps ↗</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                                <ExternalLink size={10} color="#0284C7" strokeWidth={2.2} />
+                                <Text style={styles.locationReviewMapsBtnText}>Maps</Text>
+                              </View>
                             </TouchableOpacity>
                           </View>
                           <Text style={styles.locationReviewStreet} numberOfLines={2}>
@@ -1027,18 +1371,24 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                           </Text>
                           <View style={styles.coordsGridRow}>
                             <View style={styles.coordBox}>
-                              <Text style={styles.coordBoxLabel}>📍 LATITUDE</Text>
+                              <View style={styles.coordBoxHeader}>
+                                <MapPin size={10} color="#0284C7" />
+                                <Text style={styles.coordBoxLabel}>LATITUDE</Text>
+                              </View>
                               <Text style={styles.coordBoxValue}>{regLat.toFixed(6)}</Text>
                             </View>
                             <View style={styles.coordBox}>
-                              <Text style={styles.coordBoxLabel}>📍 LONGITUDE</Text>
+                              <View style={styles.coordBoxHeader}>
+                                <MapPin size={10} color="#0284C7" />
+                                <Text style={styles.coordBoxLabel}>LONGITUDE</Text>
+                              </View>
                               <Text style={styles.coordBoxValue}>{regLng.toFixed(6)}</Text>
                             </View>
                           </View>
                         </View>
                       ) : null}
 
-                      {/* 1. Aadhaar Card Section (MANDATORY with Clean UI & Red Error only on wrong submission) */}
+                      {/* 1. Aadhaar Card Section (MANDATORY) */}
                       <View
                         style={[
                           styles.docSection,
@@ -1050,14 +1400,16 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       >
                         <View style={styles.docHeaderRow}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <Text style={styles.docSectionTitle}>🪪 1. Aadhaar Card</Text>
+                            <CreditCard size={15} color="#0F172A" strokeWidth={2.2} />
+                            <Text style={styles.docSectionTitle}>1. Aadhaar Card</Text>
                             <View style={styles.docRequiredBadge}>
                               <Text style={styles.docRequiredBadgeText}>* Mandatory</Text>
                             </View>
                           </View>
                           {regAadhaarDocUrl ? (
                             <View style={styles.docUploadedBadge}>
-                              <Text style={styles.docUploadedBadgeText}>✓ UPLOADED</Text>
+                              <Check size={10} color="#15803D" strokeWidth={3} />
+                              <Text style={styles.docUploadedBadgeText}>ATTACHED</Text>
                             </View>
                           ) : null}
                         </View>
@@ -1082,22 +1434,27 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                           }}
                         />
 
-                        {/* Dedicated Red Error Text only when there is an actual validation error */}
+                        {/* Error Text only when validation fails */}
                         {error && !regAadhaarDocUrl && (
                           <View style={styles.fieldErrorBox}>
-                            <Text style={styles.fieldErrorText}>❌ Please upload Aadhaar Card photo to continue</Text>
+                            <AlertCircle size={13} color="#DC2626" />
+                            <Text style={styles.fieldErrorText}>Please upload Aadhaar Card photo to continue</Text>
                           </View>
                         )}
                         {error && regAadhaarNumber && regAadhaarNumber.length !== 12 && (
                           <View style={styles.fieldErrorBox}>
-                            <Text style={styles.fieldErrorText}>❌ Aadhaar Number must be exactly 12 digits</Text>
+                            <AlertCircle size={13} color="#DC2626" />
+                            <Text style={styles.fieldErrorText}>Aadhaar Number must be exactly 12 digits</Text>
                           </View>
                         )}
 
                         {regAadhaarDocUrl && (
                           <View style={styles.thumbnailContainer}>
                             <Image source={{ uri: regAadhaarDocUrl }} style={styles.docThumbnail} />
-                            <Text style={styles.thumbnailLabel}>Aadhaar Document Uploaded to S3 ✓</Text>
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <CheckCircle2 size={14} color="#16A34A" />
+                              <Text style={styles.thumbnailLabel}>Aadhaar Card Attached</Text>
+                            </View>
                           </View>
                         )}
 
@@ -1111,16 +1468,23 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                           activeOpacity={0.8}
                         >
                           {uploadingDoc === 'aadhaar' ? (
-                            <ActivityIndicator color="#06B6D4" />
+                            <ActivityIndicator color="#0284C7" />
                           ) : (
-                            <Text
-                              style={[
-                                styles.uploadDocBtnText,
-                                regAadhaarDocUrl && styles.uploadDocBtnUploadedText,
-                              ]}
-                            >
-                              {regAadhaarDocUrl ? '🔄 Change Aadhaar Photo' : '📷 Take Photo / Upload Aadhaar *'}
-                            </Text>
+                            <View style={styles.btnIconRow}>
+                              {regAadhaarDocUrl ? (
+                                <RefreshCw size={13} color="#16A34A" strokeWidth={2.2} />
+                              ) : (
+                                <Camera size={14} color="#0284C7" strokeWidth={2.2} />
+                              )}
+                              <Text
+                                style={[
+                                  styles.uploadDocBtnText,
+                                  regAadhaarDocUrl && styles.uploadDocBtnUploadedText,
+                                ]}
+                              >
+                                {regAadhaarDocUrl ? 'Change Aadhaar Photo' : 'Take Photo / Upload Aadhaar *'}
+                              </Text>
+                            </View>
                           )}
                         </TouchableOpacity>
                       </View>
@@ -1128,10 +1492,14 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       {/* 2. FSSAI License Section */}
                       <View style={[styles.docSection, regFssaiDocUrl && styles.docSectionUploaded]}>
                         <View style={styles.docHeaderRow}>
-                          <Text style={styles.docSectionTitle}>🥗 2. FSSAI Food License / Certificate</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <ShieldCheck size={15} color="#0F172A" strokeWidth={2.2} />
+                            <Text style={styles.docSectionTitle}>2. FSSAI Food License / Certificate</Text>
+                          </View>
                           {regFssaiDocUrl ? (
                             <View style={styles.docUploadedBadge}>
-                              <Text style={styles.docUploadedBadgeText}>✓ UPLOADED</Text>
+                              <Check size={10} color="#15803D" strokeWidth={3} />
+                              <Text style={styles.docUploadedBadgeText}>ATTACHED</Text>
                             </View>
                           ) : null}
                         </View>
@@ -1149,7 +1517,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                         {regFssaiDocUrl && (
                           <View style={styles.thumbnailContainer}>
                             <Image source={{ uri: regFssaiDocUrl }} style={styles.docThumbnail} />
-                            <Text style={styles.thumbnailLabel}>FSSAI Certificate Uploaded to S3 ✓</Text>
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <CheckCircle2 size={14} color="#16A34A" />
+                              <Text style={styles.thumbnailLabel}>FSSAI License Attached</Text>
+                            </View>
                           </View>
                         )}
 
@@ -1160,11 +1531,18 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                           activeOpacity={0.8}
                         >
                           {uploadingDoc === 'fssai' ? (
-                            <ActivityIndicator color="#06B6D4" />
+                            <ActivityIndicator color="#0284C7" />
                           ) : (
-                            <Text style={[styles.uploadDocBtnText, regFssaiDocUrl && styles.uploadDocBtnUploadedText]}>
-                              {regFssaiDocUrl ? '🔄 Change FSSAI Photo' : '📷 Take Photo / Upload FSSAI'}
-                            </Text>
+                            <View style={styles.btnIconRow}>
+                              {regFssaiDocUrl ? (
+                                <RefreshCw size={13} color="#16A34A" strokeWidth={2.2} />
+                              ) : (
+                                <Camera size={14} color="#0284C7" strokeWidth={2.2} />
+                              )}
+                              <Text style={[styles.uploadDocBtnText, regFssaiDocUrl && styles.uploadDocBtnUploadedText]}>
+                                {regFssaiDocUrl ? 'Change FSSAI Photo' : 'Take Photo / Upload FSSAI'}
+                              </Text>
+                            </View>
                           )}
                         </TouchableOpacity>
                       </View>
@@ -1172,10 +1550,14 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       {/* 3. PAN Card & GSTIN */}
                       <View style={[styles.docSection, regPanDocUrl && styles.docSectionUploaded]}>
                         <View style={styles.docHeaderRow}>
-                          <Text style={styles.docSectionTitle}>📑 3. PAN Card & GSTIN</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <FileText size={15} color="#0F172A" strokeWidth={2.2} />
+                            <Text style={styles.docSectionTitle}>3. PAN Card & GSTIN</Text>
+                          </View>
                           {regPanDocUrl ? (
                             <View style={styles.docUploadedBadge}>
-                              <Text style={styles.docUploadedBadgeText}>✓ UPLOADED</Text>
+                              <Check size={10} color="#15803D" strokeWidth={3} />
+                              <Text style={styles.docUploadedBadgeText}>ATTACHED</Text>
                             </View>
                           ) : null}
                         </View>
@@ -1203,7 +1585,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                         {regPanDocUrl && (
                           <View style={styles.thumbnailContainer}>
                             <Image source={{ uri: regPanDocUrl }} style={styles.docThumbnail} />
-                            <Text style={styles.thumbnailLabel}>PAN Card Document Uploaded to S3 ✓</Text>
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <CheckCircle2 size={14} color="#16A34A" />
+                              <Text style={styles.thumbnailLabel}>PAN Card Attached</Text>
+                            </View>
                           </View>
                         )}
 
@@ -1214,11 +1599,18 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                           activeOpacity={0.8}
                         >
                           {uploadingDoc === 'pan' ? (
-                            <ActivityIndicator color="#06B6D4" />
+                            <ActivityIndicator color="#0284C7" />
                           ) : (
-                            <Text style={[styles.uploadDocBtnText, regPanDocUrl && styles.uploadDocBtnUploadedText]}>
-                              {regPanDocUrl ? '🔄 Change PAN Photo' : '📷 Upload PAN Document'}
-                            </Text>
+                            <View style={styles.btnIconRow}>
+                              {regPanDocUrl ? (
+                                <RefreshCw size={13} color="#16A34A" strokeWidth={2.2} />
+                              ) : (
+                                <Camera size={14} color="#0284C7" strokeWidth={2.2} />
+                              )}
+                              <Text style={[styles.uploadDocBtnText, regPanDocUrl && styles.uploadDocBtnUploadedText]}>
+                                {regPanDocUrl ? 'Change PAN Photo' : 'Upload PAN Document'}
+                              </Text>
+                            </View>
                           )}
                         </TouchableOpacity>
                       </View>
@@ -1226,10 +1618,14 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                       {/* 4. Storefront Photo */}
                       <View style={[styles.docSection, regShopPhotoUrl && styles.docSectionUploaded]}>
                         <View style={styles.docHeaderRow}>
-                          <Text style={styles.docSectionTitle}>🏪 4. Storefront / Shop Board Photo</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Store size={15} color="#0F172A" strokeWidth={2.2} />
+                            <Text style={styles.docSectionTitle}>4. Storefront / Shop Board Photo</Text>
+                          </View>
                           {regShopPhotoUrl ? (
                             <View style={styles.docUploadedBadge}>
-                              <Text style={styles.docUploadedBadgeText}>✓ UPLOADED</Text>
+                              <Check size={10} color="#15803D" strokeWidth={3} />
+                              <Text style={styles.docUploadedBadgeText}>ATTACHED</Text>
                             </View>
                           ) : null}
                         </View>
@@ -1237,7 +1633,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                         {regShopPhotoUrl && (
                           <View style={styles.thumbnailContainer}>
                             <Image source={{ uri: regShopPhotoUrl }} style={styles.docThumbnail} />
-                            <Text style={styles.thumbnailLabel}>Storefront Board Photo Uploaded ✓</Text>
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <CheckCircle2 size={14} color="#16A34A" />
+                              <Text style={styles.thumbnailLabel}>Storefront Board Photo Attached</Text>
+                            </View>
                           </View>
                         )}
 
@@ -1248,16 +1647,23 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                           activeOpacity={0.8}
                         >
                           {uploadingDoc === 'shop_photo' ? (
-                            <ActivityIndicator color="#06B6D4" />
+                            <ActivityIndicator color="#0284C7" />
                           ) : (
-                            <Text style={[styles.uploadDocBtnText, regShopPhotoUrl && styles.uploadDocBtnUploadedText]}>
-                              {regShopPhotoUrl ? '🔄 Change Storefront Photo' : '📷 Take Shop Board Photo'}
-                            </Text>
+                            <View style={styles.btnIconRow}>
+                              {regShopPhotoUrl ? (
+                                <RefreshCw size={13} color="#16A34A" strokeWidth={2.2} />
+                              ) : (
+                                <Camera size={14} color="#0284C7" strokeWidth={2.2} />
+                              )}
+                              <Text style={[styles.uploadDocBtnText, regShopPhotoUrl && styles.uploadDocBtnUploadedText]}>
+                                {regShopPhotoUrl ? 'Change Storefront Photo' : 'Take Shop Board Photo'}
+                              </Text>
+                            </View>
                           )}
                         </TouchableOpacity>
                       </View>
 
-                      {/* Action Buttons with Premium Spacing & Clear Layout */}
+                      {/* Action Buttons with Spacing & Layout */}
                       <View style={styles.actionButtonsContainer}>
                         <TouchableOpacity
                           style={styles.submitApprovalBtn}
@@ -1271,7 +1677,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                               <Text style={styles.submitApprovalBtnText}>Submitting Application...</Text>
                             </View>
                           ) : (
-                            <Text style={styles.submitApprovalBtnText}>🚀 Submit Store for Approval</Text>
+                            <View style={styles.btnIconRow}>
+                              <ShieldCheck size={18} color="#FFFFFF" strokeWidth={2.2} />
+                              <Text style={styles.submitApprovalBtnText}>Submit Store for Approval</Text>
+                            </View>
                           )}
                         </TouchableOpacity>
 
@@ -1281,7 +1690,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                             onPress={() => setRegStep(2)}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.backBtnSecondaryText}>⬅ Back to Step 2</Text>
+                            <View style={styles.btnIconRow}>
+                              <ArrowLeft size={14} color="#475569" strokeWidth={2.2} />
+                              <Text style={styles.backBtnSecondaryText}>Back to Step 2</Text>
+                            </View>
                           </TouchableOpacity>
 
                           <TouchableOpacity
@@ -1292,7 +1704,10 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
                             }}
                             activeOpacity={0.8}
                           >
-                            <Text style={styles.backToSignInBtnText}>🔑 Back to Sign In</Text>
+                            <View style={styles.btnIconRow}>
+                              <LogIn size={14} color="#0284C7" strokeWidth={2.2} />
+                              <Text style={styles.backToSignInBtnText}>Back to Sign In</Text>
+                            </View>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1311,7 +1726,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#060A14',
+    backgroundColor: '#F8FAFC',
   },
   container: {
     flex: 1,
@@ -1320,6 +1735,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 40,
+    backgroundColor: '#F8FAFC',
   },
   brandHeader: {
     alignItems: 'center',
@@ -1327,10 +1743,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ECFDF5',
     borderWidth: 1.5,
     borderColor: '#10B981',
     justifyContent: 'center',
@@ -1340,84 +1756,181 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#0F172A',
     letterSpacing: -0.5,
   },
   roleChip: {
-    backgroundColor: 'rgba(6, 182, 212, 0.15)',
+    backgroundColor: '#ECFDF5',
     borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
+    borderColor: '#A7F3D0',
     paddingHorizontal: 12,
     paddingVertical: 3,
     borderRadius: 20,
     marginTop: 6,
   },
   roleChipText: {
-    color: '#06B6D4',
+    color: '#059669',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
   },
   modeTabsRow: {
     flexDirection: 'row',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#EDF2F7',
     borderRadius: 14,
     padding: 4,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#E2E8F0',
   },
   modeTab: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   modeTabActive: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#E2E8F0',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   modeTabText: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#64748B',
+    fontSize: 13,
     fontWeight: '700',
   },
   modeTabTextActive: {
-    color: '#06B6D4',
+    color: '#059669',
     fontWeight: '800',
   },
   card: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#1E293B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 6,
+    borderColor: '#E2E8F0',
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#0F172A',
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#64748B',
     lineHeight: 17,
     marginBottom: 16,
   },
+  trackStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0F9FF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    marginBottom: 16,
+  },
+  trackStatusLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  trackStatusIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  trackStatusTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  trackStatusSubtitle: {
+    fontSize: 10,
+    color: '#0284C7',
+    marginTop: 1,
+  },
+  trackStatusActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginLeft: 6,
+  },
+  trackStatusAction: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0284C7',
+  },
+  statusCheckDrawer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  trackStatusSubmitBtn: {
+    backgroundColor: '#0284C7',
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  trackStatusSubmitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  statusResultBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+  },
+  statusResultText: {
+    flex: 1,
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
   stepperContainer: {
     marginBottom: 16,
-    backgroundColor: '#090D1A',
+    backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#E2E8F0',
   },
   stepperRow: {
     flexDirection: 'row',
@@ -1429,15 +1942,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#334155',
+    borderColor: '#CBD5E1',
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepCircleActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: '#16A34A',
+    borderColor: '#16A34A',
   },
   stepCircleText: {
     color: '#64748B',
@@ -1450,11 +1963,11 @@ const styles = StyleSheet.create({
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#E2E8F0',
     marginHorizontal: 6,
   },
   stepLineActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#16A34A',
   },
   stepLabelsRow: {
     flexDirection: 'row',
@@ -1468,17 +1981,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   stepLabelTextActive: {
-    color: '#10B981',
+    color: '#16A34A',
     fontWeight: '800',
   },
   stepContent: {
     marginTop: 4,
   },
   stepHeaderBanner: {
-    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0F9FF',
     borderLeftWidth: 3,
-    borderLeftColor: '#06B6D4',
-    paddingVertical: 6,
+    borderLeftColor: '#0284C7',
+    paddingVertical: 7,
     paddingHorizontal: 10,
     borderRadius: 6,
     marginBottom: 12,
@@ -1486,34 +2002,40 @@ const styles = StyleSheet.create({
   stepHeaderBannerTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#06B6D4',
+    color: '#0284C7',
     letterSpacing: 0.5,
   },
   inputLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 0.8,
+    color: '#475569',
+    letterSpacing: 0.6,
     marginBottom: 5,
     marginTop: 8,
   },
   input: {
-    backgroundColor: '#090D1A',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#CBD5E1',
     borderRadius: 12,
-    color: '#FFFFFF',
+    color: '#0F172A',
     paddingHorizontal: 14,
     height: 48,
     fontSize: 13,
     marginBottom: 4,
   },
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 5,
+    marginTop: 2,
+    marginBottom: 6,
+  },
   fieldHint: {
+    flex: 1,
     fontSize: 11,
     color: '#64748B',
     lineHeight: 15,
-    marginTop: 2,
-    marginBottom: 6,
   },
   detailedAddressInput: {
     height: 72,
@@ -1522,10 +2044,10 @@ const styles = StyleSheet.create({
   },
   /* VERIFIED ADDRESS CARD */
   verifiedAddressCard: {
-    backgroundColor: '#0B1120',
+    backgroundColor: '#F0FDF4',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderColor: '#86EFAC',
     padding: 12,
     marginBottom: 14,
   },
@@ -1537,7 +2059,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   verifiedBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1546,42 +2071,40 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   verifiedBadgeText: {
-    color: '#10B981',
+    color: '#059669',
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
   verifiedAccuracyBadge: {
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.3)',
+    borderColor: '#BAE6FD',
   },
   verifiedAccuracyText: {
-    color: '#38BDF8',
+    color: '#0284C7',
     fontSize: 10,
     fontWeight: '700',
   },
   addressDisplayBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#050811',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#CBD5E1',
     marginBottom: 10,
-  },
-  addressPinIcon: {
-    fontSize: 16,
-    marginRight: 8,
-    marginTop: 1,
   },
   addressDisplayText: {
     flex: 1,
-    color: '#F1F5F9',
+    color: '#0F172A',
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 17,
@@ -1593,22 +2116,27 @@ const styles = StyleSheet.create({
   },
   coordBox: {
     flex: 1,
-    backgroundColor: '#050811',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.35)',
+    borderColor: '#BAE6FD',
     borderRadius: 10,
     paddingVertical: 7,
     paddingHorizontal: 10,
   },
+  coordBoxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
   coordBoxLabel: {
-    color: '#06B6D4',
+    color: '#0284C7',
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
-    marginBottom: 2,
   },
   coordBoxValue: {
-    color: '#38BDF8',
+    color: '#0369A1',
     fontSize: 12,
     fontWeight: '800',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
@@ -1620,40 +2148,40 @@ const styles = StyleSheet.create({
   },
   openMapsBtn: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 8,
     paddingHorizontal: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.4)',
+    borderColor: '#BAE6FD',
     alignItems: 'center',
     justifyContent: 'center',
   },
   openMapsBtnText: {
-    color: '#38BDF8',
+    color: '#0284C7',
     fontSize: 11,
     fontWeight: '800',
   },
   redetectBtn: {
     flex: 1,
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    backgroundColor: '#F0F9FF',
     paddingVertical: 8,
     paddingHorizontal: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#06B6D4',
+    borderColor: '#0284C7',
     alignItems: 'center',
     justifyContent: 'center',
   },
   redetectBtnText: {
-    color: '#06B6D4',
+    color: '#0284C7',
     fontSize: 11,
     fontWeight: '800',
   },
   locationReviewHeader: {
-    backgroundColor: '#0B1120',
+    backgroundColor: '#F0F9FF',
     borderWidth: 1.5,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
+    borderColor: '#BAE6FD',
     borderRadius: 14,
     padding: 12,
     marginBottom: 14,
@@ -1666,27 +2194,27 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   locationReviewTitle: {
-    color: '#06B6D4',
+    color: '#0369A1',
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.5,
     flexShrink: 1,
   },
   locationReviewMapsBtn: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: '#E0F2FE',
     borderWidth: 1,
-    borderColor: '#38BDF8',
+    borderColor: '#BAE6FD',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
   locationReviewMapsBtnText: {
-    color: '#38BDF8',
+    color: '#0284C7',
     fontSize: 10,
     fontWeight: '800',
   },
   locationReviewStreet: {
-    color: '#E2E8F0',
+    color: '#1E293B',
     fontSize: 12,
     fontWeight: '600',
     lineHeight: 16,
@@ -1694,10 +2222,10 @@ const styles = StyleSheet.create({
   },
   /* GPS DETECT INITIAL CARD */
   gpsDetectCard: {
-    backgroundColor: 'rgba(6, 182, 212, 0.08)',
+    backgroundColor: '#F0F9FF',
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(6, 182, 212, 0.35)',
+    borderColor: '#BAE6FD',
     padding: 16,
     marginBottom: 14,
   },
@@ -1706,32 +2234,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  gpsDetectIcon: {
-    fontSize: 26,
+  gpsIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   gpsDetectTitle: {
-    color: '#06B6D4',
+    color: '#0369A1',
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   gpsDetectSubtitle: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 11,
     lineHeight: 15,
   },
   detectGpsPrimaryBtn: {
-    backgroundColor: '#06B6D4',
+    backgroundColor: '#0284C7',
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#06B6D4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   detectGpsPrimaryBtnText: {
     color: '#FFFFFF',
@@ -1748,9 +2281,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   countryCodeBadge: {
-    backgroundColor: '#090D1A',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#CBD5E1',
     borderTopLeftRadius: 12,
     borderBottomLeftRadius: 12,
     height: 48,
@@ -1759,31 +2292,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countryCodeText: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '700',
   },
   phoneInput: {
     flex: 1,
-    backgroundColor: '#090D1A',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#CBD5E1',
     borderLeftWidth: 0,
     borderTopRightRadius: 12,
     borderBottomRightRadius: 12,
     height: 48,
     paddingHorizontal: 14,
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 14,
     fontWeight: '600',
   },
   otpInput: {
-    backgroundColor: '#090D1A',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#CBD5E1',
     borderRadius: 14,
     height: 52,
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 22,
     fontWeight: '800',
     textAlign: 'center',
@@ -1791,20 +2324,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   docSection: {
-    backgroundColor: '#090D1A',
+    backgroundColor: '#F8FAFC',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#E2E8F0',
     padding: 14,
     marginBottom: 12,
   },
   docSectionUploaded: {
-    borderColor: 'rgba(16, 185, 129, 0.5)',
-    backgroundColor: 'rgba(16, 185, 129, 0.04)',
+    borderColor: '#86EFAC',
+    backgroundColor: '#F0FDF4',
   },
   docSectionError: {
-    borderColor: 'rgba(239, 68, 68, 0.7)',
-    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
   },
   inputError: {
     borderColor: '#EF4444',
@@ -1816,54 +2349,60 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   docSectionTitle: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 13,
     fontWeight: '800',
   },
   docRequiredBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: '#FEF3C7',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    borderColor: '#FDE68A',
   },
   docRequiredBadgeText: {
-    color: '#FBBF24',
+    color: '#D97706',
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   docHintText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 11,
     lineHeight: 15,
     marginBottom: 10,
   },
   fieldErrorBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.6)',
+    borderColor: '#FECACA',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
     marginBottom: 8,
   },
   fieldErrorText: {
-    color: '#F87171',
+    color: '#DC2626',
     fontSize: 11,
     fontWeight: '700',
   },
   docUploadedBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#DCFCE7',
     paddingHorizontal: 8,
     paddingVertical: 2.5,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#10B981',
+    borderColor: '#86EFAC',
   },
   docUploadedBadgeText: {
-    color: '#10B981',
+    color: '#15803D',
     fontSize: 9,
     fontWeight: '800',
   },
@@ -1871,45 +2410,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     padding: 8,
     borderRadius: 10,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderColor: '#BBF7D0',
   },
   docThumbnail: {
     width: 48,
     height: 48,
     borderRadius: 6,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#F1F5F9',
   },
   thumbnailLabel: {
-    color: '#10B981',
+    color: '#16A34A',
     fontSize: 11,
     fontWeight: '700',
-    flex: 1,
   },
   uploadDocBtn: {
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    backgroundColor: '#F0F9FF',
     borderWidth: 1,
-    borderColor: '#06B6D4',
+    borderColor: '#BAE6FD',
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   uploadDocBtnUploaded: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+    borderColor: '#86EFAC',
   },
   uploadDocBtnText: {
-    color: '#06B6D4',
+    color: '#0284C7',
     fontSize: 12,
     fontWeight: '700',
   },
   uploadDocBtnUploadedText: {
-    color: '#10B981',
+    color: '#16A34A',
     fontWeight: '700',
   },
   actionButtonsContainer: {
@@ -1917,16 +2455,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   submitApprovalBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#16A34A',
     height: 50,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#10B981',
+    shadowColor: '#16A34A',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   submitApprovalBtnText: {
     color: '#FFFFFF',
@@ -1940,31 +2478,31 @@ const styles = StyleSheet.create({
   },
   backBtnSecondary: {
     flex: 1,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#CBD5E1',
     height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backBtnSecondaryText: {
-    color: '#CBD5E1',
+    color: '#475569',
     fontSize: 12,
     fontWeight: '700',
   },
   backToSignInBtn: {
     flex: 1,
-    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    backgroundColor: '#F0F9FF',
     borderWidth: 1,
-    borderColor: 'rgba(6, 182, 212, 0.4)',
+    borderColor: '#BAE6FD',
     height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   backToSignInBtnText: {
-    color: '#38BDF8',
+    color: '#0284C7',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1975,26 +2513,26 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   backToSignInFooterText: {
-    color: '#94A3B8',
+    color: '#64748B',
     fontSize: 12,
   },
   backToSignInFooterLink: {
-    color: '#06B6D4',
+    color: '#16A34A',
     fontWeight: '800',
   },
   successSignInBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#16A34A',
     width: '100%',
     height: 50,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 6,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   successSignInBtnText: {
     color: '#FFFFFF',
@@ -2002,17 +2540,17 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   primaryBtn: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#16A34A',
     height: 48,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#16A34A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   primaryBtnText: {
     color: '#FFFFFF',
@@ -2020,26 +2558,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   btnDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
+  },
+  btnIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   registerPromptRow: {
     marginTop: 16,
     alignItems: 'center',
   },
   registerPromptText: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#64748B',
+    fontSize: 13,
   },
   registerPromptLink: {
-    color: '#06B6D4',
-    fontWeight: '700',
+    color: '#16A34A',
+    fontWeight: '800',
   },
   resendRow: {
     marginTop: 12,
     alignItems: 'center',
   },
   resendLink: {
-    color: '#06B6D4',
+    color: '#16A34A',
     fontSize: 12,
     fontWeight: '700',
     textDecorationLine: 'underline',
@@ -2049,15 +2593,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   errorBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#EF4444',
+    borderColor: '#FECACA',
     padding: 10,
     borderRadius: 12,
     marginBottom: 12,
   },
   errorText: {
-    color: '#F87171',
+    flex: 1,
+    color: '#DC2626',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -2069,36 +2617,41 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: '#DCFCE7',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
   },
   successTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
+    color: '#0F172A',
+    fontSize: 19,
     fontWeight: '800',
     marginBottom: 6,
   },
   successMessage: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#64748B',
+    fontSize: 13,
     textAlign: 'center',
-    lineHeight: 17,
+    lineHeight: 18,
     marginBottom: 12,
   },
   successGpsBadge: {
-    backgroundColor: '#090D1A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F8FAFC',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginBottom: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#E2E8F0',
+    width: '100%',
   },
   successGpsText: {
-    color: '#34D399',
-    fontSize: 11,
+    flex: 1,
+    color: '#15803D',
+    fontSize: 12,
     fontWeight: '600',
   },
 });

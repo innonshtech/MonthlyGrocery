@@ -7,6 +7,7 @@ import {
   StatusBar,
   FlatList,
   useWindowDimensions,
+  BackHandler,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +19,7 @@ import {
   OnboardingNextPill,
   OnboardingPrimaryButton,
 } from '../components/onboarding/OnboardingUI';
+import { OnboardingBackIcon } from '../components/onboarding/OnboardingFigmaIcons';
 import {
   useOnboardingLayout,
 } from '../components/onboarding/onboardingLayout';
@@ -65,6 +67,23 @@ export default function ValueIntroScreen({ navigation }: any) {
     loadSlides();
   }, [loadSlides]);
 
+  const handlePrev = useCallback(() => {
+    if (currentIndex > 0) {
+      const prevIndex = currentIndex - 1;
+      flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
+      setCurrentIndex(prevIndex);
+      return true;
+    }
+    return false;
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      return handlePrev();
+    });
+    return () => subscription.remove();
+  }, [handlePrev]);
+
   const isLastSlide = slides.length > 0 && currentIndex === slides.length - 1;
 
   const goToLogin = async (markCompleted = true) => {
@@ -73,13 +92,13 @@ export default function ValueIntroScreen({ navigation }: any) {
     }
     if (token && user?.role === 'consumer') {
       if (!city || !area) {
-        navigation.replace('CitySelection');
+        navigation.navigate('CitySelection');
         return;
       }
       navigation.replace('Shop');
       return;
     }
-    navigation.replace('Login');
+    navigation.navigate('Login');
   };
 
   const handleNext = () => {
@@ -151,6 +170,16 @@ export default function ValueIntroScreen({ navigation }: any) {
             </Defs>
             <Rect width="100%" height="100%" fill={`url(#grad-${slide.id})`} />
           </Svg>
+
+          {currentIndex > 0 && (
+            <TouchableOpacity
+              style={styles.introBackBtn}
+              onPress={handlePrev}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <OnboardingBackIcon size={20} />
+            </TouchableOpacity>
+          )}
 
           {slide.show_skip ? (
             <TouchableOpacity
@@ -310,6 +339,23 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     overflow: 'hidden',
+  },
+  introBackBtn: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    zIndex: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   skipBtn: {
     position: 'absolute',

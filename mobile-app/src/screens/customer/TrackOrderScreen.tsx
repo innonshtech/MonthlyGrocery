@@ -31,6 +31,7 @@ import {
   getTimelineStepLabel,
   cancelOrder,
   canConsumerCancelOrder,
+  isPackedStageStatus,
 } from '../../services/ordersApi';
 
 const SCREEN_BG = '#F8FAF7';
@@ -97,6 +98,7 @@ export default function TrackOrderScreen({ route, navigation }: any) {
   const [order, setOrder] = useState<ConsumerOrder | null>(route?.params?.order || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) {
@@ -196,6 +198,39 @@ export default function TrackOrderScreen({ route, navigation }: any) {
           : ['packed', 'packing'].includes(s)
             ? 'ORDER PACKED'
             : 'ORDER CONFIRMED';
+
+  const cancellable = canConsumerCancelOrder(order);
+  const cancelBlocked =
+    !cancellable && s !== 'delivered' && s !== 'cancelled' && isPackedStageStatus(order.status);
+
+  const handleCancelOrder = () => {
+    if (!token || !cancellable) return;
+    Alert.alert(
+      screenConfig?.cancel_order_confirm_title || 'Cancel order?',
+      screenConfig?.cancel_order_confirm_message ||
+        'Your order will be cancelled and any reserved items will be released.',
+      [
+        { text: screenConfig?.cancel_order_confirm_no || 'No', style: 'cancel' },
+        {
+          text: screenConfig?.cancel_order_confirm_yes || 'Yes, cancel',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(true);
+            const { order: updated, error: cancelErr } = await cancelOrder(token, order.id);
+            setCancelling(false);
+            if (cancelErr || !updated) {
+              Alert.alert(
+                'Cancel failed',
+                cancelErr || screenConfig?.cancel_order_error_message || 'Could not cancel order',
+              );
+              return;
+            }
+            setOrder(updated);
+          },
+        },
+      ],
+    );
+  };
 
   const heroTitle =
     s === 'delivered'
@@ -416,6 +451,31 @@ export default function TrackOrderScreen({ route, navigation }: any) {
           </View>
           <SvgXml xml={CHEVRON_RIGHT_XML} width={18} height={18} />
         </TouchableOpacity>
+
+        {cancellable ? (
+          <TouchableOpacity
+            style={styles.cancelCard}
+            onPress={handleCancelOrder}
+            disabled={cancelling}
+            activeOpacity={0.88}
+          >
+            {cancelling ? (
+              <ActivityIndicator color="#DC2626" />
+            ) : (
+              <Text style={styles.cancelCardText}>
+                {screenConfig?.cancel_order_label || 'Cancel order'}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : null}
+
+        {cancelBlocked ? (
+          <View style={styles.cancelBlockedCard}>
+            <Text style={styles.cancelBlockedText}>
+              This order is already packed and cannot be cancelled from the app. Contact support for help.
+            </Text>
+          </View>
+        ) : null}
 
         {/* Action Card 2: Need Help With This Order */}
         <TouchableOpacity
@@ -721,6 +781,34 @@ const styles = StyleSheet.create({
   },
 
   /* Action Cards */
+  cancelCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cancelCardText: {
+    color: '#DC2626',
+    fontSize: 15,
+    ...FONTS.muktaBold,
+  },
+  cancelBlockedCard: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+  },
+  cancelBlockedText: {
+    color: '#9A3412',
+    fontSize: 13,
+    lineHeight: 19,
+    ...FONTS.muktaMedium,
+  },
   actionCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,

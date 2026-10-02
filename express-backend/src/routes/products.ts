@@ -20,6 +20,11 @@ import {
   uploadMulterFileToS3,
   uploadMultipleMulterFilesToS3,
 } from '../services/s3Service';
+import {
+  resolveClientMediaUrl,
+  mapProductMediaForClient,
+  mapProductsMediaForClient,
+} from '../utils/mediaUrl';
 
 const router = Router();
 const upload = multer({
@@ -248,13 +253,101 @@ router.get('/all', async (req, res) => {
       limit: limitVal,
     });
 
+    const products = mapProductsMediaForClient(applyDealsFilter(catalog.products), req);
+
     return res.json({
       success: true,
-      products: applyDealsFilter(catalog.products),
+      products,
       shop_id: catalog.shopId,
       shop_name: catalog.shopName,
     });
 
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
+function enrichSiblingVariants(siblings: any[]): any[] {
+  const familyImages: string[] = [];
+  let familyVideoUrl: string | null = null;
+
+  for (const s of siblings) {
+    const parsed = parseProductMedia(s);
+    if (familyImages.length === 0 && Array.isArray(parsed.images) && parsed.images.length > 0) {
+      familyImages.push(...parsed.images);
+    }
+    if (!familyVideoUrl && parsed.video_url) {
+      familyVideoUrl = parsed.video_url;
+    }
+  }
+
+  const enriched = siblings.map((s) => {
+    const media = parseProductMedia(s);
+    const finalImages = media.images && media.images.length > 0 ? media.images : familyImages;
+    const finalImageUrl = media.primary_image_url || (familyImages.length > 0 ? familyImages[0] : '');
+    const finalVideoUrl = media.video_url || familyVideoUrl;
+
+    return {
+      ...s,
+      image_url: finalImageUrl,
+      images: finalImages,
+      video_url: finalVideoUrl,
+      description: media.clean_description,
+    };
+  });
+
+  enriched.sort((a, b) => {
+    const av = parseFloat(String(a.quantity_value)) || 0;
+    const bv = parseFloat(String(b.quantity_value)) || 0;
+    if (av > 0 && bv > 0 && av !== bv) return av - bv;
+    const au = String(a.unit || '');
+    const bu = String(b.unit || '');
+    return au.localeCompare(bu);
+  });
+
+  return enriched;
+}
+
+// GET /detail/:productId — Product detail + all pack-size variants for the shop catalog
+router.get('/detail/:productId', async (req, res) => {
+  const { productId } = req.params;
+  const area_name = (req.query.area_name as string) || (req.query.area as string);
+  const shop_id = (req.query.shop_id as string) || (req.query.shopId as string);
+  const { city, pincode } = req.query;
+
+  if (!productId) {
+    return res.status(400).json({ success: false, error: 'Product id is required' });
+  }
+
+  try {
+    const { fetchProductsForLocation } = require('../services/shopCatalog');
+    const catalog = await fetchProductsForLocation({
+      shopId: shop_id ? String(shop_id) : undefined,
+      city: city ? String(city) : undefined,
+      areaName: area_name ? String(area_name) : undefined,
+      pincode: pincode ? String(pincode) : undefined,
+      limit: 500,
+    });
+
+    const flat = catalog.products || [];
+    const target = flat.find((p: any) => String(p.id) === String(productId));
+    if (!target) {
+      return res.status(404).json({ success: false, error: 'Product not found in this store catalog', not_found: true });
+    }
+
+    const familyKey = getProductFamilyKey(target);
+    const siblings = flat.filter((p: any) => getProductFamilyKey(p) === familyKey);
+    const variants = enrichSiblingVariants(siblings);
+    const product = variants.find((v: any) => String(v.id) === String(productId)) || target;
+
+    return res.json({
+      success: true,
+      product: mapProductMediaForClient(product, req),
+      variants: mapProductsMediaForClient(variants, req),
+      variant_count: variants.length,
+      shop_id: catalog.shopId,
+      shop_name: catalog.shopName,
+    });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }
@@ -279,9 +372,14 @@ router.get('/search', async (req, res) => {
       limit: limitVal,
     });
 
+    const products = mapProductsMediaForClient(
+      groupProductsByFamily(catalog.products, false, limitVal),
+      req,
+    );
+
     return res.json({
       success: true,
-      products: groupProductsByFamily(catalog.products, false, limitVal),
+      products,
       shop_id: catalog.shopId,
       shop_name: catalog.shopName,
     });
@@ -368,9 +466,9 @@ router.get('/categories', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    const productCategoryNames = Array.from(
-      new Set((products || []).map((p: any) => String(p.primary_category || '').trim()).filter(Boolean)),
-    ).sort((a: any, b: any) => String(a).localeCompare(String(b)));
+    const productCategoryNames: string[] = Array.from(
+      new Set<string>((products || []).map((p: any) => String(p.primary_category || '').trim()).filter(Boolean)),
+    ).sort((a: string, b: string) => a.localeCompare(b));
 
 
     const categoriesFull = adminCategories.map((c: { id: string; name: string; image_url?: string }) => {
@@ -380,21 +478,35 @@ router.get('/categories', async (req, res) => {
         .map((s: any) => ({
           id: s.id,
           name: s.name,
-          image_url: s.image_url || undefined,
+          image_url: s.image_url
+            ? resolveClientMediaUrl(s.image_url, req)
+            : undefined,
         }));
 
       return {
         id: c.id,
         name: c.name,
-        image_url: c.image_url || undefined,
+        image_url: c.image_url ? resolveClientMediaUrl(c.image_url, req) : undefined,
         subcategories,
       };
     });
 
-    const categories =
-      categoriesFull.length > 0
-        ? categoriesFull.map((c: any) => c.name)
-        : productCategoryNames;
+    // Ensure all active product primary categories are also represented in categoriesFull
+    const existingNames = new Set(categoriesFull.map((c: any) => String(c.name || '').trim().toLowerCase()));
+    for (const rawPName of productCategoryNames) {
+      const pName = String(rawPName || '').trim();
+      if (pName && !existingNames.has(pName.toLowerCase())) {
+        categoriesFull.push({
+          id: `cat-${pName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+          name: pName,
+          image_url: undefined,
+          subcategories: [],
+        });
+        existingNames.add(pName.toLowerCase());
+      }
+    }
+
+    const categories = categoriesFull.map((c: any) => c.name);
 
     return res.json({
       success: true,
@@ -569,6 +681,35 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
     let updated = 0;
     const errors: any[] = [];
 
+    const { readDb } = require('../config/localDb');
+    const localDb = readDb();
+    const allowedCategoryNames = new Set<string>();
+
+    if (Array.isArray(localDb.categories)) {
+      localDb.categories.forEach((c: any) => {
+        if (c.name) allowedCategoryNames.add(String(c.name).trim().toLowerCase());
+      });
+    }
+
+    try {
+      const { data: dbProducts } = await supabase
+        .from('products')
+        .select('primary_category')
+        .limit(200);
+      if (dbProducts) {
+        dbProducts.forEach((p: any) => {
+          if (p.primary_category) allowedCategoryNames.add(String(p.primary_category).trim().toLowerCase());
+        });
+      }
+    } catch {}
+
+    [
+      'atta & rice', 'oils & ghee', 'spices & masala', 'dals & pulses',
+      'snacks', 'beverages', 'cleaning', 'personal care', 'dairy & eggs',
+      'bakery', 'fruits & vegetables', 'instant food', 'dry fruits',
+      'organic & cold pressed oils', 'essentials', 'household', 'other'
+    ].forEach((cat) => allowedCategoryNames.add(cat));
+
     for (let idx = 0; idx < rawRows.length; idx++) {
       const rawRow = rawRows[idx];
 
@@ -582,9 +723,61 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
       const sku = String(row.sku || '').trim() || `SKU-${Date.now()}-${idx + 1}`;
       const city = String(row.city || '').trim();
 
+      // 1. Mandatory Name Validation
       if (!name) {
-        errors.push({ row: idx + 2, error: 'Product name is missing or blank' });
+        errors.push({ row: idx + 2, sku, error: 'Product name is missing or blank' });
         continue;
+      }
+
+      // 2. Mandatory Primary Category Validation
+      const rawCat = String(row.primary_category || row.category || '').trim();
+      if (!rawCat) {
+        errors.push({ row: idx + 2, sku, error: 'Primary category is mandatory and cannot be blank' });
+        continue;
+      }
+      if (allowedCategoryNames.size > 0 && !allowedCategoryNames.has(rawCat.toLowerCase())) {
+        errors.push({
+          row: idx + 2,
+          sku,
+          error: `Invalid category "${rawCat}". Must match an active master category.`
+        });
+        continue;
+      }
+
+      // 3. Mandatory MRP Validation (must be positive number > 0)
+      if (row.mrp === undefined || row.mrp === null || String(row.mrp).trim() === '') {
+        errors.push({ row: idx + 2, sku, error: 'MRP is mandatory and cannot be blank' });
+        continue;
+      }
+      const parsedMrp = parseFloat(String(row.mrp));
+      if (isNaN(parsedMrp) || parsedMrp <= 0) {
+        errors.push({ row: idx + 2, sku, error: `Invalid MRP "${row.mrp}". MRP must be a positive number greater than 0.` });
+        continue;
+      }
+      const mrpVal = parsedMrp;
+
+      // 4. Selling Price Validation (cannot be negative or exceed MRP)
+      let priceVal = mrpVal;
+      if (row.price !== undefined && row.price !== null && String(row.price).trim() !== '') {
+        const parsedPrice = parseFloat(String(row.price));
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+          errors.push({ row: idx + 2, sku, error: `Invalid selling price "${row.price}". Price cannot be negative.` });
+          continue;
+        }
+        if (parsedPrice > mrpVal) {
+          errors.push({ row: idx + 2, sku, error: `Selling price (₹${parsedPrice}) cannot be greater than MRP (₹${mrpVal}).` });
+          continue;
+        }
+        priceVal = parsedPrice;
+      }
+
+      // 5. Stock Validation
+      if (row.stock !== undefined && row.stock !== null && String(row.stock).trim() !== '') {
+        const parsedStock = parseInt(String(row.stock), 10);
+        if (isNaN(parsedStock) || parsedStock < 0) {
+          errors.push({ row: idx + 2, sku, error: `Invalid stock quantity "${row.stock}". Stock cannot be negative.` });
+          continue;
+        }
       }
 
       try {
@@ -656,15 +849,12 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           String(row.unit || '').trim(),
         );
 
-        const mrpVal = parseFloat(row.mrp) || 0.00;
-        const priceVal = parseFloat(row.price) || mrpVal;
-
         const productData: any = {
           shop_id: shopId,
           name,
           sku,
           barcode: String(row.barcode || '').trim() || null,
-          primary_category: String(row.primary_category || 'Other').trim(),
+          primary_category: rawCat,
           secondary_category: String(row.secondary_category || '').trim() || null,
           brand: String(row.brand || '').trim() || null,
           company: String(row.company || '').trim() || null,
@@ -742,7 +932,8 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
       rows_processed: rawRows.length,
       created,
       updated,
-      errors: errors.slice(0, 30)
+      failed: errors.length,
+      errors: errors.slice(0, 50)
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error during import' });
@@ -764,12 +955,30 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
       return res.status(400).json({ success: false, error: 'Merchant shop not found.' });
     }
 
+    if (!data.name || !String(data.name).trim()) {
+      return res.status(400).json({ success: false, error: 'Product name is required.' });
+    }
+    const parsedMrp = parseFloat(data.mrp);
+    if (isNaN(parsedMrp) || parsedMrp <= 0) {
+      return res.status(400).json({ success: false, error: 'MRP is mandatory and must be greater than 0.' });
+    }
+    const parsedPrice = data.price !== undefined && data.price !== null && String(data.price).trim() !== '' ? parseFloat(data.price) : parsedMrp;
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.status(400).json({ success: false, error: 'Selling price cannot be negative.' });
+    }
+    if (parsedPrice > parsedMrp) {
+      return res.status(400).json({ success: false, error: `Selling price (₹${parsedPrice}) cannot be greater than MRP (₹${parsedMrp}).` });
+    }
+    if (!data.primary_category || !String(data.primary_category).trim()) {
+      return res.status(400).json({ success: false, error: 'Category is mandatory.' });
+    }
+
     const newProduct = {
       shop_id: shop.id,
-      name: data.name,
+      name: String(data.name).trim(),
       sku: data.sku || `SKU-${Date.now()}`,
       barcode: data.barcode || null,
-      primary_category: data.primary_category,
+      primary_category: String(data.primary_category).trim(),
       secondary_category: data.secondary_category || null,
       brand: data.brand || null,
       company: data.company || null,
@@ -777,9 +986,9 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
       short_description: data.short_description || null,
       place: data.place || null,
       image_url: data.image_url || null,
-      mrp: parseFloat(data.mrp) || 0.00,
-      price: parseFloat(data.price) || 0.00,
-      stock: parseInt(data.stock) || 0,
+      mrp: parsedMrp,
+      price: parsedPrice,
+      stock: parseInt(data.stock) >= 0 ? parseInt(data.stock) : 0,
       unit: data.unit || 'units',
       available: data.available !== false,
       is_veg: data.is_veg !== false,
@@ -846,6 +1055,18 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       return res.status(400).json({ success: false, error: 'Name, SKU, and Category are required.' });
     }
 
+    const parsedMrp = parseFloat(mrp);
+    if (isNaN(parsedMrp) || parsedMrp <= 0) {
+      return res.status(400).json({ success: false, error: 'MRP is mandatory and must be greater than 0.' });
+    }
+    const parsedPrice = price !== undefined && price !== null && String(price).trim() !== '' ? parseFloat(price) : parsedMrp;
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      return res.status(400).json({ success: false, error: 'Selling price cannot be negative.' });
+    }
+    if (parsedPrice > parsedMrp) {
+      return res.status(400).json({ success: false, error: `Selling price (₹${parsedPrice}) cannot be greater than MRP (₹${parsedMrp}).` });
+    }
+
     const packFields = packUnitPayloadFromInput(quantity_value ?? unit, quantity_unit, unit);
     const media = parseProductMedia({ image_url, images, video_url });
     const formattedDescription = formatProductDescriptionWithMedia(description, media.images, media.video_url);
@@ -858,8 +1079,8 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       company: company || null,
       description: formattedDescription || null,
       short_description: short_description || null,
-      mrp: parseFloat(mrp) || 0,
-      price: parseFloat(price) || 0,
+      mrp: parsedMrp,
+      price: parsedPrice,
       primary_category,
       secondary_category: secondary_category || null,
       image_url: media.primary_image_url || null,
@@ -1130,6 +1351,94 @@ router.delete('/master/:product_id', authMiddleware, requireRole(['super_admin']
   }
 });
 
+// 7.1 GET /master/:product_id/city-prices: Fetch all city pricing overrides for a product
+router.get('/master/:product_id/city-prices', async (req, res) => {
+  const { product_id } = req.params;
+  try {
+    const { data: prices, error } = await supabase
+      .from('product_city_prices')
+      .select('*')
+      .eq('product_id', product_id);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, city_prices: prices || [] });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
+// 7.2 POST /master/:product_id/city-price: Set or update city price override for a product
+router.post('/master/:product_id/city-price', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { product_id } = req.params;
+  const { city_name, mrp, price, wholesaler_price, is_live } = req.body;
+
+  if (!city_name || !String(city_name).trim()) {
+    return res.status(400).json({ success: false, error: 'City name is required' });
+  }
+
+  const parsedMrp = parseFloat(mrp);
+  if (isNaN(parsedMrp) || parsedMrp <= 0) {
+    return res.status(400).json({ success: false, error: 'MRP must be a positive number greater than 0' });
+  }
+
+  const parsedPrice = price !== undefined && price !== null ? parseFloat(price) : parsedMrp;
+  if (isNaN(parsedPrice) || parsedPrice < 0) {
+    return res.status(400).json({ success: false, error: 'Selling price cannot be negative' });
+  }
+  if (parsedPrice > parsedMrp) {
+    return res.status(400).json({ success: false, error: 'Selling price cannot exceed MRP' });
+  }
+
+  try {
+    const payload = {
+      product_id,
+      city_name: String(city_name).trim(),
+      mrp: parsedMrp,
+      price: parsedPrice,
+      wholesaler_price: wholesaler_price !== undefined ? parseFloat(wholesaler_price) || 0 : 0,
+      is_live: is_live !== false,
+    };
+
+    const { data, error } = await supabase
+      .from('product_city_prices')
+      .upsert(payload, { onConflict: 'product_id,city_name' })
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, message: 'City price override updated successfully', city_price: data });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
+// 7.3 DELETE /master/:product_id/city-price/:city_name: Remove city price override
+router.delete('/master/:product_id/city-price/:city_name', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { product_id, city_name } = req.params;
+
+  try {
+    const { error } = await supabase
+      .from('product_city_prices')
+      .delete()
+      .eq('product_id', product_id)
+      .ilike('city_name', String(city_name).trim());
+
+    if (error) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+
+    return res.json({ success: true, message: 'City price override deleted' });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
 // 8. GET /coupons: Retrieve all active coupons
 router.get('/coupons/all', async (req, res) => {
   try {
@@ -1198,11 +1507,13 @@ router.post('/upload-image', authMiddleware, requireRole(['admin', 'super_admin'
   try {
     const folder = (req.body?.folder || req.query?.folder || 'categories') as string;
     const s3Url = await uploadMulterFileToS3(req.file, folder);
+    const clientUrl = resolveClientMediaUrl(s3Url, req);
 
     return res.json({
       success: true,
-      image_url: s3Url,
-      url: s3Url,
+      image_url: clientUrl,
+      url: clientUrl,
+      s3_url: s3Url,
     });
   } catch (error: any) {
     console.error('[Upload Image Error]:', error);

@@ -6,7 +6,7 @@
       "area_name": "Kothrud",
       "pincode": "411038",
       "is_serviceable": true,
-      "shop_id": "b680a338-7ae5-4498-b90a-e26a6807a4a2"
+      "shop_id": "fcaf4690-cf5e-4315-8564-cf0ac4aecb00"
     },
     {
       "id": "loc-1789826208584-w9qu",
@@ -14,7 +14,7 @@
       "area_name": "Thergaon",
       "pincode": "412101",
       "is_serviceable": true,
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350"
+      "shop_id": "fcaf4690-cf5e-4315-8564-cf0ac4aecb00"
     },
     {
       "id": "loc-1790408510111-isfm",
@@ -22,7 +22,7 @@
       "area_name": "Ravet",
       "pincode": "423605",
       "is_serviceable": true,
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227"
+      "shop_id": "fcaf4690-cf5e-4315-8564-cf0ac4aecb00"
     }
   ],
   "promotional_banners": [
@@ -49,24 +49,28 @@
       "id": "banner-2",
       "title": "Free Delivery on orders above ₹3,000",
       "image_url": "https://images.unsplash.com/photo-1572195577046-2f25894c06fc?w=600",
+      "action_link": "deals",
       "active": true
     },
     {
       "id": "banner-3",
       "title": "Fresh Farm Harvest: 15% Off Organic Produce",
       "image_url": "https://images.unsplash.com/photo-1579113800032-c38bd7635818?w=600",
+      "action_link": "CategoryProducts?category=Fruits%20%26%20Vegetables",
       "active": true
     },
     {
       "id": "banner-4",
       "title": "Breakfast Essentials: Milk, Butter & Eggs",
       "image_url": "https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=600",
+      "action_link": "CategoryProducts?category=Dairy%20%26%20Eggs",
       "active": true
     },
     {
       "id": "banner-5",
       "title": "Daily Kitchen Staples: Oils & Spices",
       "image_url": "https://images.unsplash.com/photo-1608686207856-001b95cf60ca?w=600",
+      "action_link": "CategoryProducts?category=Oils%20%26%20Ghee",
       "active": true
     }
   ],
@@ -75,6 +79,10 @@
     {
       "id": "state-1789466786523",
       "name": "Maharashtra"
+    },
+    {
+      "id": "state-1790960000001",
+      "name": "Karnataka"
     }
   ],
   "districts": [
@@ -82,6 +90,11 @@
       "id": "dist-1789466795551",
       "state_id": "state-1789466786523",
       "name": "pune"
+    },
+    {
+      "id": "dist-1790960000002",
+      "state_id": "state-1790960000001",
+      "name": "Bengaluru Urban"
     }
   ],
   "cities": [
@@ -92,10 +105,6 @@
     {
       "id": "city-1789823431303",
       "name": "Pimpri-Chinchwad"
-    },
-    {
-      "id": "city-1790404697730",
-      "name": "Javalke"
     }
   ],
   "areas": [
@@ -122,270 +131,14 @@
       "city_id": "city-1789466949121",
       "name": "Thergaon",
       "pincode": "412101"
-    },
-    {
-      "id": "area-1790404697730-xwy8",
-      "city_id": "city-1790404697730",
-      "name": "Javalke",
-      "pincode": "423605"
     }
   ],
-  "shop_products": [
-    {
-      "id": "sp-test-out-of-stock-1",
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350",
-      "product_id": "af08a1d1-d79f-4c59-8125-e52eb397617c",
-      "selling_price": 615,
-      "stock": 0,
-      "available": true,
-      "status": "approved",
-      "discount_percentage": 12
-    },
-    {
-      "id": "sp-test-out-of-stock-2",
-      "shop_id": "b680a338-7ae5-4498-b90a-e26a6807a4a2",
-      "product_id": "af08a1d1-d79f-4c59-8125-e52eb397617c",
-      "selling_price": 615,
-      "stock": 0,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1789986746110-j8xvqzi",
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350",
-      "product_id": "35326e0a-8dfe-4f36-acad-badef35cb765",
-      "selling_price": 0,
-      "discount_percentage": 0,
-      "stock": 0,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1789986746120-1izgo5q",
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350",
-      "product_id": "prod-tata-salt-1kg",
-      "selling_price": 0,
-      "discount_percentage": 0,
-      "stock": 0,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1789987358883-e7nx3xz",
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350",
-      "product_id": "prod-basmati-5kg",
-      "selling_price": 0,
-      "discount_percentage": 0,
-      "stock": 0,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1789989622293-iqyxe30",
-      "shop_id": "cf0ef603-ee92-40bd-a0cd-d4714e55f350",
-      "product_id": "0238045d-0434-4414-8da8-61792f53ecee",
-      "selling_price": 0,
-      "discount_percentage": 0,
-      "stock": 0,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409922191-rq58k7z0m",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "prod-atta-10kg",
-      "selling_price": 449,
-      "discount_percentage": 0,
-      "stock": 28,
-      "available": true,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409924531-zdk9nj3p6",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "prod-mustard-5l",
-      "selling_price": 799,
-      "discount_percentage": 0,
-      "stock": 50,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409928659-es398nau2",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "1cdaf9fb-f09f-4c24-9dc4-085af26dd6c3",
-      "selling_price": 24,
-      "discount_percentage": 0,
-      "stock": 200,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409932499-96j7bcx4g",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "prod-basmati-5kg",
-      "selling_price": 460,
-      "discount_percentage": 0,
-      "stock": 70,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409942082-r8bo5f0v6",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "a14ca4b2-8776-4537-87bd-62c5d439f159",
-      "selling_price": 168,
-      "discount_percentage": 0,
-      "stock": 150,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409942992-2lcykxo7j",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "048fd8ba-8f7b-4336-a6c3-608e8ccd55b1",
-      "selling_price": 599,
-      "discount_percentage": 0,
-      "stock": 60,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409944908-wd2sgvw6m",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "e1da1df2-5e81-4735-84ec-b01a2aaafaee",
-      "selling_price": 380,
-      "discount_percentage": 0,
-      "stock": 100,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409947828-smrhy2tf2",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "48642db6-1c94-4583-8fb0-ee8b7212e55b",
-      "selling_price": 145,
-      "discount_percentage": 0,
-      "stock": 50,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409948705-6dykxv07q",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "af08a1d1-d79f-4c59-8125-e52eb397617c",
-      "selling_price": 649,
-      "discount_percentage": 0,
-      "stock": 80,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409951918-bxus2j8xg",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "6b63e70e-c9f4-45b2-b7aa-3332a9778a1d",
-      "selling_price": 480,
-      "discount_percentage": 0,
-      "stock": 65,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409952397-fqrh9ryr8",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "d7472a47-ce80-4a47-ad8f-29afb36b3cff",
-      "selling_price": 425,
-      "discount_percentage": 0,
-      "stock": 120,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409955207-itrd90qo9",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "fcc6d068-51bf-4197-a958-9ff733c58e30",
-      "selling_price": 275,
-      "discount_percentage": 0,
-      "stock": 85,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409955670-3sbxo1n70",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "b716913b-a32c-43f3-90b0-92913d6f8ef0",
-      "selling_price": 265,
-      "discount_percentage": 0,
-      "stock": 90,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409957694-fw4i9zu61",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "9ccb0a58-d342-4dfe-bb15-6fb7aeb4c2dd",
-      "selling_price": 190,
-      "discount_percentage": 0,
-      "stock": 100,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409958168-alvj0v7cs",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "062155af-a2be-4a53-a9e4-c9725b0ae604",
-      "selling_price": 140,
-      "discount_percentage": 0,
-      "stock": 100,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409960325-emmj8y2qo",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "af5b114b-e9ae-4856-8896-95124d42f78a",
-      "selling_price": 110,
-      "discount_percentage": 0,
-      "stock": 150,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409961214-v4h10xhhp",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "94c25683-88ca-45ba-9eec-3a7998038912",
-      "selling_price": 280,
-      "discount_percentage": 0,
-      "stock": 120,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409962868-v0dt4resl",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "1777d976-045c-4ab8-9b47-26b9a9a0dea3",
-      "selling_price": 130,
-      "discount_percentage": 0,
-      "stock": 110,
-      "available": false,
-      "status": "approved"
-    },
-    {
-      "id": "sp-1790409964430-l8crea6g3",
-      "shop_id": "ea151504-de58-49d5-9b0b-950f004d1227",
-      "product_id": "0238045d-0434-4414-8da8-61792f53ecee",
-      "selling_price": 210,
-      "discount_percentage": 0,
-      "stock": 90,
-      "available": false,
-      "status": "approved"
-    }
-  ],
+  "shop_products": [],
   "categories": [
     {
       "id": "cat-1",
       "name": "Atta & Rice",
-      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/categories/test.png"
+      "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/categories/categories_1790953438490_9yl6j9.png"
     },
     {
       "id": "cat-2",
@@ -462,6 +215,57 @@
     }
   ],
   "orders": [
+    {
+      "id": "b51c5414-7596-4e7c-8cf6-9c94446adf96",
+      "display_id": "MG64206",
+      "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
+      "consumer_name": "918830480015",
+      "shop_id": "4d5fa55f-52a7-4a50-b5f0-fa2fdc083237",
+      "shop_name": "KalaMart",
+      "items_total": 3266,
+      "delivery_fee": 0,
+      "delivery_fee_label": "Free Delivery (Local Area)",
+      "free_delivery_radius_km": 15,
+      "extra_delivery_fee_per_km": 0,
+      "total_amount": 3266,
+      "discount_amount": 0,
+      "product_savings": 0,
+      "total_savings": 0,
+      "coupon_code": null,
+      "shipping_address": "Dd, Manoj Pramod Varma Marg, Er, Thergaon, Pimpri-Chinchwad, Maharashtra, 411033",
+      "deliver_to_label": "Home · Manoj Pramod Varma Marg",
+      "delivery_flat": "Dd",
+      "delivery_street": "Manoj Pramod Varma Marg",
+      "delivery_landmark": "Er",
+      "delivery_area": "Thergaon",
+      "delivery_city": "Pimpri-Chinchwad",
+      "delivery_district": "",
+      "delivery_state": "Maharashtra",
+      "delivery_pincode": "411033",
+      "delivery_latitude": 18.6107297,
+      "delivery_longitude": 73.7703162,
+      "distance_km": null,
+      "delivery_slot": "Today, 8:00 AM – 12:00 PM",
+      "delivery_slot_date": "2026-10-02",
+      "delivery_slot_window_id": "w1",
+      "delivery_otp": "8093",
+      "payment_method": "COD",
+      "payment_method_label": "Cash on Delivery",
+      "status": "pending",
+      "created_at": "2026-10-02T15:10:54.617Z",
+      "order_items": [
+        {
+          "product_id": "p4",
+          "product_name": "Tata Sampann Toor Dal 1kg",
+          "name": "Tata Sampann Toor Dal 1kg",
+          "shop_id": "4d5fa55f-52a7-4a50-b5f0-fa2fdc083237",
+          "quantity": 23,
+          "unit_price": 142,
+          "unit": "1 kg",
+          "image_url": "https://monthly-grocery-media-prod.s3.ap-south-1.amazonaws.com/products/tata_toor_dal_1kg.png"
+        }
+      ]
+    },
     {
       "id": "807c55c4-76ca-4248-81a0-c7389f57af3f",
       "display_id": "MG69426",
@@ -1292,19 +1096,6 @@
       "updated_at": "2026-09-04T08:48:59.543Z"
     },
     {
-      "id": "addr-1788931379627",
-      "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
-      "tag": "Home",
-      "flat": "F5ff",
-      "street": "Xgxgxy",
-      "landmark": "Gxgx",
-      "pincode": "000000",
-      "phone": "8830480015",
-      "isDefault": true,
-      "created_at": "2026-09-09T05:22:59.627Z",
-      "updated_at": "2026-09-09T05:22:59.627Z"
-    },
-    {
       "id": "addr-1789971203199",
       "consumer_id": "ed293bb7-e302-4c67-81df-84149048024c",
       "tag": "Home",
@@ -1343,6 +1134,26 @@
       "isDefault": true,
       "created_at": "2026-09-26T08:59:42.251Z",
       "updated_at": "2026-09-26T10:15:34.806Z"
+    },
+    {
+      "id": "addr-1788931379627",
+      "consumer_id": "cfa21275-31de-4e0f-9286-10106c4f7735",
+      "tag": "Home",
+      "flat": "Dd",
+      "street": "Manoj Pramod Varma Marg",
+      "landmark": "Er",
+      "pincode": "411033",
+      "phone": "8830480015",
+      "isDefault": true,
+      "created_at": "2026-09-09T05:22:59.627Z",
+      "updated_at": "2026-10-02T15:10:49.098Z",
+      "area": "Thergaon",
+      "city": "Pimpri-Chinchwad",
+      "district": "",
+      "state": "Maharashtra",
+      "latitude": 18.6107297,
+      "longitude": 73.7703162,
+      "formatted_address": ""
     }
   ],
   "onboarding": {
@@ -1611,8 +1422,8 @@
     "search_placeholder": "Search atta, rice, oil…",
     "popular_searches_label": "POPULAR SEARCHES",
     "products_section_label": "PRODUCTS",
-    "empty_title_template": "No results for \"{query}\"",
-    "empty_subtitle": "Try another search term or check spelling",
+    "empty_title_template": "No matching groceries found",
+    "empty_subtitle": "Try a popular search below or browse a category",
     "location_required_message": "Choose your delivery area to search products from your local store.",
     "choose_location_label": "Choose delivery area",
     "load_error_message": "Could not load search screen. Check that the backend is running.",
@@ -1624,7 +1435,7 @@
     "section_grocery_label": "GROCERY & KITCHEN",
     "section_snacks_label": "SNACKS & BEVERAGES",
     "section_household_label": "HOUSEHOLD & CARE",
-    "section_default_label": "GROCERY & KITCHEN",
+    "section_default_label": "MORE CATEGORIES",
     "empty_message": "No categories match your search",
     "load_error_message": "Could not load categories. Check that the backend is running.",
     "retry_label": "Retry"
@@ -1905,6 +1716,7 @@
     "add_to_cart_label": "Add to cart",
     "add_success_title": "Previous basket copied",
     "add_success_message_template": "Added {count} items to your cart.",
+    "add_success_message_skipped_template": "Added {count} items to your cart. {unavailable} unavailable item(s) were skipped.",
     "keep_browsing_label": "Keep browsing",
     "view_cart_label": "View cart",
     "empty_title": "No previous orders yet",

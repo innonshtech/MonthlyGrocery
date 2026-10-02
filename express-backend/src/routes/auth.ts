@@ -33,7 +33,7 @@ function normalizePhone(phone: string): string {
 }
 
 // Check if a mobile number belongs to a registered merchant / store partner with status check
-async function checkMerchantStatus(normalizedPhone: string): Promise<{ registered: boolean; status?: string; shopName?: string }> {
+async function checkMerchantStatus(normalizedPhone: string): Promise<{ registered: boolean; status?: string; shopName?: string; rejection_reason?: string | null }> {
   if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN || isTestPhoneNumber(normalizedPhone)) {
     return { registered: true, status: 'approved', shopName: 'MonthlyGrocery Test Store' };
   }
@@ -53,7 +53,7 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
       // Check if user owns a shop
       const { data: shop } = await supabase
         .from('shops')
-        .select('id, shop_name, status')
+        .select('id, shop_name, status, rejection_reason')
         .eq('owner_id', profile.id)
         .order('created_at', { ascending: false })
         .maybeSingle();
@@ -63,18 +63,20 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
           registered: true,
           status: shop.status || 'approved',
           shopName: shop.shop_name,
+          rejection_reason: shop.rejection_reason || null,
         };
       }
 
+      // Admin role without a linked shop is not a valid merchant partner (no OTP bypass).
       if (profile.role === 'admin') {
-        return { registered: true, status: 'approved' };
+        return { registered: false };
       }
     }
 
     // 2. Check shops table directly by phone number
     const { data: shopByPhone } = await supabase
       .from('shops')
-      .select('id, shop_name, status')
+      .select('id, shop_name, status, rejection_reason')
       .eq('phone', normalizedPhone)
       .order('created_at', { ascending: false })
       .maybeSingle();
@@ -84,12 +86,13 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
         registered: true,
         status: shopByPhone.status || 'approved',
         shopName: shopByPhone.shop_name,
+        rejection_reason: shopByPhone.rejection_reason || null,
       };
     }
 
     const { data: shopByPhonePlus } = await supabase
       .from('shops')
-      .select('id, shop_name, status')
+      .select('id, shop_name, status, rejection_reason')
       .eq('phone', '+' + normalizedPhone)
       .order('created_at', { ascending: false })
       .maybeSingle();
@@ -99,6 +102,7 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
         registered: true,
         status: shopByPhonePlus.status || 'approved',
         shopName: shopByPhonePlus.shop_name,
+        rejection_reason: shopByPhonePlus.rejection_reason || null,
       };
     }
   } catch (err) {
@@ -161,10 +165,14 @@ router.post('/send-otp', async (req, res) => {
       });
     }
     if (merchantCheck.status === 'rejected') {
+      const reasonSuffix = merchantCheck.rejection_reason
+        ? ` Reason: ${merchantCheck.rejection_reason}.`
+        : '';
       return res.status(403).json({
         success: false,
         code: 'REJECTED',
-        error: 'Your store registration application was rejected by Web Admin. Please contact support or submit a fresh registration.',
+        rejection_reason: merchantCheck.rejection_reason || null,
+        error: `Your store registration application was rejected by Web Admin.${reasonSuffix} Please contact support or submit a fresh registration.`,
       });
     }
   } else if (role === 'super_admin') {
@@ -334,34 +342,31 @@ router.post('/verify-otp', async (req, res) => {
       }
     }
 
-    // Merchant login: upgrade profile to 'admin' role if owning a shop or registered merchant
+    // Merchant login: only approved store partners receive admin access
     if (role === 'admin' && profile.role !== 'super_admin') {
-      let isMerchant = profile.role === 'admin';
-      if (!isMerchant) {
-        // Check by owner_id
-        const { data: shopByOwner } = await supabase
-          .from('shops')
-          .select('id, status')
-          .eq('owner_id', profile.id)
-          .maybeSingle();
-
-        if (shopByOwner) {
-          isMerchant = true;
-        } else {
-          // Check by phone number
-          const { data: shopByPhone } = await supabase
-            .from('shops')
-            .select('id, status')
-            .eq('phone', normalized)
-            .maybeSingle();
-
-          if (shopByPhone) {
-            isMerchant = true;
-          }
-        }
+      const merchantCheck = await checkMerchantStatus(normalized);
+      if (!merchantCheck.registered || merchantCheck.status !== 'approved') {
+        const code =
+          merchantCheck.status === 'pending'
+            ? 'PENDING_APPROVAL'
+            : merchantCheck.status === 'rejected'
+              ? 'REJECTED'
+              : 'NOT_REGISTERED';
+        const errorMsg =
+          merchantCheck.status === 'pending'
+            ? `Your store registration ${merchantCheck.shopName ? `"${merchantCheck.shopName}" ` : ''}is under review. Please wait for Web Admin approval.`
+            : merchantCheck.status === 'rejected'
+              ? `Your store registration was rejected.${merchantCheck.rejection_reason ? ` Reason: ${merchantCheck.rejection_reason}.` : ''} Please submit a fresh onboarding application from the merchant app.`
+              : 'This mobile number is not registered as an approved store partner.';
+        return res.status(403).json({
+          success: false,
+          code,
+          rejection_reason: merchantCheck.rejection_reason || null,
+          error: errorMsg,
+        });
       }
 
-      if (isMerchant) {
+      if (profile.role !== 'admin') {
         const { data: upgradedProfile, error: upgradeError } = await supabase
           .from('profiles')
           .update({ role: 'admin', ...(name ? { name: String(name).trim() } : {}) })

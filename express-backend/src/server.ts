@@ -16,6 +16,7 @@ import adminRouter from './routes/adminControls';
 import couponsRouter from './routes/coupons';
 import deliverySlotsRouter from './routes/deliverySlots';
 import addressesRouter from './routes/addresses';
+import { uploadsProxyMiddleware } from './middleware/uploadsProxy';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 8001;
@@ -33,9 +34,10 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Static local assets fallback
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
+// Static uploads + S3 proxy when object is not on disk (private bucket)
+const uploadsStatic = express.static(path.join(__dirname, '../uploads'));
+app.use('/uploads', uploadsProxyMiddleware, uploadsStatic);
+app.use('/api/uploads', uploadsProxyMiddleware, uploadsStatic);
 
 // Routes (Supports both /api/* and root /*)
 app.use('/api/auth', authRouter);

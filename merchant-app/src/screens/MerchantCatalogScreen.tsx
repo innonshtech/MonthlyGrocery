@@ -305,6 +305,17 @@ export default function MerchantCatalogScreen() {
 
   const handleSaveConfig = async () => {
     if (!selectedProduct) return;
+
+    const priceVal = parseFloat(localPrice) || 0;
+    const masterMrp = parseFloat(String(selectedProduct.mrp)) || 0;
+    if (masterMrp > 0 && priceVal > masterMrp) {
+      Alert.alert(
+        'Invalid Price',
+        `Selling price cannot exceed Master MRP of ₹${Math.round(masterMrp)}`,
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const mapping = shopProducts.find((sp) => sp.product_id === selectedProduct.id);

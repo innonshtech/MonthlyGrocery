@@ -67,11 +67,33 @@ export function getBaseProductFamily(nameStr: string): string {
     .trim();
 }
 
+/** Flatten grouped catalog rows (each may contain nested `variants`). */
+export function flattenCatalogProducts(catalog: Product[]): Product[] {
+  const byId = new Map<string, Product>();
+  for (const p of catalog) {
+    const nested = (p as any).variants;
+    if (Array.isArray(nested) && nested.length > 0) {
+      for (const v of nested) {
+        if (v?.id) byId.set(String(v.id), v as Product);
+      }
+    } else if (p?.id) {
+      byId.set(String(p.id), p);
+    }
+  }
+  return Array.from(byId.values());
+}
+
 export function buildProductVariants(product: Product, catalog: Product[]): Product[] {
+  const flatCatalog = flattenCatalogProducts(catalog);
   const familyName = getBaseProductFamily(product.name).toLowerCase();
   const brand = (product.brand || '').trim().toLowerCase();
+  const familyKey = String((product as any).family_key || '').trim().toLowerCase();
 
-  const related = catalog.filter((p) => {
+  const related = flatCatalog.filter((p) => {
+    const pFamilyKey = String((p as any).family_key || '').trim().toLowerCase();
+    if (familyKey && pFamilyKey && familyKey === pFamilyKey) {
+      return true;
+    }
     const pFamily = getBaseProductFamily(p.name).toLowerCase();
     const pBrand = (p.brand || '').trim().toLowerCase();
 
@@ -83,7 +105,8 @@ export function buildProductVariants(product: Product, catalog: Product[]): Prod
     return false;
   });
 
-  return related.length > 0 ? related : [product];
+  const unique = Array.from(new Map(related.map((p) => [String(p.id), p])).values());
+  return unique.length > 0 ? unique : [product];
 }
 
 /** Parse highlights from API description fields only — no synthetic fallbacks. */
@@ -117,26 +140,76 @@ export async function fetchProductDetail(params: {
   city?: string;
   area?: string;
   pincode?: string;
+  shopId?: string;
+  initialProduct?: Product | null;
 }): Promise<ProductDetailFetchResult> {
   try {
-    const url = appendLocationParams(`${API_BASE}/products/all?limit=200`, {
+    const detailUrl = appendLocationParams(`${API_BASE}/products/detail/${params.productId}`, {
       city: params.city,
       area: params.area,
       pincode: params.pincode,
+      shop_id: params.shopId,
     });
 
-    const res = await fetch(url);
-    const data = await res.json();
-    if (!res.ok || !data.success || !Array.isArray(data.products)) {
+    try {
+      const res = await fetch(detailUrl);
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success && data.product) {
+          const variants: Product[] = Array.isArray(data.variants) && data.variants.length > 0
+            ? data.variants
+            : [data.product as Product];
+          return {
+            product: data.product as Product,
+            variants,
+            error: false,
+            notFound: false,
+          };
+        }
+      } else if (res.status === 404 && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.not_found) {
+          if (params.initialProduct) {
+            return {
+              product: params.initialProduct,
+              variants: params.initialProduct.variants?.length ? params.initialProduct.variants : [params.initialProduct],
+              error: false,
+              notFound: false,
+            };
+          }
+          return { product: null, variants: [], error: false, notFound: true };
+        }
+      }
+    } catch {
+      // Endpoint not supported on older backend, safely fall through to full catalog search
+    }
+
+    // Fallback: legacy full-catalog scan (older backends)
+    const url = appendLocationParams(`${API_BASE}/products/all?limit=500`, {
+      city: params.city,
+      area: params.area,
+      pincode: params.pincode,
+      shop_id: params.shopId,
+    });
+    const legacyRes = await fetch(url);
+    const legacyData = await legacyRes.json();
+    if (!legacyRes.ok || !legacyData.success || !Array.isArray(legacyData.products)) {
+      if (params.initialProduct) {
+        return {
+          product: params.initialProduct,
+          variants: params.initialProduct.variants?.length ? params.initialProduct.variants : [params.initialProduct],
+          error: false,
+          notFound: false,
+        };
+      }
       return { product: null, variants: [], error: true, notFound: false };
     }
 
-    const catalog: Product[] = data.products;
-
+    const catalog: Product[] = legacyData.products;
     let target: Product | null = null;
     let variants: Product[] = [];
 
-    // Search top-level or inside variants array
     for (const p of catalog) {
       if (p.id === params.productId) {
         target = p;
@@ -156,10 +229,18 @@ export async function fetchProductDetail(params: {
     }
 
     if (!target) {
+      if (params.initialProduct) {
+        return {
+          product: params.initialProduct,
+          variants: params.initialProduct.variants?.length ? params.initialProduct.variants : [params.initialProduct],
+          error: false,
+          notFound: false,
+        };
+      }
       return { product: null, variants: [], error: false, notFound: true };
     }
 
-    if (variants.length === 0) {
+    if (variants.length <= 1) {
       variants = buildProductVariants(target, catalog);
     }
 

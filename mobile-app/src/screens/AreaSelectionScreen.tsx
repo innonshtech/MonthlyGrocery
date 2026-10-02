@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   PermissionsAndroid,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -241,6 +242,30 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
   const isUnserviceableSearch =
     searchQuery.trim().length > 0 && filteredAreas.length === 0;
 
+  const handleBack = useCallback(() => {
+    if (shopPickerVisible) {
+      setShopPickerVisible(false);
+      return true;
+    }
+    if (isUnserviceableSearch || searchQuery.trim().length > 0) {
+      setSearchQuery('');
+      return true;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+    navigation.navigate('CitySelection');
+    return true;
+  }, [shopPickerVisible, isUnserviceableSearch, searchQuery, navigation]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      return handleBack();
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
+
   if (missingCity) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
@@ -285,12 +310,7 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
 
-      <OnboardingBackButton
-        onPress={() => {
-          if (isUnserviceableSearch) setSearchQuery('');
-          else if (navigation.canGoBack()) navigation.goBack();
-        }}
-      />
+      <OnboardingBackButton onPress={handleBack} />
 
       {!isUnserviceableSearch ? (
         <>

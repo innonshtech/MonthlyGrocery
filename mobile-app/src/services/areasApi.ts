@@ -57,20 +57,33 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
         shop_id?: string | null;
       }
     >();
+    const allLocationsByArea = new Map<
+      string,
+      {
+        id?: string;
+        area_name: string;
+        pincode?: string;
+        is_serviceable?: boolean;
+        shop_id?: string | null;
+      }
+    >();
+
     if (locationsRes.ok && locationsData.success && Array.isArray(locationsData.locations)) {
-      locationsData.locations
-        .filter(
-          (loc: { city?: string }) => loc.city?.trim().toLowerCase() === cityKey,
-        )
-        .forEach((loc: {
-          id?: string;
-          area_name: string;
-          pincode?: string;
-          is_serviceable?: boolean;
-          shop_id?: string | null;
-        }) => {
-          locationByArea.set(loc.area_name.trim().toLowerCase(), loc);
-        });
+      locationsData.locations.forEach((loc: {
+        id?: string;
+        area_name: string;
+        city?: string;
+        pincode?: string;
+        is_serviceable?: boolean;
+        shop_id?: string | null;
+      }) => {
+        if (!loc?.area_name) return;
+        const norm = loc.area_name.trim().toLowerCase();
+        allLocationsByArea.set(norm, loc);
+        if (loc.city?.trim().toLowerCase() === cityKey) {
+          locationByArea.set(norm, loc);
+        }
+      });
     }
 
     const masterAreas = areasData.areas.filter(
@@ -78,16 +91,26 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
     );
 
     const merged: CityArea[] = masterAreas.map((area: { id: string; name: string; pincode?: string }) => {
-      const loc = locationByArea.get(area.name.trim().toLowerCase());
-      const isServiceable = loc ? (loc.is_serviceable !== false && Boolean(loc.shop_id)) : false;
-      const shopId = loc?.shop_id || null;
-      const shopName = shopId ? (shopMap.get(shopId) || 'Local Kirana Store') : null;
+      const norm = area.name.trim().toLowerCase();
+      const loc = locationByArea.get(norm) || allLocationsByArea.get(norm);
+      const pin = loc?.pincode?.trim() || area.pincode?.trim() || '';
 
       // Count all shops delivering to this area/pincode
-      const pin = loc?.pincode?.trim() || area.pincode?.trim() || '';
-      const matchingShopsCount = availableShops.filter(
-        (s) => (s.pincode && s.pincode === pin) || (s.area_name && s.area_name.toLowerCase() === area.name.toLowerCase()) || s.id === shopId
-      ).length;
+      const matchingShops = availableShops.filter(
+        (s) =>
+          (pin && s.pincode && s.pincode === pin) ||
+          (s.area_name && s.area_name.toLowerCase() === norm) ||
+          (Array.isArray(s.assigned_areas) && s.assigned_areas.some((a: string) => a.toLowerCase() === norm)) ||
+          (loc?.shop_id && s.id === loc.shop_id)
+      );
+
+      const hasShopCoverage = matchingShops.length > 0 || Boolean(loc?.shop_id);
+      const isServiceable = loc
+        ? (loc.is_serviceable !== false && hasShopCoverage)
+        : hasShopCoverage;
+
+      const shopId = loc?.shop_id || (matchingShops.length > 0 ? matchingShops[0].id : null);
+      const shopName = shopId ? (shopMap.get(shopId) || 'Local Kirana Store') : null;
 
       return {
         id: area.id,
@@ -96,7 +119,7 @@ export async function fetchAreasForCity(cityName: string): Promise<CityArea[]> {
         serviceable: isServiceable,
         shop_id: shopId,
         shop_name: shopName,
-        shop_count: Math.max(isServiceable ? 1 : 0, matchingShopsCount),
+        shop_count: Math.max(isServiceable ? 1 : 0, matchingShops.length),
       };
     });
 

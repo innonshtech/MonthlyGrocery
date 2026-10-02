@@ -8,16 +8,10 @@ export interface ServiceableCity {
 
 export async function fetchServiceableCities(): Promise<ServiceableCity[]> {
   try {
-    const [citiesRes, locationsRes, areasRes] = await Promise.all([
-      fetch(`${API_BASE}/admin/cities`),
-      fetch(`${API_BASE}/admin/locations`),
-      fetch(`${API_BASE}/admin/areas`),
-    ]);
-    const citiesData = await citiesRes.json();
-    const locationsData = await locationsRes.json();
-    const areasData = await areasRes.json();
+    const res = await fetch(`${API_BASE}/admin/cities`);
+    const citiesData = await res.json();
 
-    if (!citiesRes.ok || !citiesData.success || !Array.isArray(citiesData.cities)) {
+    if (!res.ok || !citiesData.success || !Array.isArray(citiesData.cities)) {
       return [];
     }
 

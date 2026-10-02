@@ -703,6 +703,15 @@ const handleFetchMyOrders = async (req: AuthRequest, res: Response) => {
     }
 
     for (const so of supaOrders || []) {
+      if (mergedMap.has(so.id)) {
+        const existing = mergedMap.get(so.id);
+        if (!existing.shop_id && so.shop_id) {
+          existing.shop_id = so.shop_id;
+          mergedMap.set(so.id, enrichConsumerOrder(existing));
+        }
+        continue;
+      }
+
       if (!mergedMap.has(so.id)) {
         const mappedItems = (so.order_items || []).map((oi: any) => ({
           product_id: oi.product_id,
@@ -824,21 +833,46 @@ router.get('/monthly-hub-summary', authMiddleware, async (req: AuthRequest, res:
 // POST /:order_id/cancel — Consumer cancel before packing
 router.post('/:order_id/cancel', authMiddleware, async (req: AuthRequest, res: Response) => {
   const { order_id } = req.params;
+  const normalizedLookup = String(order_id).replace(/^#/, '');
 
   try {
     const { readDb, writeDb } = require('../config/localDb');
     const db = readDb() as any;
     if (!db.orders) db.orders = [];
 
-    const orderIdx = db.orders.findIndex(
-      (o: any) => o.id === order_id || o.display_id === order_id,
+    let orderIdx = db.orders.findIndex(
+      (o: any) =>
+        o.id === order_id ||
+        o.display_id === order_id ||
+        String(o.display_id || '').replace(/^#/, '') === normalizedLookup,
     );
 
-    if (orderIdx === -1) {
+    let order: any = orderIdx !== -1 ? db.orders[orderIdx] : null;
+
+    if (!order) {
+      const { data: supaOrder, error } = await supabase
+        .from('orders')
+        .select('id, consumer_id, status, shop_id, total_amount, payment_method, order_items(*)')
+        .eq('id', order_id)
+        .maybeSingle();
+
+      if (!error && supaOrder) {
+        order = {
+          ...supaOrder,
+          order_items: (supaOrder.order_items || []).map((oi: any) => ({
+            product_id: oi.product_id,
+            quantity: oi.quantity,
+            unit_price: oi.unit_price,
+          })),
+        };
+        orderIdx = -1;
+      }
+    }
+
+    if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    const order = db.orders[orderIdx];
     if (order.consumer_id !== req.user!.id) {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
@@ -854,12 +888,22 @@ router.post('/:order_id/cancel', authMiddleware, async (req: AuthRequest, res: R
     order.cancelled_by = 'consumer';
     applyStatusTimestamps(order, 'cancelled');
     order.refund_message = buildDefaultRefundMessage(order);
-    db.orders[orderIdx] = order;
-    writeDb(db);
+
+    if (orderIdx !== -1) {
+      db.orders[orderIdx] = order;
+      writeDb(db);
+    } else {
+      const shadowIdx = db.orders.findIndex((o: any) => o.id === order.id);
+      if (shadowIdx === -1) {
+        db.orders.unshift(order);
+      } else {
+        db.orders[shadowIdx] = { ...db.orders[shadowIdx], ...order };
+      }
+      writeDb(db);
+    }
 
     await supabase.from('orders').update({ status: 'cancelled' }).eq('id', order.id);
 
-    // Auto-restore inventory stock for cancelled order
     try {
       if (order.shop_id) {
         await restoreShopInventory(order.shop_id, order.order_items || order.items || []);

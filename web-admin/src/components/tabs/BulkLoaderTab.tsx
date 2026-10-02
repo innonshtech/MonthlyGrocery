@@ -122,7 +122,7 @@ export default function BulkLoaderTab({
                   <span>{excelReport.rows_processed} Rows</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className={`grid ${excelReport.failed > 0 || (excelReport.errors && excelReport.errors.length > 0) ? 'grid-cols-4' : 'grid-cols-3'} gap-2 text-center text-xs`}>
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-emerald-500/10">
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider">Processed</p>
                     <p className="text-base font-bold text-slate-200">{excelReport.rows_processed}</p>
@@ -135,6 +135,12 @@ export default function BulkLoaderTab({
                     <p className="text-[10px] text-slate-500 uppercase tracking-wider">Updated</p>
                     <p className="text-base font-bold text-teal-400">{excelReport.updated}</p>
                   </div>
+                  {(excelReport.failed > 0 || (excelReport.errors && excelReport.errors.length > 0)) && (
+                    <div className="bg-slate-950/80 p-2.5 rounded-xl border border-red-500/30">
+                      <p className="text-[10px] text-red-400 uppercase tracking-wider font-semibold">Rejected</p>
+                      <p className="text-base font-bold text-red-400">{excelReport.failed || excelReport.errors.length}</p>
+                    </div>
+                  )}
                 </div>
 
                 {Array.isArray(excelReport.errors) && excelReport.errors.length > 0 && (

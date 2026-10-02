@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -149,6 +150,22 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
     }
   };
 
+  const handleBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+    navigation.navigate('CitySelection');
+    return true;
+  }, [navigation]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      return handleBack();
+    });
+    return () => subscription.remove();
+  }, [handleBack]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.centered} edges={['top', 'left', 'right', 'bottom']}>
@@ -186,11 +203,7 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
           bounces={false}
         >
           <View style={styles.main}>
-            <OnboardingBackButton
-              onPress={() => {
-                if (navigation.canGoBack()) navigation.goBack();
-              }}
-            />
+            <OnboardingBackButton onPress={handleBack} />
 
             <View style={styles.avatarSection}>
               <TouchableOpacity

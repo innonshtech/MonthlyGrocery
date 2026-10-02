@@ -1,3 +1,33 @@
+jest.mock('react-native-maps', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MapView = (props) => React.createElement(View, props);
+  return {
+    __esModule: true,
+    default: MapView,
+    PROVIDER_GOOGLE: 'google',
+    Marker: View,
+  };
+});
+
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    WebView: (props) => React.createElement(View, props),
+  };
+});
+
+jest.mock('@react-native-community/netinfo', () => ({
+  addEventListener: jest.fn(() => jest.fn()),
+  fetch: jest.fn(() =>
+    Promise.resolve({
+      isConnected: true,
+      isInternetReachable: true,
+    }),
+  ),
+}));
+
 jest.mock('@react-native-async-storage/async-storage', () => {
   let store = {};
   return {

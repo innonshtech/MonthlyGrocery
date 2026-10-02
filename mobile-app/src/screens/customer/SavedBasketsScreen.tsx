@@ -347,47 +347,54 @@ export default function SavedBasketsScreen({ navigation, route }: any) {
       >
         <KeyboardAvoidingView
           style={styles.modalRoot}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
           <Pressable style={styles.modalBackdrop} onPress={() => setShowSaveModal(false)} />
-          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-            <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>{screenConfig.save_sheet_title}</Text>
-            <Text style={styles.sheetSub}>{screenConfig.save_sheet_subtitle}</Text>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+            bounces={false}
+          >
+            <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>{screenConfig.save_sheet_title}</Text>
+              <Text style={styles.sheetSub}>{screenConfig.save_sheet_subtitle}</Text>
 
-            <Text style={styles.fieldLabel}>{screenConfig.basket_name_label}</Text>
-            <View style={styles.inputWrap}>
-              <TextInput
-                style={styles.sheetInput}
-                value={basketNameInput}
-                onChangeText={setBasketNameInput}
-                placeholder={defaultBasketName}
-                placeholderTextColor={COLORS.ink300}
-              />
-              {basketNameInput.trim().length > 0 ? (
-                <Text style={styles.inputCheck}>✓</Text>
-              ) : null}
+              <Text style={styles.fieldLabel}>{screenConfig.basket_name_label}</Text>
+              <View style={styles.inputWrap}>
+                <TextInput
+                  style={styles.sheetInput}
+                  value={basketNameInput}
+                  onChangeText={setBasketNameInput}
+                  placeholder={defaultBasketName}
+                  placeholderTextColor={COLORS.ink300}
+                />
+                {basketNameInput.trim().length > 0 ? (
+                  <Text style={styles.inputCheck}>✓</Text>
+                ) : null}
+              </View>
+
+              <View style={styles.willSaveRow}>
+                <BasketSaveIcon size={16} />
+                <Text style={styles.willSaveText}>
+                  {formatSavedBasketsTemplate(screenConfig.items_will_save_template, {
+                    count: cartItemCount,
+                    amount: formatInr(cartTotal),
+                  })}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.primaryBtn, styles.sheetPrimaryBtn]}
+                onPress={handleSaveBasket}
+                activeOpacity={0.85}
+                disabled={!basketNameInput.trim() || cartItemCount === 0}
+              >
+                <Text style={styles.primaryBtnText}>{screenConfig.save_basket_button_label}</Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={styles.willSaveRow}>
-              <BasketSaveIcon size={16} />
-              <Text style={styles.willSaveText}>
-                {formatSavedBasketsTemplate(screenConfig.items_will_save_template, {
-                  count: cartItemCount,
-                  amount: formatInr(cartTotal),
-                })}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.primaryBtn, styles.sheetPrimaryBtn]}
-              onPress={handleSaveBasket}
-              activeOpacity={0.85}
-              disabled={!basketNameInput.trim() || cartItemCount === 0}
-            >
-              <Text style={styles.primaryBtnText}>{screenConfig.save_basket_button_label}</Text>
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
 

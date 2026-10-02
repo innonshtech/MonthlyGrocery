@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Share,
   StatusBar,
-  Linking,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,23 +27,30 @@ import {
   ProductDetailScreenConfig,
   DEFAULT_PRODUCT_DETAIL_CONFIG,
 } from '../../services/productDetailApi';
+import ProductImageZoomModal from '../../components/product/ProductImageZoomModal';
+import ProductInlineVideo from '../../components/product/ProductInlineVideo';
 
 export default function ProductDetailScreen({ route, navigation }: any) {
-  const { productId } = route.params || {};
+  const { productId, initialProduct } = route.params || {};
   const { items, addToCart, updateQuantity } = useCart();
-  const { city, area, pincode } = useAuth();
+  const { city, area, pincode, selectedShop } = useAuth();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const carouselRef = useRef<any>(null);
 
   const [screenConfig, setScreenConfig] = useState<ProductDetailScreenConfig>(DEFAULT_PRODUCT_DETAIL_CONFIG);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [variants, setVariants] = useState<Product[]>([]);
-  const [selectedPackSize, setSelectedPackSize] = useState<string>('5 kg');
+  const [product, setProduct] = useState<Product | null>(initialProduct || null);
+  const [variants, setVariants] = useState<Product[]>(
+    initialProduct?.variants?.length ? initialProduct.variants : (initialProduct ? [initialProduct] : [])
+  );
+  const [selectedPackSize, setSelectedPackSize] = useState<string>(
+    initialProduct ? getProductPackLabel(initialProduct) : '5 kg'
+  );
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialProduct);
   const [fetchError, setFetchError] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
 
   // Build multi-media items list (All angle Images + SVG + Demo Video) with smart family gallery fallback
   const mediaList = useMemo(() => {
@@ -124,7 +130,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       return;
     }
 
-    setLoading(true);
+    setLoading(!initialProduct);
     setFetchError(false);
     setNotFound(false);
 
@@ -133,16 +139,22 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       city: city ?? undefined,
       area: area ?? undefined,
       pincode: pincode ?? undefined,
+      shopId: selectedShop?.id ?? undefined,
+      initialProduct,
     });
 
     if (result.error) {
-      setFetchError(true);
-      setProduct(null);
-      setVariants([]);
+      if (!initialProduct) {
+        setFetchError(true);
+        setProduct(null);
+        setVariants([]);
+      }
     } else if (result.notFound) {
-      setNotFound(true);
-      setProduct(null);
-      setVariants([]);
+      if (!initialProduct) {
+        setNotFound(true);
+        setProduct(null);
+        setVariants([]);
+      }
     } else {
       setProduct(result.product);
       setVariants(result.variants);
@@ -151,7 +163,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       }
     }
     setLoading(false);
-  }, [productId, hasDeliveryArea, city, area, pincode]);
+  }, [productId, hasDeliveryArea, city, area, pincode, selectedShop, initialProduct]);
 
   const loadAll = useCallback(async () => {
     await loadConfig();
@@ -298,24 +310,15 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                 }}
                 style={{ width: screenWidth, height: 260 }}
               >
-                {mediaList.map((item) => (
+                {mediaList.map((item, slideIdx) => (
                   <View key={item.id} style={[styles.carouselSlide, { width: screenWidth }]}>
                     {item.type === 'video' ? (
-                      <TouchableOpacity
-                        style={styles.videoSlideContainer}
-                        activeOpacity={0.9}
-                        onPress={() => {
-                          if (item.url) {
-                            Linking.openURL(item.url).catch(() => {});
-                          }
-                        }}
-                      >
-                        <View style={styles.videoPlayCircle}>
-                          <AppIcon name="play" size={26} color="#FFFFFF" />
-                        </View>
-                        <Text style={styles.videoSlideTitle}>Product Video Demonstration</Text>
-                        <Text style={styles.videoSlideSubtitle}>Tap to watch video demo</Text>
-                      </TouchableOpacity>
+                      <ProductInlineVideo
+                        videoUrl={item.url}
+                        width={screenWidth}
+                        height={260}
+                        paused={activeMediaIndex !== slideIdx}
+                      />
                     ) : item.isSvg ? (
                       <View style={[styles.svgWrapper, isOutOfStock && { opacity: 0.45 }]}>
                         <SvgUri
@@ -326,11 +329,20 @@ export default function ProductDetailScreen({ route, navigation }: any) {
                         />
                       </View>
                     ) : (
-                      <Image
-                        source={{ uri: item.url }}
-                        style={[styles.heroImage, isOutOfStock && { opacity: 0.45 }]}
-                        resizeMode="contain"
-                      />
+                      <TouchableOpacity
+                        activeOpacity={0.95}
+                        onPress={() => setZoomImageUri(item.url)}
+                        style={styles.heroImageTap}
+                      >
+                        <Image
+                          source={{ uri: item.url }}
+                          style={[styles.heroImage, isOutOfStock && { opacity: 0.45 }]}
+                          resizeMode="contain"
+                        />
+                        <View style={styles.zoomHintBadge}>
+                          <Text style={styles.zoomHintText}>Tap to zoom</Text>
+                        </View>
+                      </TouchableOpacity>
                     )}
                   </View>
                 ))}
@@ -401,6 +413,9 @@ export default function ProductDetailScreen({ route, navigation }: any) {
           <View style={styles.detailsContainer}>
             {/* Title */}
             <Text style={styles.productTitle}>{product.name}</Text>
+            {product.sku ? (
+              <Text style={styles.skuLine}>SKU: {product.sku}</Text>
+            ) : null}
 
             {/* 3. Weight / Variant Selector Boxes (Figma Node 459-710) */}
             {weightOptions.length > 0 && (
@@ -497,7 +512,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
 
           {isOutOfStock ? (
             <View style={styles.outOfStockBottomBtn}>
-              <Text style={styles.outOfStockBottomBtnText}>Out of Stock</Text>
+              <Text style={styles.outOfStockBottomBtnText}>OUT OF STOCK</Text>
             </View>
           ) : qty > 0 ? (
             <View style={styles.stepperContainer}>
@@ -578,6 +593,12 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       </View>
 
       <View style={styles.bodyFlex}>{renderBody()}</View>
+
+      <ProductImageZoomModal
+        visible={Boolean(zoomImageUri)}
+        imageUri={zoomImageUri || ''}
+        onClose={() => setZoomImageUri(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -799,9 +820,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  heroImageTap: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
   heroImage: {
     width: '100%',
     height: '100%',
+  },
+  zoomHintBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  zoomHintText: {
+    color: '#F8FAFC',
+    fontSize: 11,
+    fontWeight: '600',
   },
   paginationDots: {
     position: 'absolute',
@@ -841,6 +881,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.22,
     color: '#17251E', // var(--ink-900, #17251E)
     alignSelf: 'stretch',
+  },
+  skuLine: {
+    ...FONTS.muktaRegular,
+    fontSize: 13,
+    color: COLORS.ink500,
+    marginTop: 4,
+    marginBottom: 4,
   },
 
   /* Weight Selector (Figma Node 459-710) */

@@ -30,12 +30,20 @@ export function levenshteinDistance(a: string, b: string): number {
 /** Check if query word fuzzy matches target word within acceptable distance */
 export function isFuzzyMatch(queryWord: string, targetWord: string): boolean {
   if (!queryWord || !targetWord) return false;
-  if (targetWord.includes(queryWord) || queryWord.includes(targetWord)) return true;
 
   const qLen = queryWord.length;
   const tLen = targetWord.length;
 
-  // Short words (< 4 chars) require exact substring match
+  // Avoid false positives (e.g. query "53fgjxs5" matching product token "g" in Parle-G).
+  if (qLen >= 4 && tLen < 3) return false;
+  if (tLen >= 4 && qLen < 3) return false;
+
+  if (targetWord.includes(queryWord) || queryWord.includes(targetWord)) {
+    if (Math.min(qLen, tLen) < 3) return false;
+    return true;
+  }
+
+  // Short words (< 4 chars) require prefix match
   if (qLen < 4 || tLen < 4) {
     return targetWord.startsWith(queryWord) || queryWord.startsWith(targetWord);
   }

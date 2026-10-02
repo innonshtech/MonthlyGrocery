@@ -106,7 +106,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [banners, setBanners] = useState<PromotionalBanner[]>([]);
-  const bannerScrollRef = React.useRef<ScrollView>(null);
+  const bannerScrollRef = React.useRef<any>(null);
   const [activeBannerIndex, setActiveBannerIndex] = useState(0);
   const [isBannerInteracting, setIsBannerInteracting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -197,10 +197,18 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     setBanners(sortBanners(list));
   }, []);
 
+  const loadCategories = useCallback(async () => {
+    const result = await fetchCategoryList();
+    if (!result.error && result.items) {
+      setCategories(result.items);
+    }
+  }, []);
+
   useEffect(() => {
     loadHomeConfig();
     loadBanners();
-  }, [loadBanners]);
+    loadCategories();
+  }, [loadBanners, loadCategories]);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,7 +217,8 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         (StatusBar as any).setBackgroundColor?.('transparent');
       }
       loadBanners();
-    }, [loadBanners]),
+      loadCategories();
+    }, [loadBanners, loadCategories]),
   );
 
   useEffect(() => {
@@ -227,16 +236,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 
     return () => clearInterval(timer);
   }, [banners.length, isBannerInteracting, contentWidth]);
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      const result = await fetchCategoryList();
-      if (!result.error && result.items) {
-        setCategories(result.items);
-      }
-    };
-    loadCategories();
-  }, []);
 
   useEffect(() => {
     const fetchFeatured = async () => {
@@ -653,7 +652,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   item={item}
                   index={index}
                   quantity={qty}
-                  onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                  onPress={() => navigation.navigate('ProductDetail', { productId: item.id, initialProduct: item })}
                   onAdd={() => addToCart(item)}
                   onIncrement={() => addToCart(item)}
                   onDecrement={() => updateQuantity(item.id, qty - 1)}

@@ -255,6 +255,7 @@ export interface CopyLastMonthScreenConfig {
   add_to_cart_label: string;
   add_success_title: string;
   add_success_message_template: string;
+  add_success_message_skipped_template: string;
   keep_browsing_label: string;
   view_cart_label: string;
   empty_title: string;
@@ -1198,8 +1199,8 @@ const defaultDb: LocalDbSchema = {
     search_placeholder: 'Search atta, rice, oil…',
     popular_searches_label: 'POPULAR SEARCHES',
     products_section_label: 'PRODUCTS',
-    empty_title_template: 'No results for "{query}"',
-    empty_subtitle: 'Try another search term or check spelling',
+    empty_title_template: 'No matching groceries found',
+    empty_subtitle: 'Try a popular search below or browse a category',
     location_required_message: 'Choose your delivery area to search products from your local store.',
     choose_location_label: 'Choose delivery area',
     load_error_message: 'Could not load search screen. Check that the backend is running.',
@@ -1211,7 +1212,7 @@ const defaultDb: LocalDbSchema = {
     section_grocery_label: 'GROCERY & KITCHEN',
     section_snacks_label: 'SNACKS & BEVERAGES',
     section_household_label: 'HOUSEHOLD & CARE',
-    section_default_label: 'GROCERY & KITCHEN',
+    section_default_label: 'MORE CATEGORIES',
     empty_message: 'No categories match your search',
     load_error_message: 'Could not load categories. Check that the backend is running.',
     retry_label: 'Retry',
@@ -1486,6 +1487,8 @@ const defaultDb: LocalDbSchema = {
     add_to_cart_label: 'Add to cart',
     add_success_title: 'Previous basket copied',
     add_success_message_template: 'Added {count} items to your cart.',
+    add_success_message_skipped_template:
+      'Added {count} items to your cart. {unavailable} unavailable item(s) were skipped.',
     keep_browsing_label: 'Keep browsing',
     view_cart_label: 'View cart',
     empty_title: 'No previous orders yet',

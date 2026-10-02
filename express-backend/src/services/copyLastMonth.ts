@@ -1,6 +1,7 @@
 import {
   fetchLocationCatalogMap,
   formatPackLabel,
+  isCatalogItemAvailable,
   loadConsumerOrders,
 } from './oneClickCart';
 
@@ -88,7 +89,10 @@ export async function buildCopyLastMonth(
   const orders = await loadConsumerOrders(consumerId, new Date(0));
   if (!orders.length) return empty;
 
-  const order = orders[0];
+  const delivered = orders.filter((o) =>
+    ['delivered', 'completed'].includes(String(o.status || '').toLowerCase()),
+  );
+  const order = delivered[0] || orders[0];
   const orderDate = new Date(order.created_at);
   const monthLabel = orderDate.toLocaleDateString('en-IN', { month: 'long' });
   const deliveredLabel = orderDate.toLocaleDateString('en-IN', {
@@ -110,11 +114,7 @@ export async function buildCopyLastMonth(
     const orderPrice = parseFloat(String(it.unit_price)) || 0;
     const livePrice = catalog ? Number(catalog.price) || 0 : orderPrice;
     const liveMrp = catalog ? Number(catalog.mrp) || livePrice : orderPrice;
-    const stock = catalog?.stock;
-    const available =
-      catalog &&
-      livePrice > 0 &&
-      (stock == null || Number(stock) > 0);
+    const available = isCatalogItemAvailable(catalog);
 
     if (available && orderPrice > 0 && Math.round(orderPrice) !== Math.round(livePrice)) {
       repricedCount++;

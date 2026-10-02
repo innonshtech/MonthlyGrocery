@@ -305,15 +305,15 @@ export default function StoreSettingsScreen() {
           /* Store Pending / Not Whitelisted Card */
           <View style={styles.pendingCard}>
             <Text style={{ fontSize: 44, textAlign: 'center', marginBottom: 12 }}>🏪</Text>
-            <Text style={styles.pendingTitle}>Store Whitelisting Pending</Text>
+            <Text style={styles.pendingTitle}>Approved Store Not Linked</Text>
             <Text style={styles.pendingSub}>
-              Your account (+91 {user?.mobile ? user.mobile.slice(-10) : '...'}) is logged in, but has not yet been assigned to an approved Kirana Store.
+              You are signed in as +91 {user?.mobile ? user.mobile.slice(-10) : '...'}, but no approved store profile is linked to this account yet.
             </Text>
             <View style={styles.pendingGuideBox}>
-              <Text style={styles.pendingGuideHeading}>📋 Store Onboarding Instructions:</Text>
-              <Text style={styles.pendingGuideText}>1. Open the Web Admin Portal (Store Approvals tab).</Text>
-              <Text style={styles.pendingGuideText}>2. Register your store with mobile number: +91 {user?.mobile ? user.mobile.slice(-10) : '...'}</Text>
-              <Text style={styles.pendingGuideText}>3. Click "Approve" to activate this store partner.</Text>
+              <Text style={styles.pendingGuideHeading}>📋 Next steps:</Text>
+              <Text style={styles.pendingGuideText}>1. If onboarding is pending, wait for Super Admin approval in Web Admin (Shops tab).</Text>
+              <Text style={styles.pendingGuideText}>2. If your application was rejected, re-submit from Onboard Store in this app.</Text>
+              <Text style={styles.pendingGuideText}>3. After approval, refresh this screen to load store settings.</Text>
             </View>
             <TouchableOpacity style={styles.refreshPendingBtn} onPress={fetchShopProfile}>
               <Text style={styles.refreshPendingBtnText}>🔄 Refresh Store Profile</Text>

@@ -597,7 +597,8 @@ router.post('/copy-last-month-screen', authMiddleware, requireRole(['super_admin
       'title', 'insight_title_template', 'insight_subtitle_template',
       'changes_all_good_message', 'changes_both_template', 'changes_repriced_only_template',
       'changes_unavailable_only_template', 'available_count_template', 'add_to_cart_label',
-      'add_success_title', 'add_success_message_template', 'keep_browsing_label', 'view_cart_label',
+      'add_success_title', 'add_success_message_template', 'add_success_message_skipped_template',
+      'keep_browsing_label', 'view_cart_label',
       'empty_title', 'empty_message', 'empty_cta_label', 'no_location_title', 'no_location_message',
       'load_error_message', 'retry_label', 'unavailable_label', 'view_similar_label', 'was_price_template',
     ], req.body);
@@ -1325,13 +1326,16 @@ router.delete('/franchise/:id', authMiddleware, requireRole(['super_admin']), as
 router.patch('/franchise/:id/status', authMiddleware, requireRole(['super_admin']), async (req: AuthRequest, res) => {
   try {
     const { status } = req.body;
+    if (!status || !['new', 'contacted', 'review', 'converted', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ success: false, error: 'Invalid franchise lead status' });
+    }
     const db = readDb();
     if (!db.franchise_requests) db.franchise_requests = [];
     const lead = db.franchise_requests.find(r => r.id === req.params.id);
     if (!lead) {
       return res.status(404).json({ success: false, error: 'Franchise lead not found' });
     }
-    lead.status = status;
+    lead.status = status as any;
     writeDb(db);
     return res.json({ success: true, message: 'Status updated successfully', requests: db.franchise_requests });
   } catch (err: any) {
@@ -1831,6 +1835,17 @@ router.post('/shop-products/request', authMiddleware, requireRole(['admin', 'sup
   }
 });
 
+async function getMasterCatalogMrp(productId: string): Promise<number | null> {
+  const { data: product } = await supabase
+    .from('products')
+    .select('mrp')
+    .eq('id', productId)
+    .maybeSingle();
+  if (!product?.mrp) return null;
+  const mrp = parseFloat(String(product.mrp));
+  return Number.isFinite(mrp) && mrp > 0 ? mrp : null;
+}
+
 // POST /shop-products/configure: Merchant updates price/stock for approved SKU (Merchant only)
 router.post('/shop-products/configure', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { product_id, selling_price, discount_percentage, stock, available } = req.body;
@@ -1842,6 +1857,17 @@ router.post('/shop-products/configure', authMiddleware, requireRole(['admin', 's
     const shopId = await getMerchantShopId(req.user!.id);
     if (!shopId) {
       return res.status(404).json({ success: false, error: 'Merchant shop not found' });
+    }
+
+    if (selling_price !== undefined) {
+      const masterMrp = await getMasterCatalogMrp(String(product_id));
+      const sell = parseFloat(String(selling_price));
+      if (masterMrp != null && Number.isFinite(sell) && sell > masterMrp) {
+        return res.status(400).json({
+          success: false,
+          error: `Selling price cannot exceed Master MRP of ₹${Math.round(masterMrp)}`,
+        });
+      }
     }
 
     const db = readDb();
@@ -2326,7 +2352,12 @@ router.post('/sku-requests/:id/status', authMiddleware, requireRole(['super_admi
 router.get('/categories', async (req, res) => {
   try {
     const db = readDb();
-    return res.json({ success: true, categories: db.categories || [] });
+    const { resolveClientMediaUrl } = require('../utils/mediaUrl');
+    const categories = (db.categories || []).map((c: { image_url?: string }) => ({
+      ...c,
+      image_url: c.image_url ? resolveClientMediaUrl(c.image_url, req) : c.image_url,
+    }));
+    return res.json({ success: true, categories });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -2341,6 +2372,8 @@ router.post('/categories', authMiddleware, requireRole(['admin', 'super_admin'])
 
   try {
     const db = readDb();
+    if (!Array.isArray(db.categories)) db.categories = [];
+    if (!Array.isArray(db.subcategories)) db.subcategories = [];
     const normalized = name.trim();
 
     const exists = db.categories.some(c => c.name.toLowerCase() === normalized.toLowerCase());
@@ -2418,13 +2451,15 @@ router.delete('/categories/:id', authMiddleware, requireRole(['admin', 'super_ad
 
   try {
     const db = readDb();
+    if (!Array.isArray(db.categories)) db.categories = [];
+    if (!Array.isArray(db.subcategories)) db.subcategories = [];
     const exists = db.categories.some(c => c.id === id);
     if (!exists) {
       return res.status(404).json({ success: false, error: 'Category not found' });
     }
 
     db.categories = db.categories.filter(c => c.id !== id);
-    db.subcategories = (db.subcategories || []).filter((s) => s.category_id !== id);
+    db.subcategories = db.subcategories.filter((s) => s.category_id !== id);
     writeDb(db);
 
     return res.json({ success: true, message: 'Category deleted successfully', categories: db.categories });
@@ -2450,7 +2485,12 @@ router.get('/subcategories', async (req, res) => {
   try {
     const db = readDb();
     const categoryId = req.query.category_id ? String(req.query.category_id) : undefined;
-    return res.json({ success: true, subcategories: listSubcategories(db, categoryId) });
+    const { resolveClientMediaUrl } = require('../utils/mediaUrl');
+    const subcategories = listSubcategories(db, categoryId).map((s: { image_url?: string }) => ({
+      ...s,
+      image_url: s.image_url ? resolveClientMediaUrl(s.image_url, req) : s.image_url,
+    }));
+    return res.json({ success: true, subcategories });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -2465,6 +2505,8 @@ router.post('/subcategories', authMiddleware, requireRole(['admin', 'super_admin
 
   try {
     const db = readDb();
+    if (!Array.isArray(db.categories)) db.categories = [];
+    if (!Array.isArray(db.subcategories)) db.subcategories = [];
     const parent = db.categories.find((c) => c.id === category_id);
     if (!parent) {
       return res.status(404).json({ success: false, error: 'Parent category not found' });

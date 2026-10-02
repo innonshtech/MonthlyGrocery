@@ -53,6 +53,17 @@ function EverLogo({ width, height }: { width: number; height: number }) {
   );
 }
 
+const DEFAULT_SPLASH: OnboardingSplashConfig = {
+  tagline: 'Fresh staples & everyday essentials at lowest prices',
+  footnote: 'Delivering across Maharashtra',
+  emoji_chips: [
+    { emoji: '🌾', size: 66, left: 68, top: 220 },
+    { emoji: '🍚', size: 60, left: 260, top: 200 },
+    { emoji: '🫒', size: 62, left: 60, top: 480 },
+    { emoji: '🧺', size: 68, left: 270, top: 500 },
+  ],
+};
+
 export default function SplashScreen({ navigation }: any) {
   const { token, user, city, area } = useAuth();
   const { width, height } = useWindowDimensions();
@@ -64,8 +75,7 @@ export default function SplashScreen({ navigation }: any) {
   const logoCardWidth = Math.min(width * 0.88, 350);
   const logoCardHeight = Math.round(logoCardWidth / 2.74) + 14;
 
-  const [splashConfig, setSplashConfig] = useState<OnboardingSplashConfig | null>(null);
-  const [configReady, setConfigReady] = useState(false);
+  const [splashConfig, setSplashConfig] = useState<OnboardingSplashConfig>(DEFAULT_SPLASH);
 
   const spreadAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
@@ -74,40 +84,35 @@ export default function SplashScreen({ navigation }: any) {
   authRef.current = { token, user, city, area };
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const config = await fetchOnboardingConfig();
-      if (!cancelled) {
-        setSplashConfig(config?.splash ?? null);
-        setConfigReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    // 1. Logo fades in immediately without waiting for network API
+    Animated.timing(contentAnim, {
+      toValue: 1,
+      duration: 350,
+      delay: 50,
+      useNativeDriver: true,
+    }).start();
 
-  useEffect(() => {
-    if (!configReady || hasNavigated.current) return;
-
-    spreadAnim.setValue(0);
-    contentAnim.setValue(0);
-
+    // 2. Emoji chips spread outward smoothly
     Animated.timing(spreadAnim, {
       toValue: 1,
-      duration: 700,
-      delay: 280,
+      duration: 650,
+      delay: 120,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
 
-    Animated.timing(contentAnim, {
-      toValue: 1,
-      duration: 420,
-      delay: 780,
-      useNativeDriver: true,
-    }).start();
+    // 3. Background fetch for dynamic remote tagline/chips (never blocks the logo)
+    let cancelled = false;
+    (async () => {
+      try {
+        const config = await fetchOnboardingConfig();
+        if (!cancelled && config?.splash) {
+          setSplashConfig(config.splash);
+        }
+      } catch {}
+    })();
 
+    // 4. Smooth auto-navigation after splash duration
     const timer = setTimeout(() => {
       if (hasNavigated.current) return;
       hasNavigated.current = true;
@@ -118,13 +123,15 @@ export default function SplashScreen({ navigation }: any) {
       } else {
         navigation.replace('ValueIntro');
       }
-    }, 2200);
+    }, 2000);
 
-    return () => clearTimeout(timer);
-  }, [configReady, navigation, spreadAnim, contentAnim]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [navigation, spreadAnim, contentAnim]);
 
   const chips = splashConfig?.emoji_chips ?? [];
-  const showContent = splashConfig !== null;
 
   return (
     <View style={styles.container}>
@@ -140,13 +147,7 @@ export default function SplashScreen({ navigation }: any) {
         <Rect width="100%" height="100%" fill="url(#grad)" />
       </Svg>
 
-      {!configReady ? (
-        <View style={styles.loadingWrap}>
-          <AppLoader color={COLORS.green100} />
-        </View>
-      ) : null}
-
-      {configReady && chips.map((item, index) => {
+      {chips.map((item, index) => {
         const finalSize = item.size * sx;
         const startScale = 23.1 / 66;
         const left = spreadAnim.interpolate({
@@ -189,68 +190,58 @@ export default function SplashScreen({ navigation }: any) {
         );
       })}
 
-      {configReady && showContent ? (
-        <>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: availableHeight * 0.35,
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: availableHeight * 0.35,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          opacity: contentAnim,
+          transform: [
+            {
+              translateY: contentAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [12, 0],
+              }),
+            },
+          ],
+        }}
+      >
+        <EverLogo width={logoCardWidth} height={logoCardHeight} />
+        {splashConfig?.tagline ? (
+          <Text
+            style={[
+              styles.tagline,
+              {
+                marginTop: 18,
+                width: width * 0.88,
+                fontSize: 15 * Math.min(sx, sy),
+                lineHeight: 22 * sy,
+              },
+            ]}
+          >
+            {splashConfig.tagline}
+          </Text>
+        ) : null}
+      </Animated.View>
+
+      {splashConfig?.footnote ? (
+        <Animated.Text
+          style={[
+            styles.footnote,
+            {
               left: 0,
               right: 0,
-              alignItems: 'center',
+              bottom: footnoteBottom,
+              fontSize: 13 * Math.min(sx, sy),
+              lineHeight: FOOTNOTE.height * sy,
               opacity: contentAnim,
-              transform: [
-                {
-                  translateY: contentAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [12, 0],
-                  }),
-                },
-              ],
-            }}
-          >
-            <EverLogo width={logoCardWidth} height={logoCardHeight} />
-            {splashConfig?.tagline ? (
-              <Text
-                style={[
-                  styles.tagline,
-                  {
-                    marginTop: 18,
-                    width: width * 0.88,
-                    fontSize: 15 * Math.min(sx, sy),
-                    lineHeight: 22 * sy,
-                  },
-                ]}
-              >
-                {splashConfig.tagline}
-              </Text>
-            ) : null}
-          </Animated.View>
-
-          {splashConfig?.footnote ? (
-            <Animated.Text
-              style={[
-                styles.footnote,
-                {
-                  left: 0,
-                  right: 0,
-                  bottom: footnoteBottom,
-                  fontSize: 13 * Math.min(sx, sy),
-                  lineHeight: FOOTNOTE.height * sy,
-                  opacity: contentAnim,
-                },
-              ]}
-            >
-              {splashConfig.footnote}
-            </Animated.Text>
-          ) : null}
-        </>
-      ) : null}
-
-      {configReady && !showContent ? (
-        <View style={styles.fallbackCenter}>
-          <EverLogo width={logoCardWidth} height={logoCardHeight} />
-        </View>
+            },
+          ]}
+        >
+          {splashConfig.footnote}
+        </Animated.Text>
       ) : null}
     </View>
   );

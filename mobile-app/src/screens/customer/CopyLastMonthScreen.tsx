@@ -160,12 +160,24 @@ export default function CopyLastMonthScreen({ navigation }: any) {
       }
     }
 
+    const skippedUnavailable = basketMeta?.unavailable_count ?? 0;
+    const skippedTemplate =
+      screenConfig.add_success_message_skipped_template ||
+      'Added {count} items to your cart. {unavailable} unavailable item(s) were skipped.';
+    const message =
+      skippedUnavailable > 0
+        ? formatCopyTemplate(skippedTemplate, {
+            count: totalAvailableCount,
+            unavailable: skippedUnavailable,
+          })
+        : formatCopyTemplate(screenConfig.add_success_message_template, {
+            count: totalAvailableCount,
+          });
+
     showToast({
       type: 'cart',
       title: screenConfig.add_success_title || 'Items added to cart',
-      message: formatCopyTemplate(screenConfig.add_success_message_template, {
-        count: totalAvailableCount,
-      }),
+      message,
       actionLabel: screenConfig.view_cart_label || 'View Cart',
       onAction: () => navigation.navigate('Cart'),
     });

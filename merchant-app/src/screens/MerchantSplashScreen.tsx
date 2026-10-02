@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, StatusBar, Dimensions } from 'react-native';
+import { Store } from 'lucide-react-native';
 import { useMerchantAuth } from '../context/MerchantAuthContext';
 
 const { width } = Dimensions.get('window');
@@ -28,7 +29,7 @@ export default function MerchantSplashScreen({ navigation }: any) {
       </View>
 
       <View style={styles.iconBox}>
-        <Text style={styles.icon}>🏪</Text>
+        <Store size={44} color="#22C55E" strokeWidth={2.2} />
       </View>
 
       <Text style={styles.appName}>MonthlyGrocery</Text>

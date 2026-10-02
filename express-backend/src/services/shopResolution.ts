@@ -284,13 +284,14 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
       .from('shops')
       .select('*')
       .eq('owner_id', user.id)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
-    if (!error && shop) {
+    if (!error && shop && String(shop.status || '').toLowerCase() === 'approved') {
       return {
         ...shop,
         shop_name: shop.shop_name || shop.name || 'MonthlyGrocery',
-        status: shop.status || shop.kyc_status || 'approved',
+        status: 'approved',
       };
     }
   } catch (err) {
@@ -314,13 +315,14 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
           .from('shops')
           .select('*')
           .eq('owner_id', profile.id)
+          .order('created_at', { ascending: false })
           .maybeSingle();
 
-        if (shopByPhone) {
+        if (shopByPhone && String(shopByPhone.status || '').toLowerCase() === 'approved') {
           return {
             ...shopByPhone,
             shop_name: shopByPhone.shop_name || shopByPhone.name || 'MonthlyGrocery',
-            status: shopByPhone.status || shopByPhone.kyc_status || 'approved',
+            status: 'approved',
           };
         }
       }
@@ -329,12 +331,13 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
     console.warn('[getMerchantShopForUser] Profile phone check error:', err);
   }
 
-  // 3. Super Admin & Admin fallback: If logged in as admin or super_admin, provide the first approved shop
-  if (user.role === 'super_admin' || user.role === 'admin') {
+  // 3. Super Admin console fallback only (never attach a random shop to a merchant admin)
+  if (user.role === 'super_admin') {
     try {
       const { data: firstShop } = await supabase
         .from('shops')
         .select('*')
+        .eq('status', 'approved')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -343,7 +346,7 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
         return {
           ...firstShop,
           shop_name: firstShop.shop_name || firstShop.name || 'MonthlyGrocery',
-          status: firstShop.status || firstShop.kyc_status || 'approved',
+          status: 'approved',
         };
       }
     } catch {}

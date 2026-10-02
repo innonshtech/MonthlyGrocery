@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
@@ -66,10 +67,20 @@ function MenuRow({ icon, label, onPress, badge, isLast }: MenuRowProps) {
   );
 }
 
-export default function AccountScreen({ navigation }: any) {
+export default function AccountScreen({ navigation, setActiveTab }: any) {
   const insets = useSafeAreaInsets();
   const { user, token, logout, city, area } = useAuth();
   const { showToast } = useToast();
+
+  const handleBack = () => {
+    if (setActiveTab) {
+      setActiveTab('Home');
+    } else if (navigation?.canGoBack && navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Shop', { initialTab: 'Home' });
+    }
+  };
 
   const [screenConfig, setScreenConfig] = useState<AccountScreenConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -169,7 +180,17 @@ export default function AccountScreen({ navigation }: any) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+        <View style={styles.headerTitleRow}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleBack}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <ArrowLeft size={20} color={COLORS.ink900} strokeWidth={2.4} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{screenConfig.title}</Text>
+        </View>
       </View>
 
       <ScrollView
@@ -378,6 +399,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 14,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   headerTitle: {
     ...FONTS.muktaBold,

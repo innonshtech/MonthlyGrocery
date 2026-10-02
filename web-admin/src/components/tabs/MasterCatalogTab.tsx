@@ -1171,7 +1171,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                     <Layers className="w-4 h-4 text-emerald-400" /> Pack Size Variants & SKU Pricing
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Configure multiple package sizes (e.g. 1 L, 5 L, 500 ml) with custom MRP and SKU codes.
+                    Configure multiple package sizes (e.g. 500 g, 1 kg, 5 kg) with custom MRP and SKU codes.
                   </p>
                 </div>
                 <button
@@ -1182,10 +1182,65 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                       { sku: '', quantityValue: '', quantityUnit: 'kg', mrp: '', price: '' },
                     ])
                   }
-                  className="px-4 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  className="px-4 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0"
                 >
                   <Plus className="w-4 h-4" /> Add Pack Size Variant
                 </button>
+              </div>
+
+              {/* Horizontal Scrollable Unit Tags Bar (FIFO Order: 1st added on left, next added after it) */}
+              <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800/80">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 flex-nowrap no-scrollbar scroll-smooth">
+                  <span className="text-[11px] font-bold text-slate-400 shrink-0 uppercase tracking-wider mr-1">
+                    Units ({newProdVariants.length}):
+                  </span>
+                  {newProdVariants.map((item, idx) => {
+                    const label =
+                      item.quantityValue && item.quantityUnit
+                        ? packUnitPayloadFromInput(item.quantityValue, item.quantityUnit).unit
+                        : `Unit #${idx + 1}`;
+                    const priceText = item.price ? `₹${item.price}` : item.mrp ? `₹${item.mrp}` : '';
+
+                    return (
+                      <div
+                        key={idx}
+                        className="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-emerald-500/40 text-emerald-300 text-xs font-bold shadow-sm whitespace-nowrap"
+                      >
+                        <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-mono">
+                          {idx + 1}
+                        </span>
+                        <span>{label}</span>
+                        {priceText && (
+                          <span className="text-[10px] text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded font-mono">
+                            {priceText}
+                          </span>
+                        )}
+                        {newProdVariants.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setNewProdVariants(newProdVariants.filter((_, i) => i !== idx))}
+                            className="text-slate-500 hover:text-red-400 text-xs font-bold ml-0.5 transition-colors"
+                            title="Remove this unit"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNewProdVariants([
+                        ...newProdVariants,
+                        { sku: '', quantityValue: '', quantityUnit: 'kg', mrp: '', price: '' },
+                      ])
+                    }
+                    className="shrink-0 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-dashed border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                  >
+                    <Plus className="w-3 h-3" /> + Add Unit
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

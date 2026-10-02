@@ -170,11 +170,49 @@ export default function BannersTab({
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Action Deep Link</label>
             <input
               type="text"
-              placeholder="e.g. CategoryProducts?category=Oil"
+              placeholder="e.g. deals or CategoryProducts?category=Oils & Ghee"
               className="w-full mt-1.5 h-11 px-4 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-sm outline-none"
               value={bannerLink}
               onChange={(e) => setBannerLink(e.target.value)}
             />
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <span className="text-[10px] text-slate-500 uppercase font-semibold self-center">Presets:</span>
+              <button
+                type="button"
+                onClick={() => setBannerLink('deals')}
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-emerald-400 hover:border-emerald-500 cursor-pointer transition-colors"
+              >
+                ⚡ Deals
+              </button>
+              <button
+                type="button"
+                onClick={() => setBannerLink('categories')}
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-teal-400 hover:border-teal-500 cursor-pointer transition-colors"
+              >
+                🏷️ Categories
+              </button>
+              <button
+                type="button"
+                onClick={() => setBannerLink('CategoryProducts?category=Atta & Rice')}
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-amber-400 hover:border-amber-500 cursor-pointer transition-colors"
+              >
+                🌾 Atta & Rice
+              </button>
+              <button
+                type="button"
+                onClick={() => setBannerLink('CategoryProducts?category=Oils & Ghee')}
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-amber-400 hover:border-amber-500 cursor-pointer transition-colors"
+              >
+                🫒 Oils & Ghee
+              </button>
+              <button
+                type="button"
+                onClick={() => setBannerLink('OneClickCart')}
+                className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-purple-400 hover:border-purple-500 cursor-pointer transition-colors"
+              >
+                🛒 1-Click Cart
+              </button>
+            </div>
           </div>
 
           <button

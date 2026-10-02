@@ -28,20 +28,24 @@ export async function deleteConsumerAccount(consumerId: string): Promise<DeleteA
 
     writeDb(db);
 
+    const anonymizedPhone = `deleted-${consumerId.replace(/-/g, '').slice(0, 12)}-${Date.now()}`;
+
     const { error: profileError } = await supabase
       .from('profiles')
-      .delete()
+      .update({
+        name: 'Deleted User',
+        phone: anonymizedPhone,
+        email: null,
+        avatar_url: null,
+        status: 'deleted',
+      })
       .eq('id', consumerId);
 
     if (profileError) {
-      console.error('Failed to delete profile row:', profileError.message);
-    }
-
-    const { error: authError } = await supabase.auth.admin.deleteUser(consumerId);
-    if (authError) {
+      console.error('Failed to anonymize profile:', profileError.message);
       return {
         success: false,
-        error: authError.message || 'Failed to delete account',
+        error: profileError.message || 'Failed to delete account',
       };
     }
 

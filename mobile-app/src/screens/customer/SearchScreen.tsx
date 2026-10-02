@@ -76,12 +76,13 @@ function buildSuggestions(products: Product[], rawQuery: string): string[] {
 }
 
 export default function SearchScreen({ navigation }: any) {
-  const { city, area, pincode } = useAuth();
+  const { city, area, pincode, selectedShop } = useAuth();
   const { addToCart, items, updateQuantity } = useCart();
 
   const [searchConfig, setSearchConfig] = useState<SearchScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
   const [popularSearches, setPopularSearches] = useState<string[]>([]);
+  const [browseCategories, setBrowseCategories] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,7 +100,10 @@ export default function SearchScreen({ navigation }: any) {
 
   useEffect(() => {
     loadConfig();
-    fetchPopularCategoryNames(8).then(setPopularSearches);
+    fetchPopularCategoryNames(8).then((names) => {
+      setPopularSearches(names);
+      setBrowseCategories(names);
+    });
   }, []);
 
   useEffect(() => {
@@ -115,11 +119,12 @@ export default function SearchScreen({ navigation }: any) {
     }
 
     const fetchProducts = async () => {
+      setProducts([]);
       setLoading(true);
       try {
         const url = appendLocationParams(
           `${API_BASE}/products/all?q=${encodeURIComponent(debouncedQuery)}&limit=50`,
-          { city, area, pincode },
+          { city, area, pincode, shop_id: selectedShop?.id || null },
         );
         const res = await fetch(url);
         const data = await res.json();
@@ -131,7 +136,7 @@ export default function SearchScreen({ navigation }: any) {
       }
     };
     fetchProducts();
-  }, [debouncedQuery, city, area, pincode, hasDeliveryArea]);
+  }, [debouncedQuery, city, area, pincode, hasDeliveryArea, selectedShop]);
 
   const suggestions = showSuggestions && query.trim()
     ? buildSuggestions(products, query)
@@ -281,7 +286,7 @@ export default function SearchScreen({ navigation }: any) {
             return (
               <TouchableOpacity
                 style={[styles.resultRow, isOutOfStock && styles.resultRowOutOfStock]}
-                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+                onPress={() => navigation.navigate('ProductDetail', { productId: item.id, initialProduct: item })}
                 activeOpacity={0.8}
               >
                 <View style={[styles.imgTile, { backgroundColor: tileBg(index) }]}>
@@ -337,9 +342,53 @@ export default function SearchScreen({ navigation }: any) {
               <View style={styles.emptyWrap}>
                 <AppIcon name="search" size={40} color={COLORS.ink300} />
                 <Text style={styles.emptyTitle}>
-                  {formatSearchTemplate(searchConfig?.empty_title_template || '', { query })}
+                  {formatSearchTemplate(
+                    searchConfig?.empty_title_template || 'No matching groceries found',
+                    { query },
+                  )}
                 </Text>
                 <Text style={styles.emptySubtitle}>{searchConfig?.empty_subtitle}</Text>
+
+                {popularSearches.length > 0 ? (
+                  <View style={styles.emptySuggestionsBlock}>
+                    <Text style={styles.popularLabel}>{searchConfig?.popular_searches_label}</Text>
+                    <View style={styles.popularChips}>
+                      {popularSearches.map((chip) => (
+                        <TouchableOpacity
+                          key={`pop-${chip}`}
+                          style={styles.chip}
+                          onPress={() => commitQuery(chip)}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={styles.chipTxt}>{chip}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
+                {browseCategories.length > 0 ? (
+                  <View style={styles.emptySuggestionsBlock}>
+                    <Text style={styles.popularLabel}>BROWSE CATEGORIES</Text>
+                    <View style={styles.popularChips}>
+                      {browseCategories.map((cat) => (
+                        <TouchableOpacity
+                          key={`cat-${cat}`}
+                          style={styles.chip}
+                          onPress={() =>
+                            navigation.navigate('CategoryProducts', {
+                              categoryName: cat,
+                              categoryTitle: cat,
+                            })
+                          }
+                          activeOpacity={0.75}
+                        >
+                          <Text style={styles.chipTxt}>{cat}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
               </View>
             ) : undefined
           }
@@ -550,6 +599,12 @@ const styles = StyleSheet.create({
     color: COLORS.ink500,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  emptySuggestionsBlock: {
+    width: '100%',
+    alignSelf: 'stretch',
+    marginTop: 20,
+    paddingHorizontal: 4,
   },
   popularWrap: {
     flex: 1,

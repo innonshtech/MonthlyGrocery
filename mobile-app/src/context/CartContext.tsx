@@ -1,10 +1,12 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../config/api';
+import { useNetwork } from './NetworkContext';
 
 export interface Product {
   id: string;
   shop_id: string;
+  sku?: string;
   name: string;
   brand: string;
   primary_category: string;
@@ -25,6 +27,7 @@ export interface Product {
   in_stock?: boolean;
   stock?: number;
   shop_name?: string;
+  variants?: Product[];
 }
 
 export interface CartItem {
@@ -64,6 +67,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isOffline } = useNetwork();
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartShopId, setCartShopId] = useState<string | null>(null);
   const [cartShopName, setCartShopName] = useState<string | null>(null);
@@ -147,6 +151,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addToCart = (product: Product) => {
+    if (isOffline) {
+      return;
+    }
+
     // Guard: Prevent adding out of stock products
     const isOutOfStock =
       product.available === false ||

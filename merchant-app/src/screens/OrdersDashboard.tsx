@@ -669,15 +669,15 @@ export default function OrdersDashboard() {
         <View style={styles.centerContainer}>
           <View style={styles.pendingCard}>
             <Text style={{ fontSize: 44, textAlign: 'center', marginBottom: 12 }}>🏪</Text>
-            <Text style={styles.pendingTitle}>Store Registration Pending</Text>
+            <Text style={styles.pendingTitle}>Store Not Active Yet</Text>
             <Text style={styles.pendingSub}>
-              Your merchant phone number (+91 {user?.mobile ? user.mobile.slice(-10) : '...'}) is logged in, but your Kirana Store has not been registered/approved by Super Admin yet.
+              Your account (+91 {user?.mobile ? user.mobile.slice(-10) : '...'}) is signed in, but no approved Kirana store is linked yet. If you already submitted onboarding in this app, please wait for Super Admin approval.
             </Text>
             <View style={styles.pendingGuideBox}>
-              <Text style={styles.pendingGuideHeading}>📋 Store Activation Steps:</Text>
-              <Text style={styles.pendingGuideText}>1. Open the Web Admin Portal (Store Approvals tab).</Text>
-              <Text style={styles.pendingGuideText}>2. Register your store with mobile number: +91 {user?.mobile ? user.mobile.slice(-10) : '...'}</Text>
-              <Text style={styles.pendingGuideText}>3. Click "Approve" on the store row.</Text>
+              <Text style={styles.pendingGuideHeading}>📋 What you can do:</Text>
+              <Text style={styles.pendingGuideText}>1. Wait for Web Admin to review your application (Shops → Pending).</Text>
+              <Text style={styles.pendingGuideText}>2. If rejected, open Onboard Store again with the same mobile (+91 {user?.mobile ? user.mobile.slice(-10) : '...'}).</Text>
+              <Text style={styles.pendingGuideText}>3. After approval, tap refresh below — orders will appear automatically.</Text>
             </View>
             <TouchableOpacity style={styles.refreshPendingBtn} onPress={() => fetchOrders('initial')}>
               <Text style={styles.refreshPendingBtnText}>🔄 Refresh Order Dashboard</Text>

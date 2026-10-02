@@ -13,8 +13,12 @@ interface MerchantAuthContextType {
   token: string | null;
   user: MerchantUser | null;
   loading: boolean;
-  sendOtp: (mobile: string) => Promise<{ success: boolean; error?: string; code?: string }>;
-  verifyOtp: (mobile: string, code: string, name?: string) => Promise<{ success: boolean; error?: string; code?: string }>;
+  sendOtp: (mobile: string) => Promise<{ success: boolean; error?: string; code?: string; rejection_reason?: string }>;
+  verifyOtp: (
+    mobile: string,
+    code: string,
+    name?: string,
+  ) => Promise<{ success: boolean; error?: string; code?: string; rejection_reason?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -69,6 +73,7 @@ export const MerchantAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
           success: false, 
           error: data.error || 'Failed to send OTP',
           code: data.code || undefined,
+          rejection_reason: data.rejection_reason || undefined,
         };
       }
       return { success: true };
@@ -91,7 +96,12 @@ export const MerchantAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'Verification failed' };
+        return {
+          success: false,
+          error: data.error || 'Verification failed',
+          code: data.code || undefined,
+          rejection_reason: data.rejection_reason || undefined,
+        };
       }
 
       // Check role authorization

@@ -46,26 +46,104 @@ export function formatHomeTemplate(
 }
 
 export function navigateFromActionLink(
-  navigation: { navigate: (screen: string, params?: Record<string, string>) => void },
+  navigation: { navigate: (screen: string, params?: Record<string, any>) => void },
   actionLink?: string,
 ) {
-  if (!actionLink?.trim()) return;
+  if (!actionLink?.trim()) {
+    // Default fallback: if actionLink is empty, take customer to Deals
+    navigation.navigate('CategoryProducts', {
+      dealsOnly: true,
+      categoryName: 'Deals of the month',
+    });
+    return;
+  }
+
   const trimmed = actionLink.trim();
+
+  // 1. External Web URLs (http:// or https://)
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const { Linking } = require('react-native');
+    Linking.canOpenURL(trimmed)
+      .then((supported: boolean) => {
+        if (supported) Linking.openURL(trimmed);
+      })
+      .catch(() => {});
+    return;
+  }
+
+  // 2. Short alias for Deals
+  const lower = trimmed.toLowerCase();
+  if (
+    lower === 'deals' ||
+    lower === '/deals' ||
+    lower === 'deals_only' ||
+    lower === 'dealsofthemonth' ||
+    lower === 'todays_deals'
+  ) {
+    navigation.navigate('CategoryProducts', {
+      dealsOnly: true,
+      categoryName: 'Deals of the month',
+    });
+    return;
+  }
+
+  // 3. Short alias for Categories
+  if (lower === 'categories' || lower === '/categories' || lower === 'category') {
+    navigation.navigate('Shop', { screen: 'Categories' });
+    return;
+  }
+
+  // 4. Category with name pattern: "category:Atta & Rice" or "/category/Atta & Rice"
+  if (lower.startsWith('category:') || lower.startsWith('/category/')) {
+    const catName = trimmed.replace(/^category:|\/category\//i, '').trim();
+    navigation.navigate('CategoryProducts', {
+      categoryName: decodeURIComponent(catName),
+    });
+    return;
+  }
+
+  // 5. Product with ID pattern: "product:xyz" or "/product/xyz"
+  if (lower.startsWith('product:') || lower.startsWith('/product/')) {
+    const pid = trimmed.replace(/^product:|\/product\//i, '').trim();
+    navigation.navigate('ProductDetail', {
+      productId: pid,
+    });
+    return;
+  }
+
+  // 6. Generic query parsing: e.g. "CategoryProducts?categoryName=Oils%20%26%20Ghee" or "Search?q=sugar"
   const [screen, query] = trimmed.split('?');
   if (!screen) return;
+
+  const params: Record<string, any> = {};
   if (query) {
-    const params: Record<string, string> = {};
     query.split('&').forEach((part) => {
       const [k, v] = part.split('=');
-      if (k) params[k] = decodeURIComponent(v || '');
+      if (k) {
+        const decoded = decodeURIComponent(v || '');
+        if (decoded === 'true') params[k] = true;
+        else if (decoded === 'false') params[k] = false;
+        else params[k] = decoded;
+      }
     });
-    if (screen === 'CategoryProducts' && params.category && !params.categoryName) {
+  }
+
+  if (screen.toLowerCase() === 'categoryproducts' || screen === 'CategoryProducts') {
+    if (params.category && !params.categoryName) {
       params.categoryName = params.category;
       delete params.category;
     }
-    navigation.navigate(screen, params);
+    if (params.deals || params.dealsOnly) {
+      params.dealsOnly = true;
+    }
+    navigation.navigate('CategoryProducts', params);
+  } else if (screen.toLowerCase() === 'productdetail' || screen === 'ProductDetail') {
+    if (params.id && !params.productId) {
+      params.productId = params.id;
+    }
+    navigation.navigate('ProductDetail', params);
   } else {
-    navigation.navigate(screen);
+    navigation.navigate(screen, params);
   }
 }
 

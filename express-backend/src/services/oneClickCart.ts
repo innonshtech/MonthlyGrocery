@@ -65,9 +65,25 @@ export async function fetchLocationCatalogMap(
 
   for (const product of catalog.products) {
     map.set(product.id, product);
+    const variants = (product as any).variants;
+    if (Array.isArray(variants)) {
+      for (const v of variants) {
+        if (v?.id) map.set(String(v.id), v);
+      }
+    }
   }
 
   return map;
+}
+
+export function isCatalogItemAvailable(catalog: Record<string, any> | undefined | null): boolean {
+  if (!catalog) return false;
+  if (Number(catalog.price) <= 0) return false;
+  if (catalog.available === false) return false;
+  if (catalog.in_stock === false) return false;
+  const stock = catalog.stock;
+  if (stock !== undefined && stock !== null && Number(stock) <= 0) return false;
+  return true;
 }
 
 export async function loadConsumerOrders(consumerId: string, since: Date): Promise<any[]> {
@@ -182,11 +198,7 @@ export async function buildOneClickCart(
     const suggestedQty = Math.max(1, Math.round(stat.totalQty / monthsCount));
     const livePrice = catalog ? Number(catalog.price) || 0 : stat.lastUnitPrice;
     const liveMrp = catalog ? Number(catalog.mrp) || livePrice : stat.lastUnitPrice;
-    const stock = catalog?.stock;
-    const available =
-      catalog &&
-      livePrice > 0 &&
-      (stock == null || Number(stock) > 0);
+    const available = isCatalogItemAvailable(catalog);
 
     const name = catalog?.name?.trim() || lastNames.get(productId) || '';
     if (!name) continue;
