@@ -239,6 +239,7 @@ async function ensureDatabaseSchema() {
         ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity_unit VARCHAR(50);
         ALTER TABLE products ADD COLUMN IF NOT EXISTS pack_label VARCHAR(100);
         ALTER TABLE products ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT;
       `);
 
       // 4. Product City Prices Table
@@ -279,6 +280,7 @@ async function ensureDatabaseSchema() {
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_slot VARCHAR(100);
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_date DATE;
         ALTER TABLE orders ADD COLUMN IF NOT EXISTS items JSONB;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_savings NUMERIC(10, 2) DEFAULT 0;
         ALTER TABLE orders ALTER COLUMN delivery_address TYPE TEXT USING delivery_address::text;
         ALTER TABLE orders ALTER COLUMN delivery_slot TYPE TEXT USING delivery_slot::text;
         UPDATE orders SET consumer_id = user_id WHERE (consumer_id IS NULL OR consumer_id = '') AND user_id IS NOT NULL;
@@ -288,7 +290,7 @@ async function ensureDatabaseSchema() {
       // 6. Order Items Table
       await client.query(`
         CREATE TABLE IF NOT EXISTS order_items (
-          id VARCHAR(255) PRIMARY KEY,
+          id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
           order_id VARCHAR(255) NOT NULL,
           product_id VARCHAR(255) NOT NULL,
           product_name VARCHAR(255),
@@ -297,6 +299,24 @@ async function ensureDatabaseSchema() {
           unit VARCHAR(50),
           image_url TEXT,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        ALTER TABLE order_items ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+      `);
+
+      // 6b. Shop Products Table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS shop_products (
+          id VARCHAR(255) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+          shop_id VARCHAR(255) NOT NULL,
+          product_id VARCHAR(255) NOT NULL,
+          selling_price NUMERIC(10, 2) DEFAULT 0,
+          discount_percentage NUMERIC(5, 2) DEFAULT 0,
+          stock INTEGER DEFAULT 0,
+          available BOOLEAN DEFAULT true,
+          status VARCHAR(50) DEFAULT 'approved',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT unique_shop_product UNIQUE(shop_id, product_id)
         );
       `);
 
