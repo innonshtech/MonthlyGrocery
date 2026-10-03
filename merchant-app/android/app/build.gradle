@@ -39,8 +39,8 @@ android {
         applicationId "com.monthlygrocerypartner"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 5
-        versionName "1.4"
+        versionCode 6
+        versionName "1.5"
         manifestPlaceholders = [usesCleartextTraffic: "true"]
         externalNativeBuild {
             cmake {
@@ -51,9 +51,7 @@ android {
     splits {
         abi {
             reset()
-            enable true
-            universalApk true
-            include "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+            enable false
         }
     }
     signingConfigs {
@@ -84,6 +82,7 @@ android {
         release {
             signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
