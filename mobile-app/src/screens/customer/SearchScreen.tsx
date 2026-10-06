@@ -217,6 +217,24 @@ export default function SearchScreen({ navigation }: any) {
 
       {query.trim().length === 0 ? (
         <View style={styles.popularWrap}>
+          {/* AI Grocery List Scanner Banner */}
+          <TouchableOpacity
+            style={styles.aiUploadBanner}
+            onPress={() => navigation.navigate('UploadGroceryList')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.aiUploadBannerContent}>
+              <View style={styles.aiUploadBadge}>
+                <Text style={styles.aiUploadBadgeText}>✨ AI Smart Scan</Text>
+              </View>
+              <Text style={styles.aiUploadTitle}>Have a written grocery list?</Text>
+              <Text style={styles.aiUploadSubtitle}>Upload handwritten photo or paste text to build your cart.</Text>
+            </View>
+            <View style={styles.aiUploadIconCircle}>
+              <Text style={{ fontSize: 24 }}>📋</Text>
+            </View>
+          </TouchableOpacity>
+
           {popularSearches.length > 0 ? (
             <>
               <Text style={styles.popularLabel}>{searchConfig?.popular_searches_label}</Text>
@@ -727,5 +745,53 @@ const styles = StyleSheet.create({
     ...FONTS.muktaMedium,
     fontSize: 11,
     color: '#64748B',
+  },
+  aiUploadBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.green50,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.green100,
+    padding: 14,
+    marginBottom: 16,
+  },
+  aiUploadBannerContent: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  aiUploadBadge: {
+    backgroundColor: COLORS.green100,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: RADIUS.pill,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  aiUploadBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: COLORS.green700,
+  },
+  aiUploadTitle: {
+    ...FONTS.balooBold,
+    fontSize: 15,
+    color: COLORS.green900,
+  },
+  aiUploadSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: COLORS.ink600,
+    marginTop: 2,
+  },
+  aiUploadIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.green100,
   },
 });
