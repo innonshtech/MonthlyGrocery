@@ -259,18 +259,47 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
     return { totalFamilies, totalSkus, inStock, totalCategories };
   }, [groupedMasterProducts, masterProductsList, categoriesList]);
 
-  const uploadImage = async (file: File): Promise<string> => {
+  const uploadImage = async (file: File, folder = 'products'): Promise<string> => {
     const freshToken = token || (typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null);
     const formData = new FormData();
     formData.append('image', file);
-    const uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${freshToken}` },
-      body: formData,
-    });
-    const uploadData = await uploadRes.json();
+    formData.append('folder', folder);
+
+    let uploadRes: Response;
+    try {
+      uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}) },
+        body: formData,
+      });
+
+      if (!uploadRes.ok && uploadRes.status === 404) {
+        uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
+          method: 'POST',
+          headers: { ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}) },
+          body: formData,
+        });
+      }
+    } catch {
+      uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
+        method: 'POST',
+        headers: { ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}) },
+        body: formData,
+      });
+    }
+
+    const text = await uploadRes.text();
+    let uploadData: any = {};
+    if (text) {
+      try {
+        uploadData = JSON.parse(text);
+      } catch {
+        throw new Error(`Upload server error (${uploadRes.status}): ${text.slice(0, 150)}`);
+      }
+    }
+
     if (!uploadRes.ok || !uploadData.image_url) {
-      throw new Error(uploadData.error || 'Image upload failed');
+      throw new Error(uploadData.error || `Image upload failed (${uploadRes.status})`);
     }
     return uploadData.image_url;
   };

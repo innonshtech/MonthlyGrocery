@@ -662,22 +662,50 @@ export default function DashboardPage() {
     setSkuApproveImagePreview('');
   };
 
-  const uploadAdminImage = async (file: File): Promise<string> => {
+  const uploadAdminImage = async (file: File, folder = 'categories'): Promise<string> => {
     const freshToken = token || (typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null);
     if (!freshToken) {
       throw new Error('Not authenticated. Please log in again.');
     }
     const formData = new FormData();
     formData.append('image', file);
-    formData.append('folder', 'categories');
-    const uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${freshToken}` },
-      body: formData,
-    });
-    const uploadData = await uploadRes.json();
+    formData.append('folder', folder);
+
+    let uploadRes: Response;
+    try {
+      uploadRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${freshToken}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok && uploadRes.status === 404) {
+        uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${freshToken}` },
+          body: formData,
+        });
+      }
+    } catch {
+      uploadRes = await fetch(`${API_BASE}/products/upload-image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${freshToken}` },
+        body: formData,
+      });
+    }
+
+    const text = await uploadRes.text();
+    let uploadData: any = {};
+    if (text) {
+      try {
+        uploadData = JSON.parse(text);
+      } catch {
+        throw new Error(`Upload server error (${uploadRes.status}): ${text.slice(0, 150)}`);
+      }
+    }
+
     if (!uploadRes.ok || !uploadData.image_url) {
-      throw new Error(uploadData.error || 'Image upload failed');
+      throw new Error(uploadData.error || `Image upload failed (${uploadRes.status})`);
     }
     return uploadData.image_url;
   };
