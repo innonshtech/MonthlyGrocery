@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { query } from '../config/db';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 let genAI: GoogleGenerativeAI | null = null;
 if (GEMINI_API_KEY) {
@@ -124,7 +125,7 @@ export async function parseGroceryTextWithAI(rawText: string): Promise<Extracted
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
       const prompt = `You are a high-accuracy Indian grocery assistant. Extract all grocery items from this user text into a strict JSON array.
 Handle English, Hindi, and Hinglish terms (e.g., '10 kilo atta', '2 packet tata namak', 'adha kilo moong dal', '1 theli doodh', 'ek pao mirchi').
 
@@ -177,7 +178,7 @@ export async function parseGroceryImageWithVision(imageBuffer: Buffer, mimeType:
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
     const prompt = `You are an expert Indian handwritten grocery list reader.
 Carefully examine this handwritten or printed grocery list image.
 Transcribe and extract every grocery item, brand, quantity, and unit.
@@ -395,7 +396,7 @@ export async function chatWithGroceryAssistant(
 
   if (genAI) {
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
       const productCatalogSummary = availableProducts
         .map(p => `ID:${p.id}|${p.name}|${p.brand}|${p.unit}|₹${p.price}|MRP:₹${p.mrp}`)
         .join('\n');
