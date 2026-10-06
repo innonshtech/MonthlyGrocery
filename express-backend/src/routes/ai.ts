@@ -4,6 +4,8 @@ import {
   parseGroceryTextWithAI,
   parseGroceryImageWithVision,
   matchItemsToCatalog,
+  chatWithGroceryAssistant,
+  ChatMessage,
 } from '../services/aiService';
 
 const router = Router();
@@ -98,6 +100,36 @@ router.post('/ocr-list', upload.single('image'), async (req: Request, res: Respo
       success: false,
       message: 'Failed to scan grocery list image.',
       error: error?.message || 'Vision model error',
+    });
+  }
+});
+
+/**
+ * POST /api/ai/assistant/chat
+ * Conversational Grocery Assistant & Budget Solver
+ */
+router.post('/assistant/chat', async (req: Request, res: Response) => {
+  try {
+    const { messages, city, userProfile } = req.body;
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide messages array with role and content.',
+      });
+    }
+
+    const response = await chatWithGroceryAssistant(messages as ChatMessage[], city, userProfile);
+    return res.status(200).json({
+      success: true,
+      ...response,
+    });
+  } catch (error: any) {
+    console.error('[AI Router] Error in assistant chat:', error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process assistant chat message.',
+      error: error?.message || 'Assistant error',
     });
   }
 });

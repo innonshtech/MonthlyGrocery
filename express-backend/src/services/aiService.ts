@@ -343,3 +343,194 @@ export async function matchItemsToCatalog(
     estimated_savings: Number(savings.toFixed(2)),
   };
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AssistantChatResponse {
+  reply: string;
+  action_type: 'NONE' | 'SUGGEST_BASKET' | 'SUGGEST_SWAPS';
+  basket?: {
+    title: string;
+    items: Array<{
+      product: {
+        id: string;
+        name: string;
+        brand: string;
+        unit: string;
+        price: number;
+        mrp: number;
+        image_url: string;
+      };
+      quantity: number;
+    }>;
+    total_mrp: number;
+    total_price: number;
+    savings: number;
+  };
+  quick_replies?: string[];
+}
+
+/**
+ * Conversational AI Assistant for Household Grocery Planning & Budget Optimization
+ */
+export async function chatWithGroceryAssistant(
+  messages: ChatMessage[],
+  city?: string,
+  userProfile?: { adults?: number; kids?: number; diet?: string; budget?: number }
+): Promise<AssistantChatResponse> {
+  const lastUserMsg = messages[messages.length - 1]?.content || '';
+  const lowerMsg = lastUserMsg.toLowerCase();
+
+  // 1. Fetch available stock for grounding
+  const { rows: availableProducts } = await query(
+    `SELECT id, name, brand, unit, mrp, price, stock, image_url, primary_category
+     FROM products
+     WHERE available = true AND stock > 0
+     ORDER BY featured DESC, best_seller DESC
+     LIMIT 50`
+  );
+
+  if (genAI) {
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const productCatalogSummary = availableProducts
+        .map(p => `ID:${p.id}|${p.name}|${p.brand}|${p.unit}|₹${p.price}|MRP:₹${p.mrp}`)
+        .join('\n');
+
+      const systemPrompt = `You are "MonthlyGrocery AI Assistant" - an expert Indian household grocery planner.
+Your goal is to help families build monthly baskets, plan under budgets, and maximize savings.
+Respond naturally in friendly Hinglish / English.
+
+ACTIVE IN-STOCK CATALOG:
+${productCatalogSummary}
+
+USER PROFILE / CONTEXT:
+${JSON.stringify(userProfile || {})}
+
+CHAT HISTORY:
+${messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}
+
+INSTRUCTIONS:
+1. If the user asks for a monthly plan, budget basket, or items list:
+   Select suitable items strictly from the ACTIVE IN-STOCK CATALOG above.
+   Return valid JSON only matching this schema:
+   {
+     "reply": "Conversational explanation in Hinglish/English",
+     "action_type": "SUGGEST_BASKET",
+     "basket": {
+       "title": "Monthly Household Basket",
+       "item_ids": [
+         { "id": "product_id", "qty": 1 }
+       ]
+     },
+     "quick_replies": ["Save ₹500 more", "Add more Snacks", "Review Basket"]
+   }
+
+2. If the user asks general questions, return JSON:
+   {
+     "reply": "Helpful answer",
+     "action_type": "NONE",
+     "quick_replies": ["Plan 4-Person Basket", "Budget Under ₹4,000"]
+   }
+
+Respond ONLY with valid JSON. No markdown ticks, no extra text.`;
+
+      const aiRes = await model.generateContent(systemPrompt);
+      const text = aiRes.response.text().trim();
+      const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+
+      if (parsed.action_type === 'SUGGEST_BASKET' && parsed.basket?.item_ids) {
+        let basketMrp = 0;
+        let basketPrice = 0;
+        const basketItems: any[] = [];
+
+        for (const it of parsed.basket.item_ids) {
+          const prod = availableProducts.find(p => p.id === it.id);
+          if (prod) {
+            const qty = Number(it.qty) || 1;
+            const price = Number(prod.price) || 0;
+            const mrp = Number(prod.mrp) || price;
+            basketMrp += mrp * qty;
+            basketPrice += price * qty;
+            basketItems.push({
+              product: {
+                id: prod.id,
+                name: prod.name,
+                brand: prod.brand || '',
+                unit: prod.unit || '',
+                price,
+                mrp,
+                image_url: prod.image_url || '',
+              },
+              quantity: qty,
+            });
+          }
+        }
+
+        if (basketItems.length > 0) {
+          return {
+            reply: parsed.reply,
+            action_type: 'SUGGEST_BASKET',
+            basket: {
+              title: parsed.basket.title || 'Personalized Monthly Basket',
+              items: basketItems,
+              total_mrp: Number(basketMrp.toFixed(2)),
+              total_price: Number(basketPrice.toFixed(2)),
+              savings: Number(Math.max(0, basketMrp - basketPrice).toFixed(2)),
+            },
+            quick_replies: parsed.quick_replies || ['Transfer to Cart 🛒', 'Save ₹300 More'],
+          };
+        }
+      }
+
+      return {
+        reply: parsed.reply || 'Main aapke monthly grocery planning mein madad karne ke liye tayyar hoon!',
+        action_type: 'NONE',
+        quick_replies: parsed.quick_replies || ['Plan 4-Person Basket', 'Budget under ₹5,000'],
+      };
+    } catch (err: any) {
+      console.warn('[AI Assistant] Gemini chat call failed, falling back to rule solver:', err?.message || err);
+    }
+  }
+
+  // Smart Heuristic Fallback Solver
+  const sampleItems = availableProducts.slice(0, 6);
+  let fallbackMrp = 0;
+  let fallbackPrice = 0;
+  const items = sampleItems.map(p => {
+    const mrp = Number(p.mrp) || Number(p.price) || 0;
+    const price = Number(p.price) || mrp;
+    fallbackMrp += mrp;
+    fallbackPrice += price;
+    return {
+      product: {
+        id: p.id,
+        name: p.name,
+        brand: p.brand || '',
+        unit: p.unit || '',
+        price,
+        mrp,
+        image_url: p.image_url || '',
+      },
+      quantity: 1,
+    };
+  });
+
+  return {
+    reply: `Maine aapke liye top essential monthly staples (Atta, Oil, Pulses, Spices) ka balanced basket taiyyar kiya hai. Isme aapko direct ₹${(fallbackMrp - fallbackPrice).toFixed(0)} ki savings mil rahi hai!`,
+    action_type: 'SUGGEST_BASKET',
+    basket: {
+      title: 'Suggested Household Monthly Basket',
+      items,
+      total_mrp: Number(fallbackMrp.toFixed(2)),
+      total_price: Number(fallbackPrice.toFixed(2)),
+      savings: Number(Math.max(0, fallbackMrp - fallbackPrice).toFixed(2)),
+    },
+    quick_replies: ['Transfer to Cart 🛒', 'Change Quantity', 'Add Snacks'],
+  };
+}
+

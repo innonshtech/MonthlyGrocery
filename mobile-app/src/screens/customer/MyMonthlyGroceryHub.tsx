@@ -293,6 +293,30 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             </View>
             <HubChevronIcon size={20} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: COLORS.marigold500, backgroundColor: '#FFFDF9' }]}
+            onPress={() => navigation.navigate('AIAssistantChat')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: COLORS.marigold100 }]}>
+              <Text style={{ fontSize: 18 }}>🤖</Text>
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  AI Grocery Assistant
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: COLORS.marigold100 }]}>
+                  <Text style={[styles.soonBadgeText, { color: COLORS.marigold700, fontWeight: '700' }]}>
+                    Chat & Plan
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Ask AI to plan a family basket within your budget</Text>
+            </View>
+            <HubChevronIcon size={20} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

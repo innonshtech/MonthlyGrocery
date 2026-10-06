@@ -97,3 +97,57 @@ export async function scanGroceryImage(imageUri: string, mimeType: string = 'ima
   }
   return data;
 }
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AssistantChatResult {
+  success: boolean;
+  reply: string;
+  action_type: 'NONE' | 'SUGGEST_BASKET' | 'SUGGEST_SWAPS';
+  basket?: {
+    title: string;
+    items: Array<{
+      product: {
+        id: string;
+        name: string;
+        brand: string;
+        unit: string;
+        price: number;
+        mrp: number;
+        image_url: string;
+      };
+      quantity: number;
+    }>;
+    total_mrp: number;
+    total_price: number;
+    savings: number;
+  };
+  quick_replies?: string[];
+}
+
+/**
+ * Sends chat message to conversational AI grocery planner
+ */
+export async function sendAssistantChatMessage(
+  messages: ChatMessage[],
+  city?: string,
+  userProfile?: { adults?: number; kids?: number; diet?: string; budget?: number }
+): Promise<AssistantChatResult> {
+  const res = await fetch(`${API_BASE}/ai/assistant/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ messages, city, userProfile }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to send message to assistant');
+  }
+  return data;
+}
+

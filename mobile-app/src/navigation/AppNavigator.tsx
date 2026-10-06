@@ -39,6 +39,7 @@ import OneClickCartScreen from '../screens/customer/OneClickCartScreen';
 import CopyLastMonthScreen from '../screens/customer/CopyLastMonthScreen';
 import SavedBasketsScreen from '../screens/customer/SavedBasketsScreen';
 import UploadGroceryListScreen from '../screens/customer/UploadGroceryListScreen';
+import AIAssistantChatScreen from '../screens/customer/AIAssistantChatScreen';
 
 import AppLoader from '../components/AppLoader';
 
@@ -75,6 +76,7 @@ export default function AppNavigator() {
           <Stack.Screen name="CopyLastMonth" component={CopyLastMonthScreen} />
           <Stack.Screen name="SavedBaskets" component={SavedBasketsScreen} />
           <Stack.Screen name="UploadGroceryList" component={UploadGroceryListScreen} />
+          <Stack.Screen name="AIAssistantChat" component={AIAssistantChatScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />
