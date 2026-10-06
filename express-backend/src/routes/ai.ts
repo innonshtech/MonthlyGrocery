@@ -6,6 +6,7 @@ import {
   matchItemsToCatalog,
   chatWithGroceryAssistant,
   ChatMessage,
+  optimizeCartSavings,
 } from '../services/aiService';
 
 const router = Router();
@@ -130,6 +131,36 @@ router.post('/assistant/chat', async (req: Request, res: Response) => {
       success: false,
       message: 'Failed to process assistant chat message.',
       error: error?.message || 'Assistant error',
+    });
+  }
+});
+
+/**
+ * POST /api/ai/savings-optimizer
+ * Calculates bulk-pack and brand swap savings for active cart items
+ */
+router.post('/savings-optimizer', async (req: Request, res: Response) => {
+  try {
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide items array with productId and quantity.',
+      });
+    }
+
+    const result = await optimizeCartSavings(items);
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('[AI Router] Error optimizing cart savings:', error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to optimize cart savings.',
+      error: error?.message || 'Savings error',
     });
   }
 });

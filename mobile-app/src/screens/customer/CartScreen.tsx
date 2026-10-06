@@ -27,6 +27,7 @@ import {
   CartScreenConfig,
 } from '../../services/cartApi';
 import { calculateCouponDiscount } from '../../utils/couponDiscount';
+import { fetchCartSavingsOptimizations, SavingsSuggestion } from '../../services/aiApi';
 
 function Stepper({
   quantity,
@@ -79,6 +80,56 @@ export default function CartScreen({
   const [configLoading, setConfigLoading] = useState(true);
   const [authGateVisible, setAuthGateVisible] = useState(false);
   const [authGateType, setAuthGateType] = useState<AuthGateType>('save_basket');
+
+  const [savingsSuggestions, setSavingsSuggestions] = useState<SavingsSuggestion[]>([]);
+  const [totalPotentialSavings, setTotalPotentialSavings] = useState(0);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setSavingsSuggestions([]);
+      setTotalPotentialSavings(0);
+      return;
+    }
+
+    const payload = items.map((it) => ({
+      productId: it.product.id,
+      quantity: it.quantity,
+    }));
+
+    fetchCartSavingsOptimizations(payload)
+      .then((res) => {
+        if (res.success && res.has_optimizations) {
+          setSavingsSuggestions(res.suggestions);
+          setTotalPotentialSavings(res.total_potential_savings);
+        } else {
+          setSavingsSuggestions([]);
+          setTotalPotentialSavings(0);
+        }
+      })
+      .catch(() => {
+        setSavingsSuggestions([]);
+      });
+  }, [items]);
+
+  const handleApplySwap = (suggestion: SavingsSuggestion) => {
+    removeFromCart(suggestion.current_product_id);
+    for (let i = 0; i < suggestion.suggested_quantity; i++) {
+      addToCart({
+        id: suggestion.suggested_product.id,
+        shop_id: '',
+        name: suggestion.suggested_product.name,
+        brand: suggestion.suggested_product.brand,
+        primary_category: 'Groceries',
+        image_url: suggestion.suggested_product.image_url,
+        unit: suggestion.suggested_product.unit,
+        mrp: suggestion.suggested_product.mrp,
+        price: suggestion.suggested_product.price,
+        available: true,
+        in_stock: true,
+      });
+    }
+    showToast(`Swapped to ${suggestion.suggested_product.name}! Saved ₹${suggestion.saving_amount.toFixed(0)} 🎉`, 'success');
+  };
 
   useEffect(() => {
     if (route?.params?.appliedCoupon) {
@@ -377,6 +428,20 @@ export default function CartScreen({
           </View>
         )}
 
+        {totalPotentialSavings > 0 && (
+          <View style={styles.aiSavingsCallout}>
+            <View style={styles.aiSavingsIconCircle}>
+              <Text style={{ fontSize: 16 }}>⚡</Text>
+            </View>
+            <View style={{ flex: 1, paddingRight: 6 }}>
+              <Text style={styles.aiSavingsCalloutTitle}>Smart Bulk Savings Available!</Text>
+              <Text style={styles.aiSavingsCalloutSub}>
+                Save ₹{totalPotentialSavings.toFixed(0)} by upgrading items to larger value packs below.
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.itemsCard}>
           {items.map((cartItem, idx) => {
             const price = parseFloat(String(cartItem.product.price)) || 0;
@@ -389,44 +454,63 @@ export default function CartScreen({
                 cartItem.product.stock !== null &&
                 Number(cartItem.product.stock) <= 0);
 
+            const suggestion = savingsSuggestions.find(
+              (s) => s.current_product_id === cartItem.product.id
+            );
+
             return (
               <View
                 key={cartItem.product.id}
                 style={[
-                  styles.itemRow,
+                  styles.itemRowWrap,
                   idx < items.length - 1 && styles.itemRowBorder,
                   isOutOfStock && { opacity: 0.8 },
                 ]}
               >
-                <View style={[styles.imgTile, { backgroundColor: homeDealBg(idx) }]}>
-                  {cartItem.product.image_url ? (
-                    <Image
-                      source={{ uri: cartItem.product.image_url }}
-                      style={[styles.imgTileImg, isOutOfStock && { opacity: 0.4 }]}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <AppIcon name="shopping-bag" size={24} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
-                  )}
+                <View style={styles.itemRow}>
+                  <View style={[styles.imgTile, { backgroundColor: homeDealBg(idx) }]}>
+                    {cartItem.product.image_url ? (
+                      <Image
+                        source={{ uri: cartItem.product.image_url }}
+                        style={[styles.imgTileImg, isOutOfStock && { opacity: 0.4 }]}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <AppIcon name="shopping-bag" size={24} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
+                    )}
+                  </View>
+
+                  <View style={styles.itemInfo}>
+                    <Text style={[styles.itemName, isOutOfStock && { color: '#64748B' }]} numberOfLines={2}>{cartItem.product.name}</Text>
+                    {isOutOfStock ? (
+                      <Text style={{ ...FONTS.muktaBold, fontSize: 11, color: '#DC2626' }}>Out of stock</Text>
+                    ) : packLabel ? (
+                      <Text style={styles.itemUnit}>{packLabel}</Text>
+                    ) : null}
+                    <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
+                  </View>
+
+                  <Stepper
+                    quantity={cartItem.quantity}
+                    onDecrement={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1)}
+                    onIncrement={() => {
+                      if (!isOutOfStock) addToCart(cartItem.product);
+                    }}
+                  />
                 </View>
 
-                <View style={styles.itemInfo}>
-                  <Text style={[styles.itemName, isOutOfStock && { color: '#64748B' }]} numberOfLines={2}>{cartItem.product.name}</Text>
-                  {isOutOfStock ? (
-                    <Text style={{ ...FONTS.muktaBold, fontSize: 11, color: '#DC2626' }}>Out of stock</Text>
-                  ) : packLabel ? (
-                    <Text style={styles.itemUnit}>{packLabel}</Text>
-                  ) : null}
-                  <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
-                </View>
-
-                <Stepper
-                  quantity={cartItem.quantity}
-                  onDecrement={() => updateQuantity(cartItem.product.id, cartItem.quantity - 1)}
-                  onIncrement={() => {
-                    if (!isOutOfStock) addToCart(cartItem.product);
-                  }}
-                />
+                {/* 1-Tap Bulk Pack / Value Swap Suggestion */}
+                {suggestion && (
+                  <TouchableOpacity
+                    style={styles.swapSuggestionChip}
+                    onPress={() => handleApplySwap(suggestion)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.swapChipTxt}>
+                      💡 {suggestion.message} <Text style={styles.swapChipAction}>[1-Tap Swap]</Text>
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           })}
@@ -1039,5 +1123,58 @@ const styles = StyleSheet.create({
     ...FONTS.muktaBold,
     fontSize: 12,
     color: '#1E7A46',
+  },
+  itemRowWrap: {
+    paddingVertical: 12,
+  },
+  aiSavingsCallout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  aiSavingsIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  aiSavingsCalloutTitle: {
+    ...FONTS.balooBold,
+    fontSize: 14,
+    color: '#92400E',
+  },
+  aiSavingsCalloutSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#78350F',
+    marginTop: 1,
+  },
+  swapSuggestionChip: {
+    marginTop: 8,
+    marginLeft: 62,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    alignSelf: 'flex-start',
+  },
+  swapChipTxt: {
+    ...FONTS.muktaMedium,
+    fontSize: 11.5,
+    color: '#065F46',
+  },
+  swapChipAction: {
+    ...FONTS.muktaBold,
+    color: '#047857',
   },
 });

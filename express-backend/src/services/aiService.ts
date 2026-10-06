@@ -534,3 +534,120 @@ Respond ONLY with valid JSON. No markdown ticks, no extra text.`;
   };
 }
 
+export interface SavingsSuggestion {
+  current_product_id: string;
+  current_product_name: string;
+  current_quantity: number;
+  current_total_price: number;
+  suggested_product: {
+    id: string;
+    name: string;
+    brand: string;
+    unit: string;
+    price: number;
+    mrp: number;
+    image_url: string;
+  };
+  suggested_quantity: number;
+  suggested_total_price: number;
+  saving_amount: number;
+  type: 'BULK_PACK_UPGRADE' | 'VALUE_BRAND_SWAP';
+  message: string;
+}
+
+export interface CartSavingsOptimizationResult {
+  has_optimizations: boolean;
+  total_potential_savings: number;
+  suggestions: SavingsSuggestion[];
+}
+
+/**
+ * Identifies bulk-pack and value brand arbitrage to maximize user savings in cart
+ */
+export async function optimizeCartSavings(
+  cartItems: Array<{ productId: string; quantity: number }>
+): Promise<CartSavingsOptimizationResult> {
+  if (!cartItems || cartItems.length === 0) {
+    return {
+      has_optimizations: false,
+      total_potential_savings: 0,
+      suggestions: [],
+    };
+  }
+
+  const productIds = cartItems.map(it => it.productId).filter(Boolean);
+  if (productIds.length === 0) {
+    return { has_optimizations: false, total_potential_savings: 0, suggestions: [] };
+  }
+
+  // Fetch current cart products details
+  const { rows: currentProducts } = await query(
+    `SELECT id, name, brand, primary_category, unit, mrp, price, image_url
+     FROM products
+     WHERE id = ANY($1::text[])`,
+    [productIds]
+  );
+
+  const suggestions: SavingsSuggestion[] = [];
+  let totalSavings = 0;
+
+  for (const item of cartItems) {
+    const prod = currentProducts.find(p => p.id === item.productId);
+    if (!prod) continue;
+
+    const qty = item.quantity || 1;
+    const currentPrice = Number(prod.price) || 0;
+    const currentTotal = currentPrice * qty;
+
+    // Check 1: Bulk Pack Arbitrage (e.g. qty >= 2 of 1kg -> search for 5kg or 2L)
+    if (qty >= 2) {
+      const { rows: bulkMatches } = await query(
+        `SELECT id, name, brand, unit, mrp, price, image_url
+         FROM products
+         WHERE brand = $1 AND primary_category = $2 AND id != $3 AND available = true AND stock > 0
+         LIMIT 5`,
+        [prod.brand, prod.primary_category, prod.id]
+      );
+
+      for (const bulk of bulkMatches) {
+        const bulkPrice = Number(bulk.price) || 0;
+        // If bulk pack price is cheaper than buying multiple small items
+        if (bulkPrice > currentPrice && bulkPrice < currentTotal) {
+          const saving = Number((currentTotal - bulkPrice).toFixed(2));
+          if (saving >= 15) {
+            suggestions.push({
+              current_product_id: prod.id,
+              current_product_name: prod.name,
+              current_quantity: qty,
+              current_total_price: currentTotal,
+              suggested_product: {
+                id: bulk.id,
+                name: bulk.name,
+                brand: bulk.brand || '',
+                unit: bulk.unit || '',
+                price: bulkPrice,
+                mrp: Number(bulk.mrp) || bulkPrice,
+                image_url: bulk.image_url || '',
+              },
+              suggested_quantity: 1,
+              suggested_total_price: bulkPrice,
+              saving_amount: saving,
+              type: 'BULK_PACK_UPGRADE',
+              message: `Switch to 1 × ${bulk.name} and save ₹${saving.toFixed(0)}!`,
+            });
+            totalSavings += saving;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    has_optimizations: suggestions.length > 0,
+    total_potential_savings: Number(totalSavings.toFixed(2)),
+    suggestions,
+  };
+}
+
+

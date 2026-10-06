@@ -151,3 +151,53 @@ export async function sendAssistantChatMessage(
   return data;
 }
 
+export interface SavingsSuggestion {
+  current_product_id: string;
+  current_product_name: string;
+  current_quantity: number;
+  current_total_price: number;
+  suggested_product: {
+    id: string;
+    name: string;
+    brand: string;
+    unit: string;
+    price: number;
+    mrp: number;
+    image_url: string;
+  };
+  suggested_quantity: number;
+  suggested_total_price: number;
+  saving_amount: number;
+  type: 'BULK_PACK_UPGRADE' | 'VALUE_BRAND_SWAP';
+  message: string;
+}
+
+export interface CartSavingsResult {
+  success: boolean;
+  has_optimizations: boolean;
+  total_potential_savings: number;
+  suggestions: SavingsSuggestion[];
+}
+
+/**
+ * Checks active cart items for bulk pack and brand arbitrage savings
+ */
+export async function fetchCartSavingsOptimizations(
+  items: Array<{ productId: string; quantity: number }>
+): Promise<CartSavingsResult> {
+  const res = await fetch(`${API_BASE}/ai/savings-optimizer`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ items }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to calculate cart savings');
+  }
+  return data;
+}
+
+
