@@ -259,5 +259,45 @@ export async function fetchHouseholdBasket(
   return data;
 }
 
+export interface PredictiveRefillSummary {
+  success: boolean;
+  is_refill_due: boolean;
+  days_since_last_order: number;
+  headline: string;
+  subheadline: string;
+  total_mrp: number;
+  total_price: number;
+  estimated_savings: number;
+  items: Array<{
+    product: {
+      id: string;
+      name: string;
+      brand: string;
+      unit: string;
+      price: number;
+      mrp: number;
+      image_url: string;
+    };
+    quantity: number;
+    days_ago: number;
+  }>;
+}
 
+/**
+ * Fetches automated predictive monthly refill basket based on user order history
+ */
+export async function fetchPredictiveRefill(userId?: string): Promise<PredictiveRefillSummary> {
+  const url = userId ? `${API_BASE}/ai/predictive-refill?userId=${encodeURIComponent(userId)}` : `${API_BASE}/ai/predictive-refill`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to fetch predictive refill');
+  }
+  return data;
+}

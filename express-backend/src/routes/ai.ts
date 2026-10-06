@@ -9,6 +9,7 @@ import {
   optimizeCartSavings,
   generateHouseholdBasket,
   HouseholdProfile,
+  getPredictiveRefillsForUser,
 } from '../services/aiService';
 
 const router = Router();
@@ -195,6 +196,28 @@ router.post('/household-basket', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/ai/predictive-refill
+ * Predicts replenishment cycle and returns automated refill basket
+ */
+router.get('/predictive-refill', async (req: Request, res: Response) => {
+  try {
+    const userId = req.query.userId as string | undefined;
+    const result = await getPredictiveRefillsForUser(userId);
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error: any) {
+    console.error('[AI Router] Error fetching predictive refills:', error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to calculate predictive refill.',
+      error: error?.message || 'Refill error',
+    });
+  }
+});
+
+/**
  * GET /api/ai/health
  * Health check endpoint for AI subsystem
  */
@@ -208,9 +231,11 @@ router.get('/health', (req: Request, res: Response) => {
       'catalog_matcher',
       'brand_affinity',
       'savings_arbitrage',
+      'predictive_refills',
     ],
     timestamp: new Date().toISOString(),
   });
 });
 
 export default router;
+

@@ -41,6 +41,7 @@ import {
   PromotionalBanner,
 } from '../../services/homeApi';
 import { fetchCategoryList } from '../../services/categoriesApi';
+import { fetchPredictiveRefill, PredictiveRefillSummary } from '../../services/aiApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
 import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
@@ -114,6 +115,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     orderCount: number;
     lastOrder: any | null;
   }>({ orderCount: 0, lastOrder: null });
+  const [refillSummary, setRefillSummary] = useState<PredictiveRefillSummary | null>(null);
   const [livePincode, setLivePincode] = useState<string | null>(pincode || null);
 
   useEffect(() => {
@@ -271,6 +273,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 
   useEffect(() => {
     const fetchUserStats = async () => {
+      try {
+        const refill = await fetchPredictiveRefill(user?.id);
+        if (refill && refill.success) {
+          setRefillSummary(refill);
+        }
+      } catch (err) {
+        // ignore
+      }
+
       if (!token) {
         setOrderStats({ orderCount: 0, lastOrder: null });
         return;
@@ -290,7 +301,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       }
     };
     fetchUserStats();
-  }, [token]);
+  }, [token, user?.id]);
 
   const openAccount = () => {
     if (setActiveTab) setActiveTab('Account');
@@ -663,6 +674,63 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         ) : (
           <Text style={styles.loadingText}>{home?.empty_deals_label}</Text>
         )}
+
+        {refillSummary?.is_refill_due && refillSummary.items?.length > 0 ? (
+          <View style={styles.refillAlertCard}>
+            <View style={styles.refillTopRow}>
+              <View style={styles.refillBadge}>
+                <Text style={styles.refillBadgeText}>⚡ AI REFILL DUE</Text>
+              </View>
+              {refillSummary.estimated_savings > 0 ? (
+                <View style={styles.refillSavingsBadge}>
+                  <Text style={styles.refillSavingsText}>Save ₹{refillSummary.estimated_savings}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            <Text style={styles.refillHeadline}>{refillSummary.headline}</Text>
+            <Text style={styles.refillSubheadline}>{refillSummary.subheadline}</Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.refillItemsScroll}>
+              {refillSummary.items.map((it, idx) => (
+                <View key={it.product?.id || idx} style={styles.refillItemThumb}>
+                  {it.product?.image_url ? (
+                    <Image source={{ uri: it.product.image_url }} style={styles.refillItemImg} resizeMode="contain" />
+                  ) : (
+                    <CheckoutFallbackEmoji index={idx} size={18} />
+                  )}
+                  <Text style={styles.refillItemName} numberOfLines={1}>{it.product?.name}</Text>
+                  <Text style={styles.refillItemPrice}>₹{it.product?.price}</Text>
+                </View>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.refillActionBtn}
+              onPress={() => {
+                refillSummary.items.forEach(it => {
+                  if (it.product) {
+                    addToCart({
+                      id: it.product.id,
+                      name: it.product.name,
+                      brand: it.product.brand,
+                      unit: it.product.unit,
+                      price: it.product.price,
+                      mrp: it.product.mrp,
+                      image_url: it.product.image_url,
+                      stock: 999,
+                      available: true,
+                    } as any);
+                  }
+                });
+                navigation.navigate('Cart');
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.refillActionBtnText}>🛒 Reorder Monthly Basket (₹{refillSummary.total_price})</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <TouchableOpacity
           style={styles.reorderCard}
@@ -1264,4 +1332,106 @@ const styles = StyleSheet.create({
     color: COLORS.green700,
     marginTop: 6,
   },
+  refillAlertCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#E8A33A',
+    padding: 14,
+    marginBottom: 14,
+    shadowColor: '#E8A33A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  refillTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  refillBadge: {
+    backgroundColor: '#FFF4E5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F5A524',
+  },
+  refillBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 10.5,
+    color: '#D97706',
+    letterSpacing: 0.5,
+  },
+  refillSavingsBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  refillSavingsText: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: '#1E7A46',
+  },
+  refillHeadline: {
+    ...FONTS.balooBold,
+    fontSize: 16,
+    color: '#17251E',
+    marginTop: 2,
+  },
+  refillSubheadline: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#6B7772',
+    marginTop: 1,
+    marginBottom: 10,
+  },
+  refillItemsScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 4,
+  },
+  refillItemThumb: {
+    width: 72,
+    alignItems: 'center',
+    backgroundColor: '#F8FAF8',
+    borderRadius: 10,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: '#EAE9E2',
+  },
+  refillItemImg: {
+    width: 36,
+    height: 36,
+    marginBottom: 4,
+  },
+  refillItemName: {
+    ...FONTS.muktaMedium,
+    fontSize: 10,
+    color: '#3D4A44',
+    textAlign: 'center',
+  },
+  refillItemPrice: {
+    ...FONTS.muktaBold,
+    fontSize: 10.5,
+    color: '#1E7A46',
+    marginTop: 1,
+  },
+  refillActionBtn: {
+    backgroundColor: '#155A38',
+    borderRadius: RADIUS.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  refillActionBtnText: {
+    ...FONTS.balooBold,
+    fontSize: 13,
+    color: '#FFFFFF',
+  },
 });
+

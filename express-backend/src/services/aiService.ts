@@ -788,5 +788,149 @@ export async function generateHouseholdBasket(
   };
 }
 
+export interface PredictiveRefillSummary {
+  is_refill_due: boolean;
+  days_since_last_order: number;
+  headline: string;
+  subheadline: string;
+  total_mrp: number;
+  total_price: number;
+  estimated_savings: number;
+  items: Array<{
+    product: {
+      id: string;
+      name: string;
+      brand: string;
+      unit: string;
+      price: number;
+      mrp: number;
+      image_url: string;
+    };
+    quantity: number;
+    days_ago: number;
+  }>;
+}
+
+/**
+ * Predicts replenishment cycles and builds automated monthly refill recommendations
+ */
+export async function getPredictiveRefillsForUser(
+  userId?: string
+): Promise<PredictiveRefillSummary> {
+  // 1. Fetch user's recent orders if userId exists
+  let pastOrders: any[] = [];
+  if (userId) {
+    try {
+      const { rows } = await query(
+        `SELECT id, items, created_at
+         FROM orders
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 5`,
+        [userId]
+      );
+      pastOrders = rows;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // 2. Fetch top staple products from database
+  const { rows: stapleProducts } = await query(
+    `SELECT id, name, brand, unit, mrp, price, stock, image_url
+     FROM products
+     WHERE available = true AND stock > 0
+     ORDER BY best_seller DESC, featured DESC
+     LIMIT 8`
+  );
+
+  if (pastOrders.length > 0) {
+    const lastOrderDate = new Date(pastOrders[0].created_at);
+    const now = new Date();
+    const diffDays = Math.max(1, Math.round((now.getTime() - lastOrderDate.getTime()) / (1000 * 3600 * 24)));
+
+    // Reconstruct items from past order
+    const rawItems = pastOrders[0].items || [];
+    const itemsList: any[] = [];
+    let totMrp = 0;
+    let totPrice = 0;
+
+    for (const it of rawItems) {
+      const p = it.product || it;
+      const qty = Number(it.quantity) || 1;
+      const price = Number(p.price) || 0;
+      const mrp = Number(p.mrp) || price;
+      totPrice += price * qty;
+      totMrp += mrp * qty;
+
+      itemsList.push({
+        product: {
+          id: p.id,
+          name: p.name,
+          brand: p.brand || '',
+          unit: p.unit || '',
+          price,
+          mrp,
+          image_url: p.image_url || '',
+        },
+        quantity: qty,
+        days_ago: diffDays,
+      });
+    }
+
+    const savings = Math.max(0, totMrp - totPrice);
+
+    return {
+      is_refill_due: diffDays >= 20,
+      days_since_last_order: diffDays,
+      headline: diffDays >= 20 ? 'Your Monthly Grocery Refill is Due! 🛒' : 'Monthly Grocery Hub Ready',
+      subheadline: `Last ordered ${diffDays} days ago. We've recreated your ${itemsList.length}-item basket with ₹${savings.toFixed(0)} savings.`,
+      total_mrp: Number(totMrp.toFixed(2)),
+      total_price: Number(totPrice.toFixed(2)),
+      estimated_savings: Number(savings.toFixed(2)),
+      items: itemsList.slice(0, 6),
+    };
+  }
+
+  // Default Sample Refill Basket for New Users
+  const defaultItems = stapleProducts.slice(0, 4);
+  let dMrp = 0;
+  let dPrice = 0;
+
+  const items = defaultItems.map(p => {
+    const mrp = Number(p.mrp) || Number(p.price) || 0;
+    const price = Number(p.price) || mrp;
+    dMrp += mrp;
+    dPrice += price;
+    return {
+      product: {
+        id: p.id,
+        name: p.name,
+        brand: p.brand || '',
+        unit: p.unit || '',
+        price,
+        mrp,
+        image_url: p.image_url || '',
+      },
+      quantity: 1,
+      days_ago: 30,
+    };
+  });
+
+  const dSavings = Math.max(0, dMrp - dPrice);
+
+  return {
+    is_refill_due: true,
+    days_since_last_order: 30,
+    headline: 'Your Monthly Grocery Refill is Ready! 🛒',
+    subheadline: `Top household monthly essentials bundled with ₹${dSavings.toFixed(0)} savings.`,
+    total_mrp: Number(dMrp.toFixed(2)),
+    total_price: Number(dPrice.toFixed(2)),
+    estimated_savings: Number(dSavings.toFixed(2)),
+    items,
+  };
+}
+
+
 
 
