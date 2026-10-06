@@ -25,6 +25,7 @@ import {
   sortPackVariants,
 } from '@/lib/packUnits';
 import { apiFetch, API_BASE } from '@/utils/api';
+import { compressImageForUpload } from '@/utils/imageCompressor';
 
 export interface VariantItem {
   sku: string;
@@ -260,9 +261,10 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
   }, [groupedMasterProducts, masterProductsList, categoriesList]);
 
   const uploadImage = async (file: File, folder = 'products'): Promise<string> => {
+    const optimizedFile = await compressImageForUpload(file);
     const freshToken = token || (typeof window !== 'undefined' ? localStorage.getItem('@admin_token') : null);
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', optimizedFile);
     formData.append('folder', folder);
 
     let uploadRes: Response;

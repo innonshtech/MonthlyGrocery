@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { apiFetch, clearAdminSession, API_BASE } from '../utils/api';
+import { compressImageForUpload } from '../utils/imageCompressor';
 import { packUnitPayloadFromInput, resolvePackUnitLabel } from '../lib/packUnits';
 import { validateIndianPincode } from '../utils/pincodeValidator';
 import {
@@ -667,8 +668,12 @@ export default function DashboardPage() {
     if (!freshToken) {
       throw new Error('Not authenticated. Please log in again.');
     }
+
+    // Auto-compress large PNGs/JPEGs to prevent HTTP 413 Payload Too Large
+    const optimizedFile = await compressImageForUpload(file);
+
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', optimizedFile);
     formData.append('folder', folder);
 
     let uploadRes: Response;
