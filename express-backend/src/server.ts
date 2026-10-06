@@ -16,6 +16,7 @@ import adminRouter from './routes/adminControls';
 import couponsRouter from './routes/coupons';
 import deliverySlotsRouter from './routes/deliverySlots';
 import addressesRouter from './routes/addresses';
+import aiRouter from './routes/ai';
 import { uploadsProxyMiddleware } from './middleware/uploadsProxy';
 
 const app = express();
@@ -64,6 +65,9 @@ app.use('/api/api/delivery-slots', deliverySlotsRouter);
 
 app.use('/api/addresses', addressesRouter);
 app.use('/addresses', addressesRouter);
+
+app.use('/api/ai', aiRouter);
+app.use('/ai', aiRouter);
 
 // Public Config Endpoint
 const sendConfig = (req: express.Request, res: express.Response) => {
