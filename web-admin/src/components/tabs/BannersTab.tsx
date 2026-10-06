@@ -3,6 +3,7 @@
 import React from 'react';
 import { ImageIcon, Trash2 } from 'lucide-react';
 import { PromotionalBanner } from '../../types/admin.types';
+import { resolveImageUrl } from '@/utils/api';
 
 interface BannersTabProps {
   banners: PromotionalBanner[];
@@ -63,7 +64,7 @@ export default function BannersTab({
                 </div>
               ) : (
                 <img
-                  src={b.image_url}
+                  src={resolveImageUrl(b.image_url)}
                   alt={b.title}
                   className="w-24 h-16 object-cover rounded-lg bg-slate-900 border border-slate-800"
                 />

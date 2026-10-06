@@ -16,6 +16,46 @@ const getApiBase = () => {
 
 export const API_BASE = getApiBase();
 
+/**
+ * Safely resolves image URLs to avoid browser HTTPS mixed-content blocks.
+ * Converts plain http backend image links to /backend-api/uploads/ proxy URLs.
+ */
+export function resolveImageUrl(rawUrl?: string | null): string {
+  if (!rawUrl) return '';
+  const url = String(rawUrl).trim();
+  if (!url) return '';
+
+  // Local assets (e.g., /ever-logo.png, /hero-couple.png)
+  if (url.startsWith('/') && !url.startsWith('/api/uploads') && !url.startsWith('/uploads')) {
+    return url;
+  }
+
+  // Data / Blob URLs
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  // Backend /api/uploads/ or /uploads/ paths
+  if (url.includes('/api/uploads/')) {
+    const afterUploads = url.split('/api/uploads/')[1];
+    return `/backend-api/uploads/${afterUploads}`;
+  }
+  if (url.includes('/uploads/')) {
+    const afterUploads = url.split('/uploads/')[1];
+    return `/backend-api/uploads/${afterUploads}`;
+  }
+
+  // EC2 HTTP IP URLs
+  if (url.startsWith('http://13.233.159.143/api/')) {
+    return url.replace('http://13.233.159.143/api/', '/backend-api/');
+  }
+  if (url.startsWith('http://13.233.159.143/')) {
+    return url.replace('http://13.233.159.143/', '/backend-api/');
+  }
+
+  return url;
+}
+
 
 export function clearAdminSession() {
   if (typeof window === 'undefined') return;

@@ -24,7 +24,7 @@ import {
   resolvePackUnitLabel,
   sortPackVariants,
 } from '@/lib/packUnits';
-import { apiFetch, API_BASE } from '@/utils/api';
+import { apiFetch, API_BASE, resolveImageUrl } from '@/utils/api';
 import { compressImageForUpload } from '@/utils/imageCompressor';
 
 export interface VariantItem {
@@ -736,7 +736,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                           <div className="flex items-center gap-3">
                             {group.image_url ? (
                               <img
-                                src={group.image_url}
+                                src={resolveImageUrl(group.image_url)}
                                 alt={group.baseName}
                                 className="w-11 h-11 object-contain rounded-xl bg-white/5 border border-slate-800 p-1 shrink-0 group-hover:border-emerald-500/40 transition-colors"
                               />
@@ -882,7 +882,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                         <div className="flex items-center gap-3">
                           {prod.image_url ? (
                             <img
-                              src={prod.image_url}
+                              src={resolveImageUrl(prod.image_url)}
                               alt={prod.name}
                               className="w-11 h-11 object-contain rounded-xl bg-white/5 border border-slate-800 p-1 shrink-0 group-hover:border-emerald-500/40 transition-colors"
                             />
@@ -1865,7 +1865,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                       >
                         <div className="w-full flex-1 flex items-center justify-center overflow-hidden">
                           <img
-                            src={imgUrl}
+                            src={resolveImageUrl(imgUrl)}
                             alt={`gallery-${idx}`}
                             className="max-h-full max-w-full object-contain"
                           />

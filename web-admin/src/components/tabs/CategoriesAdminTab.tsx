@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Tag, Trash2, Plus } from 'lucide-react';
+import { resolveImageUrl } from '@/utils/api';
 
 export interface CategoriesAdminTabProps {
   categoriesList: any[];
@@ -80,7 +81,7 @@ export const CategoriesAdminTab: React.FC<CategoriesAdminTabProps> = ({
                 <div className="flex items-center gap-4 p-4">
                   <div className="w-14 h-14 rounded-xl bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
                     {cat.image_url ? (
-                      <img src={cat.image_url} alt={cat.name} className="w-full h-full object-contain p-1" />
+                      <img src={resolveImageUrl(cat.image_url)} alt={cat.name} className="w-full h-full object-contain p-1" />
                     ) : (
                       <span className="text-[10px] text-slate-500 font-bold uppercase">No PNG</span>
                     )}
@@ -133,7 +134,7 @@ export const CategoriesAdminTab: React.FC<CategoriesAdminTabProps> = ({
                           <div key={sub.id} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
                             <div className="w-10 h-10 rounded-lg bg-white/5 border border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
                               {sub.image_url ? (
-                                <img src={sub.image_url} alt={sub.name} className="w-full h-full object-contain p-0.5" />
+                                <img src={resolveImageUrl(sub.image_url)} alt={sub.name} className="w-full h-full object-contain p-0.5" />
                               ) : (
                                 <span className="text-[9px] text-slate-500 font-bold">ICON</span>
                               )}
