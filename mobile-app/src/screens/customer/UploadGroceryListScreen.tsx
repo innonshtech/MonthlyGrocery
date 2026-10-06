@@ -9,6 +9,8 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -242,29 +244,34 @@ export default function UploadGroceryListScreen({ navigation }: any) {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Tabs */}
-      {!result && (
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'text' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('text')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'text' && styles.tabBtnTextActive]}>
-              📝 Paste / Type List
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'image' && styles.tabBtnActive]}
-            onPress={() => setActiveTab('image')}
-          >
-            <Text style={[styles.tabBtnText, activeTab === 'image' && styles.tabBtnTextActive]}>
-              📷 Scan Paper Slip
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
+      >
+        {/* Tabs */}
+        {!result && (
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === 'text' && styles.tabBtnActive]}
+              onPress={() => setActiveTab('text')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'text' && styles.tabBtnTextActive]}>
+                📝 Paste / Type List
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, activeTab === 'image' && styles.tabBtnActive]}
+              onPress={() => setActiveTab('image')}
+            >
+              <Text style={[styles.tabBtnText, activeTab === 'image' && styles.tabBtnTextActive]}>
+                📷 Scan Paper Slip
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}>
+        <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
         {/* State 1: Loading Spinner */}
         {loading && (
           <View style={styles.loadingCard}>
@@ -493,18 +500,19 @@ export default function UploadGroceryListScreen({ navigation }: any) {
         )}
       </ScrollView>
 
-      {/* Floating Bottom Transfer to Cart Bar */}
-      {result && activeCount > 0 && (
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-          <View>
-            <Text style={styles.bottomCountText}>{activeCount} Items Selected</Text>
-            <Text style={styles.bottomTotalText}>₹{activeTotal.toFixed(0)}</Text>
+        {/* Floating Bottom Transfer to Cart Bar */}
+        {result && activeCount > 0 && (
+          <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+            <View>
+              <Text style={styles.bottomCountText}>{activeCount} Items Selected</Text>
+              <Text style={styles.bottomTotalText}>₹{activeTotal.toFixed(0)}</Text>
+            </View>
+            <TouchableOpacity style={styles.bottomSubmitBtn} onPress={handleAddAllToCart}>
+              <Text style={styles.bottomSubmitBtnText}>Transfer to Cart 🛒</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.bottomSubmitBtn} onPress={handleAddAllToCart}>
-            <Text style={styles.bottomSubmitBtnText}>Transfer to Cart 🛒</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

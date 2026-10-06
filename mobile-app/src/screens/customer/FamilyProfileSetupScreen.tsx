@@ -587,6 +587,10 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     alignItems: 'center',
     marginTop: 10,
+    shadowColor: COLORS.green700,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 3,
   },
   generateBtnText: {
@@ -601,6 +605,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.green100,
     marginBottom: 16,
+    shadowColor: COLORS.green700,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   basketHeroHeader: {
     flexDirection: 'row',
@@ -746,6 +754,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   bottomCountText: {
     ...FONTS.muktaMedium,
