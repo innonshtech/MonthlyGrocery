@@ -1,4 +1,11 @@
 const getApiBase = () => {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    // If the browser is on HTTPS, never call plain HTTP directly to prevent browser mixed content block
+    if (!process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL.startsWith('http://') || process.env.NEXT_PUBLIC_API_URL === '/backend-api') {
+      return '/backend-api';
+    }
+  }
+
   if (process.env.NEXT_PUBLIC_API_URL) {
     const envUrl = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/+$/, '');
     return envUrl.endsWith('/api') || envUrl.endsWith('/backend-api') ? envUrl : `${envUrl}/api`;
