@@ -200,4 +200,64 @@ export async function fetchCartSavingsOptimizations(
   return data;
 }
 
+export interface HouseholdProfile {
+  adults_count: number;
+  children_count: number;
+  seniors_count: number;
+  dietary_preference: 'veg' | 'non-veg' | 'jain';
+  monthly_budget?: number;
+  preferred_brands?: string[];
+}
+
+export interface HouseholdBasketItem {
+  category: string;
+  recommended_quantity: string;
+  product: {
+    id: string;
+    name: string;
+    brand: string;
+    unit: string;
+    price: number;
+    mrp: number;
+    image_url: string;
+  };
+  quantity: number;
+  line_price: number;
+  line_mrp: number;
+}
+
+export interface HouseholdBasketResult {
+  success: boolean;
+  basket_title: string;
+  household_summary: string;
+  items: HouseholdBasketItem[];
+  total_mrp: number;
+  total_price: number;
+  total_savings: number;
+  monthly_budget?: number;
+}
+
+/**
+ * Generates household monthly plan based on family composition
+ */
+export async function fetchHouseholdBasket(
+  profile: HouseholdProfile,
+  city?: string
+): Promise<HouseholdBasketResult> {
+  const res = await fetch(`${API_BASE}/ai/household-basket`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ profile, city }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || 'Failed to generate household basket');
+  }
+  return data;
+}
+
+
 

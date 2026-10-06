@@ -317,6 +317,30 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             </View>
             <HubChevronIcon size={20} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: '#3B82F6', backgroundColor: '#F0F9FF' }]}
+            onPress={() => navigation.navigate('FamilyProfileSetup')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#DBEAFE' }]}>
+              <Text style={{ fontSize: 18 }}>👨‍👩‍👧‍👦</Text>
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  Family Monthly Planner
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: '#DBEAFE' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#1D4ED8', fontWeight: '700' }]}>
+                    Formula Engine
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Household demographics & consumption planner</Text>
+            </View>
+            <HubChevronIcon size={20} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

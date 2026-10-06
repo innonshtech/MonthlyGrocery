@@ -7,6 +7,8 @@ import {
   chatWithGroceryAssistant,
   ChatMessage,
   optimizeCartSavings,
+  generateHouseholdBasket,
+  HouseholdProfile,
 } from '../services/aiService';
 
 const router = Router();
@@ -161,6 +163,33 @@ router.post('/savings-optimizer', async (req: Request, res: Response) => {
       success: false,
       message: 'Failed to optimize cart savings.',
       error: error?.message || 'Savings error',
+    });
+  }
+});
+
+/**
+ * POST /api/ai/household-basket
+ * Generates personalized family monthly basket based on household demographics
+ */
+router.post('/household-basket', async (req: Request, res: Response) => {
+  try {
+    const { profile, city } = req.body;
+
+    if (!profile || typeof profile !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide household profile object (adults_count, children_count, dietary_preference).',
+      });
+    }
+
+    const result = await generateHouseholdBasket(profile as HouseholdProfile, city);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[AI Router] Error generating household basket:', error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate household monthly basket.',
+      error: error?.message || 'Calculation error',
     });
   }
 });

@@ -650,4 +650,143 @@ export async function optimizeCartSavings(
   };
 }
 
+export interface HouseholdProfile {
+  adults_count: number;
+  children_count: number;
+  seniors_count: number;
+  dietary_preference: 'veg' | 'non-veg' | 'jain';
+  monthly_budget?: number;
+  preferred_brands?: string[];
+}
+
+export interface HouseholdBasketItem {
+  category: string;
+  recommended_quantity: string;
+  product: {
+    id: string;
+    name: string;
+    brand: string;
+    unit: string;
+    price: number;
+    mrp: number;
+    image_url: string;
+  };
+  quantity: number;
+  line_price: number;
+  line_mrp: number;
+}
+
+export interface HouseholdBasketResult {
+  success: boolean;
+  basket_title: string;
+  household_summary: string;
+  items: HouseholdBasketItem[];
+  total_mrp: number;
+  total_price: number;
+  total_savings: number;
+  monthly_budget?: number;
+}
+
+/**
+ * Calculates demographic household baseline requirements & maps to optimal in-stock SKUs
+ */
+export async function generateHouseholdBasket(
+  profile: HouseholdProfile,
+  city?: string
+): Promise<HouseholdBasketResult> {
+  const adults = Math.max(1, profile.adults_count || 2);
+  const kids = Math.max(0, profile.children_count || 0);
+  const seniors = Math.max(0, profile.seniors_count || 0);
+  const diet = profile.dietary_preference || 'veg';
+  const preferredBrands = (profile.preferred_brands || []).map(b => b.toLowerCase());
+
+  // Indian Household Baseline Standard Formulas (kg/month & L/month)
+  const attaKg = Math.round((adults * 3.5) + (kids * 2.0) + (seniors * 2.5));
+  const riceKg = Math.round((adults * 2.5) + (kids * 1.5) + (seniors * 2.0));
+  const oilLtr = Math.max(2, Math.round((adults * 1.2) + (kids * 0.6) + (seniors * 0.8)));
+  const sugarKg = Math.max(2, Math.round((adults + kids) * 1.0));
+  const dalKg = Math.max(2, Math.round((adults * 1.0) + (kids * 0.5) + (seniors * 0.8)));
+  const detergentKg = Math.max(1, Math.round(1 + (kids * 0.75)));
+
+  // Target requirements
+  const targets = [
+    { search: 'atta', brandBoost: 'aashirvaad', targetKg: attaKg, category: 'Flour & Staples', label: `${attaKg} kg Atta` },
+    { search: 'rice', brandBoost: 'india gate', targetKg: riceKg, category: 'Rice & Grains', label: `${riceKg} kg Rice` },
+    { search: 'oil', brandBoost: 'fortune', targetKg: oilLtr, category: 'Edible Oils', label: `${oilLtr} L Cooking Oil` },
+    { search: 'sugar', brandBoost: 'madhur', targetKg: sugarKg, category: 'Sugar & Salt', label: `${sugarKg} kg Sugar` },
+    { search: 'salt', brandBoost: 'tata', targetKg: 1, category: 'Sugar & Salt', label: '1 kg Iodized Salt' },
+    { search: 'dal', brandBoost: 'tata', targetKg: dalKg, category: 'Dals & Pulses', label: `${dalKg} kg Assorted Dals` },
+    { search: 'surf excel', brandBoost: 'surf excel', targetKg: detergentKg, category: 'Household & Cleaning', label: `${detergentKg} kg Detergent` },
+  ];
+
+  // Fetch in-stock products
+  const { rows: availableProducts } = await query(
+    `SELECT id, name, brand, unit, mrp, price, stock, image_url, primary_category
+     FROM products
+     WHERE available = true AND stock > 0
+     ORDER BY featured DESC, best_seller DESC
+     LIMIT 100`
+  );
+
+  const basketItems: HouseholdBasketItem[] = [];
+  let totalMrp = 0;
+  let totalPrice = 0;
+
+  for (const t of targets) {
+    // Find best product match taking user brand preference into account
+    const matches = availableProducts.filter(p => {
+      const name = (p.name || '').toLowerCase();
+      const cat = (p.primary_category || '').toLowerCase();
+      return name.includes(t.search) || cat.includes(t.search);
+    });
+
+    if (matches.length > 0) {
+      // Prioritize user's preferred brand if matching
+      let bestProd = matches.find(p => preferredBrands.some(pb => (p.brand || '').toLowerCase().includes(pb)));
+      if (!bestProd) {
+        bestProd = matches.find(p => (p.brand || '').toLowerCase().includes(t.brandBoost)) || matches[0];
+      }
+
+      const pPrice = Number(bestProd.price) || 0;
+      const pMrp = Number(bestProd.mrp) || pPrice;
+      const qty = 1; // standard pack for the calculated baseline
+
+      totalPrice += pPrice * qty;
+      totalMrp += pMrp * qty;
+
+      basketItems.push({
+        category: t.category,
+        recommended_quantity: t.label,
+        product: {
+          id: bestProd.id,
+          name: bestProd.name,
+          brand: bestProd.brand || '',
+          unit: bestProd.unit || '',
+          price: pPrice,
+          mrp: pMrp,
+          image_url: bestProd.image_url || '',
+        },
+        quantity: qty,
+        line_price: pPrice * qty,
+        line_mrp: pMrp * qty,
+      });
+    }
+  }
+
+  const memberCount = adults + kids + seniors;
+  const summaryText = `${memberCount}-Member Family (${adults} Adults, ${kids} Kids${seniors > 0 ? `, ${seniors} Seniors` : ''}) · ${diet === 'veg' ? 'Vegetarian' : diet === 'jain' ? 'Jain' : 'Non-Veg'}`;
+
+  return {
+    success: true,
+    basket_title: `${memberCount}-Person Monthly Household Plan`,
+    household_summary: summaryText,
+    items: basketItems,
+    total_mrp: Number(totalMrp.toFixed(2)),
+    total_price: Number(totalPrice.toFixed(2)),
+    total_savings: Number(Math.max(0, totalMrp - totalPrice).toFixed(2)),
+    monthly_budget: profile.monthly_budget,
+  };
+}
+
+
 
