@@ -1,19 +1,23 @@
 import { NativeModules, Platform } from 'react-native';
 
 /**
- * Live AWS EC2 Production Server URL
+ * Live AWS EC2 Production Server URL (Port 80/8001)
  */
-export const AWS_SERVER_URL = 'http://13.233.159.143/api';
+export const AWS_PROD_SERVER_URL = 'http://13.233.159.143/api';
+
+/**
+ * Live AWS EC2 QA Server URL (Port 8002)
+ */
+export const AWS_QA_SERVER_URL = 'http://13.233.159.143:8002/api';
 
 /**
  * Local Development Server URL (For Wireless Phone Debugging)
- * Your PC IP: 10.122.236.147 or use 'http://localhost:8001/api' with adb reverse
  */
-/** Phone via ADB: run `adb reverse tcp:8001 tcp:8001` */
-export const LOCAL_SERVER_URL = 'http://localhost:8001/api';
+export const LOCAL_SERVER_URL = 'http://localhost:8002/api';
 
 /**
  * Active Backend API Endpoint
- * Live AWS EC2 Production Server
+ * Switched to QA Server (Port 8002) for QA Branch
  */
-export const API_BASE = AWS_SERVER_URL;
+export const API_BASE = AWS_QA_SERVER_URL;
+export const AWS_SERVER_URL = AWS_QA_SERVER_URL;
