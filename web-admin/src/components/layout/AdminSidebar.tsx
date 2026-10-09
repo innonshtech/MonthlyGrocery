@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Shield,
   Store,
@@ -16,7 +16,8 @@ import {
   ShoppingBag,
   Home,
   Upload,
-  X
+  X,
+  ChevronUp
 } from 'lucide-react';
 import { TabType, Shop, FranchiseRequest } from '../../types/admin.types';
 import { ThemeToggle } from '../../context/ThemeContext';
@@ -48,6 +49,20 @@ export default function AdminSidebar({
   setMobileMenuOpen,
   handleLogout
 }: AdminSidebarProps) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const navSections = [
     {
       title: 'Core Operations',
@@ -113,6 +128,13 @@ export default function AdminSidebar({
     }
   ];
 
+  const userInitials = (user?.name || 'Super Admin')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <>
       {/* Mobile Drawer Overlay / Menu */}
@@ -129,7 +151,6 @@ export default function AdminSidebar({
               </div>
             </div>
             <button
-
               onClick={() => setMobileMenuOpen(false)}
               className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
             >
@@ -181,20 +202,37 @@ export default function AdminSidebar({
           </div>
 
           {/* User profile / Logout in mobile drawer */}
-          <div className="pt-4 border-t border-slate-800 space-y-3">
-            <ThemeToggle />
-            <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
-              <div>
-                <p className="text-sm font-bold text-slate-100">{user?.name || 'Super Admin'}</p>
-                <p className="text-[11px] text-slate-500">Super Admin • +91 {user?.mobile || ''}</p>
+          <div className="pt-4 border-t border-slate-800 space-y-2.5">
+            {mobileProfileOpen && (
+              <div className="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3 animate-in fade-in duration-150">
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">Appearance</p>
+                  <ThemeToggle />
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Logout
+                </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" /> Logout
-              </button>
-            </div>
+            )}
+
+            <button
+              onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+              className="w-full flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-slate-800 cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
+                  {userInitials}
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-bold text-slate-100">{user?.name || 'Super Admin'}</p>
+                  <p className="text-[10px] text-slate-500">+91 {user?.mobile || ''}</p>
+                </div>
+              </div>
+              <ChevronUp className={`w-4 h-4 text-slate-400 transition-transform ${mobileProfileOpen ? 'rotate-180' : ''}`} />
+            </button>
           </div>
         </div>
       )}
@@ -212,7 +250,6 @@ export default function AdminSidebar({
               <p className="text-[9px] text-emerald-400 font-bold uppercase tracking-wider">Super Admin Console</p>
             </div>
           </div>
-
 
           {/* Scrollable Navigation Sections */}
           <nav className="flex-1 overflow-y-auto custom-scrollbar my-4 space-y-4 pr-1">
@@ -254,18 +291,69 @@ export default function AdminSidebar({
             ))}
           </nav>
 
-          {/* User profile / Logout */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-2.5 flex-shrink-0">
-            <ThemeToggle />
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
-              <p className="text-xs font-bold text-slate-100 truncate">{user?.name || 'Super Admin'}</p>
-              <p className="text-[10px] text-slate-500 truncate">+91 {user?.mobile || ''}</p>
-            </div>
+          {/* User Profile Popover & Trigger */}
+          <div className="pt-3 border-t border-slate-800/80 relative flex-shrink-0" ref={profileRef}>
+            {/* Floating Popover Panel */}
+            {profileOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 p-3 bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl border border-slate-700/80 shadow-2xl space-y-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                {/* Super Admin Info */}
+                <div className="flex items-center gap-2.5 pb-2.5 border-b border-slate-800">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs shadow-md shadow-emerald-500/20 flex-shrink-0">
+                    {userInitials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white truncate">{user?.name || 'Super Admin'}</p>
+                    <p className="text-[10px] text-slate-400 truncate">+91 {user?.mobile || ''}</p>
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded mt-0.5 border border-emerald-500/20">
+                      🛡️ Verified Super Admin
+                    </span>
+                  </div>
+                </div>
+
+                {/* Theme Switcher Banner */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Appearance</p>
+                  <ThemeToggle />
+                </div>
+
+                {/* Logout Action */}
+                <div className="pt-1 border-t border-slate-800">
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-xl transition-all cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" /> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Single Sleek Trigger Pill */}
             <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs lg:text-sm font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl transition-all cursor-pointer"
+              onClick={() => setProfileOpen(!profileOpen)}
+              className={`w-full flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer border ${
+                profileOpen
+                  ? 'bg-slate-800/90 border-emerald-500/40 shadow-sm'
+                  : 'bg-slate-950/60 hover:bg-slate-900 border-slate-800/80'
+              }`}
             >
-              <LogOut className="w-4 h-4" /> Log Out
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
+                  {userInitials}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="text-xs font-bold text-slate-100 truncate">{user?.name || 'Super Admin'}</p>
+                  <p className="text-[10px] text-emerald-400 font-medium leading-none mt-0.5">Super Admin</p>
+                </div>
+              </div>
+              <ChevronUp
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${
+                  profileOpen ? 'rotate-180 text-emerald-400' : ''
+                }`}
+              />
             </button>
           </div>
         </div>
