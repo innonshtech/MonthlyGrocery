@@ -1542,14 +1542,14 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
         <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center z-50 p-4 font-sans">
           <div className="bg-white dark:bg-[#0c1220] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-950/40 shrink-0">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950/40 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <Edit3 className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">Edit Master Product</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                     SKU: <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{editMasterProduct.sku || 'N/A'}</span>
                   </p>
                 </div>
@@ -1564,10 +1564,10 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
             </div>
 
             {/* Form Body */}
-            <form id="editMasterProdForm" onSubmit={handleSaveMasterProduct} className="p-6 overflow-y-auto space-y-4 flex-1">
+            <form id="editMasterProdForm" onSubmit={handleSaveMasterProduct} className="p-6 overflow-y-auto space-y-4 flex-1 bg-white dark:bg-[#0c1220]">
               {/* 1. Basic Info */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-1.5">
                   Product Name *
                 </label>
                 <input
@@ -1576,29 +1576,29 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                   value={editProdName}
                   onChange={(e) => setEditProdName(e.target.value)}
                   placeholder="e.g. Aashirvaad Select Sharbati Atta"
-                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1.5">Brand</label>
+                  <label className="block text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-1.5">Brand</label>
                   <input
                     type="text"
                     value={editProdBrand}
                     onChange={(e) => setEditProdBrand(e.target.value)}
                     placeholder="e.g. Aashirvaad"
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1.5">Company</label>
+                  <label className="block text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-1.5">Company</label>
                   <input
                     type="text"
                     value={editProdCompany}
                     onChange={(e) => setEditProdCompany(e.target.value)}
                     placeholder="e.g. ITC Limited"
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium"
                   />
                 </div>
               </div>
@@ -1606,7 +1606,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
               {/* 2. Category & Subcategory */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1.5">Category *</label>
+                  <label className="block text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-1.5">Category *</label>
                   <select
                     required
                     value={editProdCategory}
@@ -1614,7 +1614,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                       setEditProdCategory(e.target.value);
                       setEditProdSubcategory('');
                     }}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer font-medium"
                   >
                     <option value="">-- Choose Category --</option>
                     {categoriesList.map((cat) => (
@@ -1623,12 +1623,12 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1.5">Subcategory</label>
+                  <label className="block text-[10px] font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider mb-1.5">Subcategory</label>
                   <select
                     value={editProdSubcategory}
                     onChange={(e) => setEditProdSubcategory(e.target.value)}
                     disabled={!editProdCategory}
-                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50"
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50 font-medium"
                   >
                     <option value="">-- Optional --</option>
                     {getSubcategoriesForCategoryName(editProdCategory).map((sub) => (
@@ -1641,7 +1641,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
               {/* 3. Pack Size & Pricing */}
               <div className="p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800/80 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider">Pack Size & Pricing for this SKU</h4>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-slate-300 uppercase tracking-wider">Pack Size & Pricing for this SKU</h4>
                   <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
                     {editProdPackQty && editProdPackUnit ? packUnitPayloadFromInput(editProdPackQty, editProdPackUnit).unit : '—'}
                   </span>
@@ -2042,7 +2042,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
             </form>
 
             {/* Footer */}
-            <div className="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-950/40 shrink-0">
+            <div className="flex items-center justify-between p-6 border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-950/40 shrink-0">
               <div>
                 {editMasterProduct && (
                   <button

@@ -2647,7 +2647,7 @@ export default function ShopsTab({
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
           <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[94vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
+            <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-600 dark:text-emerald-400">
                   <Store className="w-6 h-6" />
@@ -2698,7 +2698,7 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 bg-white dark:bg-[#0b101d]">
               {/* Previous Rejection Reason Callout (if any) */}
               {selectedShopForReview.status === 'rejected' && selectedShopForReview.rejection_reason && (
                 <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-2xl flex items-start gap-3">
@@ -2984,7 +2984,7 @@ export default function ShopsTab({
         </div>
 
             {/* Modal Action Footer */}
-            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3">
               <button
                 onClick={() => setSelectedShopForReview(null)}
                 className="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
@@ -3023,19 +3023,19 @@ export default function ShopsTab({
       {rejectModalShop && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#0b101d] border border-red-300 dark:border-red-500/40 rounded-3xl w-full max-w-md overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" /> Reject Store Application
               </h3>
               <button
                 onClick={() => setRejectModalShop(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 bg-white dark:bg-[#0b101d]">
               <p className="text-xs text-slate-700 dark:text-slate-300">
                 You are rejecting the application for <strong className="text-slate-900 dark:text-white">{rejectModalShop.shop_name}</strong>.
                 Please provide a clear reason so the merchant can correct their documents or location in their app:
@@ -3082,7 +3082,7 @@ export default function ShopsTab({
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
           <div className="bg-white dark:bg-[#0b101d] border border-emerald-300 dark:border-emerald-500/40 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-600 dark:text-emerald-400">
                   <Store className="w-5 h-5" />
@@ -3107,7 +3107,7 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Scrollable Body */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-white dark:bg-[#0b101d]">
               {/* Store & Owner Summary Card */}
               <div className="bg-slate-50 dark:bg-slate-950/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
@@ -3630,7 +3630,7 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Action Footer */}
-            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-between gap-3">
+            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setApproveModalShop(null)}
@@ -3664,7 +3664,7 @@ export default function ShopsTab({
       {previewDocUrl && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900/50">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {previewDocTitle || 'Document Viewer'}
               </h3>
@@ -3749,7 +3749,7 @@ export default function ShopsTab({
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2.5">
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -3786,7 +3786,7 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white dark:bg-[#0b101d]">
               {/* Left Col: Interactive Map */}
               <div className="lg:col-span-7 flex flex-col space-y-3">
                 <div className="flex items-center justify-between text-xs">
@@ -3928,7 +3928,7 @@ export default function ShopsTab({
       {selectedShopForInventory && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Store className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Manage Store Inventory
@@ -3945,7 +3945,7 @@ export default function ShopsTab({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white dark:bg-[#0b101d]">
               {/* Direct Assignment Form */}
               <div className="bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-800/50 h-fit space-y-4">
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2 flex items-center gap-1.5">
@@ -4090,7 +4090,7 @@ export default function ShopsTab({
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900/50">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> {selectedShopForZones.shop_name} — Delivery Zones
@@ -4108,7 +4108,7 @@ export default function ShopsTab({
               </button>
             </div>
 
-            <div className="p-5 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
+            <div className="p-5 overflow-y-auto space-y-5 flex-1 bg-white dark:bg-[#0b101d] custom-scrollbar">
               {/* Reference City Selector */}
               <div className="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex-1">
@@ -4369,7 +4369,7 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-between">
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/80 flex items-center justify-between">
               <span className="text-[11px] text-slate-600 dark:text-slate-400">
                 Total Mapped for Store: <strong className="text-emerald-600 dark:text-emerald-400">{locations.filter((l) => l.shop_id === selectedShopForZones.id).length} zones</strong>
               </span>

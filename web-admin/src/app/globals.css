@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
+
 :root {
   --background: #F8FAFC;
   --foreground: #0F172A;
@@ -296,12 +298,22 @@ html[data-theme="light"] [class*="text-purple-400"] {
    ------------------------------------------------------------ */
 html[data-theme="light"] .bg-\[\#090D16\],
 html[data-theme="light"] [class*="bg-\[\#090D16\]"],
+html[data-theme="light"] .bg-\[\#0B1220\],
 html[data-theme="light"] [class*="bg-\[\#0B1220\]"],
+html[data-theme="light"] .bg-\[\#0b1220\],
 html[data-theme="light"] [class*="bg-\[\#0b1220\]"],
+html[data-theme="light"] .bg-\[\#0b101d\],
+html[data-theme="light"] [class*="bg-\[\#0b101d\]"],
+html[data-theme="light"] .bg-\[\#0c1220\],
+html[data-theme="light"] [class*="bg-\[\#0c1220\]"],
+html[data-theme="light"] .bg-\[\#0d1425\],
+html[data-theme="light"] [class*="bg-\[\#0d1425\]"],
 html[data-theme="light"] .bg-slate-950,
 html[data-theme="light"] [class*="bg-slate-950"],
 html[data-theme="light"] .bg-slate-900,
-html[data-theme="light"] [class*="bg-slate-900"] {
+html[data-theme="light"] [class*="bg-slate-900"],
+html[data-theme="light"] .fixed > div > div,
+html[data-theme="light"] .fixed form {
   background-color: #FFFFFF !important;
   border-color: #E2E8F0 !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
@@ -317,7 +329,7 @@ html[data-theme="light"] [class*="bg-white\/10"],
 html[data-theme="light"] [class*="bg-white\/15"],
 html[data-theme="light"] [class*="bg-white\/20"] {
   background-color: #F8FAFC !important;
-  color: #1E293B !important;
+  color: #0F172A !important;
   border-color: #CBD5E1 !important;
 }
 

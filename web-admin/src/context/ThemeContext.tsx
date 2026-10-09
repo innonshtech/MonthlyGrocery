@@ -44,9 +44,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       if (newTheme === 'light') {
         root.classList.add('theme-light');
         root.classList.remove('theme-dark');
+        root.classList.remove('dark');
+        document.body.classList.remove('dark', 'theme-dark');
+        document.body.classList.add('theme-light');
       } else {
         root.classList.add('theme-dark');
+        root.classList.add('dark');
         root.classList.remove('theme-light');
+        document.body.classList.add('dark', 'theme-dark');
+        document.body.classList.remove('theme-light');
       }
     }
   };
