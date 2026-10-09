@@ -155,7 +155,7 @@ export default function LoginPage() {
                 ← Change number
               </button>
               <h2 className="text-lg font-bold text-white">Verify OTP</h2>
-              <p className="text-xs text-slate-400 mt-1">Sent code to +91 {mobile}. Enter <strong>123456</strong> in development.</p>
+              <p className="text-xs text-slate-400 mt-1">Sent 6-digit verification code to +91 {mobile}.</p>
             </div>
 
             <div className="space-y-4">

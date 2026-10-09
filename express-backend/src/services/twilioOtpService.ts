@@ -54,8 +54,6 @@ export function formatE164Phone(phone: string): string {
 }
 
 const TEST_NUMBERS = [
-  '8830480015',
-  '9876543210',
   '9000000000',
   '9999999999',
   '7777777777',

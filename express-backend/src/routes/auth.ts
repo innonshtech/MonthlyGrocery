@@ -95,7 +95,8 @@ async function isAuthorizedSuperAdmin(normalizedPhone: string): Promise<boolean>
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, role')
-      .eq('phone', normalizedPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (profile && profile.role === 'super_admin') {
