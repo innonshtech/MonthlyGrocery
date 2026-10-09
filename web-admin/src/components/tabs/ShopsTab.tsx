@@ -25,8 +25,23 @@ import {
   Phone,
   User,
   Building,
+  Building2,
   FileCheck,
   Map,
+  ClipboardCheck,
+  Boxes,
+  Package,
+  Smartphone,
+  Laptop,
+  Truck,
+  Navigation,
+  XCircle,
+  ArrowLeft,
+  ArrowRight,
+  Edit2,
+  Save,
+  Bike,
+  Sparkles,
 } from 'lucide-react';
 import { Shop, AdminState, AdminDistrict, City, Area, ServiceableLocation } from '../../types/admin.types';
 import { resolvePackUnitLabel } from '../../lib/packUnits';
@@ -1185,9 +1200,9 @@ export default function ShopsTab({
           </span>
           <button
             onClick={fetchData}
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold cursor-pointer"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold cursor-pointer inline-flex items-center gap-1.5 transition-all"
           >
-            🔄 Refresh
+            <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Refresh
           </button>
         </div>
       </div>
@@ -1195,13 +1210,13 @@ export default function ShopsTab({
       {/* VIEW MODE 1: NETWORK MAP */}
       {viewMode === 'map' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-8 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col space-y-4">
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900/40 rounded-3xl p-6 border border-slate-200 dark:border-slate-800/80 shadow-md dark:shadow-xl flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  🗺️ City-Wide Store GPS Coverage Map
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Map className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> City-Wide Store GPS Coverage Map
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                   Visualizing active kirana stores and their delivery radius coverage zones.
                 </p>
               </div>
@@ -1211,14 +1226,14 @@ export default function ShopsTab({
                   href={`https://www.google.com/maps/search/?api=1&query=${activeLat},${activeLng}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                 >
-                  🌐 Open in Google Maps ↗
+                  <ExternalLink className="w-3.5 h-3.5" /> Open in Google Maps
                 </a>
               )}
             </div>
 
-            <div className="w-full h-[460px] rounded-2xl overflow-hidden border border-slate-700/80 relative shadow-inner bg-slate-950">
+            <div className="w-full h-[460px] rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700/80 relative shadow-inner bg-slate-100 dark:bg-slate-950">
               <iframe
                 title="Store Network Map"
                 width="100%"
@@ -1234,37 +1249,42 @@ export default function ShopsTab({
               />
 
               {activeNetworkShop && (
-                <div className="absolute top-4 left-4 bg-slate-950/90 border border-slate-700 rounded-2xl p-4 backdrop-blur-md shadow-2xl max-w-sm pointer-events-auto">
+                <div className="absolute top-4 left-4 bg-white/95 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 backdrop-blur-md shadow-2xl max-w-sm pointer-events-auto">
                   <div className="flex items-center justify-between gap-3">
-                    <h4 className="font-bold text-white text-sm truncate">{activeNetworkShop.shop_name}</h4>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{activeNetworkShop.shop_name}</h4>
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         activeNetworkShop.status === 'approved'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-800 dark:text-amber-400 border border-amber-500/30'
                       }`}
                     >
                       {activeNetworkShop.status.toUpperCase()}
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 mt-1">
-                    👤 {activeNetworkShop.owner_name || activeNetworkShop.profiles?.name || 'Owner'} · 📞 +
-                    {activeNetworkShop.profiles?.phone}
+                  <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 flex items-center gap-1.5">
+                    <User className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span>{activeNetworkShop.owner_name || activeNetworkShop.profiles?.name || 'Owner'}</span>
+                    <span className="text-slate-400">·</span>
+                    <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span>+{activeNetworkShop.profiles?.phone}</span>
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    📍 {activeNetworkShop.street_address || activeNetworkShop.area_name || activeNetworkShop.city || 'Pune'}
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-indigo-500 shrink-0" />
+                    <span className="truncate">{activeNetworkShop.street_address || activeNetworkShop.area_name || activeNetworkShop.city || 'Pune'}</span>
                   </p>
 
-                  <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-emerald-400 font-bold">
-                      🛵 Radius: {activeNetworkShop.delivery_radius_km || 5} KM (Free)
+                  <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <Bike className="w-3.5 h-3.5" />
+                      Radius: {activeNetworkShop.delivery_radius_km || 5} KM (Free)
                     </span>
                     <button
                       onClick={() => openShopMapModal(activeNetworkShop)}
-                      className="text-sky-400 hover:text-sky-300 font-bold text-xs cursor-pointer underline"
+                      className="text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 font-bold text-xs cursor-pointer underline flex items-center gap-1"
                     >
-                      Edit Pin & Radius ➔
+                      Edit Pin <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -1272,9 +1292,12 @@ export default function ShopsTab({
             </div>
           </div>
 
-          <div className="lg:col-span-4 bg-slate-900/40 rounded-3xl p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col space-y-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center justify-between">
-              <span>🏪 Registered Stores ({shops.length})</span>
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900/40 rounded-3xl p-6 border border-slate-200 dark:border-slate-800/80 shadow-md dark:shadow-xl flex flex-col space-y-3">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                Registered Stores ({shops.length})
+              </span>
             </h3>
 
             <div className="space-y-2.5 overflow-y-auto max-h-[480px] pr-1">
@@ -1292,36 +1315,39 @@ export default function ShopsTab({
                     onClick={() => setNetworkSelectedShopId(shop.id)}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-950/40 border-emerald-500/60 shadow-lg shadow-emerald-500/10'
-                        : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-500/60 shadow-md dark:shadow-emerald-500/10'
+                        : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-white text-sm truncate">{shop.shop_name}</h4>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{shop.shop_name}</h4>
                       <span
                         className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                           shop.status === 'approved'
-                            ? 'bg-emerald-500/15 text-emerald-400'
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20'
                             : shop.status === 'rejected'
-                            ? 'bg-red-500/15 text-red-400'
-                            : 'bg-amber-500/15 text-amber-400 animate-pulse'
+                            ? 'bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/20'
+                            : 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/20 animate-pulse'
                         }`}
                       >
                         {shop.status}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {shop.city ? `${shop.city}` : 'No City'} {shop.area_name ? `· ${shop.area_name}` : ''}
                     </p>
 
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-800/60 text-[11px]">
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-800/60 text-[11px]">
                       {hasGps ? (
-                        <span className="text-emerald-400 font-mono font-semibold">
-                          📍 {Number(shop.latitude).toFixed(4)}, {Number(shop.longitude).toFixed(4)}
+                        <span className="text-emerald-700 dark:text-emerald-400 font-mono font-semibold flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          {Number(shop.latitude).toFixed(4)}, {Number(shop.longitude).toFixed(4)}
                         </span>
                       ) : (
-                        <span className="text-amber-400/90 font-medium">⚠️ GPS not pinned</span>
+                        <span className="text-amber-700 dark:text-amber-400/90 font-medium flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> GPS not pinned
+                        </span>
                       )}
 
                       <button
@@ -1329,9 +1355,9 @@ export default function ShopsTab({
                           e.stopPropagation();
                           setSelectedShopForReview(shop);
                         }}
-                        className="text-emerald-400 hover:text-emerald-300 font-bold cursor-pointer"
+                        className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-bold cursor-pointer inline-flex items-center gap-1"
                       >
-                        📋 Docs & Review
+                        <ClipboardCheck className="w-3 h-3" /> Review
                       </button>
                     </div>
                   </div>
@@ -1339,7 +1365,7 @@ export default function ShopsTab({
               })}
 
               {shops.length === 0 && (
-                <div className="p-6 text-center text-slate-500 italic text-xs">No stores registered yet.</div>
+                <div className="p-6 text-center text-slate-400 italic text-xs">No stores registered yet.</div>
               )}
             </div>
           </div>
@@ -1349,14 +1375,14 @@ export default function ShopsTab({
       {/* VIEW MODE 1: STORES DIRECTORY & APPROVALS TABLE */}
       {viewMode === 'table' && (
         <div className="space-y-4 animate-in fade-in duration-200">
-          <section className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+          <section className="bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-xl space-y-4">
             {/* Table Header & Toolbar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800/60">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800/60">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  <Store className="w-5 h-5 text-emerald-400" /> Store Directory & Approvals
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Store className="w-5 h-5 text-emerald-500" /> Store Directory & Approvals
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                   Review legal KYC documents (Aadhaar, FSSAI, PAN), inspect Google Maps street pins, and manage delivery territories.
                 </p>
               </div>
@@ -1371,7 +1397,7 @@ export default function ShopsTab({
                     placeholder="Search store, owner, street, city..."
                     value={shopSearchQuery}
                     onChange={(e) => setShopSearchQuery(e.target.value)}
-                    className="h-9 pl-9 pr-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 outline-none focus:border-emerald-500 w-44 sm:w-56"
+                    className="h-9 pl-9 pr-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-200 outline-none focus:border-emerald-500 w-44 sm:w-56"
                   />
                 </div>
 
@@ -1379,7 +1405,7 @@ export default function ShopsTab({
                 <select
                   value={shopStatusFilter}
                   onChange={(e: any) => setShopStatusFilter(e.target.value)}
-                  className="h-9 px-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 outline-none cursor-pointer focus:border-emerald-500"
+                  className="h-9 px-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-200 outline-none cursor-pointer focus:border-emerald-500 font-medium"
                 >
                   <option value="all">All Statuses ({shops.length})</option>
                   <option value="pending">Pending Approvals ({shops.filter((s) => s.status === 'pending').length})</option>
@@ -1398,10 +1424,10 @@ export default function ShopsTab({
                 {/* Refresh */}
                 <button
                   onClick={fetchData}
-                  className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="h-9 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center justify-center"
                   title="Refresh store list"
                 >
-                  🔄
+                  <RefreshCw className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -1410,32 +1436,38 @@ export default function ShopsTab({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 dark:border-slate-800/80 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     <th className="pb-3 pr-4">Store Name & Location</th>
                     <th className="pb-3 pr-4">Owner & KYC Docs</th>
                     <th className="pb-3 pr-4">Status</th>
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/30 text-sm">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/30 text-sm">
                   {filteredShops.map((shop) => (
                     <tr
                       key={shop.id}
-                      className={`hover:bg-slate-800/20 transition-colors ${
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${
                         shop.status === 'pending' ? 'bg-amber-500/5' : ''
                       }`}
                     >
                       <td className="py-4 pr-4 font-semibold">
                         <p className="text-slate-900 dark:text-white font-bold text-sm">{shop.shop_name}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                          <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-medium">
-                            {shop.onboarding_source === 'app_self_registration'
-                              ? '📱 App Self-Register'
-                              : '💻 Admin Direct'}
+                          <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-700 dark:text-slate-300 font-medium inline-flex items-center gap-1">
+                            {shop.onboarding_source === 'app_self_registration' ? (
+                              <>
+                                <Smartphone className="w-3 h-3 text-indigo-500" /> App Self-Register
+                              </>
+                            ) : (
+                              <>
+                                <Laptop className="w-3 h-3 text-teal-500" /> Admin Direct
+                              </>
+                            )}
                           </span>
                           {(shop.area_name || shop.city || shop.district_name) && (
-                            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                              📍 {shop.area_name ? `${shop.area_name}, ` : ''}{shop.city || shop.district_name}
+                            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium inline-flex items-center gap-1">
+                              <MapPin className="w-3 h-3 text-emerald-500" /> {shop.area_name ? `${shop.area_name}, ` : ''}{shop.city || shop.district_name}
                             </span>
                           )}
                         </div>
@@ -1493,10 +1525,10 @@ export default function ShopsTab({
                       <td className="py-4 text-right space-x-2 whitespace-nowrap">
                         <button
                           onClick={() => setSelectedShopForReview(shop)}
-                          className="text-xs font-bold px-3 py-1.5 bg-emerald-100 dark:bg-emerald-950/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                          className="text-xs font-bold px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                           title="Inspect KYC documents and location pin"
                         >
-                          📋 Review App
+                          <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Review App
                         </button>
 
                         {(() => {
@@ -1506,19 +1538,19 @@ export default function ShopsTab({
                           return (
                             <button
                               onClick={() => openShopZonesModal(shop)}
-                              className="text-xs font-bold px-3 py-1.5 bg-indigo-100 dark:bg-indigo-950/40 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                              className="text-xs font-bold px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                               title="Manage Delivery Coverage Zones"
                             >
-                              🗺️ Zones ({shopZones.length})
+                              <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Zones ({shopZones.length})
                             </button>
                           );
                         })()}
 
                         <button
                           onClick={() => openShopMapModal(shop)}
-                          className="text-xs font-bold px-3 py-1.5 bg-sky-100 dark:bg-sky-950/40 hover:bg-sky-200 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800/40 rounded-lg transition-all cursor-pointer shadow-sm"
+                          className="text-xs font-bold px-3 py-1.5 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                         >
-                          📍 Map
+                          <MapPin className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" /> Map
                         </button>
 
                         {shop.status === 'approved' && (
@@ -1527,18 +1559,18 @@ export default function ShopsTab({
                               setSelectedShopForInventory(shop);
                               fetchShopInventory(shop.id);
                             }}
-                            className="text-xs font-bold px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/80 rounded-lg transition-all cursor-pointer shadow-sm"
+                            className="text-xs font-bold px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/80 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                           >
-                            Inventory
+                            <Boxes className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" /> Inventory
                           </button>
                         )}
 
                         {shop.status !== 'approved' && (
                           <button
                             onClick={() => openApproveModal(shop)}
-                            className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                            className="text-xs font-bold px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer inline-flex items-center gap-1"
                           >
-                            Approve
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Approve
                           </button>
                         )}
 
@@ -1548,15 +1580,15 @@ export default function ShopsTab({
                               setRejectModalShop(shop);
                               setRejectionReasonInput('');
                             }}
-                            className="text-xs font-bold px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 rounded-lg transition-all cursor-pointer"
+                            className="text-xs font-bold px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/15 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
                           >
-                            Reject
+                            <XCircle className="w-3.5 h-3.5" /> Reject
                           </button>
                         )}
 
                         <button
                           onClick={() => handleDeleteShop(shop.id, shop.shop_name)}
-                          className="text-xs font-bold px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 rounded-lg transition-all cursor-pointer"
+                          className="text-xs font-bold px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40 rounded-lg transition-all cursor-pointer"
                           title="Delete store"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1567,15 +1599,15 @@ export default function ShopsTab({
 
                   {filteredShops.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-slate-400">
-                        <Store className="w-10 h-10 mx-auto text-slate-600 mb-2" />
+                      <td colSpan={4} className="py-12 text-center text-slate-500 dark:text-slate-400">
+                        <Store className="w-10 h-10 mx-auto text-slate-400 dark:text-slate-600 mb-2" />
                         <p className="font-semibold text-sm">No stores found matching your filters.</p>
                         <div className="mt-3">
                           <button
                             onClick={() => setViewMode('register')}
-                            className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-emerald-400 transition-all"
+                            className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-emerald-400 transition-all inline-flex items-center gap-1.5"
                           >
-                            ➕ Onboard First Store Now
+                            <Plus className="w-3.5 h-3.5" /> Onboard First Store Now
                           </button>
                         </div>
                       </td>
@@ -1592,69 +1624,71 @@ export default function ShopsTab({
       {viewMode === 'register' && (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-200">
           {/* Top Back Header */}
-          <div className="flex items-center justify-between bg-slate-900/40 rounded-2xl p-4 sm:p-5 border border-slate-800/80 backdrop-blur-xl shadow-xl">
+          <div className="flex items-center justify-between bg-white dark:bg-slate-900/40 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-xl">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-700"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
               >
-                ← Back to Stores
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Stores
               </button>
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                  ➕ Direct Onboard Store Partner
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Store className="w-5 h-5 text-emerald-500" /> Direct Onboard Store Partner
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Register and immediately approve a merchant store with Aadhaar, FSSAI, PAN docs, and Google Maps street pinning.
                 </p>
               </div>
             </div>
 
-            <span className="text-[11px] font-bold px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full hidden sm:inline-block">
-              ⚡ Instant Approval & Zone Setup
+            <span className="text-[11px] font-bold px-3 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 rounded-full hidden sm:inline-flex items-center gap-1">
+              <Zap className="w-3 h-3 text-emerald-500" /> Instant Approval & Zone Setup
             </span>
           </div>
 
           {/* Registration Form in Premium Structured Cards */}
           <form onSubmit={handleAdminDirectRegister} className="space-y-5">
             {/* Section 1: Store & Owner Identity */}
-            <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-800/60">
-                <span className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-400 text-xs">🏬</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Store & Owner Credentials</h3>
+            <div className="bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-xl space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800/60">
+                <span className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-600 dark:text-emerald-400 text-xs">
+                  <Store className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Store & Owner Credentials</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Store / Shop Name *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Store / Shop Name *</label>
                   <input
                     type="text"
                     placeholder="e.g. Thorat Super Market"
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
                     value={regShopName}
                     onChange={(e) => setRegShopName(e.target.value)}
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Full Name *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Owner Full Name *</label>
                   <input
                     type="text"
                     placeholder="e.g. Sanjay Thorat"
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
                     value={regOwnerName}
                     onChange={(e) => setRegOwnerName(e.target.value)}
                     required
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Owner Mobile (+91) *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Owner Mobile (+91) *</label>
                   <input
                     type="tel"
                     placeholder="9876543210"
                     maxLength={10}
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
                     value={regOwnerMobile}
                     onChange={(e) => setRegOwnerMobile(e.target.value.replace(/[^\d]/g, ''))}
                     required
@@ -1664,11 +1698,13 @@ export default function ShopsTab({
             </div>
 
             {/* Section 2: GPS Location & Google Maps Street Address (Locked) */}
-            <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+            <div className="bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-xl space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800/60">
                 <div className="flex items-center gap-2">
-                  <span className="p-1.5 bg-teal-500/10 rounded-lg text-teal-400 text-xs">📍</span>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  <span className="p-1.5 bg-teal-500/10 rounded-lg text-teal-600 dark:text-teal-400 text-xs">
+                    <MapPin className="w-4 h-4" />
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                     Google Maps GPS & Street Address
                   </h3>
                 </div>
@@ -1676,16 +1712,17 @@ export default function ShopsTab({
                   type="button"
                   onClick={handleDetectAdminGps}
                   disabled={detectingAdminGps}
-                  className="text-xs font-bold px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                  className="text-xs font-bold px-3 py-1.5 bg-emerald-50 dark:bg-emerald-500/15 hover:bg-emerald-100 dark:hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
                 >
-                  {detectingAdminGps ? 'Detecting GPS...' : '📍 Auto-Detect Live GPS & Street'}
+                  <Navigation className="w-3.5 h-3.5" />
+                  {detectingAdminGps ? 'Detecting GPS...' : 'Auto-Detect Live GPS & Street'}
                 </button>
               </div>
 
               {/* Locked Google Maps Street Address Field */}
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
-                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>Google Maps Street Address (Locked / Read-Only)</span>
                 </label>
                 <div className="relative mt-1.5">
@@ -1693,11 +1730,11 @@ export default function ShopsTab({
                     type="text"
                     readOnly
                     placeholder="Click 'Auto-Detect Live GPS & Street' or select location to resolve street"
-                    className="w-full h-10 px-3.5 bg-slate-950/80 border border-emerald-500/40 text-emerald-300 font-medium rounded-xl text-xs outline-none cursor-not-allowed"
+                    className="w-full h-10 px-3.5 bg-emerald-50/50 dark:bg-slate-950/80 border border-emerald-400/50 text-emerald-900 dark:text-emerald-300 font-medium rounded-xl text-xs outline-none cursor-not-allowed"
                     value={regStreetAddress}
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
                       GPS Locked
                     </span>
                   </div>
@@ -1709,13 +1746,13 @@ export default function ShopsTab({
 
               {/* Deep / Detailed Address */}
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">
                   Detailed Store Address (Shop No, Floor, Building, Landmark)
                 </label>
                 <textarea
                   rows={2}
                   placeholder="e.g. Shop No 4, Ground Floor, Sai Plaza, Opp. Ravet Bus Stop"
-                  className="w-full mt-1.5 p-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none resize-none"
+                  className="w-full mt-1.5 p-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none resize-none"
                   value={regDetailedAddress}
                   onChange={(e) => setRegDetailedAddress(e.target.value)}
                 />
@@ -1724,29 +1761,29 @@ export default function ShopsTab({
               {/* Coordinates & Delivery Radius */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Latitude</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Latitude</label>
                   <input
                     type="text"
                     placeholder="e.g. 18.6432"
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
                     value={regLat}
                     onChange={(e) => setRegLat && setRegLat(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Longitude</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Longitude</label>
                   <input
                     type="text"
                     placeholder="e.g. 73.7450"
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
+                    className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono"
                     value={regLng}
                     onChange={(e) => setRegLng && setRegLng(e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Delivery Radius (KM)</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Delivery Radius (KM)</label>
                   <select
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
+                    className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
                     value={regRadius}
                     onChange={(e) => setRegRadius && setRegRadius(e.target.value)}
                   >
@@ -1761,18 +1798,20 @@ export default function ShopsTab({
             </div>
 
             {/* Section 3: Territory & Cascading Pincode Selection */}
-            <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-800/60">
-                <span className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-400 text-xs">🗺️</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Territory & Pincode Routing</h3>
+            <div className="bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-xl space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800/60">
+                <span className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400 text-xs">
+                  <Layers className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Territory & Pincode Routing</h3>
               </div>
 
               {/* State & District */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">State *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">State *</label>
                   <select
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
+                    className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
                     value={regStateId}
                     onChange={(e) => setRegStateId(e.target.value)}
                     required
@@ -1786,9 +1825,9 @@ export default function ShopsTab({
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">District *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">District *</label>
                   <select
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
+                    className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
                     value={regDistrictId}
                     onChange={(e) => setRegDistrictId(e.target.value)}
                     required
@@ -1807,7 +1846,7 @@ export default function ShopsTab({
               {/* City Selection */}
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">City / Town *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">City / Town *</label>
                   {(cities || []).length > 0 && (
                     <button
                       type="button"
@@ -1817,16 +1856,24 @@ export default function ShopsTab({
                         if (setRegPincode) setRegPincode('');
                         if (setRegArea) setRegArea('');
                       }}
-                      className="text-[10px] text-slate-400 hover:text-emerald-400 underline transition-colors cursor-pointer"
+                      className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline transition-colors cursor-pointer inline-flex items-center gap-1 font-semibold"
                     >
-                      {manualCityMode ? '← Pick City from list' : '✏️ Custom City'}
+                      {manualCityMode ? (
+                        <>
+                          <ArrowLeft className="w-3 h-3" /> Pick City from list
+                        </>
+                      ) : (
+                        <>
+                          <Edit2 className="w-3 h-3" /> Custom City
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
 
                 {(cities || []).length > 0 && !manualCityMode ? (
                   <select
-                    className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
+                    className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer"
                     value={regCity}
                     onChange={(e) => {
                       const newCity = e.target.value;
@@ -1840,7 +1887,7 @@ export default function ShopsTab({
                     <option value="">-- Select Registered City --</option>
                     {(cities || []).map((c) => (
                       <option key={c.id} value={c.name}>
-                        🏙️ {c.name.charAt(0).toUpperCase() + c.name.slice(1)}
+                        {c.name.charAt(0).toUpperCase() + c.name.slice(1)}
                       </option>
                     ))}
                   </select>
@@ -1848,7 +1895,7 @@ export default function ShopsTab({
                   <input
                     type="text"
                     placeholder="e.g. Pune"
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
                     value={regCity}
                     onChange={(e) => setRegCity(e.target.value)}
                     required
@@ -1860,23 +1907,31 @@ export default function ShopsTab({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+                    <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">
                       Base Locality / Area *
                     </label>
                     {regAvailableAreas.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setManualAreaMode(!manualAreaMode)}
-                        className="text-[10px] text-slate-400 hover:text-emerald-400 underline transition-colors cursor-pointer"
+                        className="text-[10px] text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline transition-colors cursor-pointer inline-flex items-center gap-1 font-semibold"
                       >
-                        {manualAreaMode ? '← Pick Registered Area' : '✏️ Custom Area'}
+                        {manualAreaMode ? (
+                          <>
+                            <ArrowLeft className="w-3 h-3" /> Pick Registered Area
+                          </>
+                        ) : (
+                          <>
+                            <Edit2 className="w-3 h-3" /> Custom Area
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
 
                   {regAvailableAreas.length > 0 && !manualAreaMode ? (
                     <select
-                      className="w-full mt-1.5 h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer font-medium"
+                      className="w-full mt-1.5 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none cursor-pointer font-medium"
                       value={regArea}
                       onChange={(e) => {
                         const chosenAreaName = e.target.value;
@@ -1893,7 +1948,7 @@ export default function ShopsTab({
                       <option value="">-- Choose Registered Locality ({regAvailableAreas.length} in {regCity || 'City'}) --</option>
                       {regAvailableAreas.map((a) => (
                         <option key={a.id} value={a.name}>
-                          📍 {a.name} {a.pincode ? `(PIN: ${a.pincode})` : ''}
+                          {a.name} {a.pincode ? `(PIN: ${a.pincode})` : ''}
                         </option>
                       ))}
                     </select>
@@ -1901,7 +1956,7 @@ export default function ShopsTab({
                     <input
                       type="text"
                       placeholder="e.g. Ravet, Kothrud"
-                      className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
+                      className="w-full mt-1.5 h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-emerald-500 rounded-xl text-xs outline-none"
                       value={regArea}
                       onChange={(e) => setRegArea && setRegArea(e.target.value)}
                       required
@@ -1910,12 +1965,12 @@ export default function ShopsTab({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Pincode *</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Pincode *</label>
                   <input
                     type="text"
                     maxLength={6}
                     placeholder="e.g. 412101"
-                    className="w-full mt-1.5 h-10 px-3.5 bg-slate-950 border border-slate-800 text-emerald-400 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono font-bold"
+                    className="w-full mt-1.5 h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 focus:border-emerald-500 rounded-xl text-xs outline-none font-mono font-bold"
                     value={regPincode}
                     onChange={(e) => setRegPincode && setRegPincode(e.target.value.replace(/[^\d]/g, ''))}
                     required
@@ -1925,23 +1980,25 @@ export default function ShopsTab({
             </div>
 
             {/* Section 4: Legal & Compliance Documents Uploads */}
-            <div className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-800/60">
-                <span className="p-1.5 bg-amber-500/10 rounded-lg text-amber-400 text-xs">📄</span>
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+            <div className="bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-xl space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800/60">
+                <span className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600 dark:text-amber-400 text-xs">
+                  <FileText className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                   Legal Documents & KYC (Direct S3 Upload)
                 </h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* 1. Aadhaar Card */}
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" /> Aadhaar Card
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Aadhaar Card
                     </label>
                     {regAadhaarDocUrl && (
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
                         Uploaded ✓
                       </span>
                     )}
@@ -1951,15 +2008,15 @@ export default function ShopsTab({
                     type="text"
                     placeholder="12-digit Aadhaar Number (Optional)"
                     maxLength={12}
-                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono"
+                    className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none font-mono"
                     value={regAadhaarNumber}
                     onChange={(e) => setRegAadhaarNumber(e.target.value.replace(/[^\d]/g, ''))}
                   />
 
                   <div className="flex items-center gap-2">
                     <label className="flex-1 cursor-pointer">
-                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
-                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="h-9 px-3 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
                         <span>{regAadhaarUploading ? 'Uploading to S3...' : 'Upload Aadhaar Photo / PDF'}</span>
                       </div>
                       <input
@@ -1980,7 +2037,7 @@ export default function ShopsTab({
                           setPreviewDocUrl(regAadhaarDocUrl);
                           setPreviewDocTitle('Aadhaar Document Preview');
                         }}
-                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -1989,13 +2046,13 @@ export default function ShopsTab({
                 </div>
 
                 {/* 2. FSSAI License */}
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                      <FileCheck className="w-4 h-4 text-amber-400" /> FSSAI Food License
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" /> FSSAI Food License
                     </label>
                     {regFssaiDocUrl && (
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
                         Uploaded ✓
                       </span>
                     )}
@@ -2005,15 +2062,15 @@ export default function ShopsTab({
                     type="text"
                     placeholder="14-digit FSSAI License Number (Optional)"
                     maxLength={14}
-                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono"
+                    className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none font-mono"
                     value={regFssaiNumber}
                     onChange={(e) => setRegFssaiNumber(e.target.value.replace(/[^\d]/g, ''))}
                   />
 
                   <div className="flex items-center gap-2">
                     <label className="flex-1 cursor-pointer">
-                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
-                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="h-9 px-3 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
                         <span>{regFssaiUploading ? 'Uploading to S3...' : 'Upload FSSAI Certificate'}</span>
                       </div>
                       <input
@@ -2034,7 +2091,7 @@ export default function ShopsTab({
                           setPreviewDocUrl(regFssaiDocUrl);
                           setPreviewDocTitle('FSSAI Certificate Preview');
                         }}
-                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -2043,13 +2100,13 @@ export default function ShopsTab({
                 </div>
 
                 {/* 3. PAN Card */}
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-sky-400" /> PAN Card
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-sky-600 dark:text-sky-400" /> PAN Card
                     </label>
                     {regPanDocUrl && (
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
                         Uploaded ✓
                       </span>
                     )}
@@ -2059,15 +2116,15 @@ export default function ShopsTab({
                     type="text"
                     placeholder="10-character PAN Number (Optional)"
                     maxLength={10}
-                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono uppercase"
+                    className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none font-mono uppercase"
                     value={regPanNumber}
                     onChange={(e) => setRegPanNumber(e.target.value.toUpperCase())}
                   />
 
                   <div className="flex items-center gap-2">
                     <label className="flex-1 cursor-pointer">
-                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
-                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="h-9 px-3 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
                         <span>{regPanUploading ? 'Uploading to S3...' : 'Upload PAN Card Photo'}</span>
                       </div>
                       <input
@@ -2088,7 +2145,7 @@ export default function ShopsTab({
                           setPreviewDocUrl(regPanDocUrl);
                           setPreviewDocTitle('PAN Card Preview');
                         }}
-                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -2097,13 +2154,13 @@ export default function ShopsTab({
                 </div>
 
                 {/* 4. Storefront Photo & GSTIN */}
-                <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                      <Camera className="w-4 h-4 text-purple-400" /> Storefront Photo & GSTIN
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Storefront Photo & GSTIN
                     </label>
                     {regShopPhotoUrl && (
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">
                         Uploaded ✓
                       </span>
                     )}
@@ -2113,15 +2170,15 @@ export default function ShopsTab({
                     type="text"
                     placeholder="GSTIN (15 chars, Optional)"
                     maxLength={15}
-                    className="w-full h-9 px-3 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none font-mono uppercase"
+                    className="w-full h-9 px-3 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none font-mono uppercase"
                     value={regGstin}
                     onChange={(e) => setRegGstin(e.target.value.toUpperCase())}
                   />
 
                   <div className="flex items-center gap-2">
                     <label className="flex-1 cursor-pointer">
-                      <div className="h-9 px-3 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 flex items-center justify-center gap-1.5 transition-all">
-                        <Upload className="w-3.5 h-3.5 text-slate-400" />
+                      <div className="h-9 px-3 bg-white hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-all shadow-sm">
+                        <Upload className="w-3.5 h-3.5 text-slate-500" />
                         <span>{regShopPhotoUploading ? 'Uploading to S3...' : 'Upload Shop Board Photo'}</span>
                       </div>
                       <input
@@ -2142,7 +2199,7 @@ export default function ShopsTab({
                           setPreviewDocUrl(regShopPhotoUrl);
                           setPreviewDocTitle('Storefront Photo Preview');
                         }}
-                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
+                        className="px-2.5 h-9 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold"
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
@@ -2157,7 +2214,7 @@ export default function ShopsTab({
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
-                className="w-1/3 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl font-bold text-sm transition-all cursor-pointer"
+                className="w-1/3 h-12 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -2177,18 +2234,18 @@ export default function ShopsTab({
       {/* VIEW MODE 3: UNIFIED DELIVERY ZONES & ROUTING MATRIX */}
       {viewMode === 'coverage' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-indigo-950/30 rounded-2xl p-4 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-white dark:bg-gradient-to-r dark:from-slate-900/80 dark:via-slate-900/50 dark:to-indigo-950/30 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-md dark:shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                <Layers className="w-5 h-5 text-indigo-400" /> Delivery Coverage & Order Routing Matrix
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Layers className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Delivery Coverage & Order Routing Matrix
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Every store is automatically active for its base area. Assign additional neighboring localities or whole PIN codes to any merchant in 1 click.
               </p>
             </div>
 
             <div className="flex items-center gap-2.5">
-              <span className="px-3 py-1.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 rounded-xl text-xs font-bold">
+              <span className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold">
                 {locations.length} Total Localities Mapped
               </span>
             </div>
@@ -2196,20 +2253,28 @@ export default function ShopsTab({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Bulk Assign by Pincode Card */}
-            <section className="lg:col-span-6 bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-indigo-500/30 backdrop-blur-xl shadow-xl space-y-4">
+            <section className="lg:col-span-6 bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-indigo-200 dark:border-indigo-500/30 shadow-md dark:shadow-xl space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-indigo-400" /> Bulk Assign Entire PIN Code Hub
+                <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Bulk Assign Entire PIN Code Hub
                 </h4>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setCustomBulkPinMode(!customBulkPinMode)}
-                    className="text-[10px] text-slate-400 hover:text-indigo-300 underline cursor-pointer"
+                    className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 underline cursor-pointer inline-flex items-center gap-1 font-semibold"
                   >
-                    {customBulkPinMode ? '← Pick Registered PIN' : '✏️ Custom PIN'}
+                    {customBulkPinMode ? (
+                      <>
+                        <ArrowLeft className="w-3 h-3" /> Pick Registered PIN
+                      </>
+                    ) : (
+                      <>
+                        <Edit2 className="w-3 h-3" /> Custom PIN
+                      </>
+                    )}
                   </button>
-                  <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-500/20 px-2 py-0.5 rounded-full">
                     1-Click Hub
                   </span>
                 </div>
@@ -2241,12 +2306,12 @@ export default function ShopsTab({
               >
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">
                       Select PIN Code Hub *
                     </label>
                     {!customBulkPinMode && matrixUniquePincodes.length > 0 ? (
                       <select
-                        className="w-full mt-1 h-10 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-500 cursor-pointer"
+                        className="w-full mt-1 h-10 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-500 cursor-pointer"
                         value={bulkPin}
                         onChange={(e) => setBulkPin(e.target.value)}
                         required
@@ -2266,13 +2331,13 @@ export default function ShopsTab({
                         type="text"
                         maxLength={6}
                         placeholder="e.g. 412101"
-                        className={`w-full mt-1 h-10 px-3 bg-slate-950 border ${
+                        className={`w-full mt-1 h-10 px-3 bg-slate-50 dark:bg-slate-950 border ${
                           bulkPinValidation && !bulkPinValidation.isValid && bulkPin.length === 6
                             ? 'border-rose-500 focus:border-rose-400'
                             : bulkPinValidation?.isValid
                             ? 'border-indigo-500 focus:border-indigo-400'
-                            : 'border-slate-800 focus:border-indigo-500'
-                        } text-white rounded-xl text-xs font-mono font-bold outline-none`}
+                            : 'border-slate-300 dark:border-slate-800 focus:border-indigo-500'
+                        } text-slate-900 dark:text-white rounded-xl text-xs font-mono font-bold outline-none`}
                         value={bulkPin}
                         onChange={(e) => setBulkPin(e.target.value.replace(/[^\d]/g, ''))}
                         required
@@ -2280,9 +2345,9 @@ export default function ShopsTab({
                     )}
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Assign To Store *</label>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">Assign To Store *</label>
                     <select
-                      className="w-full mt-1 h-10 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 cursor-pointer"
+                      className="w-full mt-1 h-10 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none focus:border-indigo-500 cursor-pointer font-medium"
                       value={bulkShop}
                       onChange={(e) => setBulkShop(e.target.value)}
                       required
@@ -2307,13 +2372,13 @@ export default function ShopsTab({
                         key={pin}
                         type="button"
                         onClick={() => setBulkPin(pin)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           bulkPin === pin
                             ? 'bg-indigo-600 text-white border border-indigo-400 shadow-sm'
-                            : 'bg-slate-950/80 hover:bg-slate-800 text-indigo-300 border border-slate-800'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-950/80 dark:hover:bg-slate-800 text-indigo-700 dark:text-indigo-300 border border-slate-200 dark:border-slate-800'
                         }`}
                       >
-                        ⚡ {pin}
+                        <Zap className="w-3 h-3" /> {pin}
                       </button>
                     ))}
                   </div>
@@ -2322,29 +2387,38 @@ export default function ShopsTab({
                 <button
                   type="submit"
                   disabled={bulkSubmitting || !bulkPin || !bulkShop}
-                  className="w-full h-10 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full h-10 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
-                  {bulkSubmitting ? 'Assigning...' : `⚡ Bulk Assign All Areas in PIN ${bulkPin || '...'}`}
+                  <Zap className="w-3.5 h-3.5" />
+                  {bulkSubmitting ? 'Assigning...' : `Bulk Assign All Areas in PIN ${bulkPin || '...'}`}
                 </button>
               </form>
             </section>
 
             {/* Quick Add Single Locality Zone */}
             {handleAddLocation && (
-              <section className="lg:col-span-6 bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+              <section className="lg:col-span-6 bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-md dark:shadow-xl space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-emerald-400" /> Assign Registered Locality Zone
+                  <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Assign Registered Locality Zone
                   </h4>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setCustomLocalityMode(!customLocalityMode)}
-                      className="text-[10px] text-slate-400 hover:text-emerald-400 underline cursor-pointer"
+                      className="text-[10px] text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline cursor-pointer inline-flex items-center gap-1 font-semibold"
                     >
-                      {customLocalityMode ? '← Pick Registered Locality' : '✏️ Custom Area'}
+                      {customLocalityMode ? (
+                        <>
+                          <ArrowLeft className="w-3 h-3" /> Pick Registered Locality
+                        </>
+                      ) : (
+                        <>
+                          <Edit2 className="w-3 h-3" /> Custom Area
+                        </>
+                      )}
                     </button>
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
                       1-Click
                     </span>
                   </div>
@@ -2353,7 +2427,7 @@ export default function ShopsTab({
                 <form onSubmit={handleAddLocation} className="space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">City *</label>
+                      <label className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase">City *</label>
                       <select
                         value={locCity}
                         onChange={(e) => {
@@ -2362,20 +2436,20 @@ export default function ShopsTab({
                           if (setLocArea) setLocArea('');
                           if (setLocPin) setLocPin('');
                         }}
-                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-semibold"
+                        className="w-full mt-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-semibold"
                         required
                       >
                         <option value="">Select City...</option>
                         {(cities || []).map((c) => (
                           <option key={c.id} value={c.name}>
-                            🏙️ {c.name}
+                            {c.name}
                           </option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Locality / Area *</label>
+                      <label className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase">Locality / Area *</label>
                       {!customLocalityMode ? (
                         <select
                           value={locArea}
@@ -2390,7 +2464,7 @@ export default function ShopsTab({
                             }
                           }}
                           disabled={!locCity && (cities || []).length > 0}
-                          className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50 font-medium"
+                          className="w-full mt-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-50 font-medium"
                           required
                         >
                           <option value="">
@@ -2398,7 +2472,7 @@ export default function ShopsTab({
                           </option>
                           {matrixAvailableAreas.map((a) => (
                             <option key={a.id} value={a.name}>
-                              📍 {a.name} {a.pincode ? `(${a.pincode})` : ''}
+                              {a.name} {a.pincode ? `(${a.pincode})` : ''}
                             </option>
                           ))}
                         </select>
@@ -2406,7 +2480,7 @@ export default function ShopsTab({
                         <input
                           type="text"
                           placeholder="e.g. Ravet"
-                          className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500"
+                          className="w-full mt-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 font-medium"
                           value={locArea}
                           onChange={(e) => setLocArea && setLocArea(e.target.value)}
                           required
@@ -2415,12 +2489,12 @@ export default function ShopsTab({
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">PIN Code *</label>
+                      <label className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase">PIN Code *</label>
                       <input
                         type="text"
                         maxLength={6}
                         placeholder="412101"
-                        className="w-full mt-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold rounded-xl text-xs outline-none focus:border-emerald-500"
+                        className="w-full mt-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-emerald-600 dark:text-emerald-400 font-mono font-bold rounded-xl text-xs outline-none focus:border-emerald-500"
                         value={locPin}
                         onChange={(e) => setLocPin && setLocPin(e.target.value.replace(/[^\d]/g, ''))}
                         required
@@ -2430,7 +2504,7 @@ export default function ShopsTab({
 
                   <div className="flex gap-2">
                     <select
-                      className="flex-1 h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer"
+                      className="flex-1 h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-medium"
                       value={locShop}
                       onChange={(e) => setLocShop && setLocShop(e.target.value)}
                       required
@@ -2448,9 +2522,9 @@ export default function ShopsTab({
                     <button
                       type="submit"
                       disabled={!locCity || !locArea || !locPin || !locShop}
-                      className="px-4 h-9 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                      className="px-4 h-9 bg-emerald-500 hover:bg-emerald-400 text-white font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      Save Zone
+                      <Plus className="w-3.5 h-3.5" /> Save Zone
                     </button>
                   </div>
                 </form>
@@ -2459,16 +2533,16 @@ export default function ShopsTab({
           </div>
 
           {/* Filterable Localities Table */}
-          <section className="bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-800/80 backdrop-blur-xl shadow-xl space-y-4">
+          <section className="bg-white dark:bg-slate-900/40 rounded-3xl p-5 sm:p-6 border border-slate-200 dark:border-slate-800/80 shadow-md dark:shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-slate-500" />
+                <Search className="w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Filter by locality, city, PIN, or store name..."
                   value={coverageSearchQuery}
                   onChange={(e) => setCoverageSearchQuery(e.target.value)}
-                  className="w-72 h-9 px-3 bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-500 rounded-xl text-xs outline-none"
+                  className="w-72 h-9 px-3 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 placeholder:text-slate-400 rounded-xl text-xs outline-none"
                 />
               </div>
 
@@ -2476,7 +2550,7 @@ export default function ShopsTab({
                 <select
                   value={coverageShopFilter}
                   onChange={(e) => setCoverageShopFilter(e.target.value)}
-                  className="h-9 px-2.5 bg-slate-950 border border-slate-800 text-slate-300 rounded-xl text-xs outline-none cursor-pointer"
+                  className="h-9 px-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-300 rounded-xl text-xs outline-none cursor-pointer font-medium"
                 >
                   <option value="">All Stores ({shops.length})</option>
                   {shops.map((s) => (
@@ -2491,7 +2565,7 @@ export default function ShopsTab({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                     <th className="pb-3">Locality / Area</th>
                     <th className="pb-3">City</th>
                     <th className="pb-3">PIN Code</th>
@@ -2499,7 +2573,7 @@ export default function ShopsTab({
                     <th className="pb-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/40 text-xs">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-xs">
                   {locations
                     .filter((loc) => {
                       if (coverageShopFilter && loc.shop_id !== coverageShopFilter) return false;
@@ -2517,17 +2591,20 @@ export default function ShopsTab({
                     })
                     .map((loc) => {
                       return (
-                        <tr key={loc.id} className="hover:bg-slate-800/20 transition-colors">
-                          <td className="py-3 font-semibold text-white">📍 {loc.area_name}</td>
-                          <td className="py-3 text-slate-300">{loc.city}</td>
-                          <td className="py-3 font-mono text-emerald-400 font-bold">{loc.pincode}</td>
+                        <tr key={loc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                          <td className="py-3 font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            {loc.area_name}
+                          </td>
+                          <td className="py-3 text-slate-600 dark:text-slate-300">{loc.city}</td>
+                          <td className="py-3 font-mono text-emerald-600 dark:text-emerald-400 font-bold">{loc.pincode}</td>
                           <td className="py-3">
                             <select
                               value={loc.shop_id || ''}
                               onChange={(e) =>
                                 handleUpdateLocationShop && handleUpdateLocationShop(loc.id, e.target.value)
                               }
-                              className="h-8 px-2 bg-slate-950 border border-slate-800 text-slate-200 rounded-lg text-xs outline-none cursor-pointer"
+                              className="h-8 px-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-lg text-xs outline-none cursor-pointer font-medium"
                             >
                               <option value="">-- Unassigned --</option>
                               {shops.map((s) => (
@@ -2541,7 +2618,7 @@ export default function ShopsTab({
                             {handleDeleteLocation && (
                               <button
                                 onClick={() => handleDeleteLocation(loc.id)}
-                                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
+                                className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
                                 title="Remove locality zone"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -2553,7 +2630,7 @@ export default function ShopsTab({
                     })}
                   {locations.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500 italic">
+                      <td colSpan={5} className="py-8 text-center text-slate-400 italic">
                         No delivery zones mapped yet. Use Store Registration to auto-create zones or Bulk Assign by PIN above.
                       </td>
                     </tr>
@@ -2568,35 +2645,41 @@ export default function ShopsTab({
       {/* COMPREHENSIVE ONBOARDING APPLICATION REVIEW MODAL */}
       {selectedShopForReview && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[94vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[94vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 border-b border-slate-800/80 bg-slate-900/50 flex items-center justify-between">
+            <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-400">
+                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-600 dark:text-emerald-400">
                   <Store className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <h3 className="text-lg font-bold text-white">{selectedShopForReview.shop_name}</h3>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">{selectedShopForReview.shop_name}</h3>
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                         selectedShopForReview.status === 'approved'
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
                           : selectedShopForReview.status === 'rejected'
-                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse'
+                          ? 'bg-red-500/20 text-red-700 dark:text-red-400 border border-red-500/30'
+                          : 'bg-amber-500/20 text-amber-800 dark:text-amber-400 border border-amber-500/30 animate-pulse'
                       }`}
                     >
                       {selectedShopForReview.status.toUpperCase()}
                     </span>
-                    <span className="px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700 rounded text-[11px]">
-                      {['app_self_registration', 'merchant_app'].includes(selectedShopForReview.onboarding_source || '')
-                        ? '📱 App Self-Registration'
-                        : '💻 Admin Direct Onboard'}
+                    <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded text-[11px] inline-flex items-center gap-1">
+                      {['app_self_registration', 'merchant_app'].includes(selectedShopForReview.onboarding_source || '') ? (
+                        <>
+                          <Smartphone className="w-3 h-3 text-indigo-500" /> App Self-Registration
+                        </>
+                      ) : (
+                        <>
+                          <Laptop className="w-3 h-3 text-teal-500" /> Admin Direct Onboard
+                        </>
+                      )}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Store ID: <span className="font-mono text-slate-300">{selectedShopForReview.id}</span> · Created:{' '}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Store ID: <span className="font-mono text-slate-700 dark:text-slate-300">{selectedShopForReview.id}</span> · Created:{' '}
                     {new Date(selectedShopForReview.created_at).toLocaleDateString('en-IN', {
                       day: 'numeric',
                       month: 'short',
@@ -2608,7 +2691,7 @@ export default function ShopsTab({
 
               <button
                 onClick={() => setSelectedShopForReview(null)}
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2618,11 +2701,11 @@ export default function ShopsTab({
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
               {/* Previous Rejection Reason Callout (if any) */}
               {selectedShopForReview.status === 'rejected' && selectedShopForReview.rejection_reason && (
-                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-2xl flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-xs font-bold text-red-400 uppercase tracking-wide">Previous Rejection Reason</h4>
-                    <p className="text-xs text-slate-200 mt-1">&quot;{selectedShopForReview.rejection_reason}&quot;</p>
+                    <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wide">Previous Rejection Reason</h4>
+                    <p className="text-xs text-slate-800 dark:text-slate-200 mt-1">&quot;{selectedShopForReview.rejection_reason}&quot;</p>
                   </div>
                 </div>
               )}
@@ -2649,24 +2732,24 @@ export default function ShopsTab({
                     {/* Left Column: GPS & Street Address Verification (6 cols) */}
                     <div className="lg:col-span-6 space-y-4">
                       {/* Google Maps Pin & Coordinates */}
-                      <div className="bg-slate-900/40 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
+                      <div className="bg-slate-50 dark:bg-slate-900/40 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                            <Map className="w-4 h-4 text-emerald-400" /> GPS Store Pin & Radius
+                          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <Map className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> GPS Store Pin & Radius
                           </h4>
                           {revLat != null && revLng != null && (
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${revLat},${revLng}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-emerald-400 hover:underline font-bold flex items-center gap-1"
+                              className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1"
                             >
-                              Google Maps Full View ↗
+                              <ExternalLink className="w-3 h-3" /> Google Maps Full View
                             </a>
                           )}
                         </div>
 
-                        <div className="w-full h-44 rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
+                        <div className="w-full h-44 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-950">
                           {revLat != null && revLng != null ? (
                             <iframe
                               title="Shop Location Preview"
@@ -2687,58 +2770,58 @@ export default function ShopsTab({
                             />
                           ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-1.5 text-xs">
-                              <MapPin className="w-6 h-6 text-slate-600" />
+                              <MapPin className="w-6 h-6 text-slate-400 dark:text-slate-600" />
                               <span>No GPS coordinates pinned</span>
                             </div>
                           )}
                         </div>
 
                         <div className="flex items-center justify-between text-xs pt-1">
-                          <span className="font-mono text-emerald-400 font-bold">
-                            📍 Lat: {revLat != null ? revLat.toFixed(5) : '—'} · Lng:{' '}
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold inline-flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> Lat: {revLat != null ? revLat.toFixed(5) : '—'} · Lng:{' '}
                             {revLng != null ? revLng.toFixed(5) : '—'}
                           </span>
-                          <span className="text-slate-400">
-                            🛵 {selectedShopForReview.delivery_radius_km || 5.0} KM Radius
+                          <span className="text-slate-600 dark:text-slate-400 inline-flex items-center gap-1">
+                            <Truck className="w-3.5 h-3.5 text-slate-500" /> {selectedShopForReview.delivery_radius_km || 5.0} KM Radius
                           </span>
                         </div>
                       </div>
 
                   {/* Google Maps Street Address (LOCKED) */}
-                  <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/30 space-y-2">
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-500/30 space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5 text-emerald-400" /> Google Maps Street Address (Locked)
+                      <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Google Maps Street Address (Locked)
                       </h4>
-                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded">
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold rounded">
                         GPS Verified
                       </span>
                     </div>
-                    <p className="text-xs text-white font-medium">
+                    <p className="text-xs text-slate-900 dark:text-white font-medium">
                       {selectedShopForReview.street_address || 'No street address captured during GPS sync'}
                     </p>
                   </div>
 
                   {/* Deep / Detailed Address */}
-                  <div className="bg-slate-900/40 p-4 rounded-2xl border border-slate-800 space-y-2">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider">
                       Detailed / Deep Address (Manual Input)
                     </h4>
-                    <p className="text-xs text-slate-200">
+                    <p className="text-xs text-slate-800 dark:text-slate-200">
                       {selectedShopForReview.detailed_address || 'Not specified'}
                     </p>
-                    <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 grid grid-cols-2 gap-2">
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800/80 text-[11px] text-slate-600 dark:text-slate-400 grid grid-cols-2 gap-2">
                       <div>
-                        Base Locality: <strong className="text-white">{selectedShopForReview.area_name || '—'}</strong>
+                        Base Locality: <strong className="text-slate-900 dark:text-white">{selectedShopForReview.area_name || '—'}</strong>
                       </div>
                       <div>
-                        City: <strong className="text-white">{selectedShopForReview.city || '—'}</strong>
+                        City: <strong className="text-slate-900 dark:text-white">{selectedShopForReview.city || '—'}</strong>
                       </div>
                       <div>
-                        Pincode: <strong className="text-white">{selectedShopForReview.pincode || '—'}</strong>
+                        Pincode: <strong className="text-slate-900 dark:text-white">{selectedShopForReview.pincode || '—'}</strong>
                       </div>
                       <div>
-                        District: <strong className="text-white">{selectedShopForReview.district_name || '—'}</strong>
+                        District: <strong className="text-slate-900 dark:text-white">{selectedShopForReview.district_name || '—'}</strong>
                       </div>
                     </div>
                   </div>
@@ -2747,21 +2830,21 @@ export default function ShopsTab({
                 {/* Right Column: Owner Profile & Legal Documents (6 cols) */}
                 <div className="lg:col-span-6 space-y-4">
                   {/* Owner Credentials */}
-                  <div className="bg-slate-900/40 p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <User className="w-4 h-4 text-emerald-400" /> Owner Information
+                  <div className="bg-slate-50 dark:bg-slate-900/40 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Owner Information
                     </h4>
 
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Owner Full Name</span>
-                        <p className="text-sm font-bold text-white">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Owner Full Name</span>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
                           {selectedShopForReview.owner_name || selectedShopForReview.profiles?.name || 'Owner'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 uppercase font-bold block">Contact Mobile</span>
-                        <p className="text-sm font-bold text-emerald-400 font-mono">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold block">Contact Mobile</span>
+                        <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                           +{selectedShopForReview.phone || selectedShopForReview.profiles?.phone || 'No phone'}
                         </p>
                       </div>
@@ -2770,19 +2853,19 @@ export default function ShopsTab({
 
                   {/* Legal Documents Cards */}
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <FileCheck className="w-4 h-4 text-amber-400" /> Legal Compliance & KYC Documents
+                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Legal Compliance & KYC Documents
                     </h4>
 
                     {/* Aadhaar Card Card */}
-                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div className="bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                        <div className="p-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
                           <ShieldCheck className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">Aadhaar Card</p>
-                          <p className="text-[11px] font-mono text-slate-400">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">Aadhaar Card</p>
+                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
                             {selectedShopForReview.aadhaar_number
                               ? `UID: ${selectedShopForReview.aadhaar_number.replace(/(\d{4})/g, '$1 ').trim()}`
                               : 'Number not entered'}
@@ -2796,7 +2879,7 @@ export default function ShopsTab({
                             setPreviewDocUrl(selectedShopForReview.aadhaar_doc_url!);
                             setPreviewDocTitle(`${selectedShopForReview.shop_name} — Aadhaar Card`);
                           }}
-                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
                         >
                           <Eye className="w-3.5 h-3.5" /> View Doc
                         </button>
@@ -2806,14 +2889,14 @@ export default function ShopsTab({
                     </div>
 
                     {/* FSSAI Certificate Card */}
-                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div className="bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-500/10 text-amber-400 rounded-xl">
+                        <div className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
                           <FileText className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">FSSAI License Certificate</p>
-                          <p className="text-[11px] font-mono text-slate-400">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">FSSAI License Certificate</p>
+                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
                             {selectedShopForReview.fssai_number
                               ? `Lic: ${selectedShopForReview.fssai_number}`
                               : 'Number not entered'}
@@ -2827,7 +2910,7 @@ export default function ShopsTab({
                             setPreviewDocUrl(selectedShopForReview.fssai_doc_url!);
                             setPreviewDocTitle(`${selectedShopForReview.shop_name} — FSSAI Certificate`);
                           }}
-                          className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
                         >
                           <Eye className="w-3.5 h-3.5" /> View Doc
                         </button>
@@ -2837,14 +2920,14 @@ export default function ShopsTab({
                     </div>
 
                     {/* PAN Card Card */}
-                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div className="bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-sky-500/10 text-sky-400 rounded-xl">
+                        <div className="p-2 bg-sky-500/10 text-sky-600 dark:text-sky-400 rounded-xl">
                           <FileText className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">PAN Card</p>
-                          <p className="text-[11px] font-mono text-slate-400 uppercase">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">PAN Card</p>
+                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400 uppercase">
                             {selectedShopForReview.pan_number ? `PAN: ${selectedShopForReview.pan_number}` : 'Number not entered'}
                           </p>
                         </div>
@@ -2856,7 +2939,7 @@ export default function ShopsTab({
                             setPreviewDocUrl(selectedShopForReview.pan_doc_url!);
                             setPreviewDocTitle(`${selectedShopForReview.shop_name} — PAN Card`);
                           }}
-                          className="px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          className="px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-700 dark:text-sky-400 border border-sky-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
                         >
                           <Eye className="w-3.5 h-3.5" /> View Doc
                         </button>
@@ -2866,14 +2949,14 @@ export default function ShopsTab({
                     </div>
 
                     {/* Storefront Photo & GSTIN Card */}
-                    <div className="bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between">
+                    <div className="bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-500/10 text-purple-400 rounded-xl">
+                        <div className="p-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl">
                           <Camera className="w-4 h-4" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">Storefront Photo & GST</p>
-                          <p className="text-[11px] font-mono text-slate-400 uppercase">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">Storefront Photo & GST</p>
+                          <p className="text-[11px] font-mono text-slate-600 dark:text-slate-400 uppercase">
                             {selectedShopForReview.gstin ? `GST: ${selectedShopForReview.gstin}` : 'Shop Board Photo'}
                           </p>
                         </div>
@@ -2885,7 +2968,7 @@ export default function ShopsTab({
                             setPreviewDocUrl(selectedShopForReview.shop_photo_url!);
                             setPreviewDocTitle(`${selectedShopForReview.shop_name} — Storefront Photo`);
                           }}
-                          className="px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+                          className="px-3 py-1.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
                         >
                           <Eye className="w-3.5 h-3.5" /> View Photo
                         </button>
@@ -2901,10 +2984,10 @@ export default function ShopsTab({
         </div>
 
             {/* Modal Action Footer */}
-            <div className="p-5 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3">
               <button
                 onClick={() => setSelectedShopForReview(null)}
-                className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Close Review
               </button>
@@ -2916,9 +2999,9 @@ export default function ShopsTab({
                       setRejectModalShop(selectedShopForReview);
                       setRejectionReasonInput('');
                     }}
-                    className="flex-1 sm:flex-initial px-5 py-2.5 bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="flex-1 sm:flex-initial px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-500/15 dark:hover:bg-red-500/25 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    ❌ Reject Application
+                    <XCircle className="w-3.5 h-3.5" /> Reject Application
                   </button>
                 )}
 
@@ -2927,7 +3010,7 @@ export default function ShopsTab({
                     onClick={() => openApproveModal(selectedShopForReview)}
                     className="flex-1 sm:flex-initial px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    ✅ Approve & Assign Delivery Area ➔
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approve & Assign Delivery Area <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -2939,27 +3022,27 @@ export default function ShopsTab({
       {/* REJECTION REASON DIALOG MODAL */}
       {rejectModalShop && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-red-500/40 rounded-3xl w-full max-w-md overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-400" /> Reject Store Application
+          <div className="bg-white dark:bg-[#0b101d] border border-red-300 dark:border-red-500/40 rounded-3xl w-full max-w-md overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" /> Reject Store Application
               </h3>
               <button
                 onClick={() => setRejectModalShop(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
-              <p className="text-xs text-slate-300">
-                You are rejecting the application for <strong className="text-white">{rejectModalShop.shop_name}</strong>.
+              <p className="text-xs text-slate-700 dark:text-slate-300">
+                You are rejecting the application for <strong className="text-slate-900 dark:text-white">{rejectModalShop.shop_name}</strong>.
                 Please provide a clear reason so the merchant can correct their documents or location in their app:
               </p>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide">
                   Rejection Remarks / Feedback *
                 </label>
                 <textarea
@@ -2968,7 +3051,7 @@ export default function ShopsTab({
                   placeholder="e.g. FSSAI certificate is blurry. Please upload clear original document. GPS street address does not match shop."
                   value={rejectionReasonInput}
                   onChange={(e) => setRejectionReasonInput(e.target.value)}
-                  className="w-full mt-1 p-3 bg-slate-950 border border-slate-800 text-slate-200 focus:border-red-500 rounded-xl text-xs outline-none resize-none"
+                  className="w-full mt-1 p-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 focus:border-red-500 rounded-xl text-xs outline-none resize-none"
                 />
               </div>
 
@@ -2976,7 +3059,7 @@ export default function ShopsTab({
                 <button
                   type="button"
                   onClick={() => setRejectModalShop(null)}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -2997,27 +3080,27 @@ export default function ShopsTab({
       {/* APPROVE STORE & ASSIGN AREA MODAL */}
       {approveModalShop && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
-          <div className="bg-[#0b101d] border border-emerald-500/40 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#0b101d] border border-emerald-300 dark:border-emerald-500/40 rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-400">
+                <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-2xl text-emerald-600 dark:text-emerald-400">
                   <Store className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     Approve Store & Assign Delivery Area
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Select the fulfillment locality area zone and confirm GPS coordinates for{' '}
-                    <strong className="text-white">{approveModalShop.shop_name}</strong>
+                    <strong className="text-slate-900 dark:text-white">{approveModalShop.shop_name}</strong>
                   </p>
                 </div>
               </div>
 
               <button
                 onClick={() => setApproveModalShop(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3026,25 +3109,31 @@ export default function ShopsTab({
             {/* Modal Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
               {/* Store & Owner Summary Card */}
-              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 dark:bg-slate-950/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Store & Owner</span>
-                  <p className="font-bold text-white text-sm">{approveModalShop.shop_name}</p>
-                  <p className="text-slate-300 mt-0.5">
-                    👤 {approveModalShop.owner_name || approveModalShop.profiles?.name || 'Owner'} · 📞 +
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Store & Owner</span>
+                  <p className="font-bold text-slate-900 dark:text-white text-sm">{approveModalShop.shop_name}</p>
+                  <p className="text-slate-700 dark:text-slate-300 mt-0.5 flex items-center gap-1">
+                    <User className="w-3.5 h-3.5 text-slate-500" /> {approveModalShop.owner_name || approveModalShop.profiles?.name || 'Owner'} · <Phone className="w-3.5 h-3.5 text-slate-500" /> +
                     {approveModalShop.profiles?.phone || approveModalShop.phone || 'No phone'}
                   </p>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Source & Status</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Source & Status</span>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">
-                      {approveModalShop.onboarding_source === 'app_self_registration'
-                        ? '📱 App Self-Register'
-                        : '💻 Admin Direct'}
+                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1">
+                      {approveModalShop.onboarding_source === 'app_self_registration' ? (
+                        <>
+                          <Smartphone className="w-3 h-3 text-indigo-500" /> App Self-Register
+                        </>
+                      ) : (
+                        <>
+                          <Laptop className="w-3 h-3 text-teal-500" /> Admin Direct
+                        </>
+                      )}
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] font-bold border border-amber-500/30 animate-pulse">
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-400 text-[10px] font-bold border border-amber-500/30 animate-pulse">
                       PENDING APPROVAL
                     </span>
                   </div>
@@ -3052,60 +3141,60 @@ export default function ShopsTab({
               </div>
 
               {/* GPS Coordinates & Google Maps Street Address */}
-              <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/30 space-y-2.5">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-500/30 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-emerald-400" /> GPS Coordinates & Street Pin
+                  <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> GPS Coordinates & Street Pin
                   </h4>
                   {approveModalShop.latitude != null && approveModalShop.longitude != null && (
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${parseFloat(String(approveModalShop.latitude))},${parseFloat(String(approveModalShop.longitude))}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[11px] text-emerald-400 hover:underline font-bold flex items-center gap-1"
+                      className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1"
                     >
-                      Google Maps ↗
+                      <ExternalLink className="w-3 h-3" /> Google Maps ↗
                     </a>
                   )}
                 </div>
 
                 <div className="flex items-center gap-3 text-xs flex-wrap font-mono">
-                  <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-lg font-bold">
-                    📍 Latitude: {approveModalShop.latitude != null && !isNaN(Number(approveModalShop.latitude)) ? Number(approveModalShop.latitude).toFixed(6) : 'Not Pinned'}
+                  <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 rounded-lg font-bold inline-flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> Lat: {approveModalShop.latitude != null && !isNaN(Number(approveModalShop.latitude)) ? Number(approveModalShop.latitude).toFixed(6) : 'Not Pinned'}
                   </span>
-                  <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-lg font-bold">
-                    📍 Longitude: {approveModalShop.longitude != null && !isNaN(Number(approveModalShop.longitude)) ? Number(approveModalShop.longitude).toFixed(6) : 'Not Pinned'}
+                  <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 rounded-lg font-bold inline-flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> Lng: {approveModalShop.longitude != null && !isNaN(Number(approveModalShop.longitude)) ? Number(approveModalShop.longitude).toFixed(6) : 'Not Pinned'}
                   </span>
                 </div>
 
                 {approveModalShop.street_address && (
-                  <p className="text-xs text-slate-200 mt-1">
-                    <strong className="text-emerald-400">Street:</strong> {approveModalShop.street_address}
+                  <p className="text-xs text-slate-800 dark:text-slate-200 mt-1">
+                    <strong className="text-emerald-700 dark:text-emerald-400">Street:</strong> {approveModalShop.street_address}
                   </p>
                 )}
                 {approveModalShop.detailed_address && (
-                  <p className="text-xs text-slate-400">
-                    <strong className="text-slate-300">Shop details:</strong> {approveModalShop.detailed_address}
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <strong className="text-slate-800 dark:text-slate-300">Shop details:</strong> {approveModalShop.detailed_address}
                   </p>
                 )}
               </div>
 
               {/* KYC Document Verification Strip */}
-              <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-2.5">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-amber-400" /> Verified Legal KYC Documents
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Verified Legal KYC Documents
                 </h4>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {/* Aadhaar */}
-                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400">Aadhaar Card</span>
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Aadhaar Card</span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                           approveModalShop.aadhaar_doc_url
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-slate-800 text-slate-500'
+                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                         }`}
                       >
                         {approveModalShop.aadhaar_doc_url ? 'Uploaded ✓' : 'Missing'}
@@ -3118,24 +3207,24 @@ export default function ShopsTab({
                           setPreviewDocUrl(approveModalShop.aadhaar_doc_url!);
                           setPreviewDocTitle(`${approveModalShop.shop_name} — Aadhaar Card`);
                         }}
-                        className="w-full py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                        className="w-full py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
                       >
                         <Eye className="w-3 h-3" /> View Doc
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                      <span className="text-[10px] text-slate-400 italic text-center">—</span>
                     )}
                   </div>
 
                   {/* FSSAI */}
-                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400">FSSAI Food</span>
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">FSSAI Food</span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                           approveModalShop.fssai_doc_url
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-slate-800 text-slate-500'
+                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                         }`}
                       >
                         {approveModalShop.fssai_doc_url ? 'Uploaded ✓' : 'Optional'}
@@ -3148,24 +3237,24 @@ export default function ShopsTab({
                           setPreviewDocUrl(approveModalShop.fssai_doc_url!);
                           setPreviewDocTitle(`${approveModalShop.shop_name} — FSSAI License`);
                         }}
-                        className="w-full py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                        className="w-full py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
                       >
                         <Eye className="w-3 h-3" /> View Doc
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                      <span className="text-[10px] text-slate-400 italic text-center">—</span>
                     )}
                   </div>
 
                   {/* PAN */}
-                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400">PAN Card</span>
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">PAN Card</span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                           approveModalShop.pan_doc_url
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-slate-800 text-slate-500'
+                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                         }`}
                       >
                         {approveModalShop.pan_doc_url ? 'Uploaded ✓' : 'Optional'}
@@ -3178,24 +3267,24 @@ export default function ShopsTab({
                           setPreviewDocUrl(approveModalShop.pan_doc_url!);
                           setPreviewDocTitle(`${approveModalShop.shop_name} — PAN Card`);
                         }}
-                        className="w-full py-1 bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                        className="w-full py-1 bg-sky-500/15 hover:bg-sky-500/25 text-sky-700 dark:text-sky-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
                       >
                         <Eye className="w-3 h-3" /> View Doc
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                      <span className="text-[10px] text-slate-400 italic text-center">—</span>
                     )}
                   </div>
 
                   {/* Shop Photo */}
-                  <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 flex flex-col justify-between space-y-1.5">
+                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400">Shop Board</span>
+                      <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">Shop Board</span>
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                           approveModalShop.shop_photo_url
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-slate-800 text-slate-500'
+                            ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                         }`}
                       >
                         {approveModalShop.shop_photo_url ? 'Uploaded ✓' : 'Optional'}
@@ -3208,26 +3297,26 @@ export default function ShopsTab({
                           setPreviewDocUrl(approveModalShop.shop_photo_url!);
                           setPreviewDocTitle(`${approveModalShop.shop_name} — Storefront Photo`);
                         }}
-                        className="w-full py-1 bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
+                        className="w-full py-1 bg-purple-500/15 hover:bg-purple-500/25 text-purple-700 dark:text-purple-300 rounded text-[10px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1"
                       >
                         <Eye className="w-3 h-3" /> View Photo
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-500 italic text-center">—</span>
+                      <span className="text-[10px] text-slate-400 italic text-center">—</span>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Territory & Area Assignment Section (DIRECT REFERENCE TO CITIES & LOCALITIES AND DELIVERY ZONES) */}
-              <div className="bg-gradient-to-br from-indigo-950/40 via-slate-900/60 to-slate-900/40 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-indigo-500/30 shadow-xl space-y-5">
+              {/* Territory & Area Assignment Section */}
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-indigo-200 dark:border-indigo-500/30 shadow-sm dark:shadow-xl space-y-5">
                 {/* Header with Quick Navigation to Master Tabs */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-indigo-500/20">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-indigo-200 dark:border-indigo-500/20">
                   <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-indigo-400" /> Assign Delivery Territory & Serviceable Zones *
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Assign Delivery Territory & Serviceable Zones *
                     </h4>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       Directly referenced from Master Cities & Localities hierarchy and Delivery Zones & Routing.
                     </p>
                   </div>
@@ -3239,7 +3328,7 @@ export default function ShopsTab({
                           setApproveModalShop(null);
                           setActiveTab('cities-areas');
                         }}
-                        className="px-2.5 py-1 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:hover:bg-indigo-500/25 border border-indigo-200 dark:border-indigo-500/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                         title="Manage Cities, Districts & Localities"
                       >
                         <MapPin className="w-3 h-3" /> Master Cities
@@ -3250,7 +3339,7 @@ export default function ShopsTab({
                           setApproveModalShop(null);
                           setActiveTab('locations');
                         }}
-                        className="px-2.5 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
                         title="Manage Delivery Zones & Routing"
                       >
                         <Zap className="w-3 h-3" /> Delivery Zones
@@ -3264,10 +3353,10 @@ export default function ShopsTab({
                   {/* City Selector */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1">
-                        <Building className="w-3.5 h-3.5 text-indigo-400" /> Registered Master City *
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1">
+                        <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Registered Master City *
                       </label>
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
                         {cities?.length || 0} Cities Available
                       </span>
                     </div>
@@ -3295,7 +3384,7 @@ export default function ShopsTab({
                           setApproveAdditionalAreas([]);
                         }
                       }}
-                      className="w-full h-10 px-3 bg-slate-950 border border-indigo-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-400 font-medium"
+                      className="w-full h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-indigo-500/50 text-slate-900 dark:text-white rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500 font-medium"
                       required
                     >
                       <option value="">-- Choose Registered Master City --</option>
@@ -3303,7 +3392,7 @@ export default function ShopsTab({
                         const count = (areas || []).filter((a) => a.city_id === c.id).length;
                         return (
                           <option key={c.id} value={c.name}>
-                            🏙️ {c.name} {count > 0 ? `(${count} localities)` : '(0 localities)'}
+                            {c.name} {count > 0 ? `(${count} localities)` : '(0 localities)'}
                           </option>
                         );
                       })}
@@ -3313,10 +3402,10 @@ export default function ShopsTab({
                   {/* Primary Area Locality Selector */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Primary Registered Locality / Hub *
+                      <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Primary Registered Locality / Hub *
                       </label>
-                      <span className="text-[10px] text-emerald-400 font-semibold">
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
                         {approveModalAreas.length} Localities in {approveEffectiveCity || 'City'}
                       </span>
                     </div>
@@ -3335,13 +3424,13 @@ export default function ShopsTab({
                           setApproveAdditionalAreas((prev) => [...prev, val]);
                         }
                       }}
-                      className="w-full h-10 px-3 bg-slate-950 border border-emerald-500/50 text-white rounded-xl text-xs outline-none cursor-pointer focus:border-emerald-400 font-medium"
+                      className="w-full h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-emerald-500/50 text-slate-900 dark:text-white rounded-xl text-xs outline-none cursor-pointer focus:border-emerald-500 font-medium"
                       required
                     >
                       <option value="">-- Select Master Locality from {approveEffectiveCity || 'City'} --</option>
                       {approveModalAreas.map((a) => (
                         <option key={a.id || `${a.name}-${a.pincode}`} value={a.name}>
-                          📍 {a.name} (PIN: {a.pincode || '—'})
+                          {a.name} (PIN: {a.pincode || '—'})
                         </option>
                       ))}
                     </select>
@@ -3350,7 +3439,7 @@ export default function ShopsTab({
 
                 {/* Notice if no registered localities found for selected city */}
                 {approveEffectiveCity && approveModalAreas.length === 0 && (
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between">
+                  <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
                     <span>
                       ⚠️ No registered master localities found for <strong>{approveEffectiveCity}</strong>.
                     </span>
@@ -3361,7 +3450,7 @@ export default function ShopsTab({
                           setApproveModalShop(null);
                           setActiveTab('cities');
                         }}
-                        className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                        className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 border border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                       >
                         + Add Localities in Master Tab ➔
                       </button>
@@ -3372,12 +3461,12 @@ export default function ShopsTab({
                 {/* 2. Pincode & Delivery Radius Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide flex items-center justify-between mb-1">
                       <span>Primary PIN Code *</span>
                       {approvePinValidation && (
                         <span
                           className={`text-[10px] font-semibold ${
-                            approvePinValidation.isValid ? 'text-emerald-400' : 'text-amber-400'
+                            approvePinValidation.isValid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
                           }`}
                         >
                           {approvePinValidation.isValid ? '✓ Valid Indian PIN' : approvePinValidation.error}
@@ -3390,18 +3479,18 @@ export default function ShopsTab({
                       placeholder="e.g. 411033"
                       value={approvePincode}
                       onChange={(e) => setApprovePincode(e.target.value.replace(/[^\d]/g, ''))}
-                      className="w-full h-10 px-3.5 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-400"
+                      className="w-full h-10 px-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs font-mono font-bold outline-none focus:border-indigo-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">
+                    <label className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wide block mb-1">
                       Delivery Radius
                     </label>
                     <select
                       value={approveRadius}
                       onChange={(e) => setApproveRadius(e.target.value)}
-                      className="w-full h-10 px-3 bg-slate-950 border border-slate-800 text-slate-200 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-400"
+                      className="w-full h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 rounded-xl text-xs outline-none cursor-pointer focus:border-indigo-500"
                     >
                       <option value="2.0">2.0 KM (Ultra Local)</option>
                       <option value="3.0">3.0 KM (Neighborhood)</option>
@@ -3414,13 +3503,13 @@ export default function ShopsTab({
                 </div>
 
                 {/* 3. Multi-Zone Serviceable Coverage Area Multi-Select Chips */}
-                <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
+                <div className="space-y-2.5 pt-2 border-t border-slate-200 dark:border-slate-800/80">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <label className="text-[11px] font-bold text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
-                        <Zap className="w-3.5 h-3.5 text-indigo-400" /> Registered Serviceable Coverage Localities ({approveAdditionalAreas.length} Selected)
+                      <label className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Registered Serviceable Coverage Localities ({approveAdditionalAreas.length} Selected)
                       </label>
-                      <p className="text-[10px] text-slate-400">
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
                         Select which registered localities in {approveEffectiveCity || 'this city'} this merchant store will deliver to.
                       </p>
                     </div>
@@ -3433,7 +3522,7 @@ export default function ShopsTab({
                             const all = approveModalAreas.map((a) => a.name);
                             setApproveAdditionalAreas(all);
                           }}
-                          className="px-2 py-0.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded text-[10px] font-bold cursor-pointer transition-all"
+                          className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 rounded text-[10px] font-bold cursor-pointer transition-all"
                         >
                           Select All ({approveModalAreas.length})
                         </button>
@@ -3443,7 +3532,7 @@ export default function ShopsTab({
                             const primary = approveSelectedArea.trim();
                             setApproveAdditionalAreas(primary ? [primary] : []);
                           }}
-                          className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded text-[10px] font-bold cursor-pointer transition-all"
+                          className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-400 rounded text-[10px] font-bold cursor-pointer transition-all border border-slate-200 dark:border-slate-700"
                         >
                           Reset to Primary
                         </button>
@@ -3452,7 +3541,7 @@ export default function ShopsTab({
                   </div>
 
                   {/* Areas Chips Grid - ONLY registered master areas */}
-                  <div className="max-h-48 overflow-y-auto p-2.5 bg-slate-950/80 rounded-xl border border-slate-800/80 flex flex-wrap gap-2">
+                  <div className="max-h-48 overflow-y-auto p-2.5 bg-white dark:bg-slate-950/80 rounded-xl border border-slate-200 dark:border-slate-800/80 flex flex-wrap gap-2">
                     {approveModalAreas.length === 0 ? (
                       <div className="w-full py-4 text-center text-xs text-slate-500 italic">
                         No registered master localities for &quot;{approveEffectiveCity || 'selected city'}&quot;. Please add them in the Master Cities & Localities tab.
@@ -3491,13 +3580,13 @@ export default function ShopsTab({
                             }}
                             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
                               isSelected
-                                ? 'bg-gradient-to-r from-emerald-500/25 to-teal-500/25 border-emerald-500/50 text-emerald-300 shadow-sm shadow-emerald-500/20'
-                                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                                ? 'bg-emerald-50 dark:bg-gradient-to-r dark:from-emerald-500/25 dark:to-teal-500/25 border-emerald-300 dark:border-emerald-500/50 text-emerald-800 dark:text-emerald-300 shadow-sm'
+                                : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:text-slate-200'
                             }`}
                           >
                             <span
                               className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                                isSelected ? 'bg-emerald-500 text-slate-950' : 'border border-slate-600'
+                                isSelected ? 'bg-emerald-500 text-white dark:text-slate-950' : 'border border-slate-400 dark:border-slate-600'
                               }`}
                             >
                               {isSelected ? '✓' : ''}
@@ -3507,7 +3596,7 @@ export default function ShopsTab({
                               <span className="text-[10px] opacity-60 font-mono">({area.pincode})</span>
                             )}
                             {isPrimary && (
-                              <span className="px-1.5 py-0.5 bg-emerald-500/30 text-emerald-300 text-[9px] font-bold rounded border border-emerald-500/40">
+                              <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[9px] font-bold rounded border border-emerald-500/30">
                                 Primary Hub
                               </span>
                             )}
@@ -3518,9 +3607,9 @@ export default function ShopsTab({
                   </div>
 
                   {/* Strict Territory Rule Badge */}
-                  <div className="p-2.5 bg-slate-900/40 border border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-center justify-between">
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       Strict Location Rule: Shops can only be assigned to pre-registered Master Localities.
                     </span>
                     {setActiveTab && (
@@ -3530,7 +3619,7 @@ export default function ShopsTab({
                           setApproveModalShop(null);
                           setActiveTab('cities');
                         }}
-                        className="text-indigo-400 hover:text-indigo-300 font-bold hover:underline cursor-pointer"
+                        className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold hover:underline cursor-pointer"
                       >
                         Manage Cities & Areas ➔
                       </button>
@@ -3541,11 +3630,11 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Action Footer */}
-            <div className="p-5 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between gap-3">
+            <div className="p-5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setApproveModalShop(null)}
-                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -3574,10 +3663,10 @@ export default function ShopsTab({
       {/* DOCUMENT LIGHTBOX PREVIEW MODAL */}
       {previewDocUrl && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-400" /> {previewDocTitle || 'Document Viewer'}
+          <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> {previewDocTitle || 'Document Viewer'}
               </h3>
               <div className="flex items-center gap-2">
                 <button
@@ -3611,27 +3700,27 @@ export default function ShopsTab({
                     }
                     window.open(safeUrl, '_blank', 'noopener,noreferrer');
                   }}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Full Tab ↗
                 </button>
                 <button
                   onClick={() => setPreviewDocUrl(null)}
-                  className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                  className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4 bg-slate-950 flex items-center justify-center min-h-[350px]">
+            <div className="flex-1 overflow-auto p-4 bg-slate-100 dark:bg-slate-950 flex items-center justify-center min-h-[350px]">
               {previewDocUrl.toLowerCase().includes('.pdf') ? (
-                <iframe title="Document PDF Preview" src={getSafeDocUrl(previewDocUrl)} className="w-full h-[500px] rounded-xl border border-slate-800" />
+                <iframe title="Document PDF Preview" src={getSafeDocUrl(previewDocUrl)} className="w-full h-[500px] rounded-xl border border-slate-300 dark:border-slate-800 bg-white" />
               ) : (
                 <img
                   src={getSafeDocUrl(previewDocUrl)}
                   alt={previewDocTitle}
-                  className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl border border-slate-800"
+                  className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl border border-slate-300 dark:border-slate-800"
                   onError={(e) => {
                     const target = e.currentTarget;
                     target.style.display = 'none';
@@ -3640,7 +3729,7 @@ export default function ShopsTab({
                       const div = document.createElement('div');
                       div.className = 'doc-fallback-msg flex flex-col items-center justify-center text-center p-6 space-y-3';
                       div.innerHTML = `
-                        <p class="text-xs text-amber-400 font-semibold">⚠️ Document preview could not be loaded inline.</p>
+                        <p class="text-xs text-amber-600 dark:text-amber-400 font-semibold">⚠️ Document preview could not be loaded inline.</p>
                         <a href="${getSafeDocUrl(previewDocUrl)}" target="_blank" rel="noreferrer" class="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500 transition-all">
                           Open in External Window ↗
                         </a>
@@ -3658,39 +3747,39 @@ export default function ShopsTab({
       {/* INTERACTIVE STORE MAP & LOCATION VERIFICATION MODAL */}
       {selectedShopForMap && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2.5">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Store className="w-5 h-5 text-emerald-400" /> {selectedShopForMap.shop_name}
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Store className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> {selectedShopForMap.shop_name}
                   </h3>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                       selectedShopForMap.status === 'approved'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
                         : selectedShopForMap.status === 'rejected'
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse'
+                        ? 'bg-red-500/20 text-red-700 dark:text-red-400 border border-red-500/30'
+                        : 'bg-amber-500/20 text-amber-800 dark:text-amber-400 border border-amber-500/30 animate-pulse'
                     }`}
                   >
                     {selectedShopForMap.status.toUpperCase()}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   Owner:{' '}
-                  <strong className="text-slate-200">
+                  <strong className="text-slate-900 dark:text-slate-200">
                     {selectedShopForMap.owner_name || selectedShopForMap.profiles?.name || 'Owner'}
                   </strong>{' '}
-                  · Mobile: <strong className="text-slate-200">+{selectedShopForMap.profiles?.phone}</strong> · City:{' '}
-                  <strong className="text-slate-200">{selectedShopForMap.city || '—'}</strong>
+                  · Mobile: <strong className="text-slate-900 dark:text-slate-200">+{selectedShopForMap.profiles?.phone}</strong> · City:{' '}
+                  <strong className="text-slate-900 dark:text-slate-200">{selectedShopForMap.city || '—'}</strong>
                 </p>
               </div>
 
               <button
                 onClick={() => setSelectedShopForMap(null)}
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white cursor-pointer"
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3701,20 +3790,22 @@ export default function ShopsTab({
               {/* Left Col: Interactive Map */}
               <div className="lg:col-span-7 flex flex-col space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-slate-300">📍 Live OpenStreetMap Pinpoint</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Live OpenStreetMap Pinpoint
+                  </span>
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${parseFloat(editLat) || 18.5204},${
                       parseFloat(editLng) || 73.8567
                     }`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline"
+                    className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold hover:underline inline-flex items-center gap-1"
                   >
-                    Open Google Maps Full View ↗
+                    <ExternalLink className="w-3 h-3" /> Open Google Maps Full View
                   </a>
                 </div>
 
-                <div className="w-full h-[320px] rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 shadow-inner">
+                <div className="w-full h-[320px] rounded-2xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 shadow-inner">
                   <iframe
                     title="Store Location Pin"
                     width="100%"
@@ -3734,21 +3825,24 @@ export default function ShopsTab({
                   />
                 </div>
 
-                <div className="p-3 bg-emerald-950/30 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 flex items-center justify-between">
-                  <span>
-                    🛵 <strong>{editRadius} KM</strong> Coverage Radius Zone
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/20 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Bike className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <strong>{editRadius} KM</strong> Coverage Radius Zone
                   </span>
-                  <span className="text-slate-400 text-[11px]">Customers within {editRadius} km get Free Delivery</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Customers within {editRadius} km get Free Delivery</span>
                 </div>
               </div>
 
               {/* Right Col: Location Coordinate Settings & Action Buttons */}
-              <div className="lg:col-span-5 bg-slate-900/40 p-5 rounded-2xl border border-slate-800/80 flex flex-col justify-between space-y-4">
+              <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex flex-col justify-between space-y-4">
                 <div className="space-y-4">
-                  <h4 className="font-bold text-white text-sm">📍 Verified Store GPS Coordinates</h4>
+                  <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Verified Store GPS Coordinates
+                  </h4>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                       Latitude (DD)
                     </label>
                     <input
@@ -3756,12 +3850,12 @@ export default function ShopsTab({
                       value={editLat}
                       onChange={(e) => setEditLat(e.target.value)}
                       placeholder="e.g. 18.6521"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:border-emerald-500 focus:outline-none"
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                       Longitude (DD)
                     </label>
                     <input
@@ -3769,18 +3863,18 @@ export default function ShopsTab({
                       value={editLng}
                       onChange={(e) => setEditLng(e.target.value)}
                       placeholder="e.g. 73.7431"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:border-emerald-500 focus:outline-none"
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                       Operational Delivery Radius (KM)
                     </label>
                     <select
                       value={editRadius}
                       onChange={(e) => setEditRadius(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:border-emerald-500 focus:outline-none cursor-pointer"
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:border-emerald-500 focus:outline-none cursor-pointer font-medium"
                     >
                       <option value="2.0">2.0 KM (Local Area Only)</option>
                       <option value="3.0">3.0 KM (Compact Zone)</option>
@@ -3793,20 +3887,21 @@ export default function ShopsTab({
                   <button
                     onClick={handleSaveShopLocation}
                     disabled={savingLocation}
-                    className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    {savingLocation ? 'Saving Coordinates...' : '💾 Save Coordinates & Radius'}
+                    <Save className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    {savingLocation ? 'Saving Coordinates...' : 'Save Coordinates & Radius'}
                   </button>
                 </div>
 
                 {/* Approval Actions inside Map Modal */}
-                <div className="pt-4 border-t border-slate-800 space-y-2">
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
                   {selectedShopForMap.status !== 'approved' && (
                     <button
                       onClick={() => openApproveModal(selectedShopForMap)}
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      ✅ Approve & Assign Delivery Area ➔
+                      <CheckCircle2 className="w-4 h-4" /> Approve & Assign Delivery Area ➔
                     </button>
                   )}
 
@@ -3817,9 +3912,9 @@ export default function ShopsTab({
                         setRejectionReasonInput('');
                         setSelectedShopForMap(null);
                       }}
-                      className="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      className="w-full py-2 bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      ❌ Reject Store
+                      <XCircle className="w-4 h-4" /> Reject Store
                     </button>
                   )}
                 </div>
@@ -3832,19 +3927,19 @@ export default function ShopsTab({
       {/* Shop Inventory Management Modal */}
       {selectedShopForInventory && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+          <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Store className="w-5 h-5 text-emerald-400" /> Manage Store Inventory
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Store className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Manage Store Inventory
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Assign products from Master Catalogue to <strong className="text-emerald-400">{selectedShopForInventory.shop_name}</strong>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  Assign products from Master Catalogue to <strong className="text-emerald-600 dark:text-emerald-400">{selectedShopForInventory.shop_name}</strong>
                 </p>
               </div>
               <button
                 onClick={() => setSelectedShopForInventory(null)}
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -3852,18 +3947,20 @@ export default function ShopsTab({
 
             <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Direct Assignment Form */}
-              <div className="bg-slate-900/30 p-5 rounded-2xl border border-slate-800/50 h-fit space-y-4">
-                <h4 className="font-bold text-white text-sm mb-2">➕ Assign Product to Store</h4>
+              <div className="bg-slate-50 dark:bg-slate-900/30 p-5 rounded-2xl border border-slate-200 dark:border-slate-800/50 h-fit space-y-4">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm mb-2 flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Assign Product to Store
+                </h4>
                 <form onSubmit={handleDirectAssignProduct} className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                       Product SKU *
                     </label>
                     <select
                       required
                       value={assignProdId}
                       onChange={(e) => setAssignProdId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer font-medium"
                     >
                       <option value="">-- Choose Product --</option>
                       {masterProductsList.map((p) => (
@@ -3874,7 +3971,7 @@ export default function ShopsTab({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                       Selling Price (₹) *
                     </label>
                     <input
@@ -3884,12 +3981,12 @@ export default function ShopsTab({
                       placeholder="165"
                       value={assignProdPrice}
                       onChange={(e) => setAssignProdPrice(e.target.value)}
-                      className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                      className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors font-medium"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                         Discount %
                       </label>
                       <input
@@ -3897,11 +3994,11 @@ export default function ShopsTab({
                         placeholder="5"
                         value={assignProdDiscount}
                         onChange={(e) => setAssignProdDiscount(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                        className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-1">
                         Stock
                       </label>
                       <input
@@ -3909,51 +4006,54 @@ export default function ShopsTab({
                         placeholder="100"
                         value={assignProdStock}
                         onChange={(e) => setAssignProdStock(e.target.value)}
-                        className="w-full bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                        className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors font-medium"
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer"
+                    className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    Assign SKU to Shop
+                    <Plus className="w-3.5 h-3.5" /> Assign SKU to Shop
                   </button>
                 </form>
               </div>
 
               {/* Assigned Items List */}
               <div className="lg:col-span-2 space-y-4">
-                <h4 className="font-bold text-white text-sm">Assigned Products ({shopInventoryList.length})</h4>
-                <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[480px] overflow-y-auto pr-1">
-                  <table className="w-full text-left border-collapse bg-[#0c1220]/40 text-xs">
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                  <Boxes className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  Assigned Products ({shopInventoryList.length})
+                </h4>
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800/80 rounded-2xl max-h-[480px] overflow-y-auto pr-1">
+                  <table className="w-full text-left border-collapse bg-white dark:bg-[#0c1220]/40 text-xs">
                     <thead>
-                      <tr className="border-b border-slate-800/80 bg-slate-900/30 text-slate-400 font-bold uppercase tracking-wider">
-                        <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Product</th>
-                        <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Master MRP</th>
-                        <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Shop Price</th>
-                        <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Stock</th>
-                        <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10">Status</th>
-                        <th className="p-3 sticky top-0 bg-[#0d1425] border-b border-slate-800/85 z-10 text-right">Action</th>
+                      <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider">
+                        <th className="p-3 sticky top-0 bg-slate-100 dark:bg-[#0d1425] border-b border-slate-200 dark:border-slate-800/85 z-10">Product</th>
+                        <th className="p-3 sticky top-0 bg-slate-100 dark:bg-[#0d1425] border-b border-slate-200 dark:border-slate-800/85 z-10">Master MRP</th>
+                        <th className="p-3 sticky top-0 bg-slate-100 dark:bg-[#0d1425] border-b border-slate-200 dark:border-slate-800/85 z-10">Shop Price</th>
+                        <th className="p-3 sticky top-0 bg-slate-100 dark:bg-[#0d1425] border-b border-slate-200 dark:border-slate-800/85 z-10">Stock</th>
+                        <th className="p-3 sticky top-0 bg-slate-100 dark:bg-[#0d1425] border-b border-slate-200 dark:border-slate-800/85 z-10">Status</th>
+                        <th className="p-3 sticky top-0 bg-slate-100 dark:bg-[#0d1425] border-b border-slate-200 dark:border-slate-800/85 z-10 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/30">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/30">
                       {shopInventoryList.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-800/10 text-slate-200">
+                        <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/10 text-slate-800 dark:text-slate-200">
                           <td className="p-3">
-                            <p className="font-bold text-white">{item.product_name}</p>
+                            <p className="font-bold text-slate-900 dark:text-white">{item.product_name}</p>
                             <p className="text-[9px] text-slate-500">SKU: {item.sku}</p>
                           </td>
-                          <td className="p-3 text-slate-400">₹{item.mrp}</td>
-                          <td className="p-3 font-semibold text-emerald-400">₹{item.selling_price}</td>
-                          <td className="p-3">{item.stock}</td>
+                          <td className="p-3 text-slate-500 dark:text-slate-400">₹{item.mrp}</td>
+                          <td className="p-3 font-semibold text-emerald-600 dark:text-emerald-400">₹{item.selling_price}</td>
+                          <td className="p-3 font-medium">{item.stock}</td>
                           <td className="p-3">
                             {item.status === 'approved' ? (
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/10 text-[9px]">
-                                Approved
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-500/20 text-[9px] inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Approved
                               </span>
                             ) : (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold border border-amber-500/10 text-[9px]">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-800 dark:text-amber-400 font-semibold border border-amber-500/20 text-[9px]">
                                 Pending
                               </span>
                             )}
@@ -3961,7 +4061,8 @@ export default function ShopsTab({
                           <td className="p-3 text-right">
                             <button
                               onClick={() => handleUnassignShopProduct(item.id)}
-                              className="text-red-400 hover:text-red-500 hover:bg-red-500/15 p-1.5 rounded-lg transition-all cursor-pointer"
+                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/15 p-1.5 rounded-lg transition-all cursor-pointer"
+                              title="Unassign SKU"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -3970,7 +4071,7 @@ export default function ShopsTab({
                       ))}
                       {shopInventoryList.length === 0 && (
                         <tr>
-                          <td colSpan={6} className="p-6 text-center text-slate-500 italic">
+                          <td colSpan={6} className="p-6 text-center text-slate-400 italic">
                             No products assigned to this shop yet.
                           </td>
                         </tr>
@@ -3987,21 +4088,21 @@ export default function ShopsTab({
       {/* STORE-LEVEL DELIVERY COVERAGE MODAL (REFERENCE DRIVEN) */}
       {selectedShopForZones && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#0b101d] border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-indigo-400" /> {selectedShopForZones.shop_name} — Delivery Zones
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> {selectedShopForZones.shop_name} — Delivery Zones
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Base Store: <span className="text-slate-200 font-semibold">{selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'}</span> · PIN:{' '}
-                  <span className="font-mono text-emerald-400 font-bold">{selectedShopForZones.pincode || '—'}</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  Base Store: <span className="text-slate-900 dark:text-slate-200 font-semibold">{selectedShopForZones.area_name || '—'}, {selectedShopForZones.city || '—'}</span> · PIN:{' '}
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{selectedShopForZones.pincode || '—'}</span>
                 </p>
               </div>
               <button
                 onClick={() => setSelectedShopForZones(null)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+                className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -4009,9 +4110,9 @@ export default function ShopsTab({
 
             <div className="p-5 overflow-y-auto space-y-5 flex-1 custom-scrollbar">
               {/* Reference City Selector */}
-              <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider block mb-1">
                     Select Reference City
                   </label>
                   <select
@@ -4020,12 +4121,12 @@ export default function ShopsTab({
                       setModalSelectedCityId(e.target.value);
                       setModalSelectedAreaId('');
                     }}
-                    className="w-full sm:w-72 h-10 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs font-semibold outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full sm:w-72 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl text-xs font-semibold outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     {cities && cities.length > 0 ? (
                       cities.map((c) => (
                         <option key={c.id} value={c.id}>
-                          🏙️ {c.name}
+                          {c.name}
                         </option>
                       ))
                     ) : (
@@ -4035,19 +4136,19 @@ export default function ShopsTab({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 rounded-xl text-xs font-bold">
+                  <span className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-bold">
                     {modalAvailableAreas.length} Localities in {modalCityObj?.name || selectedShopForZones.city}
                   </span>
                 </div>
               </div>
 
               {/* 1-Click Dropdown Locality Assign (NO TYPING) */}
-              <div className="bg-slate-900/60 rounded-2xl p-4 border border-emerald-500/20 space-y-3">
+              <div className="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-emerald-200 dark:border-emerald-500/20 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5 text-emerald-400" /> Select & Assign Registered Locality (1-Click)
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Select & Assign Registered Locality (1-Click)
                   </h4>
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md">
                     From Database
                   </span>
                 </div>
@@ -4056,7 +4157,7 @@ export default function ShopsTab({
                   <select
                     value={modalSelectedAreaId}
                     onChange={(e) => setModalSelectedAreaId(e.target.value)}
-                    className="flex-1 h-10 px-3 bg-slate-950 border border-slate-800 text-white rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-medium"
+                    className="flex-1 h-10 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl text-xs outline-none focus:border-emerald-500 cursor-pointer font-medium"
                     required
                   >
                     <option value="">-- Choose Registered Locality ({modalAvailableAreas.length} available) --</option>
@@ -4066,7 +4167,7 @@ export default function ShopsTab({
                       );
                       return (
                         <option key={a.id} value={a.id}>
-                          📍 {a.name} {a.pincode ? `· PIN: ${a.pincode}` : ''} {isAssignedToThis ? '✓ (Already Mapped)' : ''}
+                          {a.name} {a.pincode ? `· PIN: ${a.pincode}` : ''} {isAssignedToThis ? '✓ (Already Mapped)' : ''}
                         </option>
                       );
                     })}
@@ -4085,17 +4186,17 @@ export default function ShopsTab({
 
               {/* 1-Click Bulk PIN Code Hubs Available in this City */}
               {modalUniquePincodes.length > 0 && (
-                <div className="bg-slate-900/60 rounded-2xl p-4 border border-indigo-500/20 space-y-3">
+                <div className="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-500/20 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-indigo-400" /> 1-Click Bulk Map PIN Code Hubs in {modalCityObj?.name || selectedShopForZones.city}
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> 1-Click Bulk Map PIN Code Hubs in {modalCityObj?.name || selectedShopForZones.city}
                     </h4>
-                    <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/20 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-500/20 px-2 py-0.5 rounded-md">
                       Bulk Auto-Map
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Click any PIN badge below to automatically assign all registered localities under that PIN code to this store:
                   </p>
 
@@ -4108,11 +4209,11 @@ export default function ShopsTab({
                           type="button"
                           disabled={modalBulkLoading}
                           onClick={() => handleAssignPincodeDirect(pin)}
-                          className="px-3.5 py-2 bg-indigo-950/50 hover:bg-indigo-900/80 text-indigo-200 border border-indigo-700/50 hover:border-indigo-500 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+                          className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/80 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-700/50 hover:border-indigo-400 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50"
                         >
-                          <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                          <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                           <span>PIN {pin}</span>
-                          <span className="text-[10px] bg-indigo-500/30 px-1.5 py-0.5 rounded-md text-indigo-300 font-mono">
+                          <span className="text-[10px] bg-indigo-200 dark:bg-indigo-500/30 px-1.5 py-0.5 rounded-md text-indigo-900 dark:text-indigo-300 font-mono font-bold">
                             {count} {count === 1 ? 'area' : 'areas'}
                           </span>
                         </button>
@@ -4125,19 +4226,19 @@ export default function ShopsTab({
               {/* Interactive Locality Reference Grid */}
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                     Registered Localities Reference in {modalCityObj?.name || selectedShopForZones.city} ({modalAvailableAreas.length})
                   </span>
 
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       placeholder="Quick filter locality or PIN..."
                       value={modalAreaSearch}
                       onChange={(e) => setModalAreaSearch(e.target.value)}
-                      className="w-60 h-8 pl-8 pr-3 bg-slate-950 border border-slate-800 text-slate-200 placeholder:text-slate-500 rounded-xl text-xs outline-none focus:border-indigo-500"
+                      className="w-60 h-8 pl-8 pr-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-slate-200 placeholder:text-slate-400 rounded-xl text-xs outline-none focus:border-indigo-500"
                     />
                   </div>
                 </div>
@@ -4157,16 +4258,19 @@ export default function ShopsTab({
                         key={area.id}
                         className={`p-3 rounded-xl border flex items-center justify-between text-xs transition-all ${
                           isMappedToThis
-                            ? 'bg-emerald-950/20 border-emerald-500/30'
-                            : 'bg-slate-900/40 border-slate-800/80 hover:border-slate-700'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-500/30'
+                            : 'bg-white dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 hover:border-slate-400'
                         }`}
                       >
                         <div className="min-w-0 flex-1 pr-2">
-                          <p className="font-bold text-white truncate">📍 {area.name}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            PIN: <span className="font-mono text-emerald-400 font-bold">{area.pincode || '—'}</span>
+                          <p className="font-bold text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            {area.name}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            PIN: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{area.pincode || '—'}</span>
                             {otherShopName && (
-                              <span className="text-[10px] text-amber-400 block truncate">
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 block truncate font-medium">
                                 (Mapped to: {otherShopName})
                               </span>
                             )}
@@ -4175,17 +4279,17 @@ export default function ShopsTab({
 
                         <div>
                           {isMappedToThis ? (
-                            <span className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                              ✓ Mapped
+                            <span className="px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" /> Mapped
                             </span>
                           ) : (
                             <button
                               type="button"
                               disabled={modalZoneLoading}
                               onClick={() => handleAssignSpecificArea(area)}
-                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer disabled:opacity-50 active:scale-95"
+                              className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-lg transition-all cursor-pointer disabled:opacity-50 active:scale-95 flex items-center gap-1"
                             >
-                              + Assign
+                              <Plus className="w-3 h-3" /> Assign
                             </button>
                           )}
                         </div>
@@ -4194,18 +4298,18 @@ export default function ShopsTab({
                   })}
 
                   {filteredModalAreas.length === 0 && (
-                    <div className="col-span-2 py-6 text-center text-slate-500 text-xs italic">
-                      No localities found matching "{modalAreaSearch}".
+                    <div className="col-span-2 py-6 text-center text-slate-400 text-xs italic">
+                      No localities found matching &quot;{modalAreaSearch}&quot;.
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Active Assigned Localities for this Store */}
-              <div className="space-y-2 pt-2 border-t border-slate-800/80">
+              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800/80">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-300 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                     Active Localities Mapped to {selectedShopForZones.shop_name} ({locations.filter((l) => l.shop_id === selectedShopForZones.id).length})
                   </span>
                   <button
@@ -4215,31 +4319,34 @@ export default function ShopsTab({
                       setViewMode('coverage');
                       setCoverageShopFilter(selectedShopForZones.id);
                     }}
-                    className="text-xs text-indigo-400 hover:underline font-semibold cursor-pointer"
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold cursor-pointer flex items-center gap-1"
                   >
-                    Open in Global Matrix →
+                    Open in Global Matrix <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
 
-                <div className="divide-y divide-slate-800/40 border border-slate-800 rounded-2xl overflow-hidden bg-slate-950/40">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-950/40">
                   {locations
                     .filter((l) => l.shop_id === selectedShopForZones.id)
                     .map((loc) => (
-                      <div key={loc.id} className="p-3 bg-slate-900/30 flex items-center justify-between text-xs hover:bg-slate-900/60 transition-colors">
+                      <div key={loc.id} className="p-3 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between text-xs hover:bg-slate-100/60 dark:hover:bg-slate-900/60 transition-colors">
                         <div>
-                          <p className="font-bold text-white">📍 {loc.area_name}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            {loc.city} · PIN: <span className="font-mono text-emerald-400 font-bold">{loc.pincode}</span>
+                          <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            {loc.area_name}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {loc.city} · PIN: <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{loc.pincode}</span>
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 text-[10px] font-bold">
                             Active Zone
                           </span>
                           {handleDeleteLocation && (
                             <button
                               onClick={() => handleDeleteLocation(loc.id)}
-                              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
+                              className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 p-1.5 rounded-lg transition-all cursor-pointer"
                               title="Unassign this locality"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -4250,10 +4357,10 @@ export default function ShopsTab({
                     ))}
 
                   {locations.filter((l) => l.shop_id === selectedShopForZones.id).length === 0 && (
-                    <div className="p-6 text-center text-slate-400 text-xs space-y-1">
-                      <p className="font-semibold text-slate-300">0 extra localities mapped yet.</p>
+                    <div className="p-6 text-center text-slate-500 dark:text-slate-400 text-xs space-y-1">
+                      <p className="font-semibold text-slate-800 dark:text-slate-300">0 extra localities mapped yet.</p>
                       <p className="text-[11px] text-slate-500">
-                        Base area (<span className="text-slate-300 font-semibold">{selectedShopForZones.area_name || '—'}</span>) is auto-fulfilled. Click any locality above to add it to this store!
+                        Base area (<span className="text-slate-800 dark:text-slate-300 font-semibold">{selectedShopForZones.area_name || '—'}</span>) is auto-fulfilled. Click any locality above to add it to this store!
                       </p>
                     </div>
                   )}
@@ -4262,14 +4369,14 @@ export default function ShopsTab({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400">
-                Total Mapped for Store: <strong className="text-emerald-400">{locations.filter((l) => l.shop_id === selectedShopForZones.id).length} zones</strong>
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/80 flex items-center justify-between">
+              <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                Total Mapped for Store: <strong className="text-emerald-600 dark:text-emerald-400">{locations.filter((l) => l.shop_id === selectedShopForZones.id).length} zones</strong>
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedShopForZones(null)}
-                className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 Done / Close
               </button>
