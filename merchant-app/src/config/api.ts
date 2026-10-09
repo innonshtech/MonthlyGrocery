@@ -32,7 +32,7 @@ export const LOCAL_SERVER_URL = getDevApiUrl();
 
 /**
  * Active Backend API Endpoint
- * Set to LOCAL_SERVER_URL (Port 8002) for Localhost & Wireless ADB Device Testing
+ * Connected to AWS QA Server (Port 8002 / AWS RDS PostgreSQL QA)
  */
-export const API_BASE = LOCAL_SERVER_URL;
-export const AWS_SERVER_URL = LOCAL_SERVER_URL;
+export const API_BASE = AWS_QA_SERVER_URL;
+export const AWS_SERVER_URL = AWS_QA_SERVER_URL;
