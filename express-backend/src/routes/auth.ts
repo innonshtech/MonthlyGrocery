@@ -247,6 +247,7 @@ router.post('/verify-otp', async (req, res) => {
       .from('profiles')
       .select('*')
       .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (fetchError) {
@@ -282,6 +283,7 @@ router.post('/verify-otp', async (req, res) => {
         .from('profiles')
         .select('*')
         .or(`phone.eq.${normalized},phone.eq.+${normalized}${createdUserId ? `,id.eq.${createdUserId}` : ''}`)
+        .order('created_at', { ascending: false })
         .maybeSingle();
 
       if (newProfile) {
@@ -309,6 +311,7 @@ router.post('/verify-otp', async (req, res) => {
             .from('profiles')
             .select('*')
             .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+            .order('created_at', { ascending: false })
             .maybeSingle();
 
           if (fallbackProfile) {
