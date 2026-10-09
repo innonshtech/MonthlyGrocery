@@ -1445,11 +1445,11 @@ export default function ShopsTab({
 
                       <td className="py-4 pr-4 max-w-xs">
                         {shop.street_address ? (
-                          <p className="text-xs text-emerald-300/90 font-medium line-clamp-2">
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-2">
                             📍 {shop.street_address}
                           </p>
                         ) : shop.state_name ? (
-                          <p className="text-xs text-slate-300">
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-300">
                             {shop.area_name ? `${shop.area_name}, ` : ''}{shop.city || shop.district_name} (PIN: {shop.pincode || '—'})
                           </p>
                         ) : (
@@ -1470,34 +1470,34 @@ export default function ShopsTab({
                               ? Number((shop as any).lng)
                               : null;
                           return sLat != null && sLng != null ? (
-                            <p className="text-[11px] text-emerald-400 font-mono font-semibold mt-0.5">
+                            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono font-bold mt-0.5">
                               📍 Coords: {sLat.toFixed(5)}, {sLng.toFixed(5)} ({shop.delivery_radius_km || 5} km radius)
                             </p>
                           ) : (
-                            <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">⚠️ No GPS Pinned</p>
+                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">⚠️ No GPS Pinned</p>
                           );
                         })()}
                       </td>
 
                       <td className="py-4 pr-4">
-                        <p className="font-semibold text-slate-200">
+                        <p className="font-semibold text-slate-900 dark:text-slate-200">
                           {shop.owner_name || shop.profiles?.name || 'Owner'}
                         </p>
-                        <p className="text-xs text-slate-400">+{shop.phone || shop.profiles?.phone || 'No phone'}</p>
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-400">
+                        <p className="text-xs text-slate-600 dark:text-slate-400">+{shop.phone || shop.profiles?.phone || 'No phone'}</p>
+                        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-slate-500">
                           <span
-                            className={shop.aadhaar_doc_url ? 'text-emerald-400 font-bold' : 'text-slate-500'}
+                            className={shop.aadhaar_doc_url ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-slate-400'}
                           >
                             Aadhaar {shop.aadhaar_doc_url ? '✓' : '—'}
                           </span>
                           <span>·</span>
                           <span
-                            className={shop.fssai_doc_url ? 'text-emerald-400 font-bold' : 'text-slate-500'}
+                            className={shop.fssai_doc_url ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-slate-400'}
                           >
                             FSSAI {shop.fssai_doc_url ? '✓' : '—'}
                           </span>
                           <span>·</span>
-                          <span className={shop.pan_doc_url ? 'text-emerald-400 font-bold' : 'text-slate-500'}>
+                          <span className={shop.pan_doc_url ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-slate-400'}>
                             PAN {shop.pan_doc_url ? '✓' : '—'}
                           </span>
                         </div>
@@ -1505,24 +1505,24 @@ export default function ShopsTab({
 
                       <td className="py-4 pr-4">
                         {shop.status === 'approved' && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
                             Approved
                           </span>
                         )}
                         {shop.status === 'rejected' && (
                           <div>
-                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30">
                               Rejected
                             </span>
                             {shop.rejection_reason && (
-                              <p className="text-[10px] text-red-400 mt-1 max-w-xs line-clamp-1 italic">
+                              <p className="text-[10px] text-red-600 dark:text-red-400 mt-1 max-w-xs line-clamp-1 italic">
                                 &quot;{shop.rejection_reason}&quot;
                               </p>
                             )}
                           </div>
                         )}
                         {shop.status === 'pending' && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/30 animate-pulse">
                             Pending Approval
                           </span>
                         )}
@@ -1531,7 +1531,7 @@ export default function ShopsTab({
                       <td className="py-4 text-right space-x-2 whitespace-nowrap">
                         <button
                           onClick={() => setSelectedShopForReview(shop)}
-                          className="text-xs font-bold px-3 py-1.5 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
+                          className="text-xs font-bold px-3 py-1.5 bg-emerald-100 dark:bg-emerald-950/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                           title="Inspect KYC documents and location pin"
                         >
                           📋 Review App
@@ -1544,7 +1544,7 @@ export default function ShopsTab({
                           return (
                             <button
                               onClick={() => openShopZonesModal(shop)}
-                              className="text-xs font-bold px-3 py-1.5 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 border border-indigo-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1"
+                              className="text-xs font-bold px-3 py-1.5 bg-indigo-100 dark:bg-indigo-950/40 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800/40 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                               title="Manage Delivery Coverage Zones"
                             >
                               🗺️ Zones ({shopZones.length})
@@ -1554,7 +1554,7 @@ export default function ShopsTab({
 
                         <button
                           onClick={() => openShopMapModal(shop)}
-                          className="text-xs font-bold px-3 py-1.5 bg-sky-950/40 hover:bg-sky-900/60 text-sky-300 border border-sky-800/40 rounded-lg transition-all cursor-pointer"
+                          className="text-xs font-bold px-3 py-1.5 bg-sky-100 dark:bg-sky-950/40 hover:bg-sky-200 dark:hover:bg-sky-900/60 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800/40 rounded-lg transition-all cursor-pointer shadow-sm"
                         >
                           📍 Map
                         </button>
@@ -1565,7 +1565,7 @@ export default function ShopsTab({
                               setSelectedShopForInventory(shop);
                               fetchShopInventory(shop.id);
                             }}
-                            className="text-xs font-bold px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 rounded-lg transition-all cursor-pointer"
+                            className="text-xs font-bold px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700/80 rounded-lg transition-all cursor-pointer shadow-sm"
                           >
                             Inventory
                           </button>

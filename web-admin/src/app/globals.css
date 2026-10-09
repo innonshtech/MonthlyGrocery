@@ -324,7 +324,10 @@ html[data-theme="light"] [class*="divide-slate-"] {
    ------------------------------------------------------------ */
 html[data-theme="light"] [class*="bg-emerald-500\/"],
 html[data-theme="light"] [class*="bg-emerald-400\/"],
-html[data-theme="light"] [class*="bg-green-500\/"] {
+html[data-theme="light"] [class*="bg-emerald-900\/"],
+html[data-theme="light"] [class*="bg-emerald-950\/"],
+html[data-theme="light"] [class*="bg-green-500\/"],
+html[data-theme="light"] [class*="bg-green-950\/"] {
   background-color: #DCFCE7 !important;
   color: #15803D !important;
   border-color: #86EFAC !important;
@@ -332,7 +335,10 @@ html[data-theme="light"] [class*="bg-green-500\/"] {
 
 html[data-theme="light"] [class*="bg-amber-500\/"],
 html[data-theme="light"] [class*="bg-amber-400\/"],
-html[data-theme="light"] [class*="bg-yellow-500\/"] {
+html[data-theme="light"] [class*="bg-amber-900\/"],
+html[data-theme="light"] [class*="bg-amber-950\/"],
+html[data-theme="light"] [class*="bg-yellow-500\/"],
+html[data-theme="light"] [class*="bg-yellow-950\/"] {
   background-color: #FEF3C7 !important;
   color: #92400E !important;
   border-color: #FDE68A !important;
@@ -340,8 +346,14 @@ html[data-theme="light"] [class*="bg-yellow-500\/"] {
 
 html[data-theme="light"] [class*="bg-blue-500\/"],
 html[data-theme="light"] [class*="bg-blue-400\/"],
+html[data-theme="light"] [class*="bg-blue-900\/"],
+html[data-theme="light"] [class*="bg-blue-950\/"],
 html[data-theme="light"] [class*="bg-indigo-500\/"],
-html[data-theme="light"] [class*="bg-sky-500\/"] {
+html[data-theme="light"] [class*="bg-indigo-900\/"],
+html[data-theme="light"] [class*="bg-indigo-950\/"],
+html[data-theme="light"] [class*="bg-sky-500\/"],
+html[data-theme="light"] [class*="bg-sky-900\/"],
+html[data-theme="light"] [class*="bg-sky-950\/"] {
   background-color: #DBEAFE !important;
   color: #1E40AF !important;
   border-color: #BFDBFE !important;
@@ -349,15 +361,21 @@ html[data-theme="light"] [class*="bg-sky-500\/"] {
 
 html[data-theme="light"] [class*="bg-red-500\/"],
 html[data-theme="light"] [class*="bg-red-400\/"],
+html[data-theme="light"] [class*="bg-red-900\/"],
+html[data-theme="light"] [class*="bg-red-950\/"],
 html[data-theme="light"] [class*="bg-rose-500\/"],
-html[data-theme="light"] [class*="bg-rose-400\/"] {
+html[data-theme="light"] [class*="bg-rose-400\/"],
+html[data-theme="light"] [class*="bg-rose-900\/"],
+html[data-theme="light"] [class*="bg-rose-950\/"] {
   background-color: #FEE2E2 !important;
   color: #991B1B !important;
   border-color: #FECACA !important;
 }
 
 html[data-theme="light"] [class*="bg-purple-500\/"],
-html[data-theme="light"] [class*="bg-purple-400\/"] {
+html[data-theme="light"] [class*="bg-purple-400\/"],
+html[data-theme="light"] [class*="bg-purple-900\/"],
+html[data-theme="light"] [class*="bg-purple-950\/"] {
   background-color: #F3E8FF !important;
   color: #6B21A8 !important;
   border-color: #DDD6FE !important;
