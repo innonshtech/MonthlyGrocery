@@ -1739,8 +1739,8 @@ router.get('/shop-products', authMiddleware, requireRole(['admin', 'super_admin'
       const finalVideoUrl = media.video_url || family?.video_url || null;
 
       const sellingPrice = sp ? sp.selling_price : (parseFloat(p.price) || parseFloat(p.mrp) || 0);
-      const stock = sp ? (sp.stock != null ? Number(sp.stock) : 0) : (p.stock != null ? Number(p.stock) : 50);
-      const isAvailable = sp ? (sp.available !== false && (sp.stock == null || Number(sp.stock) > 0)) : (p.available !== false);
+      const stock = sp ? (sp.stock != null ? Number(sp.stock) : 0) : (p.stock != null ? Number(p.stock) : 0);
+      const isAvailable = sp ? (sp.available === true && (sp.stock == null || Number(sp.stock) > 0)) : false;
 
       return {
         id: sp?.id || `sp-${p.id}`,

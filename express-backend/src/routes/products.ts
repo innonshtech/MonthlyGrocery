@@ -868,7 +868,7 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           quantity_value: packFromExcel.quantity_value,
           quantity_unit: packFromExcel.quantity_unit,
           unit: packFromExcel.unit || String(row.unit || '').trim() || 'units',
-          available: parseBool(row.available, true),
+          available: false,
           is_veg: parseBool(row.is_veg, true),
           featured: parseBool(row.featured, false),
           todays_deal: parseBool(row.todays_deal, false),
@@ -913,7 +913,7 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
             mrp: mrpVal,
             price: priceVal,
             wholesaler_price: parseFloat(row.wholesaler_price) || 0.00,
-            is_live: parseBool(row.available, true),
+            is_live: false,
           };
 
           const { error: cityPriceError } = await supabase
