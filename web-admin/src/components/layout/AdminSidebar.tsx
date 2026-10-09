@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { TabType, Shop, FranchiseRequest } from '../../types/admin.types';
+import { ThemeToggle } from '../../context/ThemeContext';
 
 interface AdminSidebarProps {
   activeTab: TabType;
@@ -181,6 +182,7 @@ export default function AdminSidebar({
 
           {/* User profile / Logout in mobile drawer */}
           <div className="pt-4 border-t border-slate-800 space-y-3">
+            <ThemeToggle />
             <div className="flex items-center justify-between bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
               <div>
                 <p className="text-sm font-bold text-slate-100">{user?.name || 'Super Admin'}</p>
@@ -188,7 +190,7 @@ export default function AdminSidebar({
               </div>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg transition-all cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" /> Logout
               </button>
@@ -253,8 +255,9 @@ export default function AdminSidebar({
           </nav>
 
           {/* User profile / Logout */}
-          <div className="pt-3 border-t border-slate-800/80 space-y-3 flex-shrink-0">
-            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850">
+          <div className="pt-3 border-t border-slate-800/80 space-y-2.5 flex-shrink-0">
+            <ThemeToggle />
+            <div className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
               <p className="text-xs font-bold text-slate-100 truncate">{user?.name || 'Super Admin'}</p>
               <p className="text-[10px] text-slate-500 truncate">+91 {user?.mobile || ''}</p>
             </div>

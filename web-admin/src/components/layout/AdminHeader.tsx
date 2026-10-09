@@ -19,6 +19,7 @@ import {
   Upload
 } from 'lucide-react';
 import { TabType, Shop, FranchiseRequest } from '../../types/admin.types';
+import { ThemeToggle } from '../../context/ThemeContext';
 
 interface AdminHeaderProps {
   activeTab: TabType;
@@ -105,13 +106,16 @@ export default function AdminHeader({
           </div>
         </div>
 
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors"
-          aria-label="Toggle Menu"
-        >
-          {mobileMenuOpen ? <X className="w-5 h-5 text-red-400" /> : <Menu className="w-5 h-5 text-emerald-400" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle compact={true} />
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            aria-label="Toggle Menu"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5 text-red-400" /> : <Menu className="w-5 h-5 text-emerald-400" />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile Quick-Swipe Tab Bar */}
