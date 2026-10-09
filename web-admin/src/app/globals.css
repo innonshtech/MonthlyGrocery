@@ -157,27 +157,136 @@ html[data-theme="light"] [class*="bg-gradient-to-"] {
   color: #0F172A !important;
 }
 
-/* Card, Panel, and Modal Backgrounds */
+/* ------------------------------------------------------------
+   UNIVERSAL TEXT COLOR INVERSION FOR LIGHT THEME
+   Ensure every heading, paragraph, label, span, div, table cell
+   is sharp, deep dark slate/black (#0F172A) on light backgrounds
+   ------------------------------------------------------------ */
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3,
+html[data-theme="light"] h4,
+html[data-theme="light"] h5,
+html[data-theme="light"] h6,
+html[data-theme="light"] p,
+html[data-theme="light"] span,
+html[data-theme="light"] label,
+html[data-theme="light"] strong,
+html[data-theme="light"] b,
+html[data-theme="light"] li,
+html[data-theme="light"] td,
+html[data-theme="light"] th {
+  color: #0F172A;
+}
+
+/* All text utility classes for white / very light gray */
+html[data-theme="light"] .text-white,
+html[data-theme="light"] [class*="text-white"],
+html[data-theme="light"] .text-slate-50,
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-slate-200,
+html[data-theme="light"] [class*="text-slate-50"],
+html[data-theme="light"] [class*="text-slate-100"],
+html[data-theme="light"] [class*="text-slate-200"],
+html[data-theme="light"] [class*="text-zinc-50"],
+html[data-theme="light"] [class*="text-zinc-100"],
+html[data-theme="light"] [class*="text-zinc-200"],
+html[data-theme="light"] [class*="text-gray-50"],
+html[data-theme="light"] [class*="text-gray-100"],
+html[data-theme="light"] [class*="text-gray-200"],
+html[data-theme="light"] [class*="text-neutral-50"],
+html[data-theme="light"] [class*="text-neutral-100"],
+html[data-theme="light"] [class*="text-neutral-200"] {
+  color: #0F172A !important;
+}
+
+/* Mid-tone slates to dark readable slate */
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] [class*="text-slate-300"],
+html[data-theme="light"] [class*="text-zinc-300"],
+html[data-theme="light"] [class*="text-gray-300"],
+html[data-theme="light"] [class*="text-neutral-300"] {
+  color: #1E293B !important;
+}
+
+/* Secondary muted slates to readable slate-700 */
+html[data-theme="light"] .text-slate-400,
+html[data-theme="light"] [class*="text-slate-400"],
+html[data-theme="light"] [class*="text-zinc-400"],
+html[data-theme="light"] [class*="text-gray-400"],
+html[data-theme="light"] [class*="text-neutral-400"] {
+  color: #334155 !important;
+}
+
+/* Sub-labels and meta info */
+html[data-theme="light"] .text-slate-500,
+html[data-theme="light"] [class*="text-slate-500"],
+html[data-theme="light"] [class*="text-zinc-500"],
+html[data-theme="light"] [class*="text-gray-500"] {
+  color: #475569 !important;
+}
+
+html[data-theme="light"] .text-slate-600,
+html[data-theme="light"] [class*="text-slate-600"] {
+  color: #64748B !important;
+}
+
+/* Vibrant Readable Accent Colors on White */
+html[data-theme="light"] .text-emerald-400,
+html[data-theme="light"] .text-emerald-300,
+html[data-theme="light"] [class*="text-emerald-300"],
+html[data-theme="light"] [class*="text-emerald-400"],
+html[data-theme="light"] [class*="text-green-400"] {
+  color: #15803D !important;
+}
+
+html[data-theme="light"] .text-amber-400,
+html[data-theme="light"] .text-amber-300,
+html[data-theme="light"] [class*="text-amber-300"],
+html[data-theme="light"] [class*="text-amber-400"],
+html[data-theme="light"] [class*="text-yellow-400"],
+html[data-theme="light"] [class*="text-orange-400"] {
+  color: #B45309 !important;
+}
+
+html[data-theme="light"] .text-blue-400,
+html[data-theme="light"] .text-indigo-400,
+html[data-theme="light"] .text-sky-400,
+html[data-theme="light"] [class*="text-blue-300"],
+html[data-theme="light"] [class*="text-blue-400"],
+html[data-theme="light"] [class*="text-indigo-300"],
+html[data-theme="light"] [class*="text-indigo-400"],
+html[data-theme="light"] [class*="text-sky-300"],
+html[data-theme="light"] [class*="text-sky-400"] {
+  color: #1D4ED8 !important;
+}
+
+html[data-theme="light"] .text-red-400,
+html[data-theme="light"] .text-rose-400,
+html[data-theme="light"] [class*="text-red-300"],
+html[data-theme="light"] [class*="text-red-400"],
+html[data-theme="light"] [class*="text-rose-300"],
+html[data-theme="light"] [class*="text-rose-400"] {
+  color: #B91C1C !important;
+}
+
+html[data-theme="light"] .text-purple-400,
+html[data-theme="light"] [class*="text-purple-300"],
+html[data-theme="light"] [class*="text-purple-400"] {
+  color: #7E22CE !important;
+}
+
+/* ------------------------------------------------------------
+   CARD, PANEL, TABLE & MODAL BACKGROUNDS
+   ------------------------------------------------------------ */
 html[data-theme="light"] .bg-\[\#090D16\],
-html[data-theme="light"] .bg-\[\#090D16\]\/65,
-html[data-theme="light"] .bg-\[\#090D16\]\/80,
-html[data-theme="light"] .bg-\[\#090D16\]\/95,
+html[data-theme="light"] [class*="bg-\[\#090D16\]"],
+html[data-theme="light"] [class*="bg-\[\#0B1220\]"],
+html[data-theme="light"] [class*="bg-\[\#0b1220\]"],
 html[data-theme="light"] .bg-slate-950,
-html[data-theme="light"] .bg-slate-950\/50,
-html[data-theme="light"] .bg-slate-950\/60,
-html[data-theme="light"] .bg-slate-950\/70,
-html[data-theme="light"] .bg-slate-950\/80,
-html[data-theme="light"] .bg-slate-950\/90,
-html[data-theme="light"] .bg-slate-950\/95,
+html[data-theme="light"] [class*="bg-slate-950"],
 html[data-theme="light"] .bg-slate-900,
-html[data-theme="light"] .bg-slate-900\/30,
-html[data-theme="light"] .bg-slate-900\/40,
-html[data-theme="light"] .bg-slate-900\/50,
-html[data-theme="light"] .bg-slate-900\/60,
-html[data-theme="light"] .bg-slate-900\/70,
-html[data-theme="light"] .bg-slate-900\/80,
-html[data-theme="light"] .bg-slate-900\/90,
-html[data-theme="light"] .bg-slate-900\/95 {
+html[data-theme="light"] [class*="bg-slate-900"] {
   background-color: #FFFFFF !important;
   border-color: #E2E8F0 !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
@@ -185,124 +294,78 @@ html[data-theme="light"] .bg-slate-900\/95 {
 
 /* Secondary Backgrounds & Neutral Chips */
 html[data-theme="light"] .bg-slate-800,
-html[data-theme="light"] .bg-slate-800\/20,
-html[data-theme="light"] .bg-slate-800\/30,
-html[data-theme="light"] .bg-slate-800\/40,
-html[data-theme="light"] .bg-slate-800\/50,
-html[data-theme="light"] .bg-slate-800\/60,
-html[data-theme="light"] .bg-slate-800\/80 {
-  background-color: #F1F5F9 !important;
+html[data-theme="light"] [class*="bg-slate-800"],
+html[data-theme="light"] .bg-slate-850,
+html[data-theme="light"] [class*="bg-slate-850"],
+html[data-theme="light"] [class*="bg-white\/5"],
+html[data-theme="light"] [class*="bg-white\/10"],
+html[data-theme="light"] [class*="bg-white\/15"],
+html[data-theme="light"] [class*="bg-white\/20"] {
+  background-color: #F8FAFC !important;
   color: #1E293B !important;
   border-color: #CBD5E1 !important;
 }
 
 html[data-theme="light"] .bg-slate-700,
-html[data-theme="light"] .bg-slate-700\/80 {
+html[data-theme="light"] [class*="bg-slate-700"] {
   background-color: #E2E8F0 !important;
   color: #0F172A !important;
 }
 
-html[data-theme="light"] .bg-white\/5,
-html[data-theme="light"] .bg-white\/10 {
-  background-color: #F1F5F9 !important;
-  border-color: #CBD5E1 !important;
-}
-
 /* Borders in Light Mode */
-html[data-theme="light"] .border-slate-800,
-html[data-theme="light"] .border-slate-800\/40,
-html[data-theme="light"] .border-slate-800\/60,
-html[data-theme="light"] .border-slate-800\/80,
-html[data-theme="light"] .border-slate-700,
-html[data-theme="light"] .border-slate-700\/80,
-html[data-theme="light"] .border-slate-700\/60,
-html[data-theme="light"] .border-slate-850,
-html[data-theme="light"] .border-white\/10 {
+html[data-theme="light"] [class*="border-slate-"],
+html[data-theme="light"] [class*="border-white\/"],
+html[data-theme="light"] [class*="divide-slate-"] {
   border-color: #E2E8F0 !important;
 }
 
-/* High-Contrast Typography */
-html[data-theme="light"] .text-white,
-html[data-theme="light"] .text-slate-100,
-html[data-theme="light"] .text-slate-200 {
-  color: #0F172A !important;
-}
-
-html[data-theme="light"] .text-slate-300 {
-  color: #1E293B !important;
-}
-
-html[data-theme="light"] .text-slate-400 {
-  color: #475569 !important;
-}
-
-html[data-theme="light"] .text-slate-500,
-html[data-theme="light"] .text-slate-600 {
-  color: #64748B !important;
-}
-
-/* Vibrant Readable Accent Colors on White */
-html[data-theme="light"] .text-emerald-400,
-html[data-theme="light"] .text-emerald-300 {
-  color: #15803D !important;
-}
-
-html[data-theme="light"] .text-amber-400,
-html[data-theme="light"] .text-amber-300 {
-  color: #B45309 !important;
-}
-
-html[data-theme="light"] .text-blue-400,
-html[data-theme="light"] .text-indigo-400,
-html[data-theme="light"] .text-sky-400 {
-  color: #1D4ED8 !important;
-}
-
-html[data-theme="light"] .text-red-400,
-html[data-theme="light"] .text-rose-400 {
-  color: #B91C1C !important;
-}
-
-html[data-theme="light"] .text-purple-400 {
-  color: #7E22CE !important;
-}
-
-/* Colored Soft Badges & Pill Tags */
-html[data-theme="light"] .bg-emerald-500\/10,
-html[data-theme="light"] .bg-emerald-500\/15,
-html[data-theme="light"] .bg-emerald-500\/20 {
+/* ------------------------------------------------------------
+   COLORED SOFT BADGES & PILL TAGS
+   ------------------------------------------------------------ */
+html[data-theme="light"] [class*="bg-emerald-500\/"],
+html[data-theme="light"] [class*="bg-emerald-400\/"],
+html[data-theme="light"] [class*="bg-green-500\/"] {
   background-color: #DCFCE7 !important;
   color: #15803D !important;
   border-color: #86EFAC !important;
 }
 
-html[data-theme="light"] .bg-amber-500\/10,
-html[data-theme="light"] .bg-amber-500\/15,
-html[data-theme="light"] .bg-amber-500\/20 {
+html[data-theme="light"] [class*="bg-amber-500\/"],
+html[data-theme="light"] [class*="bg-amber-400\/"],
+html[data-theme="light"] [class*="bg-yellow-500\/"] {
   background-color: #FEF3C7 !important;
   color: #92400E !important;
   border-color: #FDE68A !important;
 }
 
-html[data-theme="light"] .bg-blue-500\/10,
-html[data-theme="light"] .bg-blue-500\/15,
-html[data-theme="light"] .bg-indigo-500\/10,
-html[data-theme="light"] .bg-indigo-500\/15 {
+html[data-theme="light"] [class*="bg-blue-500\/"],
+html[data-theme="light"] [class*="bg-blue-400\/"],
+html[data-theme="light"] [class*="bg-indigo-500\/"],
+html[data-theme="light"] [class*="bg-sky-500\/"] {
   background-color: #DBEAFE !important;
   color: #1E40AF !important;
   border-color: #BFDBFE !important;
 }
 
-html[data-theme="light"] .bg-red-500\/10,
-html[data-theme="light"] .bg-red-500\/15,
-html[data-theme="light"] .bg-rose-500\/10,
-html[data-theme="light"] .bg-rose-500\/15 {
+html[data-theme="light"] [class*="bg-red-500\/"],
+html[data-theme="light"] [class*="bg-red-400\/"],
+html[data-theme="light"] [class*="bg-rose-500\/"],
+html[data-theme="light"] [class*="bg-rose-400\/"] {
   background-color: #FEE2E2 !important;
   color: #991B1B !important;
   border-color: #FECACA !important;
 }
 
-/* Form Inputs, Dropdowns, Textareas */
+html[data-theme="light"] [class*="bg-purple-500\/"],
+html[data-theme="light"] [class*="bg-purple-400\/"] {
+  background-color: #F3E8FF !important;
+  color: #6B21A8 !important;
+  border-color: #DDD6FE !important;
+}
+
+/* ------------------------------------------------------------
+   FORM INPUTS, SELECTS & TEXTAREAS
+   ------------------------------------------------------------ */
 html[data-theme="light"] input:not([type="checkbox"]):not([type="radio"]),
 html[data-theme="light"] select,
 html[data-theme="light"] textarea {
@@ -328,7 +391,9 @@ html[data-theme="light"] textarea:focus {
   box-shadow: 0 0 0 1px #16A34A !important;
 }
 
-/* Table Styling in Light Mode */
+/* ------------------------------------------------------------
+   TABLE STYLING
+   ------------------------------------------------------------ */
 html[data-theme="light"] table {
   background-color: #FFFFFF !important;
   color: #1E293B !important;
@@ -356,7 +421,9 @@ html[data-theme="light"] td {
   color: #1E293B !important;
 }
 
-/* Sidebar in Light Mode */
+/* ------------------------------------------------------------
+   SIDEBAR & HEADER
+   ------------------------------------------------------------ */
 html[data-theme="light"] aside {
   background-color: #FFFFFF !important;
   border-color: #E2E8F0 !important;
@@ -368,7 +435,17 @@ html[data-theme="light"] aside button:hover {
   color: #0F172A !important;
 }
 
-/* Header & Mobile Navigation */
+html[data-theme="light"] aside button[class*="from-emerald-"] {
+  background: #ECFDF5 !important;
+  border-left-color: #10B981 !important;
+  color: #047857 !important;
+}
+
+html[data-theme="light"] aside button[class*="from-emerald-"] span,
+html[data-theme="light"] aside button[class*="from-emerald-"] svg {
+  color: #047857 !important;
+}
+
 html[data-theme="light"] header {
   background-color: rgba(255, 255, 255, 0.96) !important;
   border-color: #E2E8F0 !important;
@@ -379,23 +456,75 @@ html[data-theme="light"] .sticky.top-\[57px\] {
   border-color: #E2E8F0 !important;
 }
 
-/* Action Buttons with Solid Colors (Preserve Crisp White Text) */
-html[data-theme="light"] button.bg-emerald-500,
-html[data-theme="light"] button.bg-emerald-600,
-html[data-theme="light"] button.bg-gradient-to-r,
-html[data-theme="light"] button[type="submit"]:not(.bg-transparent),
-html[data-theme="light"] .bg-emerald-500 .text-white,
-html[data-theme="light"] .bg-emerald-600 .text-white,
-html[data-theme="light"] .bg-rose-500 .text-white,
-html[data-theme="light"] .bg-amber-500 .text-white,
-html[data-theme="light"] .bg-blue-500 .text-white,
-html[data-theme="light"] .bg-red-500 .text-white,
-html[data-theme="light"] [class*="bg-emerald-"] .text-white,
-html[data-theme="light"] [class*="bg-gradient-"] .text-white,
-html[data-theme="light"] [class*="from-emerald-"] span,
-html[data-theme="light"] [class*="from-emerald-"] svg,
-html[data-theme="light"] [class*="from-emerald-"] {
+/* ------------------------------------------------------------
+   MODAL BACKDROP
+   ------------------------------------------------------------ */
+html[data-theme="light"] [class*="bg-black\/80"],
+html[data-theme="light"] [class*="bg-black\/60"],
+html[data-theme="light"] [class*="bg-black\/70"] {
+  background-color: rgba(15, 23, 42, 0.55) !important;
+}
+
+/* ------------------------------------------------------------
+   SOLID ACTION BUTTONS (MUST PRESERVE CRISP WHITE TEXT)
+   Targeting emerald, green, teal, rose, red, blue, indigo, purple
+   buttons and their nested elements
+   ------------------------------------------------------------ */
+html[data-theme="light"] button[class*="bg-emerald-500"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-emerald-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-green-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-teal-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="from-emerald-500"],
+html[data-theme="light"] button[class*="from-emerald-600"],
+html[data-theme="light"] button[class*="bg-gradient-to-r"],
+html[data-theme="light"] button[class*="bg-rose-500"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-rose-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-red-500"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-red-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-blue-500"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-blue-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-indigo-600"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-purple-600"]:not([class*="/"]),
+html[data-theme="light"] a[class*="bg-emerald-500"]:not([class*="/"]),
+html[data-theme="light"] a[class*="bg-emerald-600"]:not([class*="/"]),
+html[data-theme="light"] a[class*="from-emerald-500"],
+html[data-theme="light"] a[class*="bg-gradient-to-r"],
+html[data-theme="light"] button[type="submit"]:not(.bg-transparent) {
   color: #FFFFFF !important;
+}
+
+/* Force all child spans, svgs, text inside solid buttons to stay white */
+html[data-theme="light"] button[class*="bg-emerald-500"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-emerald-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-green-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-teal-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="from-emerald-500"] *,
+html[data-theme="light"] button[class*="from-emerald-600"] *,
+html[data-theme="light"] button[class*="bg-gradient-to-r"] *,
+html[data-theme="light"] button[class*="bg-rose-500"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-rose-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-red-500"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-red-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-blue-500"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-blue-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-indigo-600"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-purple-600"]:not([class*="/"]) *,
+html[data-theme="light"] a[class*="bg-emerald-500"]:not([class*="/"]) *,
+html[data-theme="light"] a[class*="bg-emerald-600"]:not([class*="/"]) *,
+html[data-theme="light"] a[class*="from-emerald-500"] *,
+html[data-theme="light"] a[class*="bg-gradient-to-r"] *,
+html[data-theme="light"] button[type="submit"]:not(.bg-transparent) * {
+  color: #FFFFFF !important;
+}
+
+/* Solid amber / yellow buttons have dark text for maximum contrast */
+html[data-theme="light"] button[class*="bg-amber-500"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-amber-400"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-yellow-400"]:not([class*="/"]),
+html[data-theme="light"] button[class*="bg-amber-500"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-amber-400"]:not([class*="/"]) *,
+html[data-theme="light"] button[class*="bg-yellow-400"]:not([class*="/"]) * {
+  color: #0F172A !important;
 }
 
 /* Light Scrollbars */
