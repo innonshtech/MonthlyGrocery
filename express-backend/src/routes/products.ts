@@ -399,7 +399,6 @@ router.get('/master', async (req, res) => {
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
-      .eq('available', true)
       .order('name', { ascending: true });
 
     if (error) {
@@ -459,8 +458,7 @@ router.get('/categories', async (req, res) => {
 
     const { data: products, error } = await supabase
       .from('products')
-      .select('primary_category')
-      .eq('available', true);
+      .select('primary_category');
 
     if (error) {
       return res.status(500).json({ success: false, error: error.message });

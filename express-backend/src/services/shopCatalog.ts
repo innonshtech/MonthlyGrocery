@@ -135,7 +135,7 @@ export async function fetchProductsForShop(
     supaQuery = supaQuery.eq('secondary_category', query.secondary);
   }
 
-  const { data: masterProducts, error } = await supaQuery.limit(Math.max(limitVal, 300));
+  const { data: masterProducts, error } = await supaQuery.limit(Math.max(limitVal, 5000));
   if (error) {
     throw new Error(error.message);
   }
