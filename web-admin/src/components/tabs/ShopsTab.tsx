@@ -1411,8 +1411,7 @@ export default function ShopsTab({
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800/80 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="pb-3 pr-4">Store Name & Source</th>
-                    <th className="pb-3 pr-4">Street Address & GPS</th>
+                    <th className="pb-3 pr-4">Store Name & Location</th>
                     <th className="pb-3 pr-4">Owner & KYC Docs</th>
                     <th className="pb-3 pr-4">Status</th>
                     <th className="pb-3 text-right">Actions</th>
@@ -1426,57 +1425,20 @@ export default function ShopsTab({
                         shop.status === 'pending' ? 'bg-amber-500/5' : ''
                       }`}
                     >
-                      <td className="py-4 pr-4 font-semibold text-white">
-                        <p className="text-white font-bold">{shop.shop_name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-300">
+                      <td className="py-4 pr-4 font-semibold">
+                        <p className="text-slate-900 dark:text-white font-bold text-sm">{shop.shop_name}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                          <span className="text-[10px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-slate-600 dark:text-slate-300 font-medium">
                             {shop.onboarding_source === 'app_self_registration'
                               ? '📱 App Self-Register'
                               : '💻 Admin Direct'}
                           </span>
-                          <button
-                            onClick={() => setSelectedShopForReview(shop)}
-                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
-                          >
-                            📋 Review Full App & Docs
-                          </button>
+                          {(shop.area_name || shop.city || shop.district_name) && (
+                            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                              📍 {shop.area_name ? `${shop.area_name}, ` : ''}{shop.city || shop.district_name}
+                            </span>
+                          )}
                         </div>
-                      </td>
-
-                      <td className="py-4 pr-4 max-w-xs">
-                        {shop.street_address ? (
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-2">
-                            📍 {shop.street_address}
-                          </p>
-                        ) : shop.state_name ? (
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-300">
-                            {shop.area_name ? `${shop.area_name}, ` : ''}{shop.city || shop.district_name} (PIN: {shop.pincode || '—'})
-                          </p>
-                        ) : (
-                          <span className="text-slate-500 italic text-xs">No address assigned</span>
-                        )}
-
-                        {(() => {
-                          const sLat =
-                            shop.latitude != null && !isNaN(Number(shop.latitude))
-                              ? Number(shop.latitude)
-                              : (shop as any).lat != null && !isNaN(Number((shop as any).lat))
-                              ? Number((shop as any).lat)
-                              : null;
-                          const sLng =
-                            shop.longitude != null && !isNaN(Number(shop.longitude))
-                              ? Number(shop.longitude)
-                              : (shop as any).lng != null && !isNaN(Number((shop as any).lng))
-                              ? Number((shop as any).lng)
-                              : null;
-                          return sLat != null && sLng != null ? (
-                            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono font-bold mt-0.5">
-                              📍 Coords: {sLat.toFixed(5)}, {sLng.toFixed(5)} ({shop.delivery_radius_km || 5} km radius)
-                            </p>
-                          ) : (
-                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">⚠️ No GPS Pinned</p>
-                          );
-                        })()}
                       </td>
 
                       <td className="py-4 pr-4">
@@ -1605,7 +1567,7 @@ export default function ShopsTab({
 
                   {filteredShops.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-12 text-center text-slate-400">
+                      <td colSpan={4} className="py-12 text-center text-slate-400">
                         <Store className="w-10 h-10 mx-auto text-slate-600 mb-2" />
                         <p className="font-semibold text-sm">No stores found matching your filters.</p>
                         <div className="mt-3">
