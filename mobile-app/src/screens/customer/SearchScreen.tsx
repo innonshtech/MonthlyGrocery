@@ -217,23 +217,59 @@ export default function SearchScreen({ navigation }: any) {
 
       {query.trim().length === 0 ? (
         <View style={styles.popularWrap}>
-          {/* AI Grocery List Scanner Banner */}
-          <TouchableOpacity
-            style={styles.aiUploadBanner}
-            onPress={() => navigation.navigate('UploadGroceryList')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.aiUploadBannerContent}>
-              <View style={styles.aiUploadBadge}>
-                <Text style={styles.aiUploadBadgeText}>✨ AI Smart Scan</Text>
+          {/* AI Feature Banners */}
+          <View style={{ gap: 10, marginBottom: 16 }}>
+            <TouchableOpacity
+              style={styles.aiUploadBanner}
+              onPress={() => navigation.navigate('UploadGroceryList')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.aiUploadBannerContent}>
+                <View style={styles.aiUploadBadge}>
+                  <Text style={styles.aiUploadBadgeText}>✨ AI Smart Scan</Text>
+                </View>
+                <Text style={styles.aiUploadTitle}>Have a written grocery list?</Text>
+                <Text style={styles.aiUploadSubtitle}>Upload handwritten photo or paste text to build your cart.</Text>
               </View>
-              <Text style={styles.aiUploadTitle}>Have a written grocery list?</Text>
-              <Text style={styles.aiUploadSubtitle}>Upload handwritten photo or paste text to build your cart.</Text>
-            </View>
-            <View style={styles.aiUploadIconCircle}>
-              <Text style={{ fontSize: 24 }}>📋</Text>
-            </View>
-          </TouchableOpacity>
+              <View style={styles.aiUploadIconCircle}>
+                <Text style={{ fontSize: 22 }}>📋</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.aiUploadBanner, { borderColor: '#E0E7FF', backgroundColor: '#F5F7FF' }]}
+              onPress={() => navigation.navigate('AIAssistantChat')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.aiUploadBannerContent}>
+                <View style={[styles.aiUploadBadge, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}>
+                  <Text style={[styles.aiUploadBadgeText, { color: '#4338CA' }]}>🤖 AI Grocery Assistant</Text>
+                </View>
+                <Text style={styles.aiUploadTitle}>Need help planning your budget?</Text>
+                <Text style={styles.aiUploadSubtitle}>Ask: "4-person monthly list" or "Plan under ₹4,000".</Text>
+              </View>
+              <View style={[styles.aiUploadIconCircle, { backgroundColor: '#EEF2FF' }]}>
+                <Text style={{ fontSize: 22 }}>💬</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.aiUploadBanner, { borderColor: '#FEF3C7', backgroundColor: '#FFFBEB' }]}
+              onPress={() => navigation.navigate('FamilyProfileSetup')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.aiUploadBannerContent}>
+                <View style={[styles.aiUploadBadge, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
+                  <Text style={[styles.aiUploadBadgeText, { color: '#B45309' }]}>👨‍👩‍👧‍👦 AI Household Baseline</Text>
+                </View>
+                <Text style={styles.aiUploadTitle}>Family Monthly Consumption Plan</Text>
+                <Text style={styles.aiUploadSubtitle}>Calculate exact Atta, Oil & Dal quantities for your family size.</Text>
+              </View>
+              <View style={[styles.aiUploadIconCircle, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={{ fontSize: 22 }}>📊</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
           {popularSearches.length > 0 ? (
             <>

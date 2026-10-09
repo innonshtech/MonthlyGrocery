@@ -20,7 +20,16 @@ import {
   HouseholdProfile,
   HouseholdBasketResult,
 } from '../../services/aiApi';
-import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
+import {
+  ArrowLeft,
+  Users,
+  Sparkles,
+  RotateCcw,
+  ShoppingCart,
+  Check,
+  Plus,
+  Minus,
+} from 'lucide-react-native';
 
 const BRAND_OPTIONS = [
   'Aashirvaad',
@@ -127,7 +136,7 @@ export default function FamilyProfileSetupScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
-          <CheckoutBackIcon color={COLORS.ink900} />
+          <ArrowLeft size={22} color={COLORS.ink900} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>Family Grocery Planner</Text>

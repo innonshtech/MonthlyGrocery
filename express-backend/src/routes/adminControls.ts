@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { AuthRequest, authMiddleware, requireRole } from '../middleware/auth';
 import { readDb, writeDb, ServiceableLocation, PromotionalBanner, FranchiseRequest, ShopProduct, AreaNotifyRequest } from '../config/localDb';
 import { supabase } from '../config/supabase';
+import { query } from '../config/db';
 import { packUnitPayloadFromInput, resolvePackUnitLabel, toSupabaseProductRow } from '../utils/packUnit';
 import { parseProductMedia, enrichProductWithMedia, formatProductDescriptionWithMedia } from '../utils/productMedia';
 import { enrichConsumerOrder, resolveStoredDisplayId } from '../utils/orderEnrichment';
@@ -2867,11 +2868,146 @@ router.patch('/orders/:id/status', authMiddleware, requireRole(['super_admin', '
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    const returnedOrder = orderIdx !== -1 ? enrichConsumerOrder(db.orders[orderIdx]) : data || { id: matchedOrderId, status };
-
-    return res.json({ success: true, message: `Order status updated to ${status}`, order: returnedOrder });
+    return res.json({
+      success: true,
+      order: data || (orderIdx !== -1 ? db.orders[orderIdx] : null),
+    });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /customers: Fetch all registered customer users with aggregated addresses and orders stats
+router.get('/customers', async (_req, res) => {
+  try {
+    const customersQuery = `
+      SELECT 
+        p.id,
+        COALESCE(NULLIF(p.name, ''), NULLIF(p.full_name, ''), 'Customer') as name,
+        p.full_name,
+        COALESCE(p.phone, p.mobile, '') as phone,
+        p.email,
+        COALESCE(p.role, 'customer') as role,
+        COALESCE(p.status, 'active') as status,
+        p.city,
+        p.pincode,
+        p.created_at,
+        p.updated_at,
+        COUNT(DISTINCT a.id)::int as addresses_count,
+        COUNT(DISTINCT o.id)::int as orders_count,
+        COALESCE(SUM(o.final_amount), 0)::numeric as total_spent,
+        MAX(o.created_at) as last_order_date
+      FROM profiles p
+      LEFT JOIN addresses a ON (a.user_id = p.id OR a.consumer_id = p.id)
+      LEFT JOIN orders o ON (o.user_id = p.id OR o.consumer_id = p.id)
+      GROUP BY p.id, p.name, p.full_name, p.phone, p.mobile, p.email, p.role, p.status, p.city, p.pincode, p.created_at, p.updated_at
+      ORDER BY p.created_at DESC
+    `;
+
+    const { rows: customers } = await query(customersQuery);
+
+    // Fetch registered merchants / stores
+    const { rows: merchants } = await query(`
+      SELECT 
+        s.id,
+        s.shop_name,
+        s.owner_name,
+        COALESCE(s.phone, '') as phone,
+        s.status,
+        s.city,
+        s.pincode,
+        s.address,
+        s.created_at,
+        s.owner_id
+      FROM shops s
+      ORDER BY s.created_at DESC
+    `);
+
+    // Compute aggregate summary metrics
+    const total_customers = customers.filter(c => c.status !== 'deleted').length;
+    const active_customers = customers.filter(c => c.status === 'active').length;
+    const deleted_customers = customers.filter(c => c.status === 'deleted').length;
+    const total_merchants = merchants.length;
+    const active_merchants = merchants.filter(m => m.status === 'approved' || m.status === 'active').length;
+    const total_orders = customers.reduce((sum, c) => sum + (Number(c.orders_count) || 0), 0);
+    const total_revenue = customers.reduce((sum, c) => sum + (Number(c.total_spent) || 0), 0);
+
+    return res.json({
+      success: true,
+      stats: {
+        total_customers,
+        total_merchants,
+        active_customers,
+        active_merchants,
+        deleted_customers,
+        total_orders,
+        total_revenue: Number(total_revenue.toFixed(2)),
+      },
+      customers: customers.map(c => ({
+        ...c,
+        total_spent: Number(c.total_spent) || 0,
+        addresses_count: Number(c.addresses_count) || 0,
+        orders_count: Number(c.orders_count) || 0,
+      })),
+      merchants: merchants.map(m => ({
+        ...m,
+        status: m.status || 'pending',
+      })),
+    });
+  } catch (err: any) {
+    console.error('[Admin GET /customers] Error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch customers' });
+  }
+});
+
+// GET /customers/:id: Fetch single customer details with saved addresses and past orders
+router.get('/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { rows: profiles } = await query(
+      `SELECT id, name, full_name, COALESCE(phone, mobile) as phone, email, role, status, city, pincode, created_at, updated_at
+       FROM profiles
+       WHERE id = $1`,
+      [id]
+    );
+
+    if (profiles.length === 0) {
+      return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    const customer = profiles[0];
+
+    // Fetch delivery addresses
+    const { rows: addresses } = await query(
+      `SELECT id, label, address_line1, address_line2, city, state, pincode, is_default, created_at
+       FROM addresses
+       WHERE user_id = $1 OR consumer_id = $1
+       ORDER BY is_default DESC, created_at DESC`,
+      [id]
+    );
+
+    // Fetch orders history
+    const { rows: orders } = await query(
+      `SELECT id, order_number, status, total_amount, final_amount, delivery_fee, discount_amount, total_savings, created_at, delivery_address, items
+       FROM orders
+       WHERE user_id = $1 OR consumer_id = $1
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [id]
+    );
+
+    return res.json({
+      success: true,
+      customer: {
+        ...customer,
+        addresses,
+        orders,
+      },
+    });
+  } catch (err: any) {
+    console.error('[Admin GET /customers/:id] Error:', err);
+    return res.status(500).json({ success: false, error: err.message || 'Failed to fetch customer details' });
   }
 });
 

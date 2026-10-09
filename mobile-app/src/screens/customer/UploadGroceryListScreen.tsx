@@ -25,7 +25,18 @@ import {
   ExtractedGroceryItem,
   ParseListResponse,
 } from '../../services/aiApi';
-import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
+import {
+  ArrowLeft,
+  FileText,
+  Camera,
+  Image as ImageIcon,
+  Sparkles,
+  RotateCcw,
+  ShoppingCart,
+  Check,
+  Plus,
+  Minus,
+} from 'lucide-react-native';
 
 export default function UploadGroceryListScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
@@ -235,7 +246,7 @@ export default function UploadGroceryListScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
-          <CheckoutBackIcon color={COLORS.ink900} />
+          <ArrowLeft size={22} color={COLORS.ink900} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>Upload Grocery List</Text>
@@ -256,16 +267,18 @@ export default function UploadGroceryListScreen({ navigation }: any) {
               style={[styles.tabBtn, activeTab === 'text' && styles.tabBtnActive]}
               onPress={() => setActiveTab('text')}
             >
+              <FileText size={17} color={activeTab === 'text' ? COLORS.green700 : COLORS.ink600} />
               <Text style={[styles.tabBtnText, activeTab === 'text' && styles.tabBtnTextActive]}>
-                📝 Paste / Type List
+                Paste / Type List
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.tabBtn, activeTab === 'image' && styles.tabBtnActive]}
               onPress={() => setActiveTab('image')}
             >
+              <Camera size={17} color={activeTab === 'image' ? COLORS.green700 : COLORS.ink600} />
               <Text style={[styles.tabBtnText, activeTab === 'image' && styles.tabBtnTextActive]}>
-                📷 Scan Paper Slip
+                Scan Paper Slip
               </Text>
             </TouchableOpacity>
           </View>
@@ -311,7 +324,8 @@ export default function UploadGroceryListScreen({ navigation }: any) {
             </View>
 
             <TouchableOpacity style={styles.primaryActionBtn} onPress={handleProcessText}>
-              <Text style={styles.primaryActionBtnText}>✨ Build Monthly Cart with AI</Text>
+              <Sparkles size={18} color="#FFFFFF" />
+              <Text style={styles.primaryActionBtnText}>Build Monthly Cart with AI</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -328,7 +342,9 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                 </View>
               ) : (
                 <View style={styles.imagePickerPlaceHolder}>
-                  <Text style={styles.imagePickerIcon}>📋</Text>
+                  <View style={styles.imagePickerIconCircle}>
+                    <Camera size={34} color={COLORS.green700} />
+                  </View>
                   <Text style={styles.imagePickerTitle}>Photograph your Paper Grocery List</Text>
                   <Text style={styles.imagePickerSub}>
                     AI will read handwritten notes and match items with local store prices.
@@ -338,14 +354,16 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                       style={styles.mediaSelectBtn}
                       onPress={() => handlePickImage('camera')}
                     >
-                      <Text style={styles.mediaSelectBtnText}>📸 Take Photo</Text>
+                      <Camera size={16} color="#FFFFFF" />
+                      <Text style={styles.mediaSelectBtnText}>Take Photo</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.mediaSelectBtn, styles.mediaSelectBtnAlt]}
                       onPress={() => handlePickImage('gallery')}
                     >
+                      <ImageIcon size={16} color={COLORS.ink800} />
                       <Text style={[styles.mediaSelectBtnText, styles.mediaSelectBtnTextAlt]}>
-                        🖼️ Gallery
+                        Gallery
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -355,7 +373,8 @@ export default function UploadGroceryListScreen({ navigation }: any) {
 
             {selectedImageUri && (
               <TouchableOpacity style={styles.primaryActionBtn} onPress={handleProcessImage}>
-                <Text style={styles.primaryActionBtnText}>🔍 Scan Paper Slip with Vision AI</Text>
+                <Sparkles size={18} color="#FFFFFF" />
+                <Text style={styles.primaryActionBtnText}>Scan Paper Slip with Vision AI</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -397,7 +416,8 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                   setSelectedImageUri(null);
                 }}
               >
-                <Text style={styles.resetBtnText}>↺ Scan / Paste Another List</Text>
+                <RotateCcw size={14} color={COLORS.green700} />
+                <Text style={styles.resetBtnText}>Scan / Paste Another List</Text>
               </TouchableOpacity>
             </View>
 
@@ -414,7 +434,7 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                 <View key={`${product.id}-${index}`} style={[styles.itemCard, isSelected && styles.itemCardSelected]}>
                   <TouchableOpacity style={styles.checkWrap} onPress={() => toggleSelect(product.id)}>
                     <View style={[styles.checkbox, isSelected && styles.checkboxActive]}>
-                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                      {isSelected && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
                     </View>
                   </TouchableOpacity>
 
@@ -471,14 +491,14 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                       style={styles.stepBtn}
                       onPress={() => updateQty(product.id, -1)}
                     >
-                      <Text style={styles.stepBtnText}>−</Text>
+                      <Minus size={14} color={COLORS.ink800} strokeWidth={2.5} />
                     </TouchableOpacity>
                     <Text style={styles.stepCount}>{qty}</Text>
                     <TouchableOpacity
                       style={styles.stepBtn}
                       onPress={() => updateQty(product.id, 1)}
                     >
-                      <Text style={styles.stepBtnText}>+</Text>
+                      <Plus size={14} color={COLORS.ink800} strokeWidth={2.5} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -508,7 +528,8 @@ export default function UploadGroceryListScreen({ navigation }: any) {
               <Text style={styles.bottomTotalText}>₹{activeTotal.toFixed(0)}</Text>
             </View>
             <TouchableOpacity style={styles.bottomSubmitBtn} onPress={handleAddAllToCart}>
-              <Text style={styles.bottomSubmitBtnText}>Transfer to Cart 🛒</Text>
+              <ShoppingCart size={18} color="#FFFFFF" />
+              <Text style={styles.bottomSubmitBtnText}>Transfer to Cart</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -562,8 +583,11 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 11,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.muted,
   },
@@ -636,9 +660,12 @@ const styles = StyleSheet.create({
   },
   primaryActionBtn: {
     backgroundColor: COLORS.green700,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     paddingVertical: 14,
     borderRadius: RADIUS.md,
-    alignItems: 'center',
     shadowColor: COLORS.green700,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -662,9 +689,16 @@ const styles = StyleSheet.create({
   imagePickerPlaceHolder: {
     alignItems: 'center',
   },
-  imagePickerIcon: {
-    fontSize: 42,
-    marginBottom: 8,
+  imagePickerIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: COLORS.green50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.green100,
   },
   imagePickerTitle: {
     ...FONTS.balooBold,
@@ -686,6 +720,10 @@ const styles = StyleSheet.create({
   },
   mediaSelectBtn: {
     backgroundColor: COLORS.green700,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: RADIUS.sm,
@@ -812,6 +850,9 @@ const styles = StyleSheet.create({
   },
   resetBtn: {
     alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginTop: 8,
   },
   resetBtnText: {
@@ -1021,6 +1062,10 @@ const styles = StyleSheet.create({
   },
   bottomSubmitBtn: {
     backgroundColor: COLORS.green700,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     paddingHorizontal: 22,
     paddingVertical: 12,
     borderRadius: RADIUS.md,

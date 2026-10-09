@@ -260,8 +260,41 @@ export interface Area {
   pincode?: string;
 }
 
+export interface AdminCustomer {
+  id: string;
+  name: string;
+  full_name?: string;
+  phone: string;
+  email?: string | null;
+  role: string;
+  status: 'active' | 'deleted';
+  city?: string | null;
+  pincode?: string | null;
+  created_at: string;
+  updated_at?: string;
+  addresses_count: number;
+  orders_count: number;
+  total_spent: number;
+  last_order_date?: string | null;
+}
+
+export interface AdminMerchant {
+  id: string;
+  shop_name: string;
+  owner_name: string;
+  phone: string;
+  status: string;
+  city?: string | null;
+  pincode?: string | null;
+  address?: string | null;
+  created_at: string;
+  owner_id?: string | null;
+}
+
 export type TabType =
   | 'shops'
+  | 'orders-admin'
+  | 'customers'
   | 'locations'
   | 'analytics'
   | 'banners'
@@ -272,5 +305,5 @@ export type TabType =
   | 'sku-requests'
   | 'categories-admin'
   | 'master-catalog'
-  | 'coupons-admin'
-  | 'orders-admin';
+  | 'coupons-admin';
+

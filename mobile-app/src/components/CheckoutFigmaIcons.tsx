@@ -23,10 +23,11 @@ const DAL_XML = `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xml
 
 const FALLBACK_EMOJIS = [ATTA_XML, RICE_XML, OIL_XML, DAL_XML];
 
-type IconProps = { size?: number };
+type IconProps = { size?: number; color?: string };
 
-export function CheckoutBackIcon({ size = 24 }: IconProps) {
-  return <SvgXml xml={BACK_XML} width={size} height={size} />;
+export function CheckoutBackIcon({ size = 24, color }: IconProps) {
+  const xml = color ? BACK_XML.replace(/stroke="[^"]*"/g, `stroke="${color}"`) : BACK_XML;
+  return <SvgXml xml={xml} width={size} height={size} />;
 }
 
 export function CheckoutHomeIcon({ size = 20 }: IconProps) {

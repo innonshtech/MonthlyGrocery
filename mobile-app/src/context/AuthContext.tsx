@@ -258,11 +258,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await Promise.all([
         AsyncStorage.removeItem('@auth_token'),
         AsyncStorage.removeItem('@auth_user'),
+        AsyncStorage.removeItem('@user_display_name'),
+        AsyncStorage.removeItem('@user_email'),
         AsyncStorage.removeItem('@user_city'),
         AsyncStorage.removeItem('@user_area'),
         AsyncStorage.removeItem('@user_pincode'),
         AsyncStorage.removeItem('@selected_shop'),
         AsyncStorage.removeItem('@value_intro_seen'),
+        AsyncStorage.removeItem('@user_addresses'),
+        AsyncStorage.removeItem('@user_household_profile'),
+        AsyncStorage.removeItem('@guest_cart'),
+        AsyncStorage.removeItem('@cart_shop_id'),
+        AsyncStorage.removeItem('@cart_shop_name'),
       ]);
       setToken(null);
       setUser(null);

@@ -75,7 +75,7 @@ export default function DeleteAccountScreen({ navigation }: any) {
   );
 
   const handleDelete = async () => {
-    if (!screenConfig || !token) return;
+    if (!screenConfig) return;
 
     if (!agreed) {
       showToast({
@@ -86,15 +86,25 @@ export default function DeleteAccountScreen({ navigation }: any) {
       return;
     }
 
+    const activeToken = token || (await AsyncStorage.getItem('@auth_token'));
+    if (!activeToken) {
+      showToast({
+        type: 'error',
+        title: 'Session Error',
+        message: 'Could not find active login session. Please sign in again.',
+      });
+      return;
+    }
+
     setDeleting(true);
-    const result = await deleteAccount(token);
+    const result = await deleteAccount(activeToken);
     setDeleting(false);
 
     if (!result.success) {
       showToast({
         type: 'error',
         title: 'Delete Failed',
-        message: screenConfig.delete_error_message || 'Failed to delete account',
+        message: result.error || screenConfig.delete_error_message || 'Failed to delete account',
       });
       return;
     }

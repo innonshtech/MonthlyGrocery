@@ -27,7 +27,7 @@ export interface ToastOptions {
 }
 
 interface ToastContextType {
-  showToast: (options: ToastOptions | string) => void;
+  showToast: (options: ToastOptions | string, type?: ToastType) => void;
   hideToast: () => void;
 }
 
@@ -62,13 +62,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, [translateY, opacity]);
 
   const showToast = useCallback(
-    (options: ToastOptions | string) => {
+    (options: ToastOptions | string, type?: ToastType) => {
       if (timerRef.current) clearTimeout(timerRef.current);
 
       const opts: ToastOptions =
         typeof options === 'string'
-          ? { message: options, type: 'info' }
-          : { type: 'info', ...options };
+          ? { message: options, type: type || 'info' }
+          : { type: type || options.type || 'info', ...options };
 
       setToast(opts);
       translateY.setValue(100);

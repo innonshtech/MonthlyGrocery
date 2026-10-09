@@ -42,14 +42,17 @@ export async function deleteAccount(token: string): Promise<{ success: boolean; 
   try {
     const res = await fetch(`${API_BASE}/auth/account`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
     const data = await res.json();
     if (!res.ok || !data.success) {
-      return { success: false, error: data.error || 'Failed to delete account' };
+      return { success: false, error: data.error || data.message || 'Failed to delete account' };
     }
     return { success: true };
-  } catch {
-    return { success: false, error: 'Network error' };
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Network error' };
   }
 }

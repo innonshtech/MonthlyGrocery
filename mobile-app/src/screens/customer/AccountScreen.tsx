@@ -122,6 +122,8 @@ export default function AccountScreen({ navigation, setActiveTab }: any) {
       AsyncStorage.getItem('@user_display_name').then((stored) => {
         if (stored && stored.trim()) {
           setCustomDisplayName(stored.trim());
+        } else {
+          setCustomDisplayName('');
         }
       });
       loadConfig().then(() => loadSummary());

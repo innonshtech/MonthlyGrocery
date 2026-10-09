@@ -21,7 +21,13 @@ import {
   ChatMessage,
   AssistantChatResult,
 } from '../../services/aiApi';
-import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
+import {
+  ArrowLeft,
+  Send,
+  Sparkles,
+  ShoppingCart,
+  Bot,
+} from 'lucide-react-native';
 
 interface DisplayMessage {
   id: string;
@@ -35,7 +41,7 @@ export default function AIAssistantChatScreen({ navigation }: any) {
   const { city } = useAuth();
   const { addToCart } = useCart();
   const { showToast } = useToast();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
 
   const [inputMsg, setInputMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -142,7 +148,7 @@ export default function AIAssistantChatScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={12}>
-          <CheckoutBackIcon color={COLORS.ink900} />
+          <ArrowLeft size={22} color={COLORS.ink900} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.headerTitle}>AI Grocery Assistant</Text>
@@ -171,7 +177,7 @@ export default function AIAssistantChatScreen({ navigation }: any) {
               <View key={msg.id} style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowAssistant]}>
                 {!isUser && (
                   <View style={styles.assistantAvatar}>
-                    <Text style={{ fontSize: 16 }}>🤖</Text>
+                    <Bot size={18} color={COLORS.green700} />
                   </View>
                 )}
 
@@ -221,7 +227,8 @@ export default function AIAssistantChatScreen({ navigation }: any) {
                           style={styles.transferBtn}
                           onPress={() => handleAddBasketToCart(msg.basket)}
                         >
-                          <Text style={styles.transferBtnText}>Add All to Cart 🛒</Text>
+                          <ShoppingCart size={14} color="#FFFFFF" />
+                          <Text style={styles.transferBtnText}>Add to Cart</Text>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -235,7 +242,7 @@ export default function AIAssistantChatScreen({ navigation }: any) {
           {loading && (
             <View style={[styles.msgRow, styles.msgRowAssistant]}>
               <View style={styles.assistantAvatar}>
-                <Text style={{ fontSize: 16 }}>🤖</Text>
+                <Bot size={18} color={COLORS.green700} />
               </View>
               <View style={[styles.msgBubble, styles.msgBubbleAssistant, styles.typingBubble]}>
                 <ActivityIndicator size="small" color={COLORS.green700} />
@@ -279,7 +286,7 @@ export default function AIAssistantChatScreen({ navigation }: any) {
             onPress={() => handleSendMessage()}
             disabled={!inputMsg.trim() || loading}
           >
-            <Text style={styles.sendBtnText}>➤</Text>
+            <Send size={16} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -445,7 +452,7 @@ const styles = StyleSheet.create({
   basketItemName: {
     ...FONTS.muktaMedium,
     fontSize: 12,
-    color: COLORS.ink800,
+    color: COLORS.ink900,
     flex: 1,
     marginRight: 6,
   },
@@ -478,6 +485,9 @@ const styles = StyleSheet.create({
   },
   transferBtn: {
     backgroundColor: COLORS.green700,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: RADIUS.sm,

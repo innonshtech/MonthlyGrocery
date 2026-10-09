@@ -45,6 +45,7 @@ import { CategoriesAdminTab } from '../components/tabs/CategoriesAdminTab';
 import { MasterCatalogTab } from '../components/tabs/MasterCatalogTab';
 import { CouponsAdminTab } from '../components/tabs/CouponsAdminTab';
 import { OrdersAdminTab } from '../components/tabs/OrdersAdminTab';
+import CustomersTab from '../components/tabs/CustomersTab';
 import LandingPage from '../components/landing/LandingPage';
 
 export default function DashboardPage() {
@@ -1746,6 +1747,9 @@ export default function DashboardPage() {
               handleUpdateOrderStatus={handleUpdateOrderStatus}
             />
           )}
+
+          {/* 14. CUSTOMERS DIRECTORY TAB */}
+          {activeTab === 'customers' && <CustomersTab />}
         </div>
       </main>
     </div>

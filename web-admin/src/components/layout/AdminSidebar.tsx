@@ -14,6 +14,7 @@ import {
   Package,
   Ticket,
   ShoppingBag,
+  Users,
   Home,
   Upload,
   X
@@ -64,6 +65,11 @@ export default function AdminSidebar({
           icon: ShoppingBag,
           badge: allOrdersList.filter((o) => o.status === 'pending').length || undefined,
           badgeColor: 'bg-emerald-500'
+        },
+        {
+          id: 'customers' as TabType,
+          label: 'Customers Directory',
+          icon: Users,
         },
         {
           id: 'sku-requests' as TabType,

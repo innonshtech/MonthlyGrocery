@@ -253,7 +253,10 @@ router.post('/verify-otp', async (req, res) => {
       console.warn('[verify-otp] fetch profile warning:', fetchError.message);
     }
 
-    const selectedRole = normalized === SUPER_ADMIN_MOBILE_CLEAN ? 'super_admin' : (role || 'consumer');
+    const selectedRole =
+      role === 'super_admin' && normalized === SUPER_ADMIN_MOBILE_CLEAN
+        ? 'super_admin'
+        : (role === 'admin' ? 'admin' : 'customer');
 
     // If profile does not exist, create user in Supabase Auth & ensure row in profiles table
     if (!profile) {
@@ -328,8 +331,8 @@ router.post('/verify-otp', async (req, res) => {
       }
     }
 
-    // Force super_admin role check if matching environment config
-    if (normalized === SUPER_ADMIN_MOBILE_CLEAN && profile.role !== 'super_admin') {
+    // Explicit super_admin login requested from Admin Portal
+    if (role === 'super_admin' && normalized === SUPER_ADMIN_MOBILE_CLEAN && profile.role !== 'super_admin') {
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .update({ role: 'super_admin' })
@@ -595,15 +598,8 @@ router.post('/avatar', authMiddleware, async (req: AuthRequest, res: Response) =
 });
 
 router.delete('/account', authMiddleware, async (req: AuthRequest, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  if (req.user.role !== 'consumer') {
-    return res.status(403).json({
-      success: false,
-      error: 'This account type cannot be deleted from the app.',
-    });
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: Missing user session' });
   }
 
   try {
@@ -612,7 +608,7 @@ router.delete('/account', authMiddleware, async (req: AuthRequest, res: Response
     if (!result.success) {
       return res.status(500).json({ success: false, error: result.error || 'Failed to delete account' });
     }
-    return res.json({ success: true });
+    return res.json({ success: true, message: 'Account deleted successfully' });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });
   }

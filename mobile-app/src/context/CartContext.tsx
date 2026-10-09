@@ -106,7 +106,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setMinOrderLimit(data.min_order_limit);
         }
       } catch (err) {
-        console.error('Failed to fetch config from backend:', err);
+        console.warn('Backend config fetch fallback to default min order limit (3000):', err);
       }
     };
     loadCart();
