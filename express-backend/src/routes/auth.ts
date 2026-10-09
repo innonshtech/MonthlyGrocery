@@ -34,22 +34,16 @@ function normalizePhone(phone: string): string {
 
 // Check if a mobile number belongs to a registered merchant / store partner with status check
 async function checkMerchantStatus(normalizedPhone: string): Promise<{ registered: boolean; status?: string; shopName?: string; rejection_reason?: string | null }> {
-  if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN || isTestPhoneNumber(normalizedPhone)) {
-    return { registered: true, status: 'approved', shopName: 'MonthlyGrocery Test Store' };
-  }
-
   try {
     // 1. Check profiles table
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, role')
-      .eq('phone', normalizedPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (profile) {
-      if (profile.role === 'super_admin') {
-        return { registered: true, status: 'approved' };
-      }
       // Check if user owns a shop
       const { data: shop } = await supabase
         .from('shops')
@@ -66,18 +60,13 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
           rejection_reason: shop.rejection_reason || null,
         };
       }
-
-      // Admin role without a linked shop is not a valid merchant partner (no OTP bypass).
-      if (profile.role === 'admin') {
-        return { registered: false };
-      }
     }
 
     // 2. Check shops table directly by phone number
     const { data: shopByPhone } = await supabase
       .from('shops')
       .select('id, shop_name, status, rejection_reason')
-      .eq('phone', normalizedPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
       .order('created_at', { ascending: false })
       .maybeSingle();
 
@@ -87,22 +76,6 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
         status: shopByPhone.status || 'approved',
         shopName: shopByPhone.shop_name,
         rejection_reason: shopByPhone.rejection_reason || null,
-      };
-    }
-
-    const { data: shopByPhonePlus } = await supabase
-      .from('shops')
-      .select('id, shop_name, status, rejection_reason')
-      .eq('phone', '+' + normalizedPhone)
-      .order('created_at', { ascending: false })
-      .maybeSingle();
-
-    if (shopByPhonePlus) {
-      return {
-        registered: true,
-        status: shopByPhonePlus.status || 'approved',
-        shopName: shopByPhonePlus.shop_name,
-        rejection_reason: shopByPhonePlus.rejection_reason || null,
       };
     }
   } catch (err) {
