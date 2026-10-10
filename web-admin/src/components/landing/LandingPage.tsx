@@ -790,29 +790,39 @@ function EverLogo({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) {
 function HeroImage() {
   const slides = [
     {
-      url: "/hero-family-cooking.jpg",
-      caption: "Poore parivaar ki khushiyan, fresh grocery aur monthly ration ke saath.",
-      tag: "Happy families",
-    },
-    {
-      url: "/hero-women-kitchen.jpg",
-      caption: "Maa aur bahu ka bharosa — 100% fresh aur shuddh grocery.",
-      tag: "Ghar ki rasoi",
-    },
-    {
       url: "/hero-green-saree-pack.jpg",
-      caption: "Everyday Value for a Better Tomorrow — seedha factory se aapke ghar.",
-      tag: "Wholesale savings",
-    },
-    {
-      url: "/hero-couple.png",
-      caption: "Ghar ka poora kirana, saath mein — pyaar se chuni gayi list.",
-      tag: "For Indian families",
+      tag: "Everyday Value",
+      title: "Everyday Value for a Better Tomorrow",
+      subtitle: "Direct Factory Wholesale Price • Maximum Savings",
+      highlights: ["Quality Products", "Better Prices", "Monthly Essentials", "Delivered with Trust"],
     },
     {
       url: "/hero-western-checkout.png",
-      caption: "Har brand jo aap pasand karti ho — sealed & delivered.",
       tag: "Handpicked for you",
+      title: "All Your Favourite Brands Handpicked & Verified",
+      subtitle: "100% Original Factory Sealed Products Delivered to Your Door",
+      highlights: ["Aashirvaad", "Surf Excel", "Tata Tea", "Saffola Gold"],
+    },
+    {
+      url: "/hero-couple.png",
+      tag: "For Indian families",
+      title: "Smart Monthly Grocery Planning for Indian Families",
+      subtitle: "Complete Monthly Ration in One Order • Zero Middlemen",
+      highlights: ["4-Hour Express Slot", "Bulk Monthly Savings", "100% Pure"],
+    },
+    {
+      url: "/hero-family-cooking.jpg",
+      tag: "Family kitchen",
+      title: "Wholesome Meals for the Entire Family Everyday",
+      subtitle: "Fresh Ingredients & Daily Staples Delivered on Time",
+      highlights: ["4-Hour Delivery", "Upto 20% OFF", "Minimum Order ₹1,000"],
+    },
+    {
+      url: "/hero-women-kitchen.jpg",
+      tag: "Ghar ki rasoi",
+      title: "Pure Grocery & Trusted Brands for Every Kitchen",
+      subtitle: "Handpicked with Care • Fresh, Hygienic & Sealed",
+      highlights: ["Clean & Fresh", "Direct Local Store", "Trusted Delivery"],
     },
   ];
 
@@ -833,14 +843,14 @@ function HeroImage() {
     <div className="absolute inset-0">
       <img
         src={active.url}
-        alt={active.caption}
-        className="w-full h-full object-cover transition-opacity duration-700"
+        alt={active.title}
+        className="w-full h-full object-cover object-top sm:object-center transition-opacity duration-700"
       />
-      {/* Cinematic gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0B1220]/90 via-[#0B1220]/25 to-transparent" />
+      {/* Subtle scrim so photo stays bright & vibrant */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent pointer-events-none" />
 
       {/* Ribbon at top */}
-      <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-10">
+      <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-10 pointer-events-none">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#22C55E] text-white px-3 py-1 text-[10px] sm:text-xs font-bold uppercase tracking-wider shadow-lg">
           <Sparkles className="w-3 h-3" /> {active.tag}
         </span>
@@ -849,18 +859,24 @@ function HeroImage() {
         </span>
       </div>
 
-      {/* Caption & Badges at bottom */}
-      <div className="absolute bottom-11 sm:bottom-14 left-3.5 right-3.5 sm:left-6 sm:right-6 z-10">
-        <div className="text-white font-display font-bold text-base sm:text-2xl leading-snug drop-shadow-md">
-          {active.caption}
+      {/* Crystal-Clear English Floating Card */}
+      <div className="absolute bottom-11 sm:bottom-12 left-3 right-3 sm:left-5 sm:right-5 z-10 bg-black/70 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/20 shadow-2xl">
+        <div className="text-white font-display font-extrabold text-sm sm:text-lg md:text-xl leading-snug tracking-tight drop-shadow-md">
+          {active.title}
         </div>
-        <div className="text-white/90 text-[10px] sm:text-xs mt-1.5 flex flex-wrap items-center gap-2 font-semibold">
-          <span className="inline-flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
-            <Truck className="w-3 h-3 text-[#FCD34D]" /> 4-Hr Delivery
-          </span>
-          <span className="inline-flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
-            <Percent className="w-3 h-3 text-[#FCD34D]" /> 20% Bachat
-          </span>
+        <div className="text-[#FCD34D] text-[11px] sm:text-xs font-semibold mt-1 tracking-wide flex items-center gap-1.5 drop-shadow">
+          <Sparkles className="w-3 h-3 flex-shrink-0 text-[#22C55E]" />
+          <span>{active.subtitle}</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {active.highlights.map((h, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 bg-white/15 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full border border-white/15 shadow-sm"
+            >
+              ✓ {h}
+            </span>
+          ))}
         </div>
       </div>
 
