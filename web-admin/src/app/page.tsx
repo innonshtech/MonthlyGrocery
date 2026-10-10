@@ -1491,6 +1491,7 @@ export default function DashboardPage() {
           {/* 4. FESTIVE PROMO CAMPAIGNS TAB */}
           {activeTab === 'banners' && (
             <BannersTab
+              token={token}
               banners={banners}
               bannerTitle={bannerTitle}
               setBannerTitle={setBannerTitle}
