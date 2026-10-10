@@ -18,7 +18,8 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import AppLoader from '../../components/AppLoader';
-import { CheckoutFallbackEmoji, THUMB_BG } from '../../components/CheckoutFigmaIcons';
+import AppIcon from '../../components/AppIcon';
+import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import {
   ConsumerOrder,
   OrdersScreenConfig,
@@ -515,12 +516,16 @@ export default function OrdersScreen({
                     {itemsList.slice(0, 3).map((it, idx) => (
                       <View
                         key={`${order.id}-${idx}`}
-                        style={[styles.thumb, !it.image_url && { backgroundColor: THUMB_BG[idx % THUMB_BG.length] }]}
+                        style={styles.thumb}
                       >
                         {it.image_url ? (
-                          <Image source={{ uri: it.image_url }} style={styles.thumbImg} />
+                          <Image
+                            source={{ uri: it.image_url }}
+                            style={styles.thumbImg}
+                            resizeMode="contain"
+                          />
                         ) : (
-                          <CheckoutFallbackEmoji index={idx} size={24} />
+                          <AppIcon name="shopping-bag" size={20} color={COLORS.green700} />
                         )}
                       </View>
                     ))}
@@ -611,20 +616,23 @@ export default function OrdersScreen({
                       </Text>
                     </View>
 
+                    <View style={styles.cardDivider} />
+
                     <View style={styles.pastBottom}>
                       <View style={styles.thumbsRow}>
                         {itemsList.slice(0, 3).map((it, idx) => (
                           <View
                             key={`${order.id}-p-${idx}`}
-                            style={[
-                              styles.pastThumb,
-                              { backgroundColor: THUMB_BG[idx % THUMB_BG.length] },
-                            ]}
+                            style={styles.pastThumb}
                           >
                             {it.image_url ? (
-                              <Image source={{ uri: it.image_url }} style={styles.thumbImg} />
+                              <Image
+                                source={{ uri: it.image_url }}
+                                style={styles.thumbImg}
+                                resizeMode="contain"
+                              />
                             ) : (
-                              <CheckoutFallbackEmoji index={idx} size={22} />
+                              <AppIcon name="shopping-bag" size={20} color={COLORS.green700} />
                             )}
                           </View>
                         ))}
@@ -867,22 +875,22 @@ const styles = StyleSheet.create({
   },
   thumbsRow: {
     flexDirection: 'row',
-    gap: 6,
+    alignItems: 'center',
+    gap: 8,
   },
   thumb: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   thumbImg: {
     width: '90%',
     height: '90%',
-    borderRadius: 8,
   },
   activeMeta: {
     marginLeft: 10,
@@ -930,37 +938,50 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 1.5,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 12,
   },
   pastTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
   },
   pastStatusWrap: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   pastStatus: {
-    ...FONTS.muktaMedium,
-    fontSize: 13.5,
-    color: '#374151',
+    ...FONTS.muktaSemiBold,
+    fontSize: 14,
+    color: '#1E293B',
     marginLeft: 8,
   },
   pastAmount: {
     ...FONTS.muktaBold,
-    fontSize: 16,
-    color: '#17251E',
+    fontSize: 17,
+    color: '#0F172A',
   },
   pastBottom: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   pastThumb: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -970,17 +991,17 @@ const styles = StyleSheet.create({
   pastItems: {
     ...FONTS.muktaMedium,
     fontSize: 13,
-    color: '#6B7280',
+    color: '#64748B',
     marginRight: 12,
   },
   reorderBtn: {
     borderWidth: 1.5,
     borderColor: '#1E7A46',
     backgroundColor: '#EAF5EE',
-    paddingHorizontal: 18,
-    paddingVertical: 7,
+    paddingHorizontal: 20,
+    paddingVertical: 7.5,
     borderRadius: 20,
-    minWidth: 76,
+    minWidth: 78,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1074,27 +1095,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 10,
+    marginTop: 12,
   },
   filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5EAE7',
+    borderColor: '#E2E8F0',
     maxWidth: '55%',
   },
   filterPillActive: {
     backgroundColor: '#EAF5EE',
     borderColor: '#1E7A46',
+    borderWidth: 1.5,
   },
   filterPillTxt: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 12.5,
+    color: '#64748B',
   },
   filterPillTxtActive: {
     ...FONTS.muktaBold,

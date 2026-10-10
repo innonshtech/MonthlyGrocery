@@ -560,6 +560,14 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       }
       return;
     }
+    if (route.params?.fromScreen === 'OrderDetail') {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Orders');
+      }
+      return;
+    }
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
