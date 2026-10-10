@@ -790,29 +790,29 @@ function EverLogo({ size = "md" }: { size?: "sm" | "md" | "lg" | "xl" }) {
 function HeroImage() {
   const slides = [
     {
+      url: "/hero-family-cooking.jpg",
+      caption: "Poore parivaar ki khushiyan, fresh grocery aur monthly ration ke saath.",
+      tag: "Happy families",
+    },
+    {
+      url: "/hero-women-kitchen.jpg",
+      caption: "Maa aur bahu ka bharosa — 100% fresh aur shuddh grocery.",
+      tag: "Ghar ki rasoi",
+    },
+    {
+      url: "/hero-green-saree-pack.jpg",
+      caption: "Everyday Value for a Better Tomorrow — seedha factory se aapke ghar.",
+      tag: "Wholesale savings",
+    },
+    {
       url: "/hero-couple.png",
       caption: "Ghar ka poora kirana, saath mein — pyaar se chuni gayi list.",
       tag: "For Indian families",
     },
     {
-      url: "/hero-red-saree.png",
-      caption: "Shuddh, factory-sealed aur seedha ghar tak.",
-      tag: "Bharat ka kirana",
-    },
-    {
-      url: "/hero-saree-family.png",
-      caption: "Poore parivaar ka mahine ka kirana, ek order me.",
-      tag: "Family favourite",
-    },
-    {
       url: "/hero-western-checkout.png",
       caption: "Har brand jo aap pasand karti ho — sealed & delivered.",
       tag: "Handpicked for you",
-    },
-    {
-      url: "/hero-office-table.png",
-      caption: "Office ke beech — 60 seconds me pura mahine ka kirana order.",
-      tag: "Made for busy days",
     },
   ];
 
