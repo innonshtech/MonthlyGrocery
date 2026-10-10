@@ -405,37 +405,15 @@ router.get('/master', async (req, res) => {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    // Build family image map
-    const familyMediaMap = new Map<string, { images: string[]; video_url: string | null }>();
-    (products || []).forEach((p: any) => {
-      const key = getProductFamilyKey(p);
-      const media = parseProductMedia(p);
-      if (!familyMediaMap.has(key)) {
-        familyMediaMap.set(key, { images: [], video_url: null });
-      }
-      const existing = familyMediaMap.get(key)!;
-      if (existing.images.length === 0 && media.images.length > 0) {
-        existing.images = media.images;
-      }
-      if (!existing.video_url && media.video_url) {
-        existing.video_url = media.video_url;
-      }
-    });
-
     const enriched = (products || []).map((p: any) => {
       const withPack = enrichProductPackFields(p);
       const media = parseProductMedia(withPack);
-      const key = getProductFamilyKey(p);
-      const family = familyMediaMap.get(key);
-      const finalImages = media.images && media.images.length > 0 ? media.images : (family?.images || []);
-      const finalImageUrl = media.primary_image_url || (family?.images?.[0] || '');
-      const finalVideoUrl = media.video_url || family?.video_url || null;
 
       return {
         ...withPack,
-        image_url: finalImageUrl,
-        images: finalImages,
-        video_url: finalVideoUrl,
+        image_url: media.primary_image_url || '',
+        images: media.images || [],
+        video_url: media.video_url || null,
         description: media.clean_description,
       };
     });
@@ -1276,6 +1254,36 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
 
     if (updateError) {
       return res.status(400).json({ success: false, error: updateError.message });
+    }
+
+    // Sync media to all sibling pack sizes in the same product family if media was updated
+    if (data.images !== undefined || data.image_url !== undefined) {
+      try {
+        const familyKey = getProductFamilyKey(product);
+        const { data: allSiblings } = await supabase
+          .from('products')
+          .select('id, name, brand, description')
+          .neq('id', product_id);
+
+        const matchedSiblings = (allSiblings || []).filter((s: any) => getProductFamilyKey(s) === familyKey);
+        for (const sib of matchedSiblings) {
+          const sibCleanDesc = String(sib.description || '').replace(/<!--media:\{.*?\}-->/g, '').trim();
+          const sibFormattedDesc = formatProductDescriptionWithMedia(
+            sibCleanDesc,
+            media.images,
+            media.video_url
+          );
+          await supabase
+            .from('products')
+            .update({
+              image_url: media.primary_image_url || null,
+              description: sibFormattedDesc,
+            })
+            .eq('id', sib.id);
+        }
+      } catch (sibErr) {
+        console.warn('[PUT /master/:product_id] Sibling media sync warning:', sibErr);
+      }
     }
 
     return res.json({ success: true, product: enrichProductWithMedia(enrichProductPackFields(updatedProduct)) });
