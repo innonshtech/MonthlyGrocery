@@ -9,7 +9,9 @@ import {
   Share,
   StatusBar,
   useWindowDimensions,
+  BackHandler,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SvgUri } from 'react-native-svg';
 import { useCart, Product } from '../../context/CartContext';
@@ -549,6 +551,33 @@ export default function ProductDetailScreen({ route, navigation }: any) {
     );
   };
 
+  const handleBack = useCallback(() => {
+    if (route.params?.fromScreen === 'Cart') {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Shop', { initialTab: 'Cart' });
+      }
+      return;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Shop', { initialTab: 'Home' });
+    }
+  }, [navigation, route.params?.fromScreen]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleBack();
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [handleBack])
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
@@ -557,7 +586,7 @@ export default function ProductDetailScreen({ route, navigation }: any) {
       <View style={styles.header}>
         {/* Back Button */}
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={handleBack}
           style={styles.circularBtn}
           activeOpacity={0.85}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -578,7 +607,13 @@ export default function ProductDetailScreen({ route, navigation }: any) {
 
           <TouchableOpacity
             style={styles.circularBtn}
-            onPress={() => navigation.navigate('Cart')}
+            onPress={() => {
+              if (route.params?.fromScreen === 'Cart') {
+                handleBack();
+              } else {
+                navigation.navigate('Cart');
+              }
+            }}
             activeOpacity={0.85}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >

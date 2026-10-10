@@ -272,7 +272,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                     ]}
                   >
                     {tab.image_url ? (
-                      <Image source={{ uri: tab.image_url }} style={styles.subCatThumb} resizeMode="contain" />
+                      <Image source={{ uri: tab.image_url }} style={styles.subCatThumb} resizeMode="cover" />
                     ) : null}
                   </View>
                   <Text style={[styles.subCatLabel, active && styles.subCatLabelActive]} numberOfLines={1}>
@@ -547,16 +547,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-  },
-  subCatTileActive: {
-    backgroundColor: COLORS.green50,
-  },
-  subCatTileInactive: {
     backgroundColor: '#FFFFFF',
   },
+  subCatTileActive: {
+    borderWidth: 1.5,
+    borderColor: COLORS.green700,
+  },
+  subCatTileInactive: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
   subCatThumb: {
-    width: 30,
-    height: 30,
+    width: '100%',
+    height: '100%',
   },
   subCatLabel: {
     ...FONTS.muktaBold,

@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import AppIcon from '../../components/AppIcon';
+import { getProductPackLabel } from '../../utils/packUnit';
 import {
   fetchUserAddresses,
   cacheAddressesLocally,
@@ -523,35 +524,65 @@ export default function CheckoutScreen({ route, navigation }: any) {
           </View>
         )}
 
-        {/* Order summary — Figma E1 */}
+        {/* Order summary */}
         <View style={styles.sectionCardCol}>
           <View style={styles.basketHeader}>
             <Text style={styles.basketTitle}>Order summary</Text>
-            <Text style={styles.basketCount}>{totalItemCount} items</Text>
+            <Text style={styles.basketCount}>{totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbsRow}>
-            {(items.length > 0 ? items : [null, null, null, null]).map((cartItem, index) => (
-              <View
-                key={cartItem?.product?.id ?? `fallback-${index}`}
-                style={[styles.itemThumbWrap, { backgroundColor: THUMB_BG[index % THUMB_BG.length] }]}
-              >
-                {cartItem?.product?.image_url ? (
-                  <Image
-                    source={{ uri: cartItem.product.image_url }}
-                    style={styles.thumbImage}
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <CheckoutFallbackEmoji index={index} size={28} />
-                )}
-                {cartItem && cartItem.quantity > 1 && (
-                  <View style={styles.quantityBadge}>
-                    <Text style={styles.quantityBadgeText}>{cartItem.quantity}</Text>
+          <View style={styles.orderSummaryList}>
+            {items.map((cartItem, idx) => {
+              const price = parseFloat(String(cartItem.product.price)) || 0;
+              const lineTotal = price * cartItem.quantity;
+              const packLabel = getProductPackLabel(cartItem.product);
+
+              return (
+                <TouchableOpacity
+                  key={cartItem.product.id}
+                  style={[
+                    styles.orderSummaryItemRow,
+                    idx < items.length - 1 && styles.orderSummaryItemBorder,
+                  ]}
+                  onPress={() =>
+                    navigation.navigate('ProductDetail', {
+                      productId: cartItem.product.id,
+                      initialProduct: cartItem.product,
+                      fromScreen: 'Checkout',
+                    })
+                  }
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.orderSummaryImgTile}>
+                    {cartItem.product.image_url ? (
+                      <Image
+                        source={{ uri: cartItem.product.image_url }}
+                        style={styles.orderSummaryImg}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
+                    )}
                   </View>
-                )}
-              </View>
-            ))}
-          </ScrollView>
+
+                  <View style={styles.orderSummaryItemInfo}>
+                    <Text style={styles.orderSummaryItemName} numberOfLines={2}>
+                      {cartItem.product.name}
+                    </Text>
+                    {packLabel ? (
+                      <Text style={styles.orderSummaryItemUnit}>{packLabel}</Text>
+                    ) : null}
+                    <Text style={styles.orderSummaryItemPrice}>
+                      ₹{lineTotal.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+
+                  <View style={styles.orderSummaryQtyBadge}>
+                    <Text style={styles.orderSummaryQtyTxt}>Qty: {cartItem.quantity}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Coupon card */}
@@ -997,40 +1028,69 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: '#64748B',
   },
-  thumbsRow: {
-    flexDirection: 'row',
-    gap: 10,
+  orderSummaryList: {
+    marginTop: 2,
   },
-  itemThumbWrap: {
+  orderSummaryItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 12,
+  },
+  orderSummaryItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  orderSummaryImgTile: {
     width: 52,
     height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  thumbImage: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-  },
-  quantityBadge: {
-    position: 'absolute',
-    top: -3,
-    right: -3,
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
-  quantityBadgeText: {
+  orderSummaryImg: {
+    width: '90%',
+    height: '90%',
+  },
+  orderSummaryItemInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  orderSummaryItemName: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 14,
+    lineHeight: 18,
+    color: COLORS.ink900,
+    marginBottom: 2,
+  },
+  orderSummaryItemUnit: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    lineHeight: 16,
+    color: COLORS.ink500,
+    marginBottom: 2,
+  },
+  orderSummaryItemPrice: {
     ...FONTS.muktaBold,
-    color: '#FFFFFF',
-    fontSize: 9.5,
-    lineHeight: 12,
+    fontSize: 14,
+    color: COLORS.ink900,
+  },
+  orderSummaryQtyBadge: {
+    backgroundColor: '#E4F3EA',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderSummaryQtyTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    color: '#15803D',
   },
   appliedCouponCard: {
     backgroundColor: '#FDF0DC',

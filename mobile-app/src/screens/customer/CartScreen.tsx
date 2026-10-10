@@ -18,7 +18,6 @@ import AppLoader from '../../components/AppLoader';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
-import { homeDealBg } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
 import {
   fetchCartScreenConfigWithStatus,
@@ -389,6 +388,22 @@ export default function CartScreen({
                 cartItem.product.stock !== null &&
                 Number(cartItem.product.stock) <= 0);
 
+            const handleProductPress = () => {
+              if (typeof navigation?.push === 'function') {
+                navigation.push('ProductDetail', {
+                  productId: cartItem.product.id,
+                  initialProduct: cartItem.product,
+                  fromScreen: 'Cart',
+                });
+              } else {
+                navigation?.navigate('ProductDetail', {
+                  productId: cartItem.product.id,
+                  initialProduct: cartItem.product,
+                  fromScreen: 'Cart',
+                });
+              }
+            };
+
             return (
               <View
                 key={cartItem.product.id}
@@ -398,27 +413,33 @@ export default function CartScreen({
                   isOutOfStock && { opacity: 0.8 },
                 ]}
               >
-                <View style={[styles.imgTile, { backgroundColor: homeDealBg(idx) }]}>
-                  {cartItem.product.image_url ? (
-                    <Image
-                      source={{ uri: cartItem.product.image_url }}
-                      style={[styles.imgTileImg, isOutOfStock && { opacity: 0.4 }]}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <AppIcon name="shopping-bag" size={24} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
-                  )}
-                </View>
+                <TouchableOpacity
+                  style={styles.itemClickable}
+                  onPress={handleProductPress}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.imgTile}>
+                    {cartItem.product.image_url ? (
+                      <Image
+                        source={{ uri: cartItem.product.image_url }}
+                        style={[styles.imgTileImg, isOutOfStock && { opacity: 0.4 }]}
+                        resizeMode="contain"
+                      />
+                    ) : (
+                      <AppIcon name="shopping-bag" size={24} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
+                    )}
+                  </View>
 
-                <View style={styles.itemInfo}>
-                  <Text style={[styles.itemName, isOutOfStock && { color: '#64748B' }]} numberOfLines={2}>{cartItem.product.name}</Text>
-                  {isOutOfStock ? (
-                    <Text style={{ ...FONTS.muktaBold, fontSize: 11, color: '#DC2626' }}>Out of stock</Text>
-                  ) : packLabel ? (
-                    <Text style={styles.itemUnit}>{packLabel}</Text>
-                  ) : null}
-                  <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
-                </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={[styles.itemName, isOutOfStock && { color: '#64748B' }]} numberOfLines={2}>{cartItem.product.name}</Text>
+                    {isOutOfStock ? (
+                      <Text style={{ ...FONTS.muktaBold, fontSize: 11, color: '#DC2626' }}>Out of stock</Text>
+                    ) : packLabel ? (
+                      <Text style={styles.itemUnit}>{packLabel}</Text>
+                    ) : null}
+                    <Text style={styles.itemPrice}>₹{lineTotal.toLocaleString('en-IN')}</Text>
+                  </View>
+                </TouchableOpacity>
 
                 <Stepper
                   quantity={cartItem.quantity}
@@ -760,6 +781,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     gap: 12,
   },
+  itemClickable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   itemRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -768,13 +795,16 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   imgTileImg: {
-    width: 38,
-    height: 38,
+    width: '90%',
+    height: '90%',
   },
   itemInfo: {
     flex: 1,

@@ -515,7 +515,7 @@ export default function OrdersScreen({
                     {itemsList.slice(0, 3).map((it, idx) => (
                       <View
                         key={`${order.id}-${idx}`}
-                        style={[styles.thumb, { backgroundColor: THUMB_BG[idx % THUMB_BG.length] }]}
+                        style={[styles.thumb, !it.image_url && { backgroundColor: THUMB_BG[idx % THUMB_BG.length] }]}
                       >
                         {it.image_url ? (
                           <Image source={{ uri: it.image_url }} style={styles.thumbImg} />
@@ -873,12 +873,15 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   thumbImg: {
-    width: 32,
-    height: 32,
+    width: '90%',
+    height: '90%',
     borderRadius: 8,
   },
   activeMeta: {
