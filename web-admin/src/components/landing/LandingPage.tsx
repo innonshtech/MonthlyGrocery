@@ -792,32 +792,22 @@ function HeroImage() {
     {
       url: "/hero-green-saree-pack.jpg",
       tag: "Everyday Value",
-      caption: "Everyday Value for a Better Tomorrow — seedha factory se aapke ghar.",
-      badges: ["4-Hour Delivery", "Wholesale Bachat"],
     },
     {
       url: "/hero-western-checkout.png",
       tag: "Handpicked for you",
-      caption: "Har brand jo aap pasand karti ho — sealed & delivered.",
-      badges: ["100% Original", "Aashirvaad · Fortune · Tata"],
     },
     {
       url: "/hero-couple.png",
       tag: "For Indian families",
-      caption: "Ghar ka poora kirana, saath mein — pyaar se chuni gayi list.",
-      badges: ["Poora Mahine Ka Ration", "Zero Middlemen"],
     },
     {
       url: "/hero-family-cooking.jpg",
       tag: "Happy families",
-      caption: "Poore parivaar ki khushiyan, fresh grocery aur monthly ration ke saath.",
-      badges: ["Pure & Fresh", "Har Mahine Bachat"],
     },
     {
       url: "/hero-women-kitchen.jpg",
       tag: "Ghar ki rasoi",
-      caption: "Maa aur bahu ka bharosa — 100% fresh aur shuddh grocery.",
-      badges: ["Factory Sealed", "Mohalle Ki Dukan"],
     },
   ];
 
@@ -838,11 +828,9 @@ function HeroImage() {
     <div className="absolute inset-0">
       <img
         src={active.url}
-        alt={active.caption}
+        alt={active.tag}
         className="w-full h-full object-cover object-top sm:object-center transition-opacity duration-700"
       />
-      {/* Soft, minimal gradient for contrast without darkening the photo */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent pointer-events-none" />
 
       {/* Ribbon at top */}
       <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-10 pointer-events-none">
@@ -854,52 +842,34 @@ function HeroImage() {
         </span>
       </div>
 
-      {/* Bright, stylish white text directly on the photo (No black box) */}
-      <div className="absolute bottom-11 sm:bottom-14 left-3.5 right-3.5 sm:left-6 sm:right-6 z-10">
-        <div className="text-white font-display font-black text-base sm:text-2xl leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
-          {active.caption}
-        </div>
-        <div className="text-white/95 text-[10px] sm:text-xs mt-2 flex flex-wrap items-center gap-2 font-semibold">
-          {active.badges.map((b, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 bg-black/35 backdrop-blur-md px-2.5 py-1 rounded-full text-white border border-white/20 shadow-sm"
-            >
-              <Sparkles className="w-3 h-3 text-[#FCD34D]" />
-              {b}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Carousel controls */}
-      <div className="absolute bottom-2.5 left-3.5 right-3.5 sm:left-6 sm:right-6 flex items-center justify-between z-10">
-        <div className="flex gap-1">
+      {/* Clean Carousel controls at bottom */}
+      <div className="absolute bottom-3 left-3.5 right-3.5 sm:left-6 sm:right-6 flex items-center justify-between z-10">
+        <div className="flex gap-1.5 bg-black/35 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-white/20 shadow-md">
           {slides.map((_, s) => (
             <button
               key={s}
               onClick={() => setCurrentIndex(s)}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                s === currentIndex ? "w-5 bg-[#FCD34D]" : "w-1.5 bg-white/50"
+                s === currentIndex ? "w-6 bg-[#22C55E]" : "w-1.5 bg-white/60 hover:bg-white"
               }`}
               aria-label={`Slide ${s + 1}`}
             />
           ))}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           <button
             onClick={prev}
-            className="w-7 h-7 rounded-full bg-white/20 backdrop-blur text-white flex items-center justify-center hover:bg-white/40 transition-colors shadow-md cursor-pointer"
+            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-colors shadow-md cursor-pointer border border-white/20"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={next}
-            className="w-7 h-7 rounded-full bg-white/20 backdrop-blur text-white flex items-center justify-center hover:bg-white/40 transition-colors shadow-md cursor-pointer"
+            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-colors shadow-md cursor-pointer border border-white/20"
             aria-label="Next slide"
           >
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
