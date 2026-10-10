@@ -383,7 +383,8 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
         setEditProdImageUploading(false);
       }
 
-      const primaryImageUrl = finalImages[0] || editProdImageUrl.trim() || null;
+      // If gallery has images, the first is primary cover image. If cleared, set to null.
+      const primaryImageUrl = finalImages.length > 0 ? finalImages[0] : null;
 
       const payload: any = {
         name: editProdName.trim(),
@@ -1882,7 +1883,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                               onClick={() => {
                                 const copy = [...editProdImages];
                                 const [selected] = copy.splice(idx, 1);
-                                setEditProdImages([selected, ...copy]);
+                                const updated = [selected, ...copy];
+                                setEditProdImages(updated);
+                                setEditProdImageUrl(updated[0] || '');
                               }}
                               className="text-[9px] text-slate-500 hover:text-emerald-600 font-semibold"
                               title="Make this the primary cover photo"
@@ -1896,8 +1899,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                             onClick={() => {
                               const copy = editProdImages.filter((_, i) => i !== idx);
                               setEditProdImages(copy);
+                              setEditProdImageUrl(copy[0] || '');
                             }}
-                            className="text-slate-400 hover:text-red-500 text-xs font-bold p-0.5"
+                            className="text-slate-400 hover:text-red-500 text-xs font-bold p-0.5 cursor-pointer"
                             title="Remove photo from gallery"
                           >
                             ✕
@@ -1978,7 +1982,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                       type="button"
                       onClick={() => {
                         if (editCustomImageUrlInput.trim()) {
-                          setEditProdImages([...editProdImages, editCustomImageUrlInput.trim()]);
+                          const updated = [...editProdImages, editCustomImageUrlInput.trim()];
+                          setEditProdImages(updated);
+                          setEditProdImageUrl(updated[0] || '');
                           setEditCustomImageUrlInput('');
                         }
                       }}

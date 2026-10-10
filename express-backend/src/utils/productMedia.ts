@@ -30,7 +30,7 @@ export function parseProductMedia(product: any): {
     if (match) {
       try {
         const meta = JSON.parse(match[1]);
-        if (Array.isArray(meta.images)) {
+        if (!Array.isArray(product?.images) && Array.isArray(meta.images)) {
           meta.images.forEach((img: string) => {
             if (img && typeof img === 'string' && !images.includes(img.trim())) {
               images.push(img.trim());
@@ -55,7 +55,7 @@ export function parseProductMedia(product: any): {
   }
 
   // 4. Check image_url (comma-separated, JSON array, or single URL)
-  if (product?.image_url && typeof product.image_url === 'string') {
+  if (!Array.isArray(product?.images) && product?.image_url && typeof product.image_url === 'string') {
     const raw = product.image_url.trim();
     if (raw.startsWith('[') && raw.endsWith(']')) {
       try {
@@ -78,7 +78,7 @@ export function parseProductMedia(product: any): {
     }
   }
 
-  const primary_image_url = images.length > 0 ? images[0] : (product?.image_url || '');
+  const primary_image_url = images.length > 0 ? images[0] : (Array.isArray(product?.images) ? '' : (product?.image_url || ''));
 
   return {
     primary_image_url,
