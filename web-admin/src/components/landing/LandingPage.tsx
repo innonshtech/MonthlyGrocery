@@ -15,12 +15,17 @@ import {
   Percent,
   ChevronLeft,
   ChevronRight,
-  LogIn
+  LogIn,
+  X,
+  Smartphone,
+  Download
 } from 'lucide-react';
 
 const LOGO_URL = "/ever-logo.png";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.monthlygrocerymobile";
 
 export default function LandingPage() {
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
   useEffect(() => {
     // Ensure document body is styled correctly for landing page
     const prevBg = document.body.style.backgroundColor;
@@ -60,6 +65,14 @@ export default function LandingPage() {
             >
               Privacy Policy
             </Link>
+            <button
+              type="button"
+              onClick={() => setShowDownloadModal(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 text-sm sm:text-base font-bold text-[#22C55E] hover:text-[#16A34A] px-2 py-1 transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Get App</span>
+            </button>
             <Link
               href="/login"
               className="inline-flex items-center gap-2 rounded-full bg-[#22C55E] hover:bg-[#16A34A] text-white h-11 px-5 sm:px-6 text-sm sm:text-base font-bold mg-shadow-brand transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
@@ -96,13 +109,14 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-6 sm:mt-7 flex flex-wrap items-center gap-3 sm:gap-4">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center rounded-full bg-[#22C55E] hover:bg-[#16A34A] text-white h-12 sm:h-14 px-7 sm:px-8 text-base font-bold mg-shadow-brand group transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+              <button
+                type="button"
+                onClick={() => setShowDownloadModal(true)}
+                className="inline-flex items-center justify-center rounded-full bg-[#22C55E] hover:bg-[#16A34A] text-white h-12 sm:h-14 px-7 sm:px-8 text-base font-bold mg-shadow-brand group transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
               >
-                <span>Start shopping · No login needed</span>
+                <span>Start shopping · Get App</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1.5 transition-transform" />
-              </Link>
+              </button>
               <Link
                 href="/login"
                 className="inline-flex items-center justify-center rounded-full h-12 sm:h-14 px-7 sm:px-8 text-base font-bold border-2 border-[#0B1220] text-[#0B1220] hover:bg-[#0B1220] hover:text-white bg-transparent transition-all shadow-sm hover:shadow-md"
@@ -388,13 +402,14 @@ export default function LandingPage() {
           <p className="mt-6 text-gray-700 text-lg sm:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
             Pehla monthly cart 4 ghante mein ghar. No subscription. No commitment. Sirf sealed pantry packs.
           </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center mt-10 rounded-full bg-[#0B1220] hover:bg-[#1F2937] text-white h-16 sm:h-18 px-12 sm:px-14 text-lg sm:text-xl font-bold group transition-all shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-100"
+          <button
+            type="button"
+            onClick={() => setShowDownloadModal(true)}
+            className="inline-flex items-center mt-10 rounded-full bg-[#0B1220] hover:bg-[#1F2937] text-white h-16 sm:h-18 px-12 sm:px-14 text-lg sm:text-xl font-bold group transition-all shadow-2xl hover:shadow-3xl hover:scale-105 active:scale-100 cursor-pointer"
           >
-            <span>Free mein shuru karo</span>
+            <span>Free mein shuru karo · App Download</span>
             <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-2 transition-transform" />
-          </Link>
+          </button>
         </section>
       </main>
 
@@ -408,6 +423,108 @@ export default function LandingPage() {
           <div>© {new Date().getFullYear()} EVER (Everyday Value and Essentials Retail) · monthlygrocery.in</div>
         </div>
       </footer>
+
+      {/* APP DOWNLOAD POPUP MODAL */}
+      {showDownloadModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setShowDownloadModal(false)}
+        >
+          <div
+            className="relative w-full max-w-lg bg-white rounded-[32px] p-6 sm:p-8 shadow-2xl border border-[#F1EAD8] space-y-6 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowDownloadModal(false)}
+              className="absolute top-5 right-5 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex items-center gap-3.5 pr-8">
+              <div className="w-14 h-14 rounded-2xl bg-[#FFF8ED] p-1.5 border border-[#F1EAD8] shadow-md flex items-center justify-center shrink-0">
+                <img
+                  src={LOGO_URL}
+                  alt="EVER Monthly Grocery"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div>
+                <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-widest text-[#22C55E] bg-[#DCFCE7] px-2.5 py-0.5 rounded-full">
+                  Customer Mobile App
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black font-display text-[#0B1220] mt-1 leading-tight">
+                  Download Monthly Grocery App
+                </h3>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-700 leading-relaxed font-medium">
+              Ghar ka poora mahine ka kirana order karein sirf 60 seconds me. Enjoy <span className="font-bold text-[#22C55E]">4-hour home delivery</span>, upto <span className="font-bold text-[#22C55E]">20% savings</span>, aur sealed fresh pantry packs.
+            </p>
+
+            {/* Direct Google Play Store Button */}
+            <a
+              href={PLAY_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#0B1220] hover:bg-[#1F2937] text-white transition-all shadow-lg hover:shadow-xl group cursor-pointer"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
+                  <svg className="w-6 h-6 fill-current text-white" viewBox="0 0 24 24">
+                    <path d="M3.609 1.814L13.792 12 3.61 22.186a1.5 1.5 0 0 1-.61-.92L3 2.734a1.5 1.5 0 0 1 .609-.92zm11.602 11.604l2.133 2.134-11.455 6.613 9.322-8.747zm0-2.836L5.89 1.835l11.454 6.613-2.133 2.134zm1.414 1.418l3.655 2.11a1.5 1.5 0 0 1 0 2.598l-3.655 2.11-1.748-1.748 1.748-1.748z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <div className="text-[10px] text-white/70 uppercase tracking-widest font-extrabold">GET IT ON</div>
+                  <div className="text-base sm:text-lg font-black font-display leading-tight">Google Play Store</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#22C55E]">
+                <span>Install App</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </a>
+
+            {/* Scan QR Code Option for Desktop */}
+            <div className="p-4 bg-[#FFF8ED] rounded-2xl border border-[#F1EAD8] flex items-center gap-4">
+              <div className="bg-white p-2 rounded-xl border border-[#F1EAD8] shadow-sm shrink-0">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(PLAY_STORE_URL)}`}
+                  alt="Scan to Download Monthly Grocery App"
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-contain"
+                />
+              </div>
+              <div>
+                <div className="text-[11px] uppercase font-extrabold text-[#22C55E] tracking-wider flex items-center gap-1">
+                  <Smartphone className="w-3.5 h-3.5" /> Scan to Download
+                </div>
+                <h4 className="text-xs sm:text-sm font-bold text-[#0B1220] mt-1 leading-snug">
+                  Camera se QR code scan karke direct phone me install karein
+                </h4>
+                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1">
+                  Available for all Android devices.
+                </p>
+              </div>
+            </div>
+
+            {/* Apple iOS Badge */}
+            <div className="flex items-center justify-between px-2 text-xs text-gray-600 font-medium pt-1 border-t border-gray-100">
+              <span className="flex items-center gap-1.5">
+                🍏 Apple App Store (iOS)
+              </span>
+              <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                Coming Soon
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
