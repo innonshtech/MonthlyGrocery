@@ -69,7 +69,7 @@ app.use('/addresses', addressesRouter);
 const sendConfig = (req: express.Request, res: express.Response) => {
   res.json({
     success: true,
-    min_order_limit: parseInt(process.env.MIN_ORDER_LIMIT || '2500', 10)
+    min_order_limit: parseInt(process.env.MIN_ORDER_LIMIT || '1000', 10)
   });
 };
 app.get('/api/config', sendConfig);

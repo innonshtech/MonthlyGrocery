@@ -48,7 +48,7 @@ const formatInr = (n: number) =>
 
 export default function CheckoutScreen({ route, navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { items, minOrderLimit = 2500, appliedCoupon, setAppliedCoupon } = useCart();
+  const { items, minOrderLimit = 1000, appliedCoupon, setAppliedCoupon } = useCart();
   const { token, city, area, pincode: areaPincode } = useAuth();
   const { showToast } = useToast();
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
@@ -144,7 +144,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     }, [items, selectedAddress?.pincode, areaPincode, city, area, route?.params?.selectedSlot, selectedSlot]),
   );
 
-  const minLimit = minOrderLimit || 2500;
+  const minLimit = minOrderLimit || 1000;
 
   const [deliveryFeeInfo, setDeliveryFeeInfo] = useState<{
     delivery_fee: number;

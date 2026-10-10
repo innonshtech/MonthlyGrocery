@@ -71,7 +71,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<CartItem[]>([]);
   const [cartShopId, setCartShopId] = useState<string | null>(null);
   const [cartShopName, setCartShopName] = useState<string | null>(null);
-  const [minOrderLimit, setMinOrderLimit] = useState(2500);
+  const [minOrderLimit, setMinOrderLimit] = useState(1000);
   const [appliedCoupon, setAppliedCouponState] = useState<AppliedCoupon | null>(null);
   const [cartLoaded, setCartLoaded] = useState(false);
 

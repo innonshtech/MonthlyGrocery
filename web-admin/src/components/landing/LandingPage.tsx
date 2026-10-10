@@ -146,7 +146,7 @@ export default function LandingPage() {
         <span className="hidden sm:inline text-white/40">•</span>
         <span className="hidden sm:inline text-white/90">Pan India Home Delivery</span>
         <span className="hidden md:inline text-white/40">•</span>
-        <span className="hidden md:inline text-emerald-400 font-bold">Minimum Order ₹2,500</span>
+        <span className="hidden md:inline text-emerald-400 font-bold">Minimum Order ₹1,000</span>
       </div>
 
       {/* HEADER */}
@@ -260,7 +260,7 @@ export default function LandingPage() {
               <div className="w-10 h-10 rounded-xl bg-[#DCFCE7] flex items-center justify-center text-xl">🛒</div>
               <div>
                 <div className="text-[10px] uppercase tracking-widest font-extrabold text-[#22C55E]">Minimum order</div>
-                <div className="font-display font-black text-lg text-[#0B1220]">₹2,500</div>
+                <div className="font-display font-black text-lg text-[#0B1220]">₹1,000</div>
               </div>
             </div>
 
@@ -567,7 +567,7 @@ export default function LandingPage() {
               },
               {
                 q: "Minimum order value kitni hai?",
-                a: "Minimum order value ₹2,500 hai. Kyunki hum poore mahine ka bulk ration deliver karte hain, isse middlemen ka margin bachta hai aur aapko heavy discount milta hai."
+                a: "Minimum order value sirf ₹1,000 hai. Aap monthly ration ya essential grocery order karein aur seedha wholesale discount aur fast home delivery ka faayda uthayein."
               },
               {
                 q: "Kaun kaun se brands available hain?",
@@ -845,7 +845,7 @@ function HeroImage() {
           <Sparkles className="w-3 h-3" /> {active.tag}
         </span>
         <span className="inline-flex items-center rounded-full bg-white/95 backdrop-blur text-[#0B1220] px-3 py-1 text-[10px] sm:text-xs font-extrabold uppercase tracking-wider shadow-md">
-          ₹2,500+ order
+          ₹1,000+ order
         </span>
       </div>
 

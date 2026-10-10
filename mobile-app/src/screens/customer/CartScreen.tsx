@@ -126,7 +126,7 @@ export default function CartScreen({
   const toPay = Math.max(0, subtotal - couponDiscount);
   const totalItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const minLimit = minOrderLimit || 2500;
+  const minLimit = minOrderLimit || 1000;
   const isBelowMin = subtotal < minLimit && subtotal > 0;
   const amountNeeded = Math.max(0, minLimit - subtotal);
   const progressPct = minLimit > 0 ? Math.min(100, Math.round((subtotal / minLimit) * 100)) : 100;
