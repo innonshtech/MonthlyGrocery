@@ -493,7 +493,7 @@ export default function OrderDetailScreen({ route, navigation }: any) {
               return (
                 <View key={`${item.product_id || item.product_name || item.name}-${idx}`}>
                   <View style={styles.itemRow}>
-                    <View style={[styles.itemThumb, { backgroundColor: bg }]}>
+                    <View style={styles.itemThumb}>
                       {item.image_url ? (
                         <Image
                           source={{ uri: item.image_url }}
@@ -906,13 +906,16 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   itemImg: {
-    width: 40,
-    height: 40,
+    width: '90%',
+    height: '90%',
   },
   itemMetaCol: {
     flex: 1,

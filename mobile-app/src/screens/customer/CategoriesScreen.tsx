@@ -72,7 +72,7 @@ function CategoryTileItem({
     <TouchableOpacity style={styles.tile} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.tileIconBox}>
         {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="contain" />
+          <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="cover" />
         ) : (
           <AppIcon name="categories" size={26} color="#1E7A46" />
         )}
@@ -423,11 +423,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    backgroundColor: '#F4F3EE',
+    backgroundColor: '#FFFFFF',
   },
   tilePng: {
-    width: 44,
-    height: 44,
+    width: '100%',
+    height: '100%',
   },
   tileLabel: {
     ...FONTS.muktaMedium,

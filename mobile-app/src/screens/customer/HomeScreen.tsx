@@ -27,7 +27,6 @@ import {
   HomeSearchIcon,
   HomeMicIcon,
   HomeChevronDownIcon,
-  HomeDeliveryIcon,
   HomeSparkleIcon,
   HomeArrowRightIcon,
   HomePromoIllustration,
@@ -316,7 +315,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   // ── 150° CSS gradient → pixel coordinates for SVG userSpaceOnUse ──
   // CSS 150°: direction = (sin(150°), -cos(150°)) = (0.5, 0.866)
   // Half-length per CSS spec: (W*|sin|+H*|cos|)/2
-  const promoH = 130;
+  const promoH = 170;
   const pgHalf = (contentWidth * 0.5 + promoH * 0.866) / 2;
   const pgX1 = contentWidth / 2 - pgHalf * 0.5;
   const pgY1 = promoH / 2 - pgHalf * 0.866;
@@ -436,52 +435,45 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 <Rect x="0" y="0" width="100" height="100" fill="url(#headerGrad)" />
               </Svg>
 
-              <View style={styles.topSectionGroup}>
-                <View style={styles.headerTopRow}>
-                  <TouchableOpacity
-                    style={styles.locationBlock}
-                    onPress={() => navigation.navigate('CitySelection')}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.deliveringLabel}>{home?.delivering_label || 'DELIVERING TO'}</Text>
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationText} numberOfLines={1}>
-                        {displayLocation}
+              <View style={styles.headerTopRow}>
+                <TouchableOpacity
+                  style={styles.locationBlock}
+                  onPress={() => navigation.navigate('CitySelection')}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.deliveringLabel}>{home?.delivering_label || 'DELIVERING TO'}</Text>
+                  <View style={styles.locationRow}>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {displayLocation}
+                    </Text>
+                    <HomeChevronDownIcon size={16} color="#FFFFFF" />
+                  </View>
+                  {selectedShop ? (
+                    <View style={styles.shopBadgePill}>
+                      <Text style={styles.shopBadgeIcon}>🏪</Text>
+                      <Text style={styles.shopNameLabel} numberOfLines={1}>
+                        {selectedShop.name}
                       </Text>
-                      <HomeChevronDownIcon size={16} color="#FFFFFF" />
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.changeShopBtn}
+                      >
+                        <Text style={styles.changeShopText}>Change</Text>
+                      </TouchableOpacity>
                     </View>
-                    {selectedShop ? (
-                      <View style={styles.shopBadgePill}>
-                        <Text style={styles.shopBadgeIcon}>🏪</Text>
-                        <Text style={styles.shopNameLabel} numberOfLines={1}>
-                          {selectedShop.name}
-                        </Text>
-                        <TouchableOpacity
-                          onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={styles.changeShopBtn}
-                        >
-                          <Text style={styles.changeShopText}>Change</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : null}
-                  </TouchableOpacity>
+                  ) : null}
+                </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
-                    {user?.avatar_url ? (
-                      <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
-                    ) : userInitial ? (
-                      <Text style={styles.avatarText}>{userInitial}</Text>
-                    ) : (
-                      <AppIcon name="account" size={20} color="#FFFFFF" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.deliveryPill}>
-                  <HomeDeliveryIcon size={15} color="#F5A524" />
-                  <Text style={styles.deliveryPillText}>{home?.delivery_pill_text || 'Planned monthly delivery · 4-hour window'}</Text>
-                </View>
+                <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
+                  {user?.avatar_url ? (
+                    <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
+                  ) : userInitial ? (
+                    <Text style={styles.avatarText}>{userInitial}</Text>
+                  ) : (
+                    <AppIcon name="account" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -603,7 +595,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                           <Image
                             source={{ uri: cat.image_url }}
                             style={styles.categoryPng}
-                            resizeMode="contain"
+                            resizeMode="cover"
                           />
                         ) : (
                           <AppIcon name="categories" size={26} color="#1E7A46" />
@@ -775,7 +767,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 14,
-    gap: 17,
+    gap: 13,
     flexShrink: 0,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
@@ -915,8 +907,8 @@ const styles = StyleSheet.create({
   },
   bannerScrollView: {
     width: '100%',
-    height: 130,
-    borderRadius: 18,
+    height: 170,
+    borderRadius: 20,
   },
   bannerScrollContent: {
     alignItems: 'center',
@@ -942,17 +934,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.45)',
   },
   bannerItem: {
-    height: 130,
-    borderRadius: 18,
+    height: 170,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   bannerImage: {
-    height: 130,
-    borderRadius: 18,
+    height: 170,
+    borderRadius: 20,
   },
   promoCardOuter: {
-    height: 130,
-    borderRadius: 18,
+    height: 170,
+    borderRadius: 20,
     overflow: 'hidden',
     flexShrink: 0,
     alignSelf: 'stretch',
@@ -966,61 +958,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 16,
+    paddingTop: 18,
     paddingRight: 14,
-    paddingBottom: 16,
-    paddingLeft: 18,
+    paddingBottom: 18,
+    paddingLeft: 20,
   },
   promoLeft: {
     flex: 1,
-    paddingRight: 4,
+    paddingRight: 8,
     justifyContent: 'center',
   },
   promoRight: {
-    width: 110,
-    height: 95,
+    width: 130,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
   },
   promoImage: {
-    width: 110,
-    height: 95,
+    width: 130,
+    height: 120,
   },
   promoLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11.5,
+    fontSize: 12,
     color: '#17251E',
     letterSpacing: 1.3,
     textTransform: 'uppercase',
   },
   promoTitle: {
     ...FONTS.balooBold,
-    fontSize: 26,
+    fontSize: 28,
     color: '#FFFFFF',
-    letterSpacing: -0.26,
-    lineHeight: 32,
-    marginTop: 2,
+    letterSpacing: -0.28,
+    lineHeight: 34,
+    marginTop: 3,
   },
   promoSub: {
     ...FONTS.muktaMedium,
-    fontSize: 12.5,
+    fontSize: 13,
     color: '#17251E',
-    lineHeight: 16,
-    marginTop: 2,
+    lineHeight: 18,
+    marginTop: 3,
   },
   promoBtn: {
     alignSelf: 'flex-start',
     backgroundColor: '#17251E',
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 10,
   },
   promoBtnText: {
     ...FONTS.muktaSemiBold,
-    fontSize: 11,
+    fontSize: 12,
     color: '#FFFFFF',
-    lineHeight: 14,
+    lineHeight: 16,
   },
   mmgCard: {
     position: 'relative',
@@ -1125,14 +1117,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
     overflow: 'hidden',
-    backgroundColor: '#F8FAF8',
-    borderWidth: 1,
-    borderColor: '#E8EFEA',
-    padding: 6,
+    backgroundColor: '#FFFFFF',
   },
   categoryPng: {
-    width: 52,
-    height: 52,
+    width: '100%',
+    height: '100%',
   },
   catName: {
     ...FONTS.muktaMedium,

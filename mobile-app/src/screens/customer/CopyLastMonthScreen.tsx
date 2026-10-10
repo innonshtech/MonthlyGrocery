@@ -306,6 +306,30 @@ export default function CopyLastMonthScreen({ navigation }: any) {
                   onViewSimilar={() => navigation.navigate('Search')}
                   onMinus={() => handleUpdateQty(item.product_id, -1)}
                   onPlus={() => handleUpdateQty(item.product_id, 1)}
+                  onPress={() => {
+                    const productObj = {
+                      id: item.product_id,
+                      name: item.name,
+                      price: item.price,
+                      mrp: item.previous_price || item.price,
+                      unit: item.unit_label,
+                      image_url: item.image_url,
+                      available: item.available,
+                    };
+                    if (typeof navigation?.push === 'function') {
+                      navigation.push('ProductDetail', {
+                        productId: item.product_id,
+                        initialProduct: productObj,
+                        fromScreen: 'CopyLastMonth',
+                      });
+                    } else {
+                      navigation?.navigate('ProductDetail', {
+                        productId: item.product_id,
+                        initialProduct: productObj,
+                        fromScreen: 'CopyLastMonth',
+                      });
+                    }
+                  }}
                 />
               ))}
             </View>
@@ -348,6 +372,7 @@ function ProductRow({
   onViewSimilar,
   onMinus,
   onPlus,
+  onPress,
 }: {
   item: CopyLastMonthItem;
   index: number;
@@ -356,6 +381,7 @@ function ProductRow({
   onViewSimilar: () => void;
   onMinus: () => void;
   onPlus: () => void;
+  onPress?: () => void;
 }) {
   const priceLine = item.unit_label
     ? `${item.unit_label} · ${formatInr(item.price)}`
@@ -369,32 +395,48 @@ function ProductRow({
 
   return (
     <View style={[styles.productRow, !isLast && styles.productRowBorder]}>
-      <View style={[styles.thumb, !item.image_url && styles.thumbEmpty]}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
-        ) : null}
-      </View>
-      <View style={styles.productText}>
-        <Text
-          style={[styles.productName, !item.available && styles.productNameMuted]}
-          numberOfLines={2}
-        >
-          {item.name}
-        </Text>
-        {item.available ? (
-          <View style={styles.priceRow}>
-            <Text style={styles.productPrice}>{priceLine}</Text>
-            {wasPrice ? <Text style={styles.wasPrice}>{wasPrice}</Text> : null}
-          </View>
-        ) : (
-          <View style={styles.unavailableRow}>
-            <Text style={styles.unavailableText}>{screenConfig.unavailable_label}</Text>
-            <TouchableOpacity onPress={onViewSimilar}>
-              <Text style={styles.viewSimilar}>{screenConfig.view_similar_label}</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      <TouchableOpacity
+        style={styles.productClickable}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.thumb}>
+          {item.image_url ? (
+            <Image
+              source={{ uri: item.image_url }}
+              style={[styles.thumbImg, !item.available && { opacity: 0.4 }]}
+              resizeMode="contain"
+            />
+          ) : (
+            <AppIcon
+              name="shopping-bag"
+              size={24}
+              color={item.available ? COLORS.green700 : '#94A3B8'}
+            />
+          )}
+        </View>
+        <View style={styles.productText}>
+          <Text
+            style={[styles.productName, !item.available && styles.productNameMuted]}
+            numberOfLines={2}
+          >
+            {item.name}
+          </Text>
+          {item.available ? (
+            <View style={styles.priceRow}>
+              <Text style={styles.productPrice}>{priceLine}</Text>
+              {wasPrice ? <Text style={styles.wasPrice}>{wasPrice}</Text> : null}
+            </View>
+          ) : (
+            <View style={styles.unavailableRow}>
+              <Text style={styles.unavailableText}>{screenConfig.unavailable_label}</Text>
+              <TouchableOpacity onPress={onViewSimilar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.viewSimilar}>{screenConfig.view_similar_label}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
       {item.available ? (
         <Stepper qty={item.quantity} onMinus={onMinus} onPlus={onPlus} />
       ) : null}
@@ -493,25 +535,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
   },
+  productClickable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   productRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
   thumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#EAF5EE',
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    flexShrink: 0,
   },
   thumbEmpty: {
-    backgroundColor: '#EAF5EE',
+    backgroundColor: '#FFFFFF',
   },
   thumbImg: {
-    width: 36,
-    height: 36,
+    width: '90%',
+    height: '90%',
   },
   productText: {
     flex: 1,
