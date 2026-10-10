@@ -792,37 +792,32 @@ function HeroImage() {
     {
       url: "/hero-green-saree-pack.jpg",
       tag: "Everyday Value",
-      title: "Everyday Value for a Better Tomorrow",
-      subtitle: "Direct Factory Wholesale Price • Maximum Savings",
-      highlights: ["Quality Products", "Better Prices", "Monthly Essentials", "Delivered with Trust"],
+      caption: "Everyday Value for a Better Tomorrow — seedha factory se aapke ghar.",
+      badges: ["4-Hour Delivery", "Wholesale Bachat"],
     },
     {
       url: "/hero-western-checkout.png",
       tag: "Handpicked for you",
-      title: "All Your Favourite Brands Handpicked & Verified",
-      subtitle: "100% Original Factory Sealed Products Delivered to Your Door",
-      highlights: ["Aashirvaad", "Surf Excel", "Tata Tea", "Saffola Gold"],
+      caption: "Har brand jo aap pasand karti ho — sealed & delivered.",
+      badges: ["100% Original", "Aashirvaad · Fortune · Tata"],
     },
     {
       url: "/hero-couple.png",
       tag: "For Indian families",
-      title: "Smart Monthly Grocery Planning for Indian Families",
-      subtitle: "Complete Monthly Ration in One Order • Zero Middlemen",
-      highlights: ["4-Hour Express Slot", "Bulk Monthly Savings", "100% Pure"],
+      caption: "Ghar ka poora kirana, saath mein — pyaar se chuni gayi list.",
+      badges: ["Poora Mahine Ka Ration", "Zero Middlemen"],
     },
     {
       url: "/hero-family-cooking.jpg",
-      tag: "Family kitchen",
-      title: "Wholesome Meals for the Entire Family Everyday",
-      subtitle: "Fresh Ingredients & Daily Staples Delivered on Time",
-      highlights: ["4-Hour Delivery", "Upto 20% OFF", "Minimum Order ₹1,000"],
+      tag: "Happy families",
+      caption: "Poore parivaar ki khushiyan, fresh grocery aur monthly ration ke saath.",
+      badges: ["Pure & Fresh", "Har Mahine Bachat"],
     },
     {
       url: "/hero-women-kitchen.jpg",
       tag: "Ghar ki rasoi",
-      title: "Pure Grocery & Trusted Brands for Every Kitchen",
-      subtitle: "Handpicked with Care • Fresh, Hygienic & Sealed",
-      highlights: ["Clean & Fresh", "Direct Local Store", "Trusted Delivery"],
+      caption: "Maa aur bahu ka bharosa — 100% fresh aur shuddh grocery.",
+      badges: ["Factory Sealed", "Mohalle Ki Dukan"],
     },
   ];
 
@@ -843,11 +838,11 @@ function HeroImage() {
     <div className="absolute inset-0">
       <img
         src={active.url}
-        alt={active.title}
+        alt={active.caption}
         className="w-full h-full object-cover object-top sm:object-center transition-opacity duration-700"
       />
-      {/* Subtle scrim so photo stays bright & vibrant */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent pointer-events-none" />
+      {/* Soft, minimal gradient for contrast without darkening the photo */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent pointer-events-none" />
 
       {/* Ribbon at top */}
       <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between z-10 pointer-events-none">
@@ -859,22 +854,19 @@ function HeroImage() {
         </span>
       </div>
 
-      {/* Crystal-Clear English Floating Card */}
-      <div className="absolute bottom-11 sm:bottom-12 left-3 right-3 sm:left-5 sm:right-5 z-10 bg-black/70 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/20 shadow-2xl">
-        <div className="text-white font-display font-extrabold text-sm sm:text-lg md:text-xl leading-snug tracking-tight drop-shadow-md">
-          {active.title}
+      {/* Bright, stylish white text directly on the photo (No black box) */}
+      <div className="absolute bottom-11 sm:bottom-14 left-3.5 right-3.5 sm:left-6 sm:right-6 z-10">
+        <div className="text-white font-display font-black text-base sm:text-2xl leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
+          {active.caption}
         </div>
-        <div className="text-[#FCD34D] text-[11px] sm:text-xs font-semibold mt-1 tracking-wide flex items-center gap-1.5 drop-shadow">
-          <Sparkles className="w-3 h-3 flex-shrink-0 text-[#22C55E]" />
-          <span>{active.subtitle}</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5 mt-2">
-          {active.highlights.map((h, i) => (
+        <div className="text-white/95 text-[10px] sm:text-xs mt-2 flex flex-wrap items-center gap-2 font-semibold">
+          {active.badges.map((b, i) => (
             <span
               key={i}
-              className="inline-flex items-center gap-1 bg-white/15 text-white text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full border border-white/15 shadow-sm"
+              className="inline-flex items-center gap-1 bg-black/35 backdrop-blur-md px-2.5 py-1 rounded-full text-white border border-white/20 shadow-sm"
             >
-              ✓ {h}
+              <Sparkles className="w-3 h-3 text-[#FCD34D]" />
+              {b}
             </span>
           ))}
         </div>
