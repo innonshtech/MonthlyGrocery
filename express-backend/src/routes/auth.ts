@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import { sendOtp, verifyOtp, isTestPhoneNumber } from '../services/twilioOtpService';
+import { sendOtp, verifyOtp } from '../services/twilioOtpService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-token-key-change-me';

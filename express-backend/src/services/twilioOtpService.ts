@@ -53,17 +53,18 @@ export function formatE164Phone(phone: string): string {
   return clean.startsWith('+') ? clean : `+${clean}`;
 }
 
-const TEST_NUMBERS = [
-  '7588944715',
+const BYPASS_NUMBERS = [
+  '8830480015',
   '9000000000',
-  '9999999999',
-  '7777777777',
-  '6666666666',
 ];
 
-export function isTestPhoneNumber(phone: string): boolean {
+export function isBypassPhoneNumber(phone: string): boolean {
   const clean = phone.replace(/[^\d]/g, '');
-  return TEST_NUMBERS.some((num) => clean.endsWith(num));
+  return BYPASS_NUMBERS.some((num) => clean.endsWith(num));
+}
+
+export function isTestPhoneNumber(phone: string): boolean {
+  return isBypassPhoneNumber(phone);
 }
 
 /**
@@ -84,29 +85,34 @@ export async function sendOtp(mobile: string): Promise<{
     };
   }
 
-  const isDevBypass = process.env.DEV_OTP_BYPASS?.toLowerCase() === 'true';
-  const isTest = isTestPhoneNumber(mobile);
-  const client = getTwilioClient();
-  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
-  const fromPhoneNumber = process.env.TWILIO_PHONE_NUMBER?.trim();
-
-  // 1. Dev Bypass / Test Phone Numbers / Fallback Mode
-  if (!client || isDevBypass || isTest) {
+  // 1. Bypass mode specifically for 8830480015
+  if (isBypassPhoneNumber(mobile)) {
     const devCode = '123456';
     otpStore.set(formattedPhone, {
       code: devCode,
       expiresAt: Date.now() + OTP_EXPIRY_MS,
       attempts: 0,
     });
-    console.log(`[OTP] Test/Dev OTP '${devCode}' generated for ${formattedPhone}`);
+    console.log(`[OTP] Bypass OTP '${devCode}' generated for ${formattedPhone}`);
     return {
       success: true,
-      message: 'OTP sent successfully. (Test mode code: 123456)',
+      message: 'OTP sent successfully. (Bypass mode code: 123456)',
       devOtp: devCode,
     };
   }
 
-  // 2. Twilio Verify API Mode (Recommended for Twilio Verify users)
+  const client = getTwilioClient();
+  const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID?.trim();
+  const fromPhoneNumber = process.env.TWILIO_PHONE_NUMBER?.trim();
+
+  if (!client) {
+    return {
+      success: false,
+      error: 'Twilio client is not configured. Please check TWILIO credentials in server .env',
+    };
+  }
+
+  // 1. Twilio Verify API Mode (Recommended for Twilio Verify users)
   if (verifyServiceSid) {
     try {
       const verification = await client.verify.v2
@@ -132,7 +138,7 @@ export async function sendOtp(mobile: string): Promise<{
     }
   }
 
-  // 3. Twilio Programmable SMS Mode (Direct SMS with generated 6-digit OTP)
+  // 2. Twilio Programmable SMS Mode (Direct SMS with generated 6-digit OTP)
   if (fromPhoneNumber) {
     try {
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -180,7 +186,6 @@ export async function verifyOtp(mobile: string, code: string): Promise<{
 }> {
   const formattedPhone = formatE164Phone(mobile);
   const enteredCode = code.trim();
-  const isDevBypass = process.env.DEV_OTP_BYPASS?.toLowerCase() === 'true';
 
   // 1. Check if user is currently locked out
   const remainingLock = getLockoutRemainingSeconds(mobile);
@@ -194,11 +199,10 @@ export async function verifyOtp(mobile: string, code: string): Promise<{
     };
   }
 
-  // 2. Look up active OTP record or initialize
+  // 2. Look up active OTP record
   let record = otpStore.get(formattedPhone);
   if (!record) {
-    // If in test/dev mode without prior sendOtp call
-    if (isTestPhoneNumber(mobile) || isDevBypass) {
+    if (isBypassPhoneNumber(mobile)) {
       record = {
         code: '123456',
         expiresAt: Date.now() + OTP_EXPIRY_MS,
@@ -220,7 +224,7 @@ export async function verifyOtp(mobile: string, code: string): Promise<{
 
   let isCorrect = false;
 
-  if (client && verifyServiceSid && !isDevBypass && record.code === 'TWILIO_VERIFY') {
+  if (client && verifyServiceSid && record.code === 'TWILIO_VERIFY') {
     try {
       const check = await client.verify.v2
         .services(verifyServiceSid)
@@ -233,8 +237,8 @@ export async function verifyOtp(mobile: string, code: string): Promise<{
       console.error('[Twilio Verify] Verification check error:', err);
     }
   } else {
-    // Direct or Dev code check
-    if (record.code === enteredCode || ((isDevBypass || isTestPhoneNumber(mobile)) && enteredCode === '123456')) {
+    // Direct SMS OTP code check or bypass verification
+    if (record.code === enteredCode || (isBypassPhoneNumber(mobile) && enteredCode === '123456')) {
       isCorrect = true;
     }
   }
