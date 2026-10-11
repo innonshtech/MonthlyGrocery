@@ -783,7 +783,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
 
                         {/* 2. Pack Variants Pills */}
                         <td className="py-3.5 pr-3">
-                          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-[280px] md:max-w-[360px] lg:max-w-[460px] py-1">
+                          <div className="flex flex-wrap items-center gap-1.5 max-w-[340px] md:max-w-[420px] lg:max-w-[520px] py-1">
                             {group.variants.map((v) => {
                               const packLabel = resolvePackUnitLabel(v) || v.unit || 'Pack';
                               return (
@@ -807,10 +807,10 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                                 openEditMasterProductModal(primary);
                                 setShowAddVariantForm(true);
                               }}
-                              className="shrink-0 px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-dashed border-emerald-500/40 rounded-lg text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-0.5 cursor-pointer whitespace-nowrap"
+                              className="shrink-0 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 border border-dashed border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap shadow-sm"
                               title="Add another pack size variant to this product"
                             >
-                              <Plus className="w-3 h-3" /> Add Size
+                              <Plus className="w-3.5 h-3.5" /> Add Size
                             </button>
                           </div>
                         </td>
@@ -1726,13 +1726,14 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                     const brand = (editMasterProduct.brand || '').toLowerCase();
                     const rawSiblings = masterProductsList.filter(
                       (p) =>
-                        (p.brand || '').toLowerCase() === brand &&
-                        getProductBaseName(p.name).toLowerCase() === baseName.toLowerCase()
+                        (editMasterProduct.family_key && p.family_key && editMasterProduct.family_key.toLowerCase() === p.family_key.toLowerCase()) ||
+                        ((p.brand || '').toLowerCase() === brand &&
+                        getProductBaseName(p.name).toLowerCase() === baseName.toLowerCase())
                     );
                     const siblings = sortPackVariants(rawSiblings);
 
                     return (
-                      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                      <div className="flex flex-wrap items-center gap-2 py-1">
                         {siblings.map((sib) => {
                           const isCurrent = sib.id === editMasterProduct.id;
                           const packLabel = resolvePackUnitLabel(sib) || sib.unit || 'Pack';
