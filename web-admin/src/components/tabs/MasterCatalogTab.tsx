@@ -209,6 +209,10 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
         if (!entry.image_url && prod.image_url) {
           entry.image_url = prod.image_url;
         }
+        const curClean = getProductBaseName(prod.name) || prod.name;
+        if (curClean && curClean.length < entry.baseName.length && !curClean.includes('+')) {
+          entry.baseName = curClean;
+        }
       }
     }
 
