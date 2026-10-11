@@ -164,9 +164,11 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
 
   // Helper to extract base product name for grouping pack variants
   const getProductBaseName = (nameStr: string): string => {
-    return String(nameStr || '')
-      .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units|dozen|ltr|gm|litre)\b.*/i, '')
-      .trim();
+    let clean = String(nameStr || '').trim();
+    clean = clean.replace(/[\(\)©®™]/g, ' ');
+    clean = clean.replace(/\s+\d+(\.\d+)?\s*(kg|kgs|g|gm|gms|gram|grams|l|ltr|ltrs|litre|litres|liter|ml|pcs|pc|pack|packs|dozen)\b.*$/i, '');
+    clean = clean.replace(/\b\d+(\.\d+)?\s*(kg|kgs|g|gm|gms|gram|grams|l|ltr|ltrs|litre|litres|liter|ml|pcs|pc|pack|packs|dozen)\b.*$/i, '');
+    return clean.replace(/\s+/g, ' ').trim();
   };
 
   // Group master catalogue products by brand + primary category + base product name
@@ -186,7 +188,9 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
       const baseName = getProductBaseName(prod.name) || prod.name;
       const brand = String(prod.brand || '').trim();
       const category = String(prod.primary_category || '').trim();
-      const key = `${brand.toLowerCase()}___${category.toLowerCase()}___${baseName.toLowerCase()}`;
+      const key = (prod.family_key && String(prod.family_key).trim())
+        ? String(prod.family_key).trim().toLowerCase()
+        : `${brand.toLowerCase()}___${category.toLowerCase()}___${baseName.toLowerCase()}`;
 
       if (!map.has(key)) {
         map.set(key, {
@@ -467,6 +471,7 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
           quantity_value: pack.quantity_value,
           quantity_unit: pack.quantity_unit,
           unit: pack.unit,
+          family_key: editMasterProduct.family_key || undefined,
           is_veg: editProdIsVeg,
           available: true,
         }),
