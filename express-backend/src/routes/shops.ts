@@ -1007,6 +1007,78 @@ router.put('/:shop_id/location', authMiddleware, requireRole(['super_admin']), a
   }
 });
 
+// 2.15 PUT /:shop_id: Update store details (Store Name & Merchant Name) (Admin or Super Admin)
+router.put('/:shop_id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
+  const { shop_id } = req.params;
+  const { shop_name, owner_name } = req.body;
+
+  if (!shop_name && !owner_name) {
+    return res.status(400).json({ success: false, error: 'Store Name or Merchant Name is required.' });
+  }
+
+  try {
+    // 1. Fetch current shop to get owner_id
+    const { data: existingShop, error: fetchErr } = await supabase
+      .from('shops')
+      .select('id, owner_id, shop_name, owner_name')
+      .eq('id', shop_id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return res.status(500).json({ success: false, error: fetchErr.message });
+    }
+    if (!existingShop) {
+      return res.status(404).json({ success: false, error: 'Shop not found.' });
+    }
+
+    const updates: Record<string, any> = {};
+    if (shop_name !== undefined) {
+      const cleanShopName = String(shop_name).trim();
+      if (!cleanShopName) {
+        return res.status(400).json({ success: false, error: 'Store Name cannot be empty.' });
+      }
+      updates.shop_name = cleanShopName;
+    }
+
+    if (owner_name !== undefined) {
+      const cleanOwnerName = String(owner_name).trim();
+      if (!cleanOwnerName) {
+        return res.status(400).json({ success: false, error: 'Merchant Name cannot be empty.' });
+      }
+      updates.owner_name = cleanOwnerName;
+    }
+
+    // 2. Update shops table
+    const { data: updatedShop, error: updateErr } = await supabase
+      .from('shops')
+      .update(updates)
+      .eq('id', shop_id)
+      .select()
+      .single();
+
+    if (updateErr) {
+      return res.status(500).json({ success: false, error: updateErr.message });
+    }
+
+    // 3. Update profiles table if owner_name changed and owner_id exists
+    if (owner_name !== undefined && existingShop.owner_id) {
+      const cleanOwnerName = String(owner_name).trim();
+      await supabase
+        .from('profiles')
+        .update({ name: cleanOwnerName })
+        .eq('id', existingShop.owner_id);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Store details updated successfully.',
+      shop: updatedShop,
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message || 'Server error' });
+  }
+});
+
 // 2.2 POST /self-register: Public Merchant Self-Registration with Legal Documents & GPS Coordinates
 router.post('/self-register', async (req, res) => {
   const {
