@@ -509,21 +509,6 @@ router.get('/categories', async (req, res) => {
       };
     });
 
-    // Ensure all active product primary categories are also represented in categoriesFull
-    const existingNames = new Set(categoriesFull.map((c: any) => String(c.name || '').trim().toLowerCase()));
-    for (const rawPName of productCategoryNames) {
-      const pName = String(rawPName || '').trim();
-      if (pName && !existingNames.has(pName.toLowerCase())) {
-        categoriesFull.push({
-          id: `cat-${pName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-          name: pName,
-          image_url: undefined,
-          subcategories: [],
-        });
-        existingNames.add(pName.toLowerCase());
-      }
-    }
-
     const categories = categoriesFull.map((c: any) => c.name);
 
     return res.json({

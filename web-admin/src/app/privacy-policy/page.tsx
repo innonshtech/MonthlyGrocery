@@ -126,7 +126,7 @@ export default function PrivacyPolicyPage() {
           <ul style={{ color: '#CBD5E1', fontSize: '15px', paddingLeft: '20px', lineHeight: '1.8' }}>
             <li><strong>Google Maps Platform:</strong> For map rendering, reverse geocoding, and address validation.</li>
             <li><strong>Amazon Web Services (AWS EC2, RDS, S3):</strong> For secure cloud hosting, encrypted database storage, and media delivery.</li>
-            <li><strong>Twilio Telecommunications:</strong> For carrier-grade delivery of SMS OTP authentication messages.</li>
+            <li><strong>2Factor SMS Gateway:</strong> For delivery of SMS OTP authentication messages.</li>
           </ul>
           <p style={{ color: '#34D399', fontSize: '14px', fontWeight: 600, marginTop: '8px' }}>
             ✓ We do NOT sell, rent, or trade your personal data to any external advertising agencies.

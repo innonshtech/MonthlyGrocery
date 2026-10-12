@@ -17,7 +17,9 @@ import {
   Tag,
   RefreshCw,
   ArrowLeft,
+  Download,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import {
   PACK_UNIT_OPTIONS,
   packUnitPayloadFromInput,
@@ -506,6 +508,134 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
     }
   };
 
+  // Download Master SKU Catalogue Excel
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  const handleDownloadSkuExcel = () => {
+    try {
+      setIsExportingExcel(true);
+      const itemsToExport = (searchQuery.trim() || selectedCategoryFilter !== 'all')
+        ? filteredFlatProducts
+        : masterProductsList;
+
+      if (!itemsToExport || itemsToExport.length === 0) {
+        alert('No SKU records found to export.');
+        setIsExportingExcel(false);
+        return;
+      }
+
+      const isValidUrl = (url: unknown): boolean => {
+        if (!url || typeof url !== 'string') return false;
+        const trimmed = url.trim();
+        if (!trimmed || trimmed === '[]' || trimmed === '""' || trimmed === 'null' || trimmed === 'undefined' || trimmed === '{}') {
+          return false;
+        }
+        return true;
+      };
+
+      const rows = itemsToExport.map((prod) => {
+        // Resolve base name & fallback family key
+        const baseName = getProductBaseName(prod.name) || prod.name || '';
+        const brand = String(prod.brand || '').trim();
+        const category = String(prod.primary_category || '').trim();
+        const fallbackFamilyKey = `${brand.toLowerCase()}___${category.toLowerCase()}___${baseName.toLowerCase()}`;
+        const familyKey = (prod.family_key && String(prod.family_key).trim()) ? String(prod.family_key).trim() : fallbackFamilyKey;
+
+        // Photo uploaded detection
+        const rawImg = String(prod.image_url || '').trim();
+        const rawPrimary = String(prod.primary_image_url || '').trim();
+        let primaryPhotoUrl = '';
+        let photoCount = 0;
+
+        if (Array.isArray(prod.images)) {
+          const valid = prod.images.filter((img: unknown) => isValidUrl(img));
+          photoCount += valid.length;
+          if (valid.length > 0) {
+            primaryPhotoUrl = String(valid[0]).trim();
+          }
+        }
+
+        if (!primaryPhotoUrl && isValidUrl(rawPrimary)) {
+          primaryPhotoUrl = rawPrimary;
+          if (photoCount === 0) photoCount = 1;
+        }
+
+        if (!primaryPhotoUrl && isValidUrl(rawImg)) {
+          const parts = rawImg.split(',').map((s) => s.trim()).filter((s) => isValidUrl(s));
+          if (parts.length > 0) {
+            primaryPhotoUrl = parts[0];
+            if (photoCount === 0) photoCount = parts.length;
+          }
+        }
+
+        const isPhotoUploaded = Boolean(primaryPhotoUrl);
+
+        return {
+          'SKU': prod.sku || '',
+          'Product Name': prod.name || '',
+          'Family Key': familyKey,
+          'Photo Uploaded': isPhotoUploaded ? 'Yes' : 'No',
+          'Photo URL': primaryPhotoUrl,
+          'Total Photos': photoCount,
+          'Brand': prod.brand || '',
+          'Company': prod.company || '',
+          'Category': prod.primary_category || '',
+          'Subcategory': prod.secondary_category || '',
+          'Pack Size': resolvePackUnitLabel(prod) || prod.unit || '',
+          'Quantity Value': prod.quantity_value !== undefined && prod.quantity_value !== null ? prod.quantity_value : '',
+          'Quantity Unit': prod.quantity_unit || '',
+          'MRP (₹)': prod.mrp !== undefined && prod.mrp !== null ? Number(prod.mrp) || prod.mrp : '',
+          'Selling Price (₹)': prod.price !== undefined && prod.price !== null ? Number(prod.price) || prod.price : '',
+          'Wholesaler Price (₹)': prod.wholesaler_price !== undefined && prod.wholesaler_price !== null ? Number(prod.wholesaler_price) || prod.wholesaler_price : '',
+          'In Stock': prod.available === false ? 'No' : 'Yes',
+          'Food Type': prod.is_veg === false ? 'Non-Veg' : 'Veg',
+          'Barcode': prod.barcode || '',
+          'Short Description': prod.short_description || '',
+          'Description': prod.description || '',
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      // Auto-fit column widths
+      worksheet['!cols'] = [
+        { wch: 22 }, // SKU
+        { wch: 42 }, // Product Name
+        { wch: 36 }, // Family Key
+        { wch: 18 }, // Photo Uploaded
+        { wch: 45 }, // Photo URL
+        { wch: 14 }, // Total Photos
+        { wch: 20 }, // Brand
+        { wch: 22 }, // Company
+        { wch: 22 }, // Category
+        { wch: 22 }, // Subcategory
+        { wch: 14 }, // Pack Size
+        { wch: 14 }, // Quantity Value
+        { wch: 14 }, // Quantity Unit
+        { wch: 12 }, // MRP (₹)
+        { wch: 16 }, // Selling Price (₹)
+        { wch: 20 }, // Wholesaler Price (₹)
+        { wch: 12 }, // In Stock
+        { wch: 12 }, // Food Type
+        { wch: 18 }, // Barcode
+        { wch: 35 }, // Short Description
+        { wch: 50 }, // Description
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Master SKUs');
+
+      const dateStr = new Date().toISOString().split('T')[0];
+      XLSX.writeFile(workbook, `MonthlyGrocery_Master_SKUs_${dateStr}.xlsx`);
+    } catch (err: unknown) {
+      console.error('Failed to export SKU excel:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      alert('Failed to generate SKU excel file. ' + msg);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans">
       {/* 1. TOP NAVIGATION BAR / VIEW SWITCHER */}
@@ -692,6 +822,22 @@ export const MasterCatalogTab: React.FC<MasterCatalogTabProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Download Master SKU Excel Button */}
+              <button
+                type="button"
+                onClick={handleDownloadSkuExcel}
+                disabled={isExportingExcel}
+                className="px-3.5 py-1.5 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer h-[34px] disabled:opacity-50"
+                title="Download Master Catalogue SKU Excel"
+              >
+                {isExportingExcel ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>Download Excel</span>
+              </button>
 
               {/* Add Master Product Quick Action Button */}
               <button

@@ -4,7 +4,7 @@
 Single-seller monthly grocery marketplace (min order ₹5,000) built for Indian households ordering pantry staples. Three roles: Consumer (mobile-first shopping), Admin (catalog/pricing ops), Super Admin (platform control tower + admin whitelisting).
 
 ## Tech stack
-- FastAPI + MongoDB + Twilio Verify OTP + JWT (HttpOnly cookie)
+- Express / Node.js + PostgreSQL / Supabase + 2Factor OTP + JWT
 - React 19 + Tailwind + Shadcn UI + Framer Motion + Recharts
 - openpyxl / pandas for Excel bulk SKU import-export
 
@@ -33,7 +33,7 @@ Single-seller monthly grocery marketplace (min order ₹5,000) built for Indian 
 - New MongoDB indexes at startup: products(available), products(primary_category), products(available, primary_category), orders(created_at desc), orders(consumer_id, created_at desc), banners(enabled, order).
 
 ### Auth
-- Twilio Verify OTP flow (mobile-only, no passwords). Consumer auto-approved. Admin waitlisted for Super Admin approval.
+- 2Factor OTP flow (mobile-only, no passwords). Consumer auto-approved. Admin waitlisted for Super Admin approval.
 - Guest cart auto-merges into user cart via `POST /api/cart/merge` after successful OTP verify (additive on duplicates).
 
 ### Admin
@@ -44,15 +44,15 @@ Single-seller monthly grocery marketplace (min order ₹5,000) built for Indian 
 - **Bulk SKU delete** (Feb 2026) — per-row checkbox + header select-all + destructive red bulk toolbar (`POST /api/products/mine/bulk-delete` with `{ids}`). A dedicated "Delete ALL SKUs" wipe requires typing "DELETE ALL"; both write dedicated audit entries.
 
 ### Super Admin
-- Control Tower with Twilio SMS logs (every OTP + notification).
+- Control Tower with 2Factor SMS logs (every OTP + notification).
 - Admin approvals dashboard (whitelist management).
 - **Home Banner Manager** for the consumer hero carousel (create/edit/delete/reorder/schedule/enable).
 - **View As toggle** (Feb 2026) — inside the sidebar role card. Preview the panel as Admin (hides super-only nav + shows "Viewing as Admin" chip) or as Customer (redirects to /shop with a floating "Viewing as Customer · Exit" pill). Choice persists in `localStorage["mg_view_as_v1"]` and is auto-cleared for non-super users.
 - Only `+919833833498` (Shashank Mohore) pre-seeded.
 
 ### Notifications
-- Twilio Welcome SMS on admin approval.
-- Twilio order-confirmation SMS on `POST /api/orders/checkout`.
+- 2Factor Welcome SMS on admin approval.
+- 2Factor order-confirmation SMS on `POST /api/orders/checkout`.
 
 ## Key API endpoints (recent additions in bold)
 - `POST /api/auth/send-otp` / `POST /api/auth/verify-otp` — moved to checkout for consumers.
@@ -67,7 +67,7 @@ Single-seller monthly grocery marketplace (min order ₹5,000) built for Indian 
 
 ## Backlog (prioritised)
 - **P1**: AWS S3 / Cloudinary object storage for product images (currently URL/base64).
-- **P1**: WhatsApp order confirmations via Twilio.
+- **P1**: WhatsApp order confirmations.
 - **P2**: Combo Packs ("Rasoi Starter" 15% off bundles).
 - **P2**: Referral program ("Kisi ko invite karo, dono ko ₹500 off").
 - **P2**: Payment gateway (currently COD only).

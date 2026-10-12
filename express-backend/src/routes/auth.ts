@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import { sendOtp, verifyOtp } from '../services/twilioOtpService';
+import { sendOtp, verifyOtp, isTestPhoneNumber, isProductionEnvironment } from '../services/twoFactorOtpService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-token-key-change-me';
@@ -161,7 +161,8 @@ router.post('/send-otp', async (req, res) => {
   }
 
   try {
-    const result = await sendOtp(normalized);
+    const targetRole = typeof role === 'string' && role.trim() ? role.trim() : 'consumer';
+    const result = await sendOtp(normalized, targetRole);
     if (!result.success) {
       return res.status(400).json({
         success: false,
@@ -173,7 +174,7 @@ router.post('/send-otp', async (req, res) => {
       success: true,
       message: result.message,
       mobile: normalized,
-      ...(result.devOtp ? { devOtp: result.devOtp } : {}),
+      ...(!isProductionEnvironment() && result.devOtp ? { devOtp: result.devOtp } : {}),
     });
   } catch (error: any) {
     console.error('[Auth send-otp] Error:', error);
@@ -203,7 +204,8 @@ router.post('/verify-otp', async (req, res) => {
   const normalized = normalizePhone(mobile);
 
   try {
-    const verification = await verifyOtp(normalized, code);
+    const expectedRole = typeof role === 'string' && role.trim() ? role.trim() : 'consumer';
+    const verification = await verifyOtp(normalized, code, expectedRole);
     if (!verification.success) {
       return res.status(400).json({
         success: false,
