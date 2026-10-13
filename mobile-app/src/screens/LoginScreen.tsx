@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { COLORS, FONTS } from '../constants/theme';
 import { fetchOnboardingConfig, PhoneEntryConfig, OtpVerificationConfig } from '../services/onboardingApi';
+import TermsPrivacyModal from '../components/TermsPrivacyModal';
 
 export default function LoginScreen({ route, navigation }: any) {
   const [mobile, setMobile] = useState('');
@@ -41,6 +42,8 @@ export default function LoginScreen({ route, navigation }: any) {
   const [canResend, setCanResend] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
+  const [policyModalVisible, setPolicyModalVisible] = useState(false);
+  const [policyTab, setPolicyTab] = useState<'terms' | 'privacy'>('terms');
   const { sendOtp, verifyOtp } = useAuth();
   const inputRefs = useRef<any[]>([]);
   const { bottomPadding: bottomPad, insets, keyboardBehavior } = useOnboardingLayout();
@@ -457,7 +460,29 @@ export default function LoginScreen({ route, navigation }: any) {
                 onPress={handleSendOtp}
                 loading={loading}
               />
-              <Text style={styles.termsText}>{phoneEntry.terms_text}</Text>
+              <Text style={styles.termsText}>
+                By continuing you agree to our{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => {
+                    setPolicyTab('terms');
+                    setPolicyModalVisible(true);
+                  }}
+                >
+                  Terms
+                </Text>
+                {' & '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => {
+                    setPolicyTab('privacy');
+                    setPolicyModalVisible(true);
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
             </>
           ) : step === 2 && otpVerification ? (
             <OnboardingPrimaryButton
@@ -472,6 +497,12 @@ export default function LoginScreen({ route, navigation }: any) {
             />
           ) : null}
         </View>
+
+        <TermsPrivacyModal
+          visible={policyModalVisible}
+          initialTab={policyTab}
+          onClose={() => setPolicyModalVisible(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -668,6 +699,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.ink500,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
+  },
+  termsLink: {
+    ...FONTS.muktaSemiBold,
+    color: COLORS.green700,
+    textDecorationLine: 'underline',
   },
 });
