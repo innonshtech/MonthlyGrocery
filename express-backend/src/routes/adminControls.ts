@@ -2895,7 +2895,7 @@ router.get('/customers', async (_req, res) => {
         p.updated_at,
         COUNT(DISTINCT a.id)::int as addresses_count,
         COUNT(DISTINCT o.id)::int as orders_count,
-        COALESCE(SUM(o.final_amount), 0)::numeric as total_spent,
+        COALESCE(SUM(COALESCE(o.final_amount, o.total_amount, 0)), 0)::numeric as total_spent,
         MAX(o.created_at) as last_order_date
       FROM profiles p
       LEFT JOIN addresses a ON (a.user_id = p.id OR a.consumer_id = p.id)

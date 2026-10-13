@@ -17,7 +17,7 @@ export const LOCAL_SERVER_URL = 'http://localhost:8002/api';
 
 /**
  * Active Backend API Endpoint
- * Connected to Localhost Server (Port 8002 / ADB reverse)
+ * Connected to Live AWS EC2 QA Server (Port 8002 / AWS RDS PostgreSQL monthlygrocery_qa)
  */
-export const API_BASE = LOCAL_SERVER_URL;
-export const AWS_SERVER_URL = LOCAL_SERVER_URL;
+export const API_BASE = AWS_QA_SERVER_URL;
+export const AWS_SERVER_URL = AWS_QA_SERVER_URL;

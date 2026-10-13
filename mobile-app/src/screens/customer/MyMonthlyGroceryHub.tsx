@@ -270,24 +270,53 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             <HubChevronIcon size={20} />
           </TouchableOpacity>
 
-          <View style={[styles.actionCard, styles.actionCardDisabled]}>
-            <View style={[styles.iconCircle, styles.iconCircleMuted]}>
-              <HubBuildIcon size={21} />
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: COLORS.green600, backgroundColor: '#FAFCFA' }]}
+            onPress={() => navigation.navigate('UploadGroceryList')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: COLORS.green100 }]}>
+              <Text style={{ fontSize: 20 }}>📋</Text>
             </View>
             <View style={styles.cardInfo}>
               <View style={styles.cardTitleRow}>
                 <Text style={[styles.cardTitle, styles.cardTitleInline]}>
-                  {screenConfig.card_build_title}
+                  Upload / Scan Grocery List
                 </Text>
-                <View style={styles.soonBadge}>
-                  <Text style={styles.soonBadgeText}>
-                    {screenConfig.card_build_soon_badge}
+                <View style={[styles.soonBadge, { backgroundColor: '#E8F5E9' }]}>
+                  <Text style={[styles.soonBadgeText, { color: COLORS.green700, fontWeight: '700' }]}>
+                    ✨ AI Vision
                   </Text>
                 </View>
               </View>
-              <Text style={styles.cardSub}>{screenConfig.card_build_subtitle}</Text>
+              <Text style={styles.cardSub}>Photo slip or paste WhatsApp text to auto-build cart</Text>
             </View>
-          </View>
+            <HubChevronIcon size={20} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: '#8B5CF6', backgroundColor: '#FAF8FF' }]}
+            onPress={() => navigation.navigate('AIAssistantChat')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
+              <Text style={{ fontSize: 20 }}>🤖</Text>
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  AI Grocery Assistant
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: '#EDE9FE' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#7C3AED', fontWeight: '700' }]}>
+                    Smart Chat
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Plan budget, get recipes & meal suggestions in 1 tap</Text>
+            </View>
+            <HubChevronIcon size={20} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

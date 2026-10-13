@@ -164,6 +164,14 @@ export default function CustomersTab() {
     return name.slice(0, 2).toUpperCase();
   };
 
+  const sanitizeErrorMessage = (msg: string) => {
+    if (!msg) return 'Failed to load directory data';
+    if (msg.includes('Cannot GET /api/admin/customers') || msg.includes('404')) {
+      return 'The Customer Directory service endpoint is currently syncing on the QA server. Please click Retry in a few seconds.';
+    }
+    return msg.replace(/<[^>]*>?/gm, '').slice(0, 150);
+  };
+
   // Filtered Customer List
   const filteredCustomers = useMemo(() => {
     return customers
@@ -430,7 +438,7 @@ export default function CustomersTab() {
             </div>
           ) : error ? (
             <div className="p-8 text-center space-y-3">
-              <p className="text-sm font-bold text-rose-400">{error}</p>
+              <p className="text-sm font-bold text-rose-400">{sanitizeErrorMessage(error)}</p>
               <button
                 onClick={() => fetchDirectoryData(true)}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold"
@@ -609,7 +617,22 @@ export default function CustomersTab() {
       {/* VIEW 2: MERCHANTS / STORES TABLE */}
       {viewMode === 'merchants' && (
         <div className="bg-slate-900/40 rounded-2xl sm:rounded-3xl border border-slate-800/80 backdrop-blur-xl shadow-xl overflow-hidden">
-          {filteredMerchants.length === 0 ? (
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3">
+              <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+              <p className="text-xs text-slate-400 font-semibold">Loading merchant and store records...</p>
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center space-y-3">
+              <p className="text-sm font-bold text-rose-400">{sanitizeErrorMessage(error)}</p>
+              <button
+                onClick={() => fetchDirectoryData(true)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold"
+              >
+                Retry
+              </button>
+            </div>
+          ) : filteredMerchants.length === 0 ? (
             <div className="py-16 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-slate-800/60 border border-slate-700 mx-auto flex items-center justify-center text-slate-500">
                 <Store className="w-6 h-6" />

@@ -565,7 +565,14 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               >
                 <HomeSearchIcon size={20} color="#156C3E" />
                 <Text style={styles.searchPlaceholder}>{home?.search_placeholder || 'Search atta, rice, oil…'}</Text>
-                <HomeMicIcon size={20} color="#156C3E" />
+                <TouchableOpacity
+                  onPress={(e) => { e.stopPropagation(); navigation.navigate('UploadGroceryList'); }}
+                  activeOpacity={0.75}
+                  style={styles.searchScanBtn}
+                >
+                  <Text style={{ fontSize: 13 }}>📷</Text>
+                  <Text style={styles.searchScanBtnText}>AI Scan</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
             </View>
 
@@ -658,6 +665,39 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 <View style={styles.mmgArrow}>
                   <HomeArrowRightIcon size={18} color="#FFFFFF" />
                 </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── AI Smart Grocery Hub Row (Scan List & AI Assistant) ── */}
+            <View style={styles.aiRowWrapper}>
+              <TouchableOpacity
+                style={styles.aiFeatureCard}
+                onPress={() => navigation.navigate('UploadGroceryList')}
+                activeOpacity={0.88}
+              >
+                <View style={styles.aiCardTopRow}>
+                  <View style={styles.aiBadgePill}>
+                    <Text style={styles.aiBadgeText}>✨ VISION AI</Text>
+                  </View>
+                  <Text style={{ fontSize: 20 }}>📸</Text>
+                </View>
+                <Text style={styles.aiCardTitle}>Scan Paper List</Text>
+                <Text style={styles.aiCardSub} numberOfLines={2}>Photo slip or WhatsApp text to auto-build cart</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.aiFeatureCard, styles.aiFeatureCardPurple]}
+                onPress={() => navigation.navigate('AIAssistantChat')}
+                activeOpacity={0.88}
+              >
+                <View style={styles.aiCardTopRow}>
+                  <View style={[styles.aiBadgePill, styles.aiBadgePillPurple]}>
+                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextPurple]}>🤖 ASSISTANT</Text>
+                  </View>
+                  <Text style={{ fontSize: 20 }}>💬</Text>
+                </View>
+                <Text style={[styles.aiCardTitle, styles.aiCardTitlePurple]}>AI Grocery Chat</Text>
+                <Text style={[styles.aiCardSub, styles.aiCardSubPurple]} numberOfLines={2}>Budget planning & meal recipe suggestions</Text>
               </TouchableOpacity>
             </View>
 
@@ -1405,5 +1445,88 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.green700,
     marginTop: 6,
+  },
+  searchScanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EBF7EE',
+    borderWidth: 1,
+    borderColor: '#CDEBD4',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+    gap: 4,
+  },
+  searchScanBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 11,
+    color: '#156C3E',
+  },
+  aiRowWrapper: {
+    flexDirection: 'row',
+    paddingHorizontal: H_PAD,
+    gap: 10,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  aiFeatureCard: {
+    flex: 1,
+    backgroundColor: '#F3FAF5',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#D4EED8',
+    shadowColor: '#1E7A46',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  aiFeatureCardPurple: {
+    backgroundColor: '#FAF8FF',
+    borderColor: '#E9D5FF',
+    shadowColor: '#7C3AED',
+  },
+  aiCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  aiBadgePill: {
+    backgroundColor: '#D1F2D9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.pill,
+  },
+  aiBadgePillPurple: {
+    backgroundColor: '#EDE9FE',
+  },
+  aiBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 9,
+    color: '#166534',
+    letterSpacing: 0.5,
+  },
+  aiBadgeTextPurple: {
+    color: '#6B21A8',
+  },
+  aiCardTitle: {
+    ...FONTS.balooBold,
+    fontSize: 14,
+    color: '#14532D',
+  },
+  aiCardTitlePurple: {
+    color: '#581C87',
+  },
+  aiCardSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 11,
+    color: '#365314',
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  aiCardSubPurple: {
+    color: '#6B21A8',
   },
 });
