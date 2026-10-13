@@ -25,10 +25,11 @@ import {
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
-const H_PADDING = 20;
-const TILE_SIZE = 78;
-const TILE_ICON_HEIGHT = 74;
-const tileGap = Math.max(4, (width - H_PADDING * 2 - TILE_SIZE * 4) / 3);
+const H_PADDING = 18;
+const COLS_PER_ROW = 3;
+const TILE_GAP = 14;
+const TILE_SIZE = Math.floor((width - H_PADDING * 2 - TILE_GAP * (COLS_PER_ROW - 1)) / COLS_PER_ROW);
+const TILE_ICON_HEIGHT = Math.round(TILE_SIZE * 0.94);
 
 interface CategoryTile extends CategoryItem {}
 
@@ -96,7 +97,7 @@ function TileRow({
   navigation: any;
 }) {
   const slots = [...tiles];
-  while (slots.length < 4) {
+  while (slots.length < COLS_PER_ROW) {
     slots.push({ id: `__empty_${slots.length}`, name: '', image_url: '' });
   }
 
@@ -208,7 +209,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       const cats = map[sec.label];
       if (!cats || cats.length === 0) continue;
       const rows: CategoryTile[][] = [];
-      for (let i = 0; i < cats.length; i += 4) rows.push(cats.slice(i, i + 4));
+      for (let i = 0; i < cats.length; i += COLS_PER_ROW) rows.push(cats.slice(i, i + COLS_PER_ROW));
       result.push({ label: sec.label, rows });
     }
 
@@ -218,7 +219,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       const defaultCats = map[defaultLabel];
       if (defaultCats && defaultCats.length > 0) {
         const rows: CategoryTile[][] = [];
-        for (let i = 0; i < defaultCats.length; i += 4) rows.push(defaultCats.slice(i, i + 4));
+        for (let i = 0; i < defaultCats.length; i += COLS_PER_ROW) rows.push(defaultCats.slice(i, i + COLS_PER_ROW));
         result.push({ label: defaultLabel, rows });
       }
     }
@@ -230,7 +231,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       const otherCats = map[key];
       if (otherCats && otherCats.length > 0) {
         const rows: CategoryTile[][] = [];
-        for (let i = 0; i < otherCats.length; i += 4) rows.push(otherCats.slice(i, i + 4));
+        for (let i = 0; i < otherCats.length; i += COLS_PER_ROW) rows.push(otherCats.slice(i, i + COLS_PER_ROW));
         result.push({ label: key, rows });
       }
     }
@@ -325,6 +326,15 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
             </View>
           )}
 
+          {sections.length > 0 && (
+            <View style={styles.footerBranding}>
+              <Text style={styles.footerTagline}>
+                {'Buy from your\ntrusted store'}
+              </Text>
+              <Text style={styles.footerBrand}>EVER</Text>
+            </View>
+          )}
+
           <View style={{ height: 100 }} />
         </ScrollView>
       )}
@@ -408,18 +418,18 @@ const styles = StyleSheet.create({
   },
   tileRow: {
     flexDirection: 'row',
-    marginBottom: 12,
-    gap: tileGap,
+    marginBottom: 16,
+    gap: TILE_GAP,
   },
   tile: {
     width: TILE_SIZE,
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   tileIconBox: {
     width: TILE_SIZE,
     height: TILE_ICON_HEIGHT,
-    borderRadius: 16,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -431,10 +441,31 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
+    fontSize: 12.5,
     color: COLORS.ink700,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 16.5,
+  },
+  footerBranding: {
+    marginTop: 40,
+    marginBottom: 24,
+    alignSelf: 'flex-start',
+  },
+  footerTagline: {
+    ...FONTS.balooExtraBold,
+    fontSize: 34,
+    lineHeight: 40,
+    color: '#CBD5E1',
+    letterSpacing: -0.4,
+  },
+  footerBrand: {
+    ...FONTS.muktaBold,
+    fontSize: 20,
+    lineHeight: 24,
+    color: '#CBD5E1',
+    letterSpacing: 2,
+    marginTop: 18,
+    textTransform: 'uppercase',
   },
   centeredState: {
     flex: 1,

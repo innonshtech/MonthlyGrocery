@@ -133,7 +133,7 @@ export default function BannersTab({
               className="flex gap-4 p-4 border border-slate-200 dark:border-slate-800/80 rounded-2xl items-center bg-slate-50/60 dark:bg-slate-950/40 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
             >
               {b.kind === 'promo' ? (
-                <div className="w-28 h-18 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-800 dark:text-amber-300 text-xs font-bold px-2 text-center">
+                <div className="w-28 h-18 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-900 border border-emerald-500/40 flex items-center justify-center text-white text-xs font-bold px-2 text-center shadow-xs">
                   Promo Card
                 </div>
               ) : (
@@ -191,7 +191,7 @@ export default function BannersTab({
               onChange={(e) => setBannerKind(e.target.value as 'image' | 'promo')}
             >
               <option value="image">Image banner (Photo from Laptop)</option>
-              <option value="promo">Promo text card (orange)</option>
+              <option value="promo">Promo text card (Premium Green)</option>
             </select>
           </div>
 

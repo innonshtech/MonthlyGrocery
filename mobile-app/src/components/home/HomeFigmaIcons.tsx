@@ -73,7 +73,27 @@ const PROMO_ILLUSTRATION_XML = `<svg width="90" height="80" viewBox="0 0 90 80" 
   <circle cx="20" cy="60" r="6" fill="#FBE0AE" />
 </svg>`;
 
+const LOCATION_PIN_XML = `<svg viewBox="0 0 24 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.48 2 2 6.48 2 12C2 18.5 12 26 12 26C12 26 22 18.5 22 12C22 6.48 17.52 2 12 2ZM12 16C9.79 16 8 14.21 8 12C8 9.79 9.79 8 12 8C14.21 8 16 9.79 16 12C16 14.21 14.21 16 12 16Z" fill="#FFFFFF"/></svg>`;
+
+export function HomeLocationPinIcon({
+  size = 22,
+  color = '#FFFFFF',
+}: IconProps) {
+  const xml = LOCATION_PIN_XML.replace(/fill="[^"]+"/g, `fill="${color}"`);
+  return <SvgXml xml={xml} width={size} height={size * 1.16} />;
+}
+
+const GROCERY_BASKET_XML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.5 9.5C7.5 5.5 9.5 3 12 3C14.5 3 16.5 5.5 16.5 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/><path d="M3.5 9.5H20.5L18.5 20.5H5.5L3.5 9.5Z" stroke="#FFFFFF" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9.5 13.5V17" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/><path d="M14.5 13.5V17" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+
+export function HomeGroceryBasketIcon({
+  size = 24,
+  color = '#FFFFFF',
+}: IconProps) {
+  return <SvgXml xml={tintStroke(GROCERY_BASKET_XML, color)} width={size} height={size} />;
+}
+
 export function HomePromoIllustration({ width = 90, height = 80 }: { width?: number; height?: number }) {
   return <SvgXml xml={PROMO_ILLUSTRATION_XML} width={width} height={height} />;
 }
+
 

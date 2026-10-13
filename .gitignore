@@ -133,3 +133,9 @@ express-backend/scratch/
 
 # Category data folder
 categories/
+
+# Self-Hosted OTA Artifacts
+build-ota/
+**/build-ota/
+ota_storage/
+**/ota_storage/
