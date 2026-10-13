@@ -317,7 +317,13 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   // ── 150° CSS gradient → pixel coordinates for SVG userSpaceOnUse ──
   // CSS 150°: direction = (sin(150°), -cos(150°)) = (0.5, 0.866)
   // Half-length per CSS spec: (W*|sin|+H*|cos|)/2
-  const promoH = 170;
+  // ── Dynamic Proportional Banner Height (Responsive on Phones & Tablets) ──
+  // Standard promotional banner aspect ratio: ~2.25:1
+  // On phones (~360-400px wide): bannerHeight is ~165-175px
+  // On tablets (600px-1000px wide): scales proportionally up to 320px so full graphic is visible
+  const bannerAspectRatio = 2.25;
+  const bannerHeight = Math.min(Math.max(Math.round(contentWidth / bannerAspectRatio), 160), 320);
+  const promoH = bannerHeight;
   const pgHalf = (contentWidth * 0.5 + promoH * 0.866) / 2;
   const pgX1 = contentWidth / 2 - pgHalf * 0.5;
   const pgY1 = promoH / 2 - pgHalf * 0.866;
@@ -327,18 +333,18 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const renderPromoBanner = (banner: PromotionalBanner) => (
     <TouchableOpacity
       key={banner.id}
-      style={[styles.bannerItem, { width: contentWidth }]}
+      style={[styles.bannerItem, { width: contentWidth, height: bannerHeight }]}
       onPress={() => handleBannerPress(banner)}
       activeOpacity={0.9}
     >
       {banner.image_url && banner.kind !== 'promo' ? (
         <Image
           source={{ uri: banner.image_url }}
-          style={[styles.bannerImage, { width: contentWidth }]}
+          style={[styles.bannerImage, { width: contentWidth, height: bannerHeight }]}
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.promoCardOuter, { width: contentWidth }]}>
+        <View style={[styles.promoCardOuter, { width: contentWidth, height: promoH }]}>
           <Svg width={contentWidth} height={promoH}>
             <Defs>
               <LinearGradient
@@ -571,7 +577,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   horizontal
                   pagingEnabled
                   showsHorizontalScrollIndicator={false}
-                  style={[styles.bannerScrollView, { width: contentWidth }]}
+                  style={[styles.bannerScrollView, { width: contentWidth, height: bannerHeight }]}
                   contentContainerStyle={styles.bannerScrollContent}
                   onScrollBeginDrag={() => setIsBannerInteracting(true)}
                   onMomentumScrollEnd={(e) => {
@@ -1045,7 +1051,6 @@ const styles = StyleSheet.create({
   },
   bannerScrollView: {
     width: '100%',
-    height: 170,
     borderRadius: 20,
   },
   bannerScrollContent: {
@@ -1072,16 +1077,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#CBD5E1',
   },
   bannerItem: {
-    height: 170,
     borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
   },
   bannerImage: {
-    height: 170,
     borderRadius: 20,
   },
   promoCardOuter: {
-    height: 170,
     borderRadius: 20,
     overflow: 'hidden',
     flexShrink: 0,
