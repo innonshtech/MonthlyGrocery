@@ -320,6 +320,37 @@ export default function OneClickCartScreen({ navigation }: any) {
                       unavailableLabel={screenConfig.unavailable_label}
                       onMinus={() => handleUpdateQty(item.product_id, -1)}
                       onPlus={() => handleUpdateQty(item.product_id, 1)}
+                      onPress={() => {
+                        if (typeof navigation?.push === 'function') {
+                          navigation.push('ProductDetail', {
+                            productId: item.product_id,
+                            initialProduct: {
+                              id: item.product_id,
+                              name: item.name,
+                              price: item.price,
+                              mrp: item.previous_price || item.price,
+                              unit: item.unit_label,
+                              image_url: item.image_url,
+                              available: item.available,
+                            },
+                            fromScreen: 'Cart',
+                          });
+                        } else {
+                          navigation?.navigate('ProductDetail', {
+                            productId: item.product_id,
+                            initialProduct: {
+                              id: item.product_id,
+                              name: item.name,
+                              price: item.price,
+                              mrp: item.previous_price || item.price,
+                              unit: item.unit_label,
+                              image_url: item.image_url,
+                              available: item.available,
+                            },
+                            fromScreen: 'Cart',
+                          });
+                        }
+                      }}
                     />
                   ))}
                 </View>
@@ -366,6 +397,7 @@ function ProductRow({
   unavailableLabel,
   onMinus,
   onPlus,
+  onPress,
 }: {
   item: OneClickCartItem;
   index: number;
@@ -373,6 +405,7 @@ function ProductRow({
   unavailableLabel: string;
   onMinus: () => void;
   onPlus: () => void;
+  onPress?: () => void;
 }) {
   const priceLine = item.unit_label
     ? `${item.unit_label} · ${formatInr(item.price)}`
@@ -380,28 +413,34 @@ function ProductRow({
 
   return (
     <View style={[styles.productRow, !isLast && styles.productRowBorder]}>
-      <View style={styles.thumb}>
-        {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
-        ) : (
-          <SvgXml xml={BAG_ICON_XML} width={22} height={22} />
-        )}
-      </View>
-      <View style={styles.productText}>
-        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        {item.available ? (
-          <View style={styles.priceRow}>
-            <Text style={styles.productPrice}>{priceLine}</Text>
-            {item.previous_price ? (
-              <Text style={styles.wasPrice}>
-                was {formatInr(item.previous_price)}
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <Text style={styles.unavailableText}>{unavailableLabel}</Text>
-        )}
-      </View>
+      <TouchableOpacity
+        style={styles.productClickable}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.thumb}>
+          {item.image_url ? (
+            <Image source={{ uri: item.image_url }} style={styles.thumbImg} resizeMode="contain" />
+          ) : (
+            <SvgXml xml={BAG_ICON_XML} width={22} height={22} />
+          )}
+        </View>
+        <View style={styles.productText}>
+          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+          {item.available ? (
+            <View style={styles.priceRow}>
+              <Text style={styles.productPrice}>{priceLine}</Text>
+              {item.previous_price ? (
+                <Text style={styles.wasPrice}>
+                  was {formatInr(item.previous_price)}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <Text style={styles.unavailableText}>{unavailableLabel}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
       {item.available ? (
         <Stepper qty={item.quantity} onMinus={onMinus} onPlus={onPlus} />
       ) : null}
@@ -554,6 +593,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
+  productClickable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   productRowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
@@ -562,12 +606,14 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#EAF5EE',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  thumbImg: { width: 36, height: 36 },
+  thumbImg: { width: '90%', height: '90%' },
   productText: { flex: 1, paddingRight: 8 },
   productName: {
     ...FONTS.muktaBold,

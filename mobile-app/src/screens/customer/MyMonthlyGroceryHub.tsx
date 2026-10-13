@@ -270,77 +270,24 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             <HubChevronIcon size={20} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.actionCard, { borderColor: COLORS.green600, backgroundColor: '#FAFCFA' }]}
-            onPress={() => navigation.navigate('UploadGroceryList')}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.green100 }]}>
-              <Text style={{ fontSize: 18 }}>📋</Text>
+          <View style={[styles.actionCard, styles.actionCardDisabled]}>
+            <View style={[styles.iconCircle, styles.iconCircleMuted]}>
+              <HubBuildIcon size={21} />
             </View>
             <View style={styles.cardInfo}>
               <View style={styles.cardTitleRow}>
                 <Text style={[styles.cardTitle, styles.cardTitleInline]}>
-                  Upload / Scan Grocery List
+                  {screenConfig.card_build_title}
                 </Text>
-                <View style={[styles.soonBadge, { backgroundColor: COLORS.green100 }]}>
-                  <Text style={[styles.soonBadgeText, { color: COLORS.green700, fontWeight: '700' }]}>
-                    AI Smart
+                <View style={styles.soonBadge}>
+                  <Text style={styles.soonBadgeText}>
+                    {screenConfig.card_build_soon_badge}
                   </Text>
                 </View>
               </View>
-              <Text style={styles.cardSub}>Photo slip or paste WhatsApp text to auto-build cart</Text>
+              <Text style={styles.cardSub}>{screenConfig.card_build_subtitle}</Text>
             </View>
-            <HubChevronIcon size={20} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionCard, { borderColor: COLORS.marigold500, backgroundColor: '#FFFDF9' }]}
-            onPress={() => navigation.navigate('AIAssistantChat')}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.marigold100 }]}>
-              <Text style={{ fontSize: 18 }}>🤖</Text>
-            </View>
-            <View style={styles.cardInfo}>
-              <View style={styles.cardTitleRow}>
-                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
-                  AI Grocery Assistant
-                </Text>
-                <View style={[styles.soonBadge, { backgroundColor: COLORS.marigold100 }]}>
-                  <Text style={[styles.soonBadgeText, { color: COLORS.marigold700, fontWeight: '700' }]}>
-                    Chat & Plan
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.cardSub}>Ask AI to plan a family basket within your budget</Text>
-            </View>
-            <HubChevronIcon size={20} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionCard, { borderColor: '#3B82F6', backgroundColor: '#F0F9FF' }]}
-            onPress={() => navigation.navigate('FamilyProfileSetup')}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: '#DBEAFE' }]}>
-              <Text style={{ fontSize: 18 }}>👨‍👩‍👧‍👦</Text>
-            </View>
-            <View style={styles.cardInfo}>
-              <View style={styles.cardTitleRow}>
-                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
-                  Family Monthly Planner
-                </Text>
-                <View style={[styles.soonBadge, { backgroundColor: '#DBEAFE' }]}>
-                  <Text style={[styles.soonBadgeText, { color: '#1D4ED8', fontWeight: '700' }]}>
-                    Formula Engine
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.cardSub}>Household demographics & consumption planner</Text>
-            </View>
-            <HubChevronIcon size={20} />
-          </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

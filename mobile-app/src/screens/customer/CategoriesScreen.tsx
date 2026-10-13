@@ -25,10 +25,11 @@ import {
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 
 const { width } = Dimensions.get('window');
-const H_PADDING = 20;
-const TILE_SIZE = 78;
-const TILE_ICON_HEIGHT = 74;
-const tileGap = Math.max(4, (width - H_PADDING * 2 - TILE_SIZE * 4) / 3);
+const H_PADDING = 18;
+const COLS_PER_ROW = 3;
+const TILE_GAP = 14;
+const TILE_SIZE = Math.floor((width - H_PADDING * 2 - TILE_GAP * (COLS_PER_ROW - 1)) / COLS_PER_ROW);
+const TILE_ICON_HEIGHT = Math.round(TILE_SIZE * 0.94);
 
 interface CategoryTile extends CategoryItem {}
 
@@ -72,7 +73,7 @@ function CategoryTileItem({
     <TouchableOpacity style={styles.tile} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.tileIconBox}>
         {item.image_url ? (
-          <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="contain" />
+          <Image source={{ uri: item.image_url }} style={styles.tilePng} resizeMode="cover" />
         ) : (
           <AppIcon name="categories" size={26} color="#1E7A46" />
         )}
@@ -96,7 +97,7 @@ function TileRow({
   navigation: any;
 }) {
   const slots = [...tiles];
-  while (slots.length < 4) {
+  while (slots.length < COLS_PER_ROW) {
     slots.push({ id: `__empty_${slots.length}`, name: '', image_url: '' });
   }
 
@@ -208,7 +209,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       const cats = map[sec.label];
       if (!cats || cats.length === 0) continue;
       const rows: CategoryTile[][] = [];
-      for (let i = 0; i < cats.length; i += 4) rows.push(cats.slice(i, i + 4));
+      for (let i = 0; i < cats.length; i += COLS_PER_ROW) rows.push(cats.slice(i, i + COLS_PER_ROW));
       result.push({ label: sec.label, rows });
     }
 
@@ -218,7 +219,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       const defaultCats = map[defaultLabel];
       if (defaultCats && defaultCats.length > 0) {
         const rows: CategoryTile[][] = [];
-        for (let i = 0; i < defaultCats.length; i += 4) rows.push(defaultCats.slice(i, i + 4));
+        for (let i = 0; i < defaultCats.length; i += COLS_PER_ROW) rows.push(defaultCats.slice(i, i + COLS_PER_ROW));
         result.push({ label: defaultLabel, rows });
       }
     }
@@ -230,7 +231,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       const otherCats = map[key];
       if (otherCats && otherCats.length > 0) {
         const rows: CategoryTile[][] = [];
-        for (let i = 0; i < otherCats.length; i += 4) rows.push(otherCats.slice(i, i + 4));
+        for (let i = 0; i < otherCats.length; i += COLS_PER_ROW) rows.push(otherCats.slice(i, i + COLS_PER_ROW));
         result.push({ label: key, rows });
       }
     }
@@ -309,29 +310,6 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {!searchQuery && (
-            <TouchableOpacity
-              style={styles.allProductsBanner}
-              onPress={() =>
-                navigation.navigate('CategoryProducts', {
-                  categoryName: 'All Products',
-                })
-              }
-              activeOpacity={0.88}
-            >
-              <View style={styles.allProductsLeft}>
-                <View style={styles.allProductsIconBadge}>
-                  <AppIcon name="shopping-bag" size={20} color="#1E7A46" />
-                </View>
-                <View>
-                  <Text style={styles.allProductsTitle}>Browse All Products</Text>
-                  <Text style={styles.allProductsSubtitle}>Explore the full store catalog with infinite scroll</Text>
-                </View>
-              </View>
-              <AppIcon name="arrow-right" size={16} color="#1E7A46" />
-            </TouchableOpacity>
-          )}
-
           {sections.map((section, sIdx) => (
             <View key={`${section.label}-${sIdx}`} style={styles.section}>
               <SectionHeader label={section.label} />
@@ -345,6 +323,15 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
             <View style={styles.emptyState}>
               <AppIcon name="search" size={40} color={COLORS.ink300} />
               <Text style={styles.emptyText}>{emptyMessage}</Text>
+            </View>
+          )}
+
+          {sections.length > 0 && (
+            <View style={styles.footerBranding}>
+              <Text style={styles.footerTagline}>
+                {'Buy from your\ntrusted store'}
+              </Text>
+              <Text style={styles.footerBrand}>EVER</Text>
             </View>
           )}
 
@@ -431,33 +418,54 @@ const styles = StyleSheet.create({
   },
   tileRow: {
     flexDirection: 'row',
-    marginBottom: 12,
-    gap: tileGap,
+    marginBottom: 16,
+    gap: TILE_GAP,
   },
   tile: {
     width: TILE_SIZE,
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   tileIconBox: {
     width: TILE_SIZE,
     height: TILE_ICON_HEIGHT,
-    borderRadius: 16,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    backgroundColor: '#F4F3EE',
+    backgroundColor: '#FFFFFF',
   },
   tilePng: {
-    width: 44,
-    height: 44,
+    width: '100%',
+    height: '100%',
   },
   tileLabel: {
     ...FONTS.muktaMedium,
-    fontSize: 12,
+    fontSize: 12.5,
     color: COLORS.ink700,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 16.5,
+  },
+  footerBranding: {
+    marginTop: 40,
+    marginBottom: 24,
+    alignSelf: 'flex-start',
+  },
+  footerTagline: {
+    ...FONTS.balooExtraBold,
+    fontSize: 34,
+    lineHeight: 40,
+    color: '#CBD5E1',
+    letterSpacing: -0.4,
+  },
+  footerBrand: {
+    ...FONTS.muktaBold,
+    fontSize: 20,
+    lineHeight: 24,
+    color: '#CBD5E1',
+    letterSpacing: 2,
+    marginTop: 18,
+    textTransform: 'uppercase',
   },
   centeredState: {
     flex: 1,
@@ -494,47 +502,5 @@ const styles = StyleSheet.create({
     ...FONTS.muktaRegular,
     fontSize: 14,
     color: COLORS.ink300,
-  },
-  allProductsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#EBF7EE',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#D4EED8',
-  },
-  allProductsLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  allProductsIconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#1E7A46',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  allProductsTitle: {
-    ...FONTS.muktaBold,
-    fontSize: 15,
-    color: '#134D2C',
-  },
-  allProductsSubtitle: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: '#2A7246',
-    marginTop: 1,
   },
 });

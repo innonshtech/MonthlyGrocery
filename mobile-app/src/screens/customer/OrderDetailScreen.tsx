@@ -18,6 +18,7 @@ import AppLoader from '../../components/AppLoader';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
+import AppIcon from '../../components/AppIcon';
 import {
   CheckoutFallbackEmoji,
   THUMB_BG,
@@ -488,12 +489,35 @@ export default function OrderDetailScreen({ route, navigation }: any) {
               const qty = parseInt(String(item.quantity), 10) || 1;
               const itemTotal = priceVal * qty;
               const isLast = idx === items.length - 1;
-              const bg = THUMB_BG[idx % THUMB_BG.length];
+              const prodId = item.product_id || item.product?.id || item.id;
 
               return (
-                <View key={`${item.product_id || item.product_name || item.name}-${idx}`}>
-                  <View style={styles.itemRow}>
-                    <View style={[styles.itemThumb, { backgroundColor: bg }]}>
+                <View key={`${prodId || item.product_name || item.name}-${idx}`}>
+                  <TouchableOpacity
+                    style={styles.itemRow}
+                    onPress={() => {
+                      if (prodId) {
+                        const navParams = {
+                          productId: prodId,
+                          initialProduct: item.product || {
+                            id: prodId,
+                            name: item.product_name || item.name,
+                            image_url: item.image_url,
+                            price: priceVal,
+                          },
+                          fromScreen: 'OrderDetail',
+                        };
+                        if (typeof navigation?.push === 'function') {
+                          navigation.push('ProductDetail', navParams);
+                        } else {
+                          navigation?.navigate('ProductDetail', navParams);
+                        }
+                      }
+                    }}
+                    activeOpacity={prodId ? 0.7 : 1}
+                    disabled={!prodId}
+                  >
+                    <View style={styles.itemThumb}>
                       {item.image_url ? (
                         <Image
                           source={{ uri: item.image_url }}
@@ -501,7 +525,7 @@ export default function OrderDetailScreen({ route, navigation }: any) {
                           resizeMode="contain"
                         />
                       ) : (
-                        <CheckoutFallbackEmoji index={idx} size={28} />
+                        <AppIcon name="shopping-bag" size={24} color={COLORS.green700} />
                       )}
                     </View>
 
@@ -515,7 +539,7 @@ export default function OrderDetailScreen({ route, navigation }: any) {
                     <Text style={styles.itemPriceTxt}>
                       {formatInr(itemTotal > 0 ? itemTotal : priceVal)}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
 
                   {!isLast && <View style={styles.itemDivider} />}
                 </View>
@@ -906,13 +930,16 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   itemImg: {
-    width: 40,
-    height: 40,
+    width: '90%',
+    height: '90%',
   },
   itemMetaCol: {
     flex: 1,

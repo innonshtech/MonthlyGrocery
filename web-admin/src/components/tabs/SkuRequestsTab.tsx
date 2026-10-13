@@ -111,32 +111,32 @@ export const SkuRequestsTab: React.FC<SkuRequestsTabProps> = ({
       {/* Sku Approve Modal */}
       {skuApproveRequest && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
-          <div className="bg-[#0f172a] border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-white mb-1">Approve SKU request</h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Product will be added to <span className="text-emerald-300 font-semibold">{skuApproveRequest.shop_name}</span> only.
+          <div className="bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Approve SKU request</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-4">
+              Product will be added to <span className="text-emerald-700 dark:text-emerald-300 font-semibold">{skuApproveRequest.shop_name}</span> only.
             </p>
 
-            <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 mb-4 space-y-2 text-sm">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-4 mb-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
-                <span className="text-slate-500">Product</span>
-                <span className="text-white font-semibold text-right">{skuApproveRequest.product_name}</span>
+                <span className="text-slate-600 dark:text-slate-500 font-medium">Product</span>
+                <span className="text-slate-900 dark:text-white font-bold text-right">{skuApproveRequest.product_name}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-slate-500">Category</span>
-                <span className="text-slate-200 text-right">{skuApproveRequest.category}</span>
+                <span className="text-slate-600 dark:text-slate-500 font-medium">Category</span>
+                <span className="text-slate-900 dark:text-slate-200 font-semibold text-right">{skuApproveRequest.category}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-slate-500">Pack</span>
-                <span className="text-slate-200 text-right">{skuApproveRequest.unit || '—'}</span>
+                <span className="text-slate-600 dark:text-slate-500 font-medium">Pack</span>
+                <span className="text-slate-900 dark:text-slate-200 font-semibold text-right">{skuApproveRequest.unit || '—'}</span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-slate-500">MRP</span>
-                <span className="text-slate-200 text-right">₹{skuApproveRequest.mrp}</span>
+                <span className="text-slate-600 dark:text-slate-500 font-medium">MRP</span>
+                <span className="text-slate-900 dark:text-slate-200 font-bold text-right">₹{skuApproveRequest.mrp}</span>
               </div>
             </div>
 
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+            <label className="block text-[10px] font-bold text-slate-700 dark:text-slate-400 uppercase tracking-wider mb-2">
               Product PNG *
             </label>
             <input
@@ -148,11 +148,11 @@ export const SkuRequestsTab: React.FC<SkuRequestsTabProps> = ({
                 setSkuApproveImageFile(file);
                 setSkuApproveImagePreview(file ? URL.createObjectURL(file) : '');
               }}
-              className="w-full text-sm text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:font-bold file:cursor-pointer mb-4"
+              className="w-full text-sm text-slate-700 dark:text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-slate-100 dark:file:bg-slate-800 file:text-slate-900 dark:file:text-slate-200 file:font-bold file:cursor-pointer mb-4"
             />
 
             {skuApproveImagePreview ? (
-              <div className="w-28 h-28 rounded-xl border border-slate-800 bg-white/5 flex items-center justify-center overflow-hidden mb-5">
+              <div className="w-28 h-28 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-white/5 flex items-center justify-center overflow-hidden mb-5">
                 <img src={skuApproveImagePreview} alt="Preview" className="w-full h-full object-contain p-1" />
               </div>
             ) : null}
@@ -162,7 +162,7 @@ export const SkuRequestsTab: React.FC<SkuRequestsTabProps> = ({
                 type="button"
                 onClick={closeSkuApproveModal}
                 disabled={skuApproveSaving}
-                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -170,7 +170,7 @@ export const SkuRequestsTab: React.FC<SkuRequestsTabProps> = ({
                 type="button"
                 disabled={skuApproveSaving || !skuApproveImageFile}
                 onClick={handleConfirmSkuApprove}
-                className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-sm font-bold disabled:opacity-60 cursor-pointer"
+                className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-xl text-sm font-bold disabled:opacity-60 cursor-pointer shadow-lg shadow-emerald-500/20"
               >
                 {skuApproveSaving ? 'Uploading…' : 'Approve with PNG'}
               </button>

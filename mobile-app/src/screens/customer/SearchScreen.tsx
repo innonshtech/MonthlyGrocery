@@ -88,11 +88,6 @@ export default function SearchScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
-  // Infinite scroll pagination state for search
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-
   const inputRef = useRef<any>(null);
   const debouncedQuery = useDebounce(query, 350);
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
@@ -115,73 +110,33 @@ export default function SearchScreen({ navigation }: any) {
     if (!debouncedQuery.trim()) {
       setProducts([]);
       setLoading(false);
-      setHasMore(false);
       return;
     }
     if (!hasDeliveryArea) {
       setProducts([]);
       setLoading(false);
-      setHasMore(false);
       return;
     }
 
     const fetchProducts = async () => {
       setProducts([]);
       setLoading(true);
-      setPage(1);
-      setHasMore(true);
       try {
         const url = appendLocationParams(
-          `${API_BASE}/products/all?q=${encodeURIComponent(debouncedQuery)}&limit=30&page=1`,
+          `${API_BASE}/products/all?q=${encodeURIComponent(debouncedQuery)}&limit=50`,
           { city, area, pincode, shop_id: selectedShop?.id || null },
         );
         const res = await fetch(url);
         const data = await res.json();
-        if (res.ok && data.success) {
-          setProducts(data.products || []);
-          setHasMore(data.has_more !== undefined ? data.has_more : ((data.products?.length || 0) >= 30));
-        } else {
-          setProducts([]);
-          setHasMore(false);
-        }
+        setProducts(res.ok && data.success ? data.products : []);
       } catch {
         setProducts([]);
-        setHasMore(false);
       } finally {
         setLoading(false);
       }
     };
     fetchProducts();
   }, [debouncedQuery, city, area, pincode, hasDeliveryArea, selectedShop]);
-
-  const loadMoreSearchProducts = async () => {
-    if (loading || loadingMore || !hasMore || !debouncedQuery.trim() || !hasDeliveryArea) return;
-    setLoadingMore(true);
-    const nextPage = page + 1;
-    try {
-      const url = appendLocationParams(
-        `${API_BASE}/products/all?q=${encodeURIComponent(debouncedQuery)}&limit=30&page=${nextPage}`,
-        { city, area, pincode, shop_id: selectedShop?.id || null },
-      );
-      const res = await fetch(url);
-      const data = await res.json();
-      if (res.ok && data.success && data.products?.length > 0) {
-        setProducts((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const uniqueNew = data.products.filter((p: any) => !existingIds.has(p.id));
-          return [...prev, ...uniqueNew];
-        });
-        setPage(nextPage);
-        setHasMore(data.has_more !== undefined ? data.has_more : ((data.products?.length || 0) >= 30));
-      } else {
-        setHasMore(false);
-      }
-    } catch {
-      setHasMore(false);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
 
   const suggestions = showSuggestions && query.trim()
     ? buildSuggestions(products, query)
@@ -262,60 +217,6 @@ export default function SearchScreen({ navigation }: any) {
 
       {query.trim().length === 0 ? (
         <View style={styles.popularWrap}>
-          {/* AI Feature Banners */}
-          <View style={{ gap: 10, marginBottom: 16 }}>
-            <TouchableOpacity
-              style={styles.aiUploadBanner}
-              onPress={() => navigation.navigate('UploadGroceryList')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.aiUploadBannerContent}>
-                <View style={styles.aiUploadBadge}>
-                  <Text style={styles.aiUploadBadgeText}>✨ AI Smart Scan</Text>
-                </View>
-                <Text style={styles.aiUploadTitle}>Have a written grocery list?</Text>
-                <Text style={styles.aiUploadSubtitle}>Upload handwritten photo or paste text to build your cart.</Text>
-              </View>
-              <View style={styles.aiUploadIconCircle}>
-                <Text style={{ fontSize: 22 }}>📋</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.aiUploadBanner, { borderColor: '#E0E7FF', backgroundColor: '#F5F7FF' }]}
-              onPress={() => navigation.navigate('AIAssistantChat')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.aiUploadBannerContent}>
-                <View style={[styles.aiUploadBadge, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' }]}>
-                  <Text style={[styles.aiUploadBadgeText, { color: '#4338CA' }]}>🤖 AI Grocery Assistant</Text>
-                </View>
-                <Text style={styles.aiUploadTitle}>Need help planning your budget?</Text>
-                <Text style={styles.aiUploadSubtitle}>Ask: "4-person monthly list" or "Plan under ₹4,000".</Text>
-              </View>
-              <View style={[styles.aiUploadIconCircle, { backgroundColor: '#EEF2FF' }]}>
-                <Text style={{ fontSize: 22 }}>💬</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.aiUploadBanner, { borderColor: '#FEF3C7', backgroundColor: '#FFFBEB' }]}
-              onPress={() => navigation.navigate('FamilyProfileSetup')}
-              activeOpacity={0.85}
-            >
-              <View style={styles.aiUploadBannerContent}>
-                <View style={[styles.aiUploadBadge, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
-                  <Text style={[styles.aiUploadBadgeText, { color: '#B45309' }]}>👨‍👩‍👧‍👦 AI Household Baseline</Text>
-                </View>
-                <Text style={styles.aiUploadTitle}>Family Monthly Consumption Plan</Text>
-                <Text style={styles.aiUploadSubtitle}>Calculate exact Atta, Oil & Dal quantities for your family size.</Text>
-              </View>
-              <View style={[styles.aiUploadIconCircle, { backgroundColor: '#FEF3C7' }]}>
-                <Text style={{ fontSize: 22 }}>📊</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
           {popularSearches.length > 0 ? (
             <>
               <Text style={styles.popularLabel}>{searchConfig?.popular_searches_label}</Text>
@@ -491,16 +392,6 @@ export default function SearchScreen({ navigation }: any) {
               </View>
             ) : undefined
           }
-          onEndReached={loadMoreSearchProducts}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.footerLoaderWrap}>
-                <ActivityIndicator size="small" color={COLORS.green700} />
-                <Text style={styles.footerLoaderText}>Loading more matching items...</Text>
-              </View>
-            ) : undefined
-          }
         />
       )}
     </SafeAreaView>
@@ -508,17 +399,6 @@ export default function SearchScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  footerLoaderWrap: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  footerLoaderText: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink500,
-  },
   safe: {
     flex: 1,
     backgroundColor: COLORS.paper,
@@ -847,53 +727,5 @@ const styles = StyleSheet.create({
     ...FONTS.muktaMedium,
     fontSize: 11,
     color: '#64748B',
-  },
-  aiUploadBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.green50,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.green100,
-    padding: 14,
-    marginBottom: 16,
-  },
-  aiUploadBannerContent: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  aiUploadBadge: {
-    backgroundColor: COLORS.green100,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.pill,
-    alignSelf: 'flex-start',
-    marginBottom: 4,
-  },
-  aiUploadBadgeText: {
-    ...FONTS.muktaBold,
-    fontSize: 10,
-    color: COLORS.green700,
-  },
-  aiUploadTitle: {
-    ...FONTS.balooBold,
-    fontSize: 15,
-    color: COLORS.green900,
-  },
-  aiUploadSubtitle: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink600,
-    marginTop: 2,
-  },
-  aiUploadIconCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.green100,
   },
 });

@@ -61,11 +61,6 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
   const [parentCategoryImage, setParentCategoryImage] = useState<string | undefined>();
   const [adminSubcategories, setAdminSubcategories] = useState<AdminSubcategory[]>([]);
 
-  // Infinite scroll pagination state
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-
   const hasDeliveryArea = Boolean(city?.trim() && area?.trim());
   const totalCartCount = items.reduce((s, i) => s + i.quantity, 0);
 
@@ -81,15 +76,11 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       setProducts([]);
       setProductsError(false);
       setLoading(false);
-      setHasMore(false);
       return;
     }
 
     setLoading(true);
     setProductsError(false);
-    setPage(1);
-    setHasMore(true);
-
     const result = await fetchCategoryProducts({
       dealsOnly,
       categoryName,
@@ -98,65 +89,20 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       area: area ?? undefined,
       pincode: pincode ?? undefined,
       shopId: selectedShop?.id ?? undefined,
-      page: 1,
-      limit: 30,
     });
 
     if (result.error) {
       setProductsError(true);
       setProducts([]);
-      setHasMore(false);
     } else {
       setProducts(result.products);
-      setHasMore(result.hasMore ?? false);
     }
     setLoading(false);
   }, [hasDeliveryArea, dealsOnly, categoryName, categoryId, city, area, pincode, selectedShop]);
 
-  const loadMoreProducts = useCallback(async () => {
-    if (loading || loadingMore || !hasMore || !hasDeliveryArea) return;
-
-    setLoadingMore(true);
-    const nextPage = page + 1;
-
-    try {
-      const result = await fetchCategoryProducts({
-        dealsOnly,
-        categoryName,
-        categoryId,
-        city: city ?? undefined,
-        area: area ?? undefined,
-        pincode: pincode ?? undefined,
-        shopId: selectedShop?.id ?? undefined,
-        page: nextPage,
-        limit: 30,
-      });
-
-      if (!result.error && result.products.length > 0) {
-        setProducts((prev) => {
-          const existingIds = new Set(prev.map((p) => p.id));
-          const uniqueNew = result.products.filter((p) => !existingIds.has(p.id));
-          return [...prev, ...uniqueNew];
-        });
-        setPage(nextPage);
-        setHasMore(result.hasMore ?? false);
-      } else {
-        setHasMore(false);
-      }
-    } catch {
-      setHasMore(false);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loading, loadingMore, hasMore, hasDeliveryArea, page, dealsOnly, categoryName, categoryId, city, area, pincode, selectedShop]);
-
-  const isAllCategory =
-    !categoryName ||
-    ['all', 'all products', 'all_products'].includes(String(categoryName).toLowerCase().trim());
-
   const loadAll = useCallback(async () => {
     await loadConfig();
-    if (!dealsOnly && !isAllCategory) {
+    if (!dealsOnly) {
       const [img, subs] = await Promise.all([
         fetchBrowseCategoryImage(categoryId, categoryName),
         fetchSubcategoriesForCategory(categoryId, categoryName),
@@ -168,7 +114,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
       setAdminSubcategories([]);
     }
     await loadProducts();
-  }, [loadConfig, loadProducts, dealsOnly, isAllCategory, categoryId, categoryName]);
+  }, [loadConfig, loadProducts, dealsOnly, categoryId, categoryName]);
 
   useEffect(() => {
     loadAll();
@@ -188,10 +134,8 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
   const allLabel = screenConfig?.sub_category_all_label ?? '';
 
   const displayTitle = dealsOnly
-    ? (categoryName || screenConfig?.deals_title || 'Deals of the month')
-    : (!isAllCategory
-        ? (categoryName || categoryId || 'Products')
-        : 'All Products');
+    ? (categoryName || screenConfig?.deals_title || '')
+    : (categoryName || categoryId || screenConfig?.deals_title || '');
 
   const filtered = products
     .filter((p) => {
@@ -328,7 +272,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                     ]}
                   >
                     {tab.image_url ? (
-                      <Image source={{ uri: tab.image_url }} style={styles.subCatThumb} resizeMode="contain" />
+                      <Image source={{ uri: tab.image_url }} style={styles.subCatThumb} resizeMode="cover" />
                     ) : null}
                   </View>
                   <Text style={[styles.subCatLabel, active && styles.subCatLabelActive]} numberOfLines={1}>
@@ -402,20 +346,6 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
                   />
                 );
               }}
-              onEndReached={loadMoreProducts}
-              onEndReachedThreshold={0.5}
-              ListFooterComponent={
-                loadingMore ? (
-                  <View style={styles.footerLoaderWrap}>
-                    <ActivityIndicator size="small" color={COLORS.green700} />
-                    <Text style={styles.footerLoaderText}>Loading more groceries...</Text>
-                  </View>
-                ) : !hasMore && products.length >= 10 ? (
-                  <View style={styles.footerEndWrap}>
-                    <Text style={styles.footerEndText}>✓ You've seen all products in this section</Text>
-                  </View>
-                ) : undefined
-              }
               ListEmptyComponent={
                 <View style={styles.emptyWrap}>
                   <AppIcon name="shopping-bag" size={40} color={COLORS.ink300} />
@@ -617,16 +547,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-  },
-  subCatTileActive: {
-    backgroundColor: COLORS.green50,
-  },
-  subCatTileInactive: {
     backgroundColor: '#FFFFFF',
   },
+  subCatTileActive: {
+    borderWidth: 1.5,
+    borderColor: COLORS.green700,
+  },
+  subCatTileInactive: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
   subCatThumb: {
-    width: 30,
-    height: 30,
+    width: '100%',
+    height: '100%',
   },
   subCatLabel: {
     ...FONTS.muktaBold,
@@ -915,26 +848,5 @@ const styles = StyleSheet.create({
     ...FONTS.balooBold,
     fontSize: 15,
     color: '#FFFFFF',
-  },
-  footerLoaderWrap: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  footerLoaderText: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: COLORS.ink500,
-  },
-  footerEndWrap: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footerEndText: {
-    ...FONTS.muktaMedium,
-    fontSize: 11,
-    color: COLORS.ink400,
   },
 });

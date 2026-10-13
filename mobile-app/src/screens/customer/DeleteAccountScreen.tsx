@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -76,7 +75,7 @@ export default function DeleteAccountScreen({ navigation }: any) {
   );
 
   const handleDelete = async () => {
-    if (!screenConfig) return;
+    if (!screenConfig || !token) return;
 
     if (!agreed) {
       showToast({
@@ -87,25 +86,15 @@ export default function DeleteAccountScreen({ navigation }: any) {
       return;
     }
 
-    const activeToken = token || (await AsyncStorage.getItem('@auth_token'));
-    if (!activeToken) {
-      showToast({
-        type: 'error',
-        title: 'Session Error',
-        message: 'Could not find active login session. Please sign in again.',
-      });
-      return;
-    }
-
     setDeleting(true);
-    const result = await deleteAccount(activeToken);
+    const result = await deleteAccount(token);
     setDeleting(false);
 
     if (!result.success) {
       showToast({
         type: 'error',
         title: 'Delete Failed',
-        message: result.error || screenConfig.delete_error_message || 'Failed to delete account',
+        message: screenConfig.delete_error_message || 'Failed to delete account',
       });
       return;
     }

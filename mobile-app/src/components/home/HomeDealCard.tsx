@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Product } from '../../context/CartContext';
 import AppIcon from '../AppIcon';
-import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
+import { getProductDiscountPercent } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 
@@ -54,7 +54,7 @@ export default function HomeDealCard({
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={[styles.imgWrap, { backgroundColor: homeDealBg(index) }]}>
+      <View style={styles.imgWrap}>
         {isOutOfStock ? (
           <View style={styles.outOfStockBadge}>
             <Text style={styles.outOfStockBadgeTxt}>OUT OF STOCK</Text>
@@ -137,6 +137,9 @@ const styles = StyleSheet.create({
     width: HOME_DEAL_CARD_WIDTH - INNER_PAD_H * 2,
     height: IMG_HEIGHT,
     borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -177,8 +180,8 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   productImg: {
-    width: 60,
-    height: 60,
+    width: '90%',
+    height: '90%',
   },
   imgOutOfStock: {
     opacity: 0.4,

@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
   Animated,
 } from 'react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Stop, Rect, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,10 +27,11 @@ import {
   HomeSearchIcon,
   HomeMicIcon,
   HomeChevronDownIcon,
-  HomeDeliveryIcon,
   HomeSparkleIcon,
   HomeArrowRightIcon,
   HomePromoIllustration,
+  HomeLocationPinIcon,
+  HomeGroceryBasketIcon,
 } from '../../components/home/HomeFigmaIcons';
 import {
   fetchHomeConfigWithStatus,
@@ -41,7 +42,6 @@ import {
   PromotionalBanner,
 } from '../../services/homeApi';
 import { fetchCategoryList } from '../../services/categoriesApi';
-import { fetchPredictiveRefill, PredictiveRefillSummary } from '../../services/aiApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
 import AppLoader from '../../components/AppLoader';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
@@ -115,7 +115,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     orderCount: number;
     lastOrder: any | null;
   }>({ orderCount: 0, lastOrder: null });
-  const [refillSummary, setRefillSummary] = useState<PredictiveRefillSummary | null>(null);
   const [livePincode, setLivePincode] = useState<string | null>(pincode || null);
 
   useEffect(() => {
@@ -162,28 +161,28 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   // When idle (scrollY = 0), overlay is 100% transparent so the header is 1 continuous shade.
   // As user scrolls, it transitions into frosted glass as content passes underneath.
   const statusBarBg = scrollY.interpolate({
-    inputRange: [0, 60, 260, 380],
+    inputRange: [0, 60, 200, 320],
     outputRange: [
-      'rgba(245, 165, 36, 0)',
-      'rgba(232, 140, 21, 0.40)',
-      'rgba(247, 246, 241, 0.90)',
-      'rgba(255, 255, 255, 0.96)',
+      'rgba(13, 79, 44, 0)',
+      'rgba(13, 79, 44, 0.45)',
+      'rgba(255, 255, 255, 0.92)',
+      'rgba(255, 255, 255, 0.98)',
     ],
     extrapolate: 'clamp',
   });
 
   const statusBarBorder = scrollY.interpolate({
-    inputRange: [0, 260, 380],
+    inputRange: [0, 200, 320],
     outputRange: [
-      'rgba(234, 233, 226, 0)',
-      'rgba(234, 233, 226, 0.4)',
-      'rgba(234, 233, 226, 0.85)',
+      'rgba(226, 232, 240, 0)',
+      'rgba(226, 232, 240, 0.4)',
+      'rgba(226, 232, 240, 0.9)',
     ],
     extrapolate: 'clamp',
   });
 
   const statusBarShadow = scrollY.interpolate({
-    inputRange: [0, 260, 380],
+    inputRange: [0, 200, 320],
     outputRange: [0, 1, 4],
     extrapolate: 'clamp',
   });
@@ -273,15 +272,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 
   useEffect(() => {
     const fetchUserStats = async () => {
-      try {
-        const refill = await fetchPredictiveRefill(user?.id);
-        if (refill && refill.success) {
-          setRefillSummary(refill);
-        }
-      } catch (err) {
-        // ignore
-      }
-
       if (!token) {
         setOrderStats({ orderCount: 0, lastOrder: null });
         return;
@@ -301,7 +291,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       }
     };
     fetchUserStats();
-  }, [token, user?.id]);
+  }, [token]);
 
   const openAccount = () => {
     if (setActiveTab) setActiveTab('Account');
@@ -327,7 +317,13 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   // ── 150° CSS gradient → pixel coordinates for SVG userSpaceOnUse ──
   // CSS 150°: direction = (sin(150°), -cos(150°)) = (0.5, 0.866)
   // Half-length per CSS spec: (W*|sin|+H*|cos|)/2
-  const promoH = 130;
+  // ── Dynamic Proportional Banner Height (Responsive on Phones & Tablets) ──
+  // Standard promotional banner aspect ratio: ~2.25:1
+  // On phones (~360-400px wide): bannerHeight is ~165-175px
+  // On tablets (600px-1000px wide): scales proportionally up to 320px so full graphic is visible
+  const bannerAspectRatio = 2.25;
+  const bannerHeight = Math.min(Math.max(Math.round(contentWidth / bannerAspectRatio), 160), 320);
+  const promoH = bannerHeight;
   const pgHalf = (contentWidth * 0.5 + promoH * 0.866) / 2;
   const pgX1 = contentWidth / 2 - pgHalf * 0.5;
   const pgY1 = promoH / 2 - pgHalf * 0.866;
@@ -337,18 +333,18 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   const renderPromoBanner = (banner: PromotionalBanner) => (
     <TouchableOpacity
       key={banner.id}
-      style={[styles.bannerItem, { width: contentWidth }]}
+      style={[styles.bannerItem, { width: contentWidth, height: bannerHeight }]}
       onPress={() => handleBannerPress(banner)}
       activeOpacity={0.9}
     >
       {banner.image_url && banner.kind !== 'promo' ? (
         <Image
           source={{ uri: banner.image_url }}
-          style={[styles.bannerImage, { width: contentWidth }]}
+          style={[styles.bannerImage, { width: contentWidth, height: bannerHeight }]}
           resizeMode="cover"
         />
       ) : (
-        <View style={[styles.promoCardOuter, { width: contentWidth }]}>
+        <View style={[styles.promoCardOuter, { width: contentWidth, height: promoH }]}>
           <Svg width={contentWidth} height={promoH}>
             <Defs>
               <LinearGradient
@@ -359,11 +355,24 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 x2={String(pgX2)}
                 y2={String(pgY2)}
               >
-                <Stop offset="0.146" stopColor="#F5A524" />
-                <Stop offset="0.8759" stopColor="#E07C0E" />
+                <Stop offset="0.05" stopColor="#1B7846" />
+                <Stop offset="0.55" stopColor="#136037" />
+                <Stop offset="1" stopColor="#0D4829" />
               </LinearGradient>
             </Defs>
             <Rect x="0" y="0" width={contentWidth} height={promoH} fill="url(#promoGrad150)" />
+            <Path
+              d="M 12 10 C 35 -5 55 12 60 35 C 38 42 18 30 12 10 Z"
+              fill="rgba(255, 255, 255, 0.12)"
+            />
+            <Path
+              d="M 70 25 C 92 10 110 25 114 45 C 92 50 78 40 70 25 Z"
+              fill="rgba(255, 255, 255, 0.08)"
+            />
+            <Path
+              d="M -5 85 C 20 65 38 82 42 105 C 18 110 2 98 -5 85 Z"
+              fill="rgba(255, 255, 255, 0.08)"
+            />
           </Svg>
           <View style={styles.promoContentOverlay}>
             <View style={styles.promoLeft}>
@@ -390,7 +399,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   return (
     <>
     <View style={styles.outerWrap}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       {/* Dynamic Frosted Glass Status Bar that adapts its color as user scrolls */}
       {insets.top > 0 ? (
         <Animated.View
@@ -431,68 +440,122 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           </View>
         ) : (
           <View style={styles.mainContent}>
-            {/* ── Exact Figma Gradient Header with transparent status bar flow ── */}
-            <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 16 : 16 }]}>
+            {/* ── Emerald Green Botanical Header ── */}
+            <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 14 : 16 }]}>
+              {/* Green Gradient Background */}
               <Svg
                 style={StyleSheet.absoluteFill}
                 viewBox="0 0 100 100"
                 preserveAspectRatio="none"
               >
                 <Defs>
-                  <LinearGradient id="headerGrad" x1="0.146" y1="0" x2="0.876" y2="1">
-                    <Stop offset="0" stopColor="#F5A524" />
-                    <Stop offset="1" stopColor="#E07C0E" />
+                  <LinearGradient id="headerGrad" x1="0" y1="0" x2="0.6" y2="1">
+                    <Stop offset="0" stopColor="#0D4F2C" />
+                    <Stop offset="0.5" stopColor="#136338" />
+                    <Stop offset="1" stopColor="#1B7846" />
                   </LinearGradient>
                 </Defs>
                 <Rect x="0" y="0" width="100" height="100" fill="url(#headerGrad)" />
               </Svg>
 
-              <View style={styles.topSectionGroup}>
-                <View style={styles.headerTopRow}>
-                  <TouchableOpacity
-                    style={styles.locationBlock}
-                    onPress={() => navigation.navigate('CitySelection')}
-                    activeOpacity={0.75}
-                  >
-                    <Text style={styles.deliveringLabel}>{home?.delivering_label || 'DELIVERING TO'}</Text>
-                    <View style={styles.locationRow}>
-                      <Text style={styles.locationText} numberOfLines={1}>
-                        {displayLocation}
-                      </Text>
-                      <HomeChevronDownIcon size={16} color="#FFFFFF" />
-                    </View>
-                    {selectedShop ? (
-                      <View style={styles.shopBadgePill}>
-                        <Text style={styles.shopBadgeIcon}>🏪</Text>
-                        <Text style={styles.shopNameLabel} numberOfLines={1}>
-                          {selectedShop.name}
+              {/* Botanical Leaf Overlay */}
+              <Svg
+                style={StyleSheet.absoluteFill}
+                viewBox="0 0 390 200"
+                preserveAspectRatio="none"
+                pointerEvents="none"
+              >
+                {/* Top-right branch stem */}
+                <Path
+                  d="M 400 -10 Q 360 25 330 75"
+                  stroke="rgba(255, 255, 255, 0.22)"
+                  strokeWidth="2"
+                  fill="none"
+                />
+                {/* Foliage leaves along stem */}
+                <Path
+                  d="M 330 75 C 310 70 300 52 308 42 C 322 46 330 62 330 75 Z"
+                  fill="rgba(255, 255, 255, 0.20)"
+                />
+                <Path
+                  d="M 345 54 C 342 34 355 20 368 24 C 368 38 356 50 345 54 Z"
+                  fill="rgba(255, 255, 255, 0.20)"
+                />
+                <Path
+                  d="M 362 34 C 354 16 360 2 376 5 C 378 18 372 28 362 34 Z"
+                  fill="rgba(255, 255, 255, 0.18)"
+                />
+                <Path
+                  d="M 370 65 C 388 72 398 90 392 102 C 378 100 372 82 370 65 Z"
+                  fill="rgba(255, 255, 255, 0.18)"
+                />
+                <Path
+                  d="M 345 95 C 330 115 342 135 358 130 C 364 116 358 100 345 95 Z"
+                  fill="rgba(255, 255, 255, 0.15)"
+                />
+                {/* Bottom-left leaf accent */}
+                <Path
+                  d="M -10 150 C 18 135 35 152 40 175 C 18 180 -5 168 -10 150 Z"
+                  fill="rgba(255, 255, 255, 0.14)"
+                />
+                <Path
+                  d="M 12 178 C 32 166 48 180 50 200 C 30 204 15 194 12 178 Z"
+                  fill="rgba(255, 255, 255, 0.12)"
+                />
+              </Svg>
+
+              <View style={styles.headerTopRow}>
+                <TouchableOpacity
+                  style={styles.locationBlock}
+                  onPress={() => navigation.navigate('CitySelection')}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.locationHeaderRow}>
+                    <HomeLocationPinIcon size={24} color="#FFFFFF" />
+                    <View style={styles.locationTextGroup}>
+                      <Text style={styles.deliveringLabel}>{home?.delivering_label || 'DELIVERING TO'}</Text>
+                      <View style={styles.locationRow}>
+                        <Text style={styles.locationText} numberOfLines={1}>
+                          {displayLocation}
                         </Text>
-                        <TouchableOpacity
-                          onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={styles.changeShopBtn}
-                        >
-                          <Text style={styles.changeShopText}>Change</Text>
-                        </TouchableOpacity>
+                        <HomeChevronDownIcon size={16} color="#FFFFFF" />
                       </View>
-                    ) : null}
-                  </TouchableOpacity>
+                    </View>
+                  </View>
+                  {selectedShop ? (
+                    <View style={styles.shopBadgePill}>
+                      <View style={styles.calendarBadge}>
+                        <View style={styles.calendarHeader}>
+                          <View style={styles.calendarRing} />
+                          <View style={styles.calendarRing} />
+                        </View>
+                        <View style={styles.calendarBody}>
+                          <Text style={styles.calendarDayText}>24</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.shopNameLabel} numberOfLines={1}>
+                        {selectedShop.name}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.changeShopBtn}
+                      >
+                        <Text style={styles.changeShopText}>Change</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
-                    {user?.avatar_url ? (
-                      <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
-                    ) : userInitial ? (
-                      <Text style={styles.avatarText}>{userInitial}</Text>
-                    ) : (
-                      <AppIcon name="account" size={20} color="#FFFFFF" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.deliveryPill}>
-                  <HomeDeliveryIcon size={15} color="#F5A524" />
-                  <Text style={styles.deliveryPillText}>{home?.delivery_pill_text || 'Planned monthly delivery · 4-hour window'}</Text>
-                </View>
+                <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
+                  {user?.avatar_url ? (
+                    <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
+                  ) : userInitial ? (
+                    <Text style={styles.avatarText}>{userInitial}</Text>
+                  ) : (
+                    <AppIcon name="account" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
@@ -500,75 +563,90 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 onPress={() => navigation.navigate('Search')}
                 activeOpacity={0.85}
               >
-                <HomeSearchIcon size={20} color="#1E7A46" />
+                <HomeSearchIcon size={20} color="#156C3E" />
                 <Text style={styles.searchPlaceholder}>{home?.search_placeholder || 'Search atta, rice, oil…'}</Text>
-                <HomeMicIcon size={20} color="#1E7A46" />
+                <HomeMicIcon size={20} color="#156C3E" />
               </TouchableOpacity>
+            </View>
 
-              {banners.length > 0 ? (
-                <View style={styles.bannerWrapper}>
-                  <ScrollView
-                    ref={bannerScrollRef}
-                    horizontal
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    style={[styles.bannerScrollView, { width: contentWidth }]}
-                    contentContainerStyle={styles.bannerScrollContent}
-                    onScrollBeginDrag={() => setIsBannerInteracting(true)}
-                    onMomentumScrollEnd={(e) => {
-                      const offset = e.nativeEvent.contentOffset.x;
-                      const index = Math.round(offset / contentWidth);
-                      setActiveBannerIndex(index);
-                      setIsBannerInteracting(false);
-                    }}
-                    onScrollEndDrag={() => {
-                      setTimeout(() => setIsBannerInteracting(false), 2000);
-                    }}
-                  >
-                    {banners.map((banner) => renderPromoBanner(banner))}
-                  </ScrollView>
+            {/* ── Banner Section (Clean White Background) ── */}
+            {banners.length > 0 ? (
+              <View style={styles.bannerWrapper}>
+                <ScrollView
+                  ref={bannerScrollRef}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  style={[styles.bannerScrollView, { width: contentWidth, height: bannerHeight }]}
+                  contentContainerStyle={styles.bannerScrollContent}
+                  onScrollBeginDrag={() => setIsBannerInteracting(true)}
+                  onMomentumScrollEnd={(e) => {
+                    const offset = e.nativeEvent.contentOffset.x;
+                    const index = Math.round(offset / contentWidth);
+                    setActiveBannerIndex(index);
+                    setIsBannerInteracting(false);
+                  }}
+                  onScrollEndDrag={() => {
+                    setTimeout(() => setIsBannerInteracting(false), 2000);
+                  }}
+                >
+                  {banners.map((banner) => renderPromoBanner(banner))}
+                </ScrollView>
 
-                  {banners.length > 1 ? (
-                    <View style={styles.bannerDotsContainer}>
-                      {banners.map((_, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            setActiveBannerIndex(idx);
-                            bannerScrollRef.current?.scrollTo({
-                              x: idx * contentWidth,
-                              animated: true,
-                            });
-                          }}
-                          style={[
-                            styles.bannerDot,
-                            activeBannerIndex === idx ? styles.bannerDotActive : styles.bannerDotInactive,
-                          ]}
-                        />
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
-              ) : null}
+                {banners.length > 1 ? (
+                  <View style={styles.bannerDotsContainer}>
+                    {banners.map((_, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setActiveBannerIndex(idx);
+                          bannerScrollRef.current?.scrollTo({
+                            x: idx * contentWidth,
+                            animated: true,
+                          });
+                        }}
+                        style={[
+                          styles.bannerDot,
+                          activeBannerIndex === idx ? styles.bannerDotActive : styles.bannerDotInactive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
+            {/* ── My Monthly Grocery Card (Emerald Botanical Theme) ── */}
+            <View style={styles.mmgCardWrapper}>
               <TouchableOpacity
                 style={styles.mmgCard}
                 onPress={() => navigation.navigate('MyMonthlyGroceryHub')}
                 activeOpacity={0.85}
               >
+                <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
+                  <Defs>
+                    <LinearGradient id="mmgGrad" x1="0" y1="0" x2="1" y2="0.8">
+                      <Stop offset="0" stopColor="#1B7846" />
+                      <Stop offset="0.6" stopColor="#136037" />
+                      <Stop offset="1" stopColor="#0D4829" />
+                    </LinearGradient>
+                  </Defs>
+                  <Rect width="100%" height="100%" rx="18" fill="url(#mmgGrad)" />
+                  <Path
+                    d="M 12 6 C 28 -2 44 10 48 28 C 30 33 16 24 12 6 Z"
+                    fill="rgba(255, 255, 255, 0.10)"
+                  />
+                  <Path
+                    d="M 285 42 C 305 28 322 40 326 56 C 308 61 294 54 285 42 Z"
+                    fill="rgba(255, 255, 255, 0.08)"
+                  />
+                </Svg>
+
                 <View style={styles.mmgIconWrap}>
-                  <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
-                    <Defs>
-                      <LinearGradient id="mmgIconGrad" x1="14.6%" y1="0%" x2="87.59%" y2="100%">
-                        <Stop offset="14.6%" stopColor="#F5A524" />
-                        <Stop offset="87.59%" stopColor="#E07C0E" />
-                      </LinearGradient>
-                    </Defs>
-                    <Rect width="100%" height="100%" rx="24" fill="url(#mmgIconGrad)" />
-                  </Svg>
-                  <HomeSparkleIcon size={24} />
+                  <HomeGroceryBasketIcon size={24} color="#FFFFFF" />
                 </View>
+
                 <View style={styles.mmgTextCol}>
                   <Text style={styles.mmgLabel} numberOfLines={1}>{home?.mmg_label || 'MY MONTHLY GROCERY'}</Text>
                   <Text style={styles.mmgTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
@@ -576,6 +654,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                   </Text>
                   <Text style={styles.mmgSub} numberOfLines={1}>{home?.mmg_subtitle || 'A smart basket from what your home buys'}</Text>
                 </View>
+
                 <View style={styles.mmgArrow}>
                   <HomeArrowRightIcon size={18} color="#FFFFFF" />
                 </View>
@@ -614,7 +693,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                           <Image
                             source={{ uri: cat.image_url }}
                             style={styles.categoryPng}
-                            resizeMode="contain"
+                            resizeMode="cover"
                           />
                         ) : (
                           <AppIcon name="categories" size={26} color="#1E7A46" />
@@ -674,63 +753,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
         ) : (
           <Text style={styles.loadingText}>{home?.empty_deals_label}</Text>
         )}
-
-        {refillSummary?.is_refill_due && refillSummary.items?.length > 0 ? (
-          <View style={styles.refillAlertCard}>
-            <View style={styles.refillTopRow}>
-              <View style={styles.refillBadge}>
-                <Text style={styles.refillBadgeText}>⚡ AI REFILL DUE</Text>
-              </View>
-              {refillSummary.estimated_savings > 0 ? (
-                <View style={styles.refillSavingsBadge}>
-                  <Text style={styles.refillSavingsText}>Save ₹{refillSummary.estimated_savings}</Text>
-                </View>
-              ) : null}
-            </View>
-
-            <Text style={styles.refillHeadline}>{refillSummary.headline}</Text>
-            <Text style={styles.refillSubheadline}>{refillSummary.subheadline}</Text>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.refillItemsScroll}>
-              {refillSummary.items.map((it, idx) => (
-                <View key={it.product?.id || idx} style={styles.refillItemThumb}>
-                  {it.product?.image_url ? (
-                    <Image source={{ uri: it.product.image_url }} style={styles.refillItemImg} resizeMode="contain" />
-                  ) : (
-                    <CheckoutFallbackEmoji index={idx} size={18} />
-                  )}
-                  <Text style={styles.refillItemName} numberOfLines={1}>{it.product?.name}</Text>
-                  <Text style={styles.refillItemPrice}>₹{it.product?.price}</Text>
-                </View>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.refillActionBtn}
-              onPress={() => {
-                refillSummary.items.forEach(it => {
-                  if (it.product) {
-                    addToCart({
-                      id: it.product.id,
-                      name: it.product.name,
-                      brand: it.product.brand,
-                      unit: it.product.unit,
-                      price: it.product.price,
-                      mrp: it.product.mrp,
-                      image_url: it.product.image_url,
-                      stock: 999,
-                      available: true,
-                    } as any);
-                  }
-                });
-                navigation.navigate('Cart');
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.refillActionBtnText}>🛒 Reorder Monthly Basket (₹{refillSummary.total_price})</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
 
         <TouchableOpacity
           style={styles.reorderCard}
@@ -819,15 +841,15 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
 const styles = StyleSheet.create({
   outerWrap: {
     flex: 1,
-    backgroundColor: '#F7F6F1',
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F7F6F1',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     flexGrow: 1,
-    backgroundColor: '#F7F6F1',
+    backgroundColor: '#FFFFFF',
     paddingBottom: 16,
   },
   mainContent: {
@@ -839,14 +861,14 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     flexDirection: 'column',
     alignItems: 'flex-start',
-    backgroundColor: '#E07C0E',
+    backgroundColor: '#0D4F2C',
     paddingTop: 16,
-    paddingBottom: 16,
-    paddingHorizontal: 14,
-    gap: 17,
+    paddingBottom: 22,
+    paddingHorizontal: 16,
+    gap: 14,
     flexShrink: 0,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
     overflow: 'hidden',
   },
   topSectionGroup: {
@@ -863,12 +885,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  locationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  locationTextGroup: {
+    flex: 1,
+  },
   deliveringLabel: {
     ...FONTS.muktaBold,
-    fontSize: 11,
-    lineHeight: 14,
-    color: '#FFFFFF',
-    letterSpacing: 1.32,
+    fontSize: 10.5,
+    lineHeight: 13,
+    color: 'rgba(255, 255, 255, 0.90)',
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   locationRow: {
@@ -878,11 +908,11 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   locationText: {
-    ...FONTS.muktaMedium,
-    fontSize: 14,
-    lineHeight: 20,
+    ...FONTS.muktaBold,
+    fontSize: 16,
+    lineHeight: 21,
     color: '#FFFFFF',
-    maxWidth: width * 0.6,
+    maxWidth: width * 0.58,
   },
   locationChevron: {
     fontSize: 14,
@@ -893,30 +923,62 @@ const styles = StyleSheet.create({
   shopBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.20)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 36, 18, 0.52)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginTop: 4,
-    gap: 5,
+    paddingVertical: 3.5,
+    marginTop: 6,
+    gap: 6,
     alignSelf: 'flex-start',
     maxWidth: width * 0.75,
   },
-  shopBadgeIcon: {
-    fontSize: 12,
+  calendarBadge: {
+    width: 22,
+    height: 19,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  calendarHeader: {
+    height: 5.5,
+    backgroundColor: '#E11D48',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: 3,
+  },
+  calendarRing: {
+    width: 2,
+    height: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1,
+  },
+  calendarBody: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarDayText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#0F172A',
+    lineHeight: 11,
   },
   shopNameLabel: {
-    ...FONTS.muktaMedium,
-    fontSize: 12,
+    ...FONTS.muktaSemiBold,
+    fontSize: 12.5,
     color: '#FFFFFF',
     flexShrink: 1,
   },
   changeShopBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    marginLeft: 3,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 2,
   },
   changeShopText: {
     ...FONTS.muktaBold,
@@ -924,24 +986,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   avatarBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#22834E',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 48, 24, 0.50)',
     borderWidth: 1.5,
-    borderColor: '#45A56F',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   avatarImg: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   avatarText: {
-    ...FONTS.balooBold,
-    fontSize: 16,
+    ...FONTS.muktaBold,
+    fontSize: 17,
     color: '#FFFFFF',
   },
   deliveryPill: {
@@ -964,27 +1026,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    height: 52,
-    paddingHorizontal: 14,
-    gap: 10,
+    borderRadius: 25,
+    height: 50,
+    paddingHorizontal: 16,
+    gap: 12,
     width: '100%',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   searchPlaceholder: {
     flex: 1,
     ...FONTS.muktaRegular,
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#6B7772',
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#64748B',
   },
   bannerWrapper: {
     width: '100%',
     alignItems: 'center',
+    marginTop: 14,
   },
   bannerScrollView: {
     width: '100%',
-    height: 130,
-    borderRadius: 18,
+    borderRadius: 20,
   },
   bannerScrollContent: {
     alignItems: 'center',
@@ -994,33 +1061,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 10,
+    marginBottom: 2,
   },
   bannerDot: {
     height: 5,
     borderRadius: 3,
   },
   bannerDotActive: {
-    width: 18,
-    backgroundColor: '#FFFFFF',
+    width: 22,
+    backgroundColor: '#16A34A',
   },
   bannerDotInactive: {
     width: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+    backgroundColor: '#CBD5E1',
   },
   bannerItem: {
-    height: 130,
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
   },
   bannerImage: {
-    height: 130,
-    borderRadius: 18,
+    borderRadius: 20,
   },
   promoCardOuter: {
-    height: 130,
-    borderRadius: 18,
+    borderRadius: 20,
     overflow: 'hidden',
     flexShrink: 0,
     alignSelf: 'stretch',
@@ -1034,61 +1099,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 16,
+    paddingTop: 18,
     paddingRight: 14,
-    paddingBottom: 16,
-    paddingLeft: 18,
+    paddingBottom: 18,
+    paddingLeft: 20,
   },
   promoLeft: {
     flex: 1,
-    paddingRight: 4,
+    paddingRight: 8,
     justifyContent: 'center',
   },
   promoRight: {
-    width: 110,
-    height: 95,
+    width: 130,
+    height: 120,
     justifyContent: 'center',
     alignItems: 'center',
   },
   promoImage: {
-    width: 110,
-    height: 95,
+    width: 130,
+    height: 120,
   },
   promoLabel: {
     ...FONTS.muktaBold,
     fontSize: 11.5,
-    color: '#17251E',
+    color: '#86EFAC',
     letterSpacing: 1.3,
     textTransform: 'uppercase',
   },
   promoTitle: {
     ...FONTS.balooBold,
-    fontSize: 26,
+    fontSize: 27,
     color: '#FFFFFF',
-    letterSpacing: -0.26,
-    lineHeight: 32,
+    letterSpacing: -0.28,
+    lineHeight: 33,
     marginTop: 2,
   },
   promoSub: {
     ...FONTS.muktaMedium,
-    fontSize: 12.5,
-    color: '#17251E',
-    lineHeight: 16,
+    fontSize: 13,
+    color: '#E2E8F0',
+    lineHeight: 18,
     marginTop: 2,
   },
   promoBtn: {
     alignSelf: 'flex-start',
-    backgroundColor: '#17251E',
+    backgroundColor: '#FFFFFF',
     borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    marginTop: 10,
+    shadowColor: '#000000',
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
   promoBtnText: {
-    ...FONTS.muktaSemiBold,
-    fontSize: 11,
-    color: '#FFFFFF',
-    lineHeight: 14,
+    ...FONTS.muktaBold,
+    fontSize: 12,
+    color: '#0F4D2A',
+    lineHeight: 16,
+  },
+  mmgCardWrapper: {
+    width: '100%',
+    paddingHorizontal: H_PAD,
+    marginTop: 12,
   },
   mmgCard: {
     position: 'relative',
@@ -1096,17 +1170,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 88,
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     gap: 12,
     borderRadius: 18,
-    backgroundColor: '#155A38',
+    backgroundColor: '#136037',
     overflow: 'hidden',
   },
   mmgIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1122,37 +1199,37 @@ const styles = StyleSheet.create({
     ...FONTS.muktaBold,
     fontSize: 10.5,
     lineHeight: 13,
-    color: '#FBE0AE',
+    color: '#86EFAC',
     letterSpacing: 1.1,
     textTransform: 'uppercase',
   },
   mmgTitle: {
     ...FONTS.balooSemiBold,
-    fontSize: 17,
+    fontSize: 17.5,
     color: '#FFFFFF',
-    lineHeight: 21,
+    lineHeight: 22,
     letterSpacing: -0.2,
     marginTop: 1,
   },
   mmgSub: {
     ...FONTS.muktaMedium,
-    fontSize: 11.5,
-    color: '#E4F3EA',
-    lineHeight: 15,
+    fontSize: 12,
+    color: '#E2E8F0',
+    lineHeight: 16,
     marginTop: 1,
   },
   mmgArrow: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
   },
   contentSheet: {
     flexGrow: 1,
-    backgroundColor: '#F7F6F1',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: H_PAD,
     paddingTop: 16,
     paddingBottom: 8,
@@ -1193,14 +1270,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
     overflow: 'hidden',
-    backgroundColor: '#F8FAF8',
-    borderWidth: 1,
-    borderColor: '#E8EFEA',
-    padding: 6,
+    backgroundColor: '#FFFFFF',
   },
   categoryPng: {
-    width: 52,
-    height: 52,
+    width: '100%',
+    height: '100%',
   },
   catName: {
     ...FONTS.muktaMedium,
@@ -1332,106 +1406,4 @@ const styles = StyleSheet.create({
     color: COLORS.green700,
     marginTop: 6,
   },
-  refillAlertCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#E8A33A',
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: '#E8A33A',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  refillTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  refillBadge: {
-    backgroundColor: '#FFF4E5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#F5A524',
-  },
-  refillBadgeText: {
-    ...FONTS.muktaBold,
-    fontSize: 10.5,
-    color: '#D97706',
-    letterSpacing: 0.5,
-  },
-  refillSavingsBadge: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  refillSavingsText: {
-    ...FONTS.muktaBold,
-    fontSize: 11,
-    color: '#1E7A46',
-  },
-  refillHeadline: {
-    ...FONTS.balooBold,
-    fontSize: 16,
-    color: '#17251E',
-    marginTop: 2,
-  },
-  refillSubheadline: {
-    ...FONTS.muktaRegular,
-    fontSize: 12,
-    color: '#6B7772',
-    marginTop: 1,
-    marginBottom: 10,
-  },
-  refillItemsScroll: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 4,
-  },
-  refillItemThumb: {
-    width: 72,
-    alignItems: 'center',
-    backgroundColor: '#F8FAF8',
-    borderRadius: 10,
-    padding: 6,
-    borderWidth: 1,
-    borderColor: '#EAE9E2',
-  },
-  refillItemImg: {
-    width: 36,
-    height: 36,
-    marginBottom: 4,
-  },
-  refillItemName: {
-    ...FONTS.muktaMedium,
-    fontSize: 10,
-    color: '#3D4A44',
-    textAlign: 'center',
-  },
-  refillItemPrice: {
-    ...FONTS.muktaBold,
-    fontSize: 10.5,
-    color: '#1E7A46',
-    marginTop: 1,
-  },
-  refillActionBtn: {
-    backgroundColor: '#155A38',
-    borderRadius: RADIUS.pill,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  refillActionBtnText: {
-    ...FONTS.balooBold,
-    fontSize: 13,
-    color: '#FFFFFF',
-  },
 });
-

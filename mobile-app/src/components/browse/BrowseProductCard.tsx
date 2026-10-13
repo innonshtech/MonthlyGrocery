@@ -8,13 +8,13 @@ import {
 } from 'react-native';
 import { Product } from '../../context/CartContext';
 import AppIcon from '../AppIcon';
-import { getProductDiscountPercent, homeDealBg } from '../../utils/productDiscount';
+import { getProductDiscountPercent } from '../../utils/productDiscount';
 import { getProductPackLabel } from '../../utils/packUnit';
-import { COLORS, FONTS } from '../../constants/theme';
+import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 
 /** Figma B4 product tile — shared by Home deals rail + category grid */
 export const BROWSE_PRODUCT_CARD_WIDTH = 139;
-export const BROWSE_PRODUCT_IMG_HEIGHT = 92;
+export const BROWSE_PRODUCT_IMG_HEIGHT = 96;
 
 type BrowseProductCardProps = {
   item: Product;
@@ -54,7 +54,7 @@ export default function BrowseProductCard({
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={[styles.imgWrap, { backgroundColor: homeDealBg(index) }]}>
+      <View style={styles.imgWrap}>
         {isOutOfStock ? (
           <View style={styles.outOfStockBadge}>
             <Text style={styles.outOfStockBadgeTxt}>OUT OF STOCK</Text>
@@ -74,26 +74,6 @@ export default function BrowseProductCard({
         ) : (
           <AppIcon name="shopping-bag" size={36} color={isOutOfStock ? '#94A3B8' : COLORS.green700} />
         )}
-
-        {isOutOfStock ? (
-          <View style={styles.outOfStockPill}>
-            <Text style={styles.outOfStockPillTxt}>Out of stock</Text>
-          </View>
-        ) : quantity > 0 ? (
-          <View style={styles.stepper}>
-            <TouchableOpacity style={styles.stepBtn} onPress={onDecrement}>
-              <Text style={styles.stepTxt}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.stepQty}>{quantity}</Text>
-            <TouchableOpacity style={styles.stepBtn} onPress={onIncrement}>
-              <Text style={styles.stepTxt}>+</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.addPill} onPress={onAdd} activeOpacity={0.85}>
-            <Text style={styles.addPillTxt}>{addButtonLabel}</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <Text style={[styles.name, isOutOfStock && styles.nameOutOfStock]} numberOfLines={2}>
@@ -109,8 +89,30 @@ export default function BrowseProductCard({
       </View>
 
       <View style={styles.priceRow}>
-        <Text style={[styles.price, isOutOfStock && styles.priceOutOfStock]}>₹{price}</Text>
-        {mrp > price ? <Text style={styles.mrp}>₹{mrp}</Text> : null}
+        <View style={styles.priceCol}>
+          <Text style={[styles.price, isOutOfStock && styles.priceOutOfStock]}>₹{price}</Text>
+          {mrp > price ? <Text style={styles.mrp}>₹{mrp}</Text> : null}
+        </View>
+
+        {isOutOfStock ? (
+          <View style={styles.outOfStockPill}>
+            <Text style={styles.outOfStockPillTxt}>Out of stock</Text>
+          </View>
+        ) : quantity > 0 ? (
+          <View style={styles.stepper}>
+            <TouchableOpacity style={styles.stepBtn} onPress={onDecrement} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+              <Text style={styles.stepTxt}>−</Text>
+            </TouchableOpacity>
+            <Text style={styles.stepQty}>{quantity}</Text>
+            <TouchableOpacity style={styles.stepBtn} onPress={onIncrement} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+              <Text style={styles.stepTxt}>+</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addBtn} onPress={onAdd} activeOpacity={0.85}>
+            <Text style={styles.addTxt}>{addButtonLabel || 'ADD'}</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -122,7 +124,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 8,
     paddingBottom: 10,
-    gap: 5,
+    gap: 4,
   },
   cardOutOfStock: {
     opacity: 0.72,
@@ -131,6 +133,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: BROWSE_PRODUCT_IMG_HEIGHT,
     borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -168,82 +173,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   img: {
-    width: 54,
-    height: 54,
+    width: '90%',
+    height: '90%',
   },
   imgOutOfStock: {
     opacity: 0.4,
-  },
-  outOfStockPill: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    zIndex: 3,
-  },
-  outOfStockPillTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 10,
-    color: '#64748B',
-  },
-  addPill: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.green700,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    zIndex: 3,
-  },
-  addPillTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 13,
-    color: COLORS.green700,
-  },
-  stepper: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.green700,
-    borderRadius: 8,
-    height: 32,
-    zIndex: 3,
-  },
-  stepBtn: {
-    width: 28,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepTxt: {
-    ...FONTS.muktaBold,
-    fontSize: 16,
-    color: '#FFFFFF',
-    lineHeight: 20,
-  },
-  stepQty: {
-    ...FONTS.muktaBold,
-    fontSize: 13,
-    color: '#FFFFFF',
-    minWidth: 16,
-    textAlign: 'center',
   },
   name: {
     ...FONTS.muktaMedium,
     fontSize: 14,
     color: COLORS.ink900,
-    lineHeight: 20,
-    minHeight: 40,
+    lineHeight: 19,
+    minHeight: 38,
+    marginTop: 2,
   },
   nameOutOfStock: {
     color: COLORS.ink500,
@@ -252,13 +194,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 2,
+    minHeight: 18,
   },
   unit: {
-    ...FONTS.muktaBold,
-    fontSize: 11,
+    ...FONTS.muktaMedium,
+    fontSize: 11.5,
     color: COLORS.ink500,
-    lineHeight: 14,
+    lineHeight: 15,
   },
   optionsPill: {
     backgroundColor: COLORS.green50,
@@ -270,18 +212,25 @@ const styles = StyleSheet.create({
   },
   optionsPillText: {
     ...FONTS.muktaSemiBold,
-    fontSize: 9,
+    fontSize: 9.5,
     color: COLORS.green700,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'space-between',
+    minHeight: 34,
+    marginTop: 2,
+  },
+  priceCol: {
+    justifyContent: 'center',
+    flexShrink: 1,
   },
   price: {
     ...FONTS.muktaMedium,
     fontSize: 14,
     color: COLORS.ink900,
+    lineHeight: 18,
   },
   priceOutOfStock: {
     color: COLORS.ink500,
@@ -290,6 +239,64 @@ const styles = StyleSheet.create({
     ...FONTS.muktaRegular,
     fontSize: 11,
     color: COLORS.ink300,
+    lineHeight: 14,
     textDecorationLine: 'line-through',
+  },
+  addBtn: {
+    paddingHorizontal: 16,
+    height: 32,
+    backgroundColor: COLORS.green100,
+    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addTxt: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 13,
+    color: COLORS.green700,
+    lineHeight: 16,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.green700,
+    borderRadius: RADIUS.pill,
+    minWidth: 57,
+    height: 32,
+    paddingHorizontal: 4,
+  },
+  stepBtn: {
+    width: 24,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepTxt: {
+    ...FONTS.balooBold,
+    fontSize: 16,
+    color: '#FFFFFF',
+    lineHeight: 20,
+  },
+  stepQty: {
+    ...FONTS.balooBold,
+    fontSize: 12,
+    color: '#FFFFFF',
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  outOfStockPill: {
+    paddingHorizontal: 8,
+    height: 28,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: RADIUS.pill,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  outOfStockPillTxt: {
+    ...FONTS.muktaBold,
+    fontSize: 10,
+    color: '#64748B',
   },
 });
