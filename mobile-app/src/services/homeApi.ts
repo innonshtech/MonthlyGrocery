@@ -93,6 +93,21 @@ export function navigateFromActionLink(
     return;
   }
 
+  // 3b. Short alias for All Products (browse full catalog without category)
+  if (
+    lower === 'all' ||
+    lower === '/all' ||
+    lower === 'all_products' ||
+    lower === 'allproducts' ||
+    lower === '/products' ||
+    lower === 'products'
+  ) {
+    navigation.navigate('CategoryProducts', {
+      categoryName: 'All Products',
+    });
+    return;
+  }
+
   // 4. Category with name pattern: "category:Atta & Rice" or "/category/Atta & Rice"
   if (lower.startsWith('category:') || lower.startsWith('/category/')) {
     const catName = trimmed.replace(/^category:|\/category\//i, '').trim();

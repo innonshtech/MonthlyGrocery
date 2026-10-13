@@ -309,6 +309,29 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {!searchQuery && (
+            <TouchableOpacity
+              style={styles.allProductsBanner}
+              onPress={() =>
+                navigation.navigate('CategoryProducts', {
+                  categoryName: 'All Products',
+                })
+              }
+              activeOpacity={0.88}
+            >
+              <View style={styles.allProductsLeft}>
+                <View style={styles.allProductsIconBadge}>
+                  <AppIcon name="shopping-bag" size={20} color="#1E7A46" />
+                </View>
+                <View>
+                  <Text style={styles.allProductsTitle}>Browse All Products</Text>
+                  <Text style={styles.allProductsSubtitle}>Explore the full store catalog with infinite scroll</Text>
+                </View>
+              </View>
+              <AppIcon name="arrow-right" size={16} color="#1E7A46" />
+            </TouchableOpacity>
+          )}
+
           {sections.map((section, sIdx) => (
             <View key={`${section.label}-${sIdx}`} style={styles.section}>
               <SectionHeader label={section.label} />
@@ -471,5 +494,47 @@ const styles = StyleSheet.create({
     ...FONTS.muktaRegular,
     fontSize: 14,
     color: COLORS.ink300,
+  },
+  allProductsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EBF7EE',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#D4EED8',
+  },
+  allProductsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  allProductsIconBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1E7A46',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  allProductsTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 15,
+    color: '#134D2C',
+  },
+  allProductsSubtitle: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    color: '#2A7246',
+    marginTop: 1,
   },
 });

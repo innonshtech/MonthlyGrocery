@@ -11,6 +11,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -59,20 +60,71 @@ export default function UploadGroceryListScreen({ navigation }: any) {
     setInputText((prev) => (prev ? `${prev}\n${chipText}` : chipText));
   };
 
-  const handlePickImage = (source: 'camera' | 'gallery') => {
+  const requestCameraPermission = async (): Promise<boolean> => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Camera Access Required',
+            message:
+              'MonthlyGrocery needs camera access to photograph your paper grocery list for AI scanning.',
+            buttonPositive: 'Allow Camera',
+            buttonNegative: 'Cancel',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Camera permission request error:', err);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handlePickImage = async (source: 'camera' | 'gallery') => {
+    if (source === 'camera') {
+      const hasPermission = await requestCameraPermission();
+      if (!hasPermission) {
+        Alert.alert(
+          'Camera Permission Denied',
+          'Please allow camera permission to photograph your grocery list, or choose a photo from your Gallery instead.',
+          [
+            { text: 'Open Gallery', onPress: () => handlePickImage('gallery') },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+        return;
+      }
+    }
+
     const options = {
       mediaType: 'photo' as const,
-      quality: 0.8 as const,
-      maxWidth: 1600,
-      maxHeight: 1600,
+      quality: 0.7 as const,
+      maxWidth: 1200,
+      maxHeight: 1200,
+      saveToPhotos: false,
+      includeBase64: false,
     };
 
-    const launcher = source === 'camera' ? launchCamera : launchImageLibrary;
+    try {
+      const launcher = source === 'camera' ? launchCamera : launchImageLibrary;
+      const response = await launcher(options);
 
-    launcher(options, (response) => {
       if (response.didCancel) return;
       if (response.errorCode) {
-        Alert.alert('Image Error', response.errorMessage || 'Failed to select image');
+        if (response.errorCode === 'camera_unavailable') {
+          Alert.alert(
+            'Camera Unavailable',
+            'Physical camera is not available on this device or emulator. Please choose a photo from your Gallery instead.',
+            [
+              { text: 'Open Gallery', onPress: () => handlePickImage('gallery') },
+              { text: 'Cancel', style: 'cancel' },
+            ]
+          );
+        } else {
+          Alert.alert('Image Error', response.errorMessage || 'Failed to select image');
+        }
         return;
       }
       const asset = response.assets?.[0];
@@ -80,7 +132,9 @@ export default function UploadGroceryListScreen({ navigation }: any) {
         setSelectedImageUri(asset.uri);
         setSelectedImageMime(asset.type || 'image/jpeg');
       }
-    });
+    } catch (err: any) {
+      Alert.alert('Image Error', err?.message || 'Failed to launch camera.');
+    }
   };
 
   const handleProcessText = async () => {
@@ -361,7 +415,7 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                       style={[styles.mediaSelectBtn, styles.mediaSelectBtnAlt]}
                       onPress={() => handlePickImage('gallery')}
                     >
-                      <ImageIcon size={16} color={COLORS.ink800} />
+                      <ImageIcon size={16} color={COLORS.ink900} />
                       <Text style={[styles.mediaSelectBtnText, styles.mediaSelectBtnTextAlt]}>
                         Gallery
                       </Text>
@@ -491,14 +545,14 @@ export default function UploadGroceryListScreen({ navigation }: any) {
                       style={styles.stepBtn}
                       onPress={() => updateQty(product.id, -1)}
                     >
-                      <Minus size={14} color={COLORS.ink800} strokeWidth={2.5} />
+                      <Minus size={14} color={COLORS.ink900} strokeWidth={2.5} />
                     </TouchableOpacity>
                     <Text style={styles.stepCount}>{qty}</Text>
                     <TouchableOpacity
                       style={styles.stepBtn}
                       onPress={() => updateQty(product.id, 1)}
                     >
-                      <Plus size={14} color={COLORS.ink800} strokeWidth={2.5} />
+                      <Plus size={14} color={COLORS.ink900} strokeWidth={2.5} />
                     </TouchableOpacity>
                   </View>
                 </View>

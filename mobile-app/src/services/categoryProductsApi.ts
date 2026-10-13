@@ -61,11 +61,16 @@ export type FetchCategoryProductsParams = {
   area?: string;
   pincode?: string;
   shopId?: string;
+  page?: number;
+  limit?: number;
 };
 
 export type CategoryProductsFetchResult = {
   products: Product[];
   error: boolean;
+  hasMore?: boolean;
+  totalCount?: number;
+  page?: number;
 };
 
 export interface SidebarTab {
@@ -164,12 +169,17 @@ export async function fetchCategoryProducts(
   params: FetchCategoryProductsParams,
 ): Promise<CategoryProductsFetchResult> {
   try {
-    let url = `${API_BASE}/products/all?limit=50`;
+    const page = params.page || 1;
+    const limit = params.limit || 30;
+    let url = `${API_BASE}/products/all?limit=${limit}&page=${page}`;
     if (params.dealsOnly) {
       url += '&deals=true';
     } else {
-      const q = params.categoryName || params.categoryId;
-      if (q && q !== 'all') url += `&category=${encodeURIComponent(q)}`;
+      const q = (params.categoryName || params.categoryId || '').trim();
+      const isAll = !q || ['all', 'all products', 'all_products'].includes(q.toLowerCase());
+      if (!isAll) {
+        url += `&category=${encodeURIComponent(q)}`;
+      }
     }
     url = appendLocationParams(url, {
       city: params.city,
@@ -181,10 +191,16 @@ export async function fetchCategoryProducts(
     const res = await fetch(url);
     const data = await res.json();
     if (!res.ok || !data.success) {
-      return { products: [], error: true };
+      return { products: [], error: true, hasMore: false, page };
     }
-    return { products: data.products ?? [], error: false };
+    return {
+      products: data.products ?? [],
+      error: false,
+      hasMore: data.has_more !== undefined ? data.has_more : ((data.products?.length ?? 0) >= limit),
+      totalCount: data.total_count ?? data.products?.length ?? 0,
+      page,
+    };
   } catch {
-    return { products: [], error: true };
+    return { products: [], error: true, hasMore: false, page: params.page || 1 };
   }
 }

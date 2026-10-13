@@ -11,28 +11,13 @@ export const AWS_PROD_SERVER_URL = 'http://13.233.159.143/api';
 export const AWS_QA_SERVER_URL = 'http://13.233.159.143:8002/api';
 
 /**
- * Auto-resolves the development backend host:
- * - On physical device via Wi-Fi: automatically uses the Metro host IP (e.g. 192.168.1.15)
- * - On emulator / ADB reverse: connects to localhost:8002
+ * Localhost backend for ADB Reverse (Port 8002)
  */
-const getDevApiUrl = (): string => {
-  try {
-    const scriptURL: string | undefined = (NativeModules as any)?.SourceCode?.scriptURL;
-    if (scriptURL) {
-      const match = scriptURL.match(/^https?:\/\/([^:/]+)/);
-      if (match && match[1] && match[1] !== 'localhost' && match[1] !== '127.0.0.1') {
-        return `http://${match[1]}:8002/api`;
-      }
-    }
-  } catch {}
-  return 'http://localhost:8002/api';
-};
-
-export const LOCAL_SERVER_URL = getDevApiUrl();
+export const LOCAL_SERVER_URL = 'http://localhost:8002/api';
 
 /**
  * Active Backend API Endpoint
- * Connected to AWS QA Server (Port 8002 / AWS RDS PostgreSQL QA)
+ * Connected to Localhost Server (Port 8002 / ADB reverse)
  */
-export const API_BASE = AWS_QA_SERVER_URL;
-export const AWS_SERVER_URL = AWS_QA_SERVER_URL;
+export const API_BASE = LOCAL_SERVER_URL;
+export const AWS_SERVER_URL = LOCAL_SERVER_URL;

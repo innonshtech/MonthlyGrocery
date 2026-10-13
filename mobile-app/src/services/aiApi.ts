@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { API_BASE } from '../config/api';
 
 export interface ExtractedGroceryItem {
@@ -70,11 +71,14 @@ export async function parseGroceryTextList(text: string, city?: string): Promise
 export async function scanGroceryImage(imageUri: string, mimeType: string = 'image/jpeg', city?: string): Promise<ParseListResponse> {
   const formData = new FormData();
 
-  const filename = imageUri.split('/').pop() || 'grocery_list.jpg';
+  let filename = imageUri.split('/').pop() || 'grocery_list.jpg';
+  if (!filename.includes('.')) {
+    filename = `${filename}.jpg`;
+  }
 
   formData.append('image', {
-    uri: imageUri,
-    type: mimeType,
+    uri: Platform.OS === 'android' ? imageUri : imageUri.replace('file://', ''),
+    type: mimeType || 'image/jpeg',
     name: filename,
   } as any);
 
@@ -85,15 +89,21 @@ export async function scanGroceryImage(imageUri: string, mimeType: string = 'ima
   const res = await fetch(`${API_BASE}/ai/ocr-list`, {
     method: 'POST',
     headers: {
-      'Accept': 'application/json',
-      // Note: Do NOT set Content-Type manually for multipart/form-data in fetch on React Native
+      Accept: 'application/json',
     },
     body: formData,
   });
 
-  const data = await res.json();
+  const responseText = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Server response error (${res.status}): Please check backend connection.`);
+  }
+
   if (!res.ok) {
-    throw new Error(data.message || 'Failed to scan grocery list photo');
+    throw new Error(data.message || data.error || 'Failed to scan grocery list photo');
   }
   return data;
 }

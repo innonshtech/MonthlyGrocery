@@ -93,7 +93,7 @@ export function getProductFamilyKey(p: any): string {
   return `${brand}::${rawName}`;
 }
 
-export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal = 100): any[] {
+export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal?: number): any[] {
   if (!Array.isArray(products) || products.length === 0) return [];
 
   const familyMap = new Map<string, any[]>();
@@ -206,38 +206,56 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
     groupedList.sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0));
   }
 
-  return groupedList.slice(0, limitVal);
+  if (limitVal !== undefined && limitVal > 0) {
+    return groupedList.slice(0, limitVal);
+  }
+  return groupedList;
 }
 
-// 1. GET /all: Consumer Catalog (location-aware & shop-aware, based on chosen shop, city, and area)
+// 1. GET /all: Consumer Catalog (location-aware & shop-aware with infinite scroll pagination)
 router.get('/all', async (req, res) => {
   const area_name = (req.query.area_name as string) || (req.query.area as string);
   const shop_id = (req.query.shop_id as string) || (req.query.shopId as string);
-  const { city, category, secondary, q, limit, deals, pincode, raw, group } = req.query;
-  const limitVal = parseInt(limit as string) || 100;
+  const { city, category, secondary, q, limit, deals, pincode, raw, group, page, offset } = req.query;
+  const limitVal = parseInt(limit as string) || 30;
+  const pageVal = Math.max(1, parseInt(page as string) || 1);
+  const offsetVal = offset !== undefined ? parseInt(offset as string) : (pageVal - 1) * limitVal;
   const dealsOnly = deals === '1' || deals === 'true';
   const shouldGroup = raw !== 'true' && group !== 'false';
 
   const applyDealsFilter = (products: any[]) => {
+    let processed: any[] = [];
     if (shouldGroup) {
-      return groupProductsByFamily(products, dealsOnly, limitVal);
+      processed = groupProductsByFamily(products, dealsOnly);
+    } else if (!dealsOnly) {
+      processed = products;
+    } else {
+      processed = products
+        .filter(
+          (p) =>
+            (p.discount_percent && p.discount_percent > 0) ||
+            p.featured ||
+            p.todays_deal ||
+            p.best_seller ||
+            (parseFloat(p.mrp) > parseFloat(p.price)),
+        )
+        .sort((a, b) => {
+          const da = a.discount_percent || 0;
+          const db = b.discount_percent || 0;
+          return db - da;
+        });
     }
-    if (!dealsOnly) return products.slice(0, limitVal);
-    return products
-      .filter(
-        (p) =>
-          (p.discount_percent && p.discount_percent > 0) ||
-          p.featured ||
-          p.todays_deal ||
-          p.best_seller ||
-          (parseFloat(p.mrp) > parseFloat(p.price)),
-      )
-      .sort((a, b) => {
-        const da = a.discount_percent || 0;
-        const db = b.discount_percent || 0;
-        return db - da;
-      })
-      .slice(0, limitVal);
+
+    const totalCount = processed.length;
+    const paged = processed.slice(offsetVal, offsetVal + limitVal);
+    // If offset + limit is within totalCount OR a full page was returned, there are more products to scroll
+    const hasMore = offsetVal + limitVal < totalCount || paged.length === limitVal;
+
+    return {
+      products: paged,
+      totalCount,
+      hasMore,
+    };
   };
 
   try {
@@ -251,15 +269,22 @@ router.get('/all', async (req, res) => {
       secondary: secondary as string | undefined,
       q: q as string | undefined,
       limit: limitVal,
+      page: pageVal,
+      offset: offsetVal,
     });
 
-    const products = mapProductsMediaForClient(applyDealsFilter(catalog.products), req);
+    const filterResult = applyDealsFilter(catalog.products);
+    const products = mapProductsMediaForClient(filterResult.products, req);
 
     return res.json({
       success: true,
       products,
       shop_id: catalog.shopId,
       shop_name: catalog.shopName,
+      page: pageVal,
+      limit: limitVal,
+      total_count: filterResult.totalCount,
+      has_more: filterResult.hasMore,
     });
 
   } catch (error: any) {
@@ -353,12 +378,14 @@ router.get('/detail/:productId', async (req, res) => {
   }
 });
 
-// 1.2 GET /search: Search Consumer Catalog (location-aware & shop-aware)
+// 1.2 GET /search: Search Consumer Catalog (location-aware & shop-aware with infinite scroll)
 router.get('/search', async (req, res) => {
   const area_name = (req.query.area_name as string) || (req.query.area as string);
   const shop_id = (req.query.shop_id as string) || (req.query.shopId as string);
-  const { q, category, limit, city, pincode } = req.query;
-  const limitVal = parseInt(limit as string) || 50;
+  const { q, category, limit, city, pincode, page, offset } = req.query;
+  const limitVal = parseInt(limit as string) || 30;
+  const pageVal = Math.max(1, parseInt(page as string) || 1);
+  const offsetVal = offset !== undefined ? parseInt(offset as string) : (pageVal - 1) * limitVal;
 
   try {
     const { fetchProductsForLocation } = require('../services/shopCatalog');
@@ -370,18 +397,26 @@ router.get('/search', async (req, res) => {
       category: category as string | undefined,
       q: q as string | undefined,
       limit: limitVal,
+      page: pageVal,
+      offset: offsetVal,
     });
 
-    const products = mapProductsMediaForClient(
-      groupProductsByFamily(catalog.products, false, limitVal),
-      req,
-    );
+    const grouped = groupProductsByFamily(catalog.products, false);
+    const totalCount = grouped.length;
+    const paged = grouped.slice(offsetVal, offsetVal + limitVal);
+    const hasMore = offsetVal + limitVal < totalCount;
+
+    const products = mapProductsMediaForClient(paged, req);
 
     return res.json({
       success: true,
       products,
       shop_id: catalog.shopId,
       shop_name: catalog.shopName,
+      page: pageVal,
+      limit: limitVal,
+      total_count: totalCount,
+      has_more: hasMore,
     });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message || 'Server error' });

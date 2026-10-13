@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 import {
   parseGroceryTextWithAI,
   parseGroceryImageWithVision,
@@ -14,10 +16,10 @@ import {
 
 const router = Router();
 
-// In-memory upload storage for image OCR processing
+// In-memory upload storage for image OCR processing (up to 25MB)
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max image size
+  limits: { fileSize: 25 * 1024 * 1024 },
 });
 
 /**
@@ -69,44 +71,78 @@ router.post('/parse-text-list', async (req: Request, res: Response) => {
  * POST /api/ai/ocr-list
  * Accepts image of handwritten / printed paper list -> returns matched cart products
  */
-router.post('/ocr-list', upload.single('image'), async (req: Request, res: Response) => {
-  try {
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please upload a valid image file under the field name "image".',
-      });
-    }
-
-    const city = req.body.city;
-    const mimeType = req.file.mimetype || 'image/jpeg';
-
-    // 1. Extract items from image using Vision AI
-    const extractedItems = await parseGroceryImageWithVision(req.file.buffer, mimeType);
-
-    if (extractedItems.length === 0) {
-      return res.status(200).json({
-        success: true,
-        total_items_detected: 0,
-        matched_items: [],
-        unmatched_items: [],
-        message: 'Could not detect any grocery items from the image. Please try a clearer photo.',
-      });
-    }
-
-    // 2. Match entities against database products
-    const result = await matchItemsToCatalog(extractedItems, city);
-
-    return res.status(200).json(result);
-  } catch (error: any) {
-    console.error('[AI Router] Error processing image OCR:', error?.message || error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to scan grocery list image.',
-      error: error?.message || 'Vision model error',
+router.post(
+  '/ocr-list',
+  (req: Request, res: Response, next: any) => {
+    upload.single('image')(req, res, (err: any) => {
+      if (err) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            success: false,
+            message: 'Image size exceeds maximum 25MB limit. Please upload a smaller photo.',
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          message: err.message || 'Image upload failed',
+        });
+      }
+      next();
     });
+  },
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please upload a valid image file under the field name "image".',
+        });
+      }
+
+      const city = req.body.city;
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      const sizeMB = (req.file.buffer.length / (1024 * 1024)).toFixed(2);
+
+      const logPath = path.join(__dirname, '../../ai_ocr.log');
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] OCR Request: size=${sizeMB}MB, mime=${mimeType}, originalName=${req.file.originalname}\n`);
+
+      // 1. Extract items from image using Vision AI
+      const extractedItems = await parseGroceryImageWithVision(req.file.buffer, mimeType);
+
+      if (extractedItems.length === 0) {
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] OCR Result: 0 items detected\n`);
+        return res.status(200).json({
+          success: true,
+          total_items_detected: 0,
+          matched_items: [],
+          unmatched_items: [],
+          estimated_total_mrp: 0,
+          estimated_total_price: 0,
+          estimated_savings: 0,
+          message: 'Could not detect any grocery items from the image. Please try a clearer photo with legible writing.',
+        });
+      }
+
+      // 2. Match entities against database products
+      const result = await matchItemsToCatalog(extractedItems, city);
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] OCR Result: ${extractedItems.length} items detected, ${result.matched_items.length} matched\n`);
+
+      return res.status(200).json(result);
+    } catch (error: any) {
+      const errLog = `[${new Date().toISOString()}] OCR ERROR: ${error?.stack || error?.message || error}\n`;
+      console.error('[AI Router] Error processing image OCR:', error?.message || error);
+      try {
+        const logPath = path.join(__dirname, '../../ai_ocr.log');
+        fs.appendFileSync(logPath, errLog);
+      } catch {}
+      return res.status(500).json({
+        success: false,
+        message: error?.message || 'Failed to scan grocery list image.',
+        error: error?.message || 'Vision model error',
+      });
+    }
   }
-});
+);
 
 /**
  * POST /api/ai/assistant/chat

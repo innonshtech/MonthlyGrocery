@@ -8,6 +8,8 @@ export type CatalogQuery = {
   secondary?: string;
   q?: string;
   limit?: number;
+  page?: number;
+  offset?: number;
   city?: string;
 };
 
@@ -93,7 +95,9 @@ export async function fetchProductsForShop(
   query: CatalogQuery = {},
 ): Promise<Record<string, any>[]> {
   const db = readDb();
-  const limitVal = query.limit ?? 100;
+  const limitVal = query.limit ?? 50;
+  const pageVal = query.page ?? 1;
+  const offsetVal = query.offset ?? (pageVal - 1) * limitVal;
 
   // 1. Get all shop_products overrides explicitly configured for this specific shop
   const shopOverrides =
@@ -128,14 +132,22 @@ export async function fetchProductsForShop(
     .from('products')
     .select('*');
 
-  if (query.category) {
-    supaQuery = supaQuery.eq('primary_category', query.category);
+  const rawCat = (query.category || '').trim();
+  const isAllCategory =
+    !rawCat || ['all', 'all products', 'all_products'].includes(rawCat.toLowerCase());
+
+  if (!isAllCategory) {
+    supaQuery = supaQuery.eq('primary_category', rawCat);
   }
   if (query.secondary) {
     supaQuery = supaQuery.eq('secondary_category', query.secondary);
   }
 
-  const { data: masterProducts, error } = await supaQuery.limit(Math.max(limitVal, 300));
+  // Dynamic fetch limit based on current pagination depth so infinite scrolling works seamlessly.
+  // Each product family has ~1.5 - 2.5 SKU variants; we scale the fetch limit with headroom
+  // so that grouping by family doesn't starve the requested offset and page limit.
+  const neededLimit = Math.max((offsetVal + limitVal) * 3 + 200, 1000);
+  const { data: masterProducts, error } = await supaQuery.limit(neededLimit);
   if (error) {
     throw new Error(error.message);
   }
@@ -159,10 +171,10 @@ export async function fetchProductsForShop(
 
   if (query.q && query.q.trim()) {
     const ranked = searchProductsWithIntelligence(out, query.q.trim(), query.category, query.secondary);
-    return ranked.slice(0, limitVal);
+    return ranked;
   }
 
-  return out.slice(0, limitVal);
+  return out;
 }
 
 /** Resolve area/shopId → shop, then return that shop's catalog. */

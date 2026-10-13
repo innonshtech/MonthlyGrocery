@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { query } from '../config/db';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 
 let genAI: GoogleGenerativeAI | null = null;
 if (GEMINI_API_KEY) {
@@ -54,17 +54,47 @@ export interface ParseListResult {
 }
 
 /**
- * Normalizes common Indian colloquial units
+ * Common Hindi/Regional staple names to English catalog search mapping
  */
-export function normalizeUnit(rawUnit: string = ''): string {
-  const u = rawUnit.toLowerCase().trim();
-  if (['kg', 'kilo', 'kilogram', 'kgs', 'kilos'].includes(u)) return 'kg';
-  if (['g', 'gm', 'gms', 'gram', 'grams'].includes(u)) return 'g';
-  if (['l', 'lt', 'ltr', 'liter', 'litre', 'litres', 'liters'].includes(u)) return 'l';
+export const HINDI_TO_ENGLISH_MAP: Record<string, string> = {
+  'आटा': 'atta',
+  'चावल': 'rice',
+  'तेल': 'oil',
+  'शक्कर': 'sugar',
+  'चीनी': 'sugar',
+  'नमक': 'salt',
+  'दाल': 'dal',
+  'तुवर दाल': 'toor dal',
+  'तूर दाल': 'toor dal',
+  'मूंग दाल': 'moong dal',
+  'हल्दी': 'turmeric',
+  'मिर्च': 'chilli',
+  'मिर्ची': 'chilli',
+  'धनिया': 'coriander',
+  'जीरा': 'cumin',
+  'दूध': 'milk',
+  'चाय': 'tea',
+  'साबुन': 'soap',
+  'शैम्पू': 'shampoo',
+  'घी': 'ghee',
+  'मैदा': 'maida',
+  'सूजी': 'rava sooji',
+  'बेसन': 'besan',
+  'पोहा': 'poha',
+};
+
+/**
+ * Normalizes common Indian and Hindi colloquial units (100% null-safe)
+ */
+export function normalizeUnit(rawUnit: any): string {
+  const u = String(rawUnit || '').toLowerCase().trim();
+  if (['kg', 'kilo', 'kilogram', 'kgs', 'kilos', 'किलो', 'कीलो'].includes(u)) return 'kg';
+  if (['g', 'gm', 'gms', 'gram', 'grams', 'ग्राम'].includes(u)) return 'g';
+  if (['l', 'lt', 'ltr', 'liter', 'litre', 'litres', 'liters', 'लीटर'].includes(u)) return 'l';
   if (['ml', 'milli'].includes(u)) return 'ml';
-  if (['packet', 'pkt', 'packets', 'theli', 'pouch', 'pouches'].includes(u)) return 'pack';
-  if (['piece', 'pc', 'pcs', 'bottle', 'can', 'dabba'].includes(u)) return 'pc';
-  if (['pao', 'pav'].includes(u)) return '250g';
+  if (['packet', 'pkt', 'packets', 'theli', 'pouch', 'pouches', 'पैकेट', 'थैली'].includes(u)) return 'pack';
+  if (['piece', 'pc', 'pcs', 'bottle', 'can', 'dabba', 'नग', 'डिब्बा'].includes(u)) return 'pc';
+  if (['pao', 'pav', 'पाव'].includes(u)) return '250g';
   return u || 'pc';
 }
 
@@ -153,12 +183,12 @@ ${rawText}`;
       const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(cleaned);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(item => ({
-          raw_text: item.raw_text || item.item_name,
-          item_name: item.item_name || 'Grocery Item',
-          brand: item.brand || null,
-          quantity: Number(item.quantity) || 1,
-          unit: normalizeUnit(item.unit),
+        return parsed.map((item: any) => ({
+          raw_text: String(item?.raw_text || item?.item_name || 'Grocery Item').trim(),
+          item_name: String(item?.item_name || 'Grocery Item').trim(),
+          brand: item?.brand ? String(item.brand).trim() : null,
+          quantity: Number(item?.quantity) > 0 ? Number(item.quantity) : 1,
+          unit: normalizeUnit(item?.unit),
         }));
       }
     } catch (err: any) {
@@ -182,13 +212,14 @@ export async function parseGroceryImageWithVision(imageBuffer: Buffer, mimeType:
     const prompt = `You are an expert Indian handwritten grocery list reader.
 Carefully examine this handwritten or printed grocery list image.
 Transcribe and extract every grocery item, brand, quantity, and unit.
-Recognize Indian handwriting, abbreviations, English, and Hinglish.
+Recognize Indian handwriting, abbreviations, English, and Hindi (Devanagari or Hinglish).
+If an item is written in Hindi (e.g. आटा, चावल, तेल, दाल, शक्कर, नमक, हल्दी), keep the exact text in 'raw_text' and write the standard English/romanized grocery name in 'item_name' (e.g. Atta, Rice, Cooking Oil, Toor Dal, Sugar, Salt, Turmeric) so it accurately matches store inventory.
 
 Respond ONLY with a valid JSON array matching this exact schema:
 [
   {
     "raw_text": "Exact text read from image",
-    "item_name": "Standard grocery name (e.g. Atta, Rice, Sugar, Moong Dal)",
+    "item_name": "Standard grocery name in English (e.g. Atta, Rice, Sugar, Moong Dal, Sunflower Oil)",
     "brand": "Brand name if visible (e.g. Aashirvaad, Tata, Fortune) or null",
     "quantity": 1,
     "unit": "kg|g|l|ml|pack|pc"
@@ -204,16 +235,29 @@ Respond ONLY with a valid JSON array matching this exact schema:
 
     const result = await model.generateContent([prompt, imagePart]);
     const text = result.response.text().trim();
-    const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(cleaned);
+    
+    let parsed: any[] = [];
+    try {
+      const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      const start = text.indexOf('[');
+      const end = text.lastIndexOf(']');
+      if (start !== -1 && end !== -1 && end > start) {
+        parsed = JSON.parse(text.substring(start, end + 1));
+      } else {
+        console.warn('[AI Service] No valid JSON array detected in OCR response:', text);
+        return [];
+      }
+    }
 
     if (Array.isArray(parsed)) {
-      return parsed.map(item => ({
-        raw_text: item.raw_text || item.item_name,
-        item_name: item.item_name || 'Grocery Item',
-        brand: item.brand || null,
-        quantity: Number(item.quantity) || 1,
-        unit: normalizeUnit(item.unit),
+      return parsed.map((item: any) => ({
+        raw_text: String(item?.raw_text || item?.item_name || 'Grocery Item').trim(),
+        item_name: String(item?.item_name || 'Grocery Item').trim(),
+        brand: item?.brand ? String(item.brand).trim() : null,
+        quantity: Number(item?.quantity) > 0 ? Number(item.quantity) : 1,
+        unit: normalizeUnit(item?.unit),
       }));
     }
     return [];
@@ -246,23 +290,37 @@ export async function matchItemsToCatalog(
   );
 
   for (const item of extractedItems) {
+    const rawItemName = String(item?.item_name || '').toLowerCase().trim();
+    const rawBrand = String(item?.brand || '').toLowerCase().trim();
+    const rawText = String(item?.raw_text || '').toLowerCase().trim();
+
+    // Look up Hindi to English translation if available
+    let englishSynonym = '';
+    for (const [hindi, eng] of Object.entries(HINDI_TO_ENGLISH_MAP)) {
+      if (rawItemName.includes(hindi) || rawText.includes(hindi)) {
+        englishSynonym = eng;
+        break;
+      }
+    }
+
     const searchTerms = [
-      item.brand,
-      item.item_name,
-    ].filter(Boolean).join(' ').toLowerCase();
+      rawBrand,
+      rawItemName,
+      englishSynonym,
+    ].filter(Boolean).join(' ');
 
     const words = searchTerms.split(/\s+/).filter(w => w.length > 1);
 
     // Score all candidate products
     const scoredProducts = allProducts.map(prod => {
-      const prodName = (prod.name || '').toLowerCase();
-      const prodBrand = (prod.brand || '').toLowerCase();
-      const prodCategory = (prod.primary_category || '').toLowerCase();
+      const prodName = String(prod.name || '').toLowerCase();
+      const prodBrand = String(prod.brand || '').toLowerCase();
+      const prodCategory = String(prod.primary_category || '').toLowerCase();
 
       let score = 0;
 
       // Brand exact match
-      if (item.brand && prodBrand.includes(item.brand.toLowerCase())) {
+      if (rawBrand && prodBrand.includes(rawBrand)) {
         score += 40;
       }
 
@@ -272,8 +330,11 @@ export async function matchItemsToCatalog(
         if (prodCategory.includes(word)) score += 10;
       }
 
-      // Exact item name match in product name
-      if (prodName.includes(item.item_name.toLowerCase())) {
+      // Exact item name or synonym match in product name
+      if (rawItemName && prodName.includes(rawItemName)) {
+        score += 30;
+      }
+      if (englishSynonym && prodName.includes(englishSynonym)) {
         score += 30;
       }
 
