@@ -18,6 +18,7 @@ import { appendLocationParams } from '../../utils/locationParams';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
 import { HomeSearchIcon, HomeMicIcon, HomeArrowRightIcon } from '../../components/home/HomeFigmaIcons';
+import { Camera, Bot, Sparkles } from 'lucide-react-native';
 import {
   fetchSearchConfigWithStatus,
   fetchPopularCategoryNames,
@@ -220,18 +221,19 @@ export default function SearchScreen({ navigation }: any) {
           {/* AI Grocery List Scanner Banner */}
           <TouchableOpacity
             style={styles.aiUploadBanner}
-            onPress={() => navigation.navigate('UploadGroceryList')}
+            onPress={() => navigation.navigate('UploadGroceryList', { initialTab: 'image' })}
             activeOpacity={0.85}
           >
             <View style={styles.aiUploadBannerContent}>
               <View style={styles.aiUploadBadge}>
-                <Text style={styles.aiUploadBadgeText}>✨ AI Smart Scan</Text>
+                <Sparkles size={11} color="#059669" style={{ marginRight: 4 }} />
+                <Text style={styles.aiUploadBadgeText}>AI Smart Scan</Text>
               </View>
               <Text style={styles.aiUploadTitle}>Have a written grocery list?</Text>
               <Text style={styles.aiUploadSubtitle}>Upload handwritten photo or paste text to auto-build cart.</Text>
             </View>
             <View style={styles.aiUploadIconCircle}>
-              <Text style={{ fontSize: 24 }}>📋</Text>
+              <Camera size={22} color="#059669" />
             </View>
           </TouchableOpacity>
 
@@ -243,13 +245,14 @@ export default function SearchScreen({ navigation }: any) {
           >
             <View style={styles.aiUploadBannerContent}>
               <View style={[styles.aiUploadBadge, { backgroundColor: '#EDE9FE' }]}>
-                <Text style={[styles.aiUploadBadgeText, { color: '#7C3AED' }]}>🤖 AI Assistant</Text>
+                <Sparkles size={11} color="#7C3AED" style={{ marginRight: 4 }} />
+                <Text style={[styles.aiUploadBadgeText, { color: '#7C3AED' }]}>AI Assistant</Text>
               </View>
               <Text style={[styles.aiUploadTitle, { color: '#4C1D95' }]}>Need meal or budget advice?</Text>
               <Text style={[styles.aiUploadSubtitle, { color: '#6D28D9' }]}>Chat with AI to plan this month's groceries.</Text>
             </View>
             <View style={[styles.aiUploadIconCircle, { borderColor: '#DDD6FE', backgroundColor: '#EDE9FE' }]}>
-              <Text style={{ fontSize: 22 }}>💬</Text>
+              <Bot size={22} color="#7C3AED" />
             </View>
           </TouchableOpacity>
 

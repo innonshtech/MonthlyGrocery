@@ -49,6 +49,15 @@ import { HomeCategoryEmojiIcon, getCategoryEmojiKind } from '../../components/ho
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import ShopPickerSlide from '../../components/ShopPickerSlide';
 import { NearbyShop } from '../../services/shopsApi';
+import {
+  Camera,
+  FileText,
+  Sparkles,
+  Bot,
+  Users,
+  RotateCcw,
+  BadgePercent,
+} from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 const H_PAD = 14;
@@ -566,11 +575,11 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                 <HomeSearchIcon size={20} color="#156C3E" />
                 <Text style={styles.searchPlaceholder}>{home?.search_placeholder || 'Search atta, rice, oil…'}</Text>
                 <TouchableOpacity
-                  onPress={(e) => { e.stopPropagation(); navigation.navigate('UploadGroceryList'); }}
+                  onPress={(e) => { e.stopPropagation(); navigation.navigate('UploadGroceryList', { initialTab: 'image' }); }}
                   activeOpacity={0.75}
                   style={styles.searchScanBtn}
                 >
-                  <Text style={{ fontSize: 13 }}>📷</Text>
+                  <Camera size={13} color="#156C3E" />
                   <Text style={styles.searchScanBtnText}>AI Scan</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
@@ -668,23 +677,40 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* ── AI Smart Grocery Hub Row (Scan List & AI Assistant) ── */}
+            {/* ── AI Smart Grocery Hub Grid (4 Dedicated Engines in One Tap) ── */}
             <View style={styles.aiRowWrapper}>
               <TouchableOpacity
                 style={styles.aiFeatureCard}
-                onPress={() => navigation.navigate('UploadGroceryList')}
+                onPress={() => navigation.navigate('UploadGroceryList', { initialTab: 'image' })}
                 activeOpacity={0.88}
               >
                 <View style={styles.aiCardTopRow}>
                   <View style={styles.aiBadgePill}>
                     <Text style={styles.aiBadgeText}>✨ VISION AI</Text>
                   </View>
-                  <Text style={{ fontSize: 20 }}>📸</Text>
+                  <Camera size={18} color="#059669" />
                 </View>
                 <Text style={styles.aiCardTitle}>Scan Paper List</Text>
-                <Text style={styles.aiCardSub} numberOfLines={2}>Photo slip or WhatsApp text to auto-build cart</Text>
+                <Text style={styles.aiCardSub} numberOfLines={2}>Photo slip to auto-build monthly cart</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={[styles.aiFeatureCard, styles.aiFeatureCardBlue]}
+                onPress={() => navigation.navigate('UploadGroceryList', { initialTab: 'text' })}
+                activeOpacity={0.88}
+              >
+                <View style={styles.aiCardTopRow}>
+                  <View style={[styles.aiBadgePill, styles.aiBadgePillBlue]}>
+                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextBlue]}>📋 SMART NLP</Text>
+                  </View>
+                  <FileText size={18} color="#0284C7" />
+                </View>
+                <Text style={[styles.aiCardTitle, styles.aiCardTitleBlue]}>WhatsApp List</Text>
+                <Text style={[styles.aiCardSub, styles.aiCardSubBlue]} numberOfLines={2}>Paste text notes to auto-match items</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.aiRowWrapper, { marginTop: 8 }]}>
               <TouchableOpacity
                 style={[styles.aiFeatureCard, styles.aiFeatureCardPurple]}
                 onPress={() => navigation.navigate('AIAssistantChat')}
@@ -692,12 +718,59 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
               >
                 <View style={styles.aiCardTopRow}>
                   <View style={[styles.aiBadgePill, styles.aiBadgePillPurple]}>
-                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextPurple]}>🤖 ASSISTANT</Text>
+                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextPurple]}>🤖 CHAT</Text>
                   </View>
-                  <Text style={{ fontSize: 20 }}>💬</Text>
+                  <Bot size={18} color="#7C3AED" />
                 </View>
                 <Text style={[styles.aiCardTitle, styles.aiCardTitlePurple]}>AI Grocery Chat</Text>
-                <Text style={[styles.aiCardSub, styles.aiCardSubPurple]} numberOfLines={2}>Budget planning & meal recipe suggestions</Text>
+                <Text style={[styles.aiCardSub, styles.aiCardSubPurple]} numberOfLines={2}>Budget planner & recipe suggestions</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.aiFeatureCard, styles.aiFeatureCardAmber]}
+                onPress={() => navigation.navigate('FamilyProfileSetup')}
+                activeOpacity={0.88}
+              >
+                <View style={styles.aiCardTopRow}>
+                  <View style={[styles.aiBadgePill, styles.aiBadgePillAmber]}>
+                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextAmber]}>👨‍👩‍👧‍👦 HOUSEHOLD</Text>
+                  </View>
+                  <Users size={18} color="#D97706" />
+                </View>
+                <Text style={[styles.aiCardTitle, styles.aiCardTitleAmber]}>Family Planner</Text>
+                <Text style={[styles.aiCardSub, styles.aiCardSubAmber]} numberOfLines={2}>Consumption basket by family size</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.aiRowWrapper, { marginTop: 8 }]}>
+              <TouchableOpacity
+                style={[styles.aiFeatureCard, styles.aiFeatureCardTeal]}
+                onPress={() => navigation.navigate('Cart')}
+                activeOpacity={0.88}
+              >
+                <View style={styles.aiCardTopRow}>
+                  <View style={[styles.aiBadgePill, styles.aiBadgePillTeal]}>
+                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextTeal]}>💰 ARBITRAGE</Text>
+                  </View>
+                  <BadgePercent size={18} color="#059669" />
+                </View>
+                <Text style={[styles.aiCardTitle, styles.aiCardTitleTeal]}>Smart Savings</Text>
+                <Text style={[styles.aiCardSub, styles.aiCardSubTeal]} numberOfLines={2}>Bulk pack upgrades & brand swaps</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.aiFeatureCard, styles.aiFeatureCardIndigo]}
+                onPress={() => navigation.navigate('OneClickCart')}
+                activeOpacity={0.88}
+              >
+                <View style={styles.aiCardTopRow}>
+                  <View style={[styles.aiBadgePill, styles.aiBadgePillIndigo]}>
+                    <Text style={[styles.aiBadgeText, styles.aiBadgeTextIndigo]}>⚡ PREDICTIVE</Text>
+                  </View>
+                  <RotateCcw size={18} color="#4F46E5" />
+                </View>
+                <Text style={[styles.aiCardTitle, styles.aiCardTitleIndigo]}>Predictive Refills</Text>
+                <Text style={[styles.aiCardSub, styles.aiCardSubIndigo]} numberOfLines={2}>Household replenishment schedule</Text>
               </TouchableOpacity>
             </View>
 
@@ -1528,5 +1601,73 @@ const styles = StyleSheet.create({
   },
   aiCardSubPurple: {
     color: '#6B21A8',
+  },
+  aiFeatureCardBlue: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#BAE6FD',
+    shadowColor: '#0284C7',
+  },
+  aiBadgePillBlue: {
+    backgroundColor: '#E0F2FE',
+  },
+  aiBadgeTextBlue: {
+    color: '#0369A1',
+  },
+  aiCardTitleBlue: {
+    color: '#0C4A6E',
+  },
+  aiCardSubBlue: {
+    color: '#0369A1',
+  },
+  aiFeatureCardAmber: {
+    backgroundColor: '#FFFDF5',
+    borderColor: '#FDE68A',
+    shadowColor: '#D97706',
+  },
+  aiBadgePillAmber: {
+    backgroundColor: '#FEF3C7',
+  },
+  aiBadgeTextAmber: {
+    color: '#B45309',
+  },
+  aiCardTitleAmber: {
+    color: '#78350F',
+  },
+  aiCardSubAmber: {
+    color: '#B45309',
+  },
+  aiFeatureCardTeal: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#A7F3D0',
+    shadowColor: '#059669',
+  },
+  aiBadgePillTeal: {
+    backgroundColor: '#DCFCE7',
+  },
+  aiBadgeTextTeal: {
+    color: '#047857',
+  },
+  aiCardTitleTeal: {
+    color: '#064E3B',
+  },
+  aiCardSubTeal: {
+    color: '#047857',
+  },
+  aiFeatureCardIndigo: {
+    backgroundColor: '#F5F7FF',
+    borderColor: '#C7D2FE',
+    shadowColor: '#4F46E5',
+  },
+  aiBadgePillIndigo: {
+    backgroundColor: '#E0E7FF',
+  },
+  aiBadgeTextIndigo: {
+    color: '#4338CA',
+  },
+  aiCardTitleIndigo: {
+    color: '#312E81',
+  },
+  aiCardSubIndigo: {
+    color: '#4338CA',
   },
 });

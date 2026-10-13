@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -39,13 +39,20 @@ import {
   Minus,
 } from 'lucide-react-native';
 
-export default function UploadGroceryListScreen({ navigation }: any) {
+export default function UploadGroceryListScreen({ navigation, route }: any) {
   const insets = useSafeAreaInsets();
   const { city } = useAuth();
   const { addToCart } = useCart();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'text' | 'image'>('text');
+  const initialMode = route?.params?.initialTab === 'image' || route?.params?.mode === 'image' ? 'image' : 'text';
+  const [activeTab, setActiveTab] = useState<'text' | 'image'>(initialMode);
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setActiveTab(route.params.initialTab === 'image' ? 'image' : 'text');
+    }
+  }, [route?.params?.initialTab]);
   const [inputText, setInputText] = useState('');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [selectedImageMime, setSelectedImageMime] = useState<string>('image/jpeg');

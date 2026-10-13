@@ -26,6 +26,16 @@ import {
   HubChevronIcon,
 } from '../../components/monthlyGrocery/MonthlyGroceryHubIcons';
 import {
+  Camera,
+  FileText,
+  Sparkles,
+  Users,
+  BadgePercent,
+  RotateCcw,
+  Bot,
+  ChevronRight,
+} from 'lucide-react-native';
+import {
   fetchMonthlyGroceryHubScreenConfig,
   fetchMonthlyHubSummary,
   formatHubTemplate,
@@ -270,37 +280,73 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
             <HubChevronIcon size={20} />
           </TouchableOpacity>
 
+          {/* ── AI SMART GROCERY SUITE (6 Dedicated Engines) ── */}
+          <View style={styles.sectionHeaderRow}>
+            <View style={styles.sectionBadge}>
+              <Sparkles size={13} color="#059669" />
+              <Text style={styles.sectionBadgeText}>AI SMART GROCERY SUITE</Text>
+            </View>
+            <Text style={styles.sectionSubtext}>6 Intelligent Engines</Text>
+          </View>
+
+          {/* AI Feature 1: Scan Paper Grocery List (Vision OCR) */}
           <TouchableOpacity
-            style={[styles.actionCard, { borderColor: COLORS.green600, backgroundColor: '#FAFCFA' }]}
-            onPress={() => navigation.navigate('UploadGroceryList')}
+            style={[styles.actionCard, { borderColor: '#10B981', backgroundColor: '#F0FDF4' }]}
+            onPress={() => navigation.navigate('UploadGroceryList', { initialTab: 'image' })}
             activeOpacity={0.85}
           >
-            <View style={[styles.iconCircle, { backgroundColor: COLORS.green100 }]}>
-              <Text style={{ fontSize: 20 }}>📋</Text>
+            <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+              <Camera size={22} color="#059669" />
             </View>
             <View style={styles.cardInfo}>
               <View style={styles.cardTitleRow}>
                 <Text style={[styles.cardTitle, styles.cardTitleInline]}>
-                  Upload / Scan Grocery List
+                  Scan Paper Grocery List
                 </Text>
-                <View style={[styles.soonBadge, { backgroundColor: '#E8F5E9' }]}>
-                  <Text style={[styles.soonBadgeText, { color: COLORS.green700, fontWeight: '700' }]}>
-                    ✨ AI Vision
+                <View style={[styles.soonBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#059669', fontWeight: '700' }]}>
+                    Vision OCR
                   </Text>
                 </View>
               </View>
-              <Text style={styles.cardSub}>Photo slip or paste WhatsApp text to auto-build cart</Text>
+              <Text style={styles.cardSub}>Photograph handwritten paper slips to auto-build cart</Text>
             </View>
-            <HubChevronIcon size={20} />
+            <ChevronRight size={18} color="#94A3B8" />
           </TouchableOpacity>
 
+          {/* AI Feature 2: Paste WhatsApp / Text Notes List (Smart NLP Parser) */}
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: '#0EA5E9', backgroundColor: '#F0F9FF' }]}
+            onPress={() => navigation.navigate('UploadGroceryList', { initialTab: 'text' })}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#E0F2FE' }]}>
+              <FileText size={22} color="#0284C7" />
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  Paste WhatsApp / Text List
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: '#E0F2FE' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#0284C7', fontWeight: '700' }]}>
+                    Smart NLP
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Paste copied notes or WhatsApp lists to auto-match items</Text>
+            </View>
+            <ChevronRight size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* AI Feature 3: AI Grocery Assistant & Recipe Chat */}
           <TouchableOpacity
             style={[styles.actionCard, { borderColor: '#8B5CF6', backgroundColor: '#FAF8FF' }]}
             onPress={() => navigation.navigate('AIAssistantChat')}
             activeOpacity={0.85}
           >
             <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
-              <Text style={{ fontSize: 20 }}>🤖</Text>
+              <Bot size={22} color="#7C3AED" />
             </View>
             <View style={styles.cardInfo}>
               <View style={styles.cardTitleRow}>
@@ -309,13 +355,88 @@ export default function MyMonthlyGroceryHub({ navigation }: any) {
                 </Text>
                 <View style={[styles.soonBadge, { backgroundColor: '#EDE9FE' }]}>
                   <Text style={[styles.soonBadgeText, { color: '#7C3AED', fontWeight: '700' }]}>
-                    Smart Chat
+                    Gemini Chat
                   </Text>
                 </View>
               </View>
-              <Text style={styles.cardSub}>Plan budget, get recipes & meal suggestions in 1 tap</Text>
+              <Text style={styles.cardSub}>Conversational budget planner, recipes & diet solver</Text>
             </View>
-            <HubChevronIcon size={20} />
+            <ChevronRight size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* AI Feature 4: Family Monthly Planner & Consumption Basket */}
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: '#F59E0B', backgroundColor: '#FFFDF5' }]}
+            onPress={() => navigation.navigate('FamilyProfileSetup')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+              <Users size={22} color="#D97706" />
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  Family Monthly Planner
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#D97706', fontWeight: '700' }]}>
+                    Household AI
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Set family size & diet to auto-generate monthly basket</Text>
+            </View>
+            <ChevronRight size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* AI Feature 5: Smart Cart Savings & Bulk Pack Arbitrage */}
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: '#10B981', backgroundColor: '#F0FDF4' }]}
+            onPress={() => navigation.navigate('Cart')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+              <BadgePercent size={22} color="#059669" />
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  Smart Savings & Pack Swaps
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: '#DCFCE7' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#059669', fontWeight: '700' }]}>
+                    Arbitrage Engine
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Bulk pack upgrades & brand swaps to maximize savings</Text>
+            </View>
+            <ChevronRight size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* AI Feature 6: Predictive Refills & 1-Click Smart Cart */}
+          <TouchableOpacity
+            style={[styles.actionCard, { borderColor: '#6366F1', backgroundColor: '#F5F7FF' }]}
+            onPress={() => navigation.navigate('OneClickCart')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#E0E7FF' }]}>
+              <RotateCcw size={22} color="#4F46E5" />
+            </View>
+            <View style={styles.cardInfo}>
+              <View style={styles.cardTitleRow}>
+                <Text style={[styles.cardTitle, styles.cardTitleInline]}>
+                  Predictive Monthly Refills
+                </Text>
+                <View style={[styles.soonBadge, { backgroundColor: '#E0E7FF' }]}>
+                  <Text style={[styles.soonBadgeText, { color: '#4F46E5', fontWeight: '700' }]}>
+                    Predictive Cycle
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.cardSub}>Smart replenishment schedule based on household habit</Text>
+            </View>
+            <ChevronRight size={18} color="#94A3B8" />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -498,5 +619,35 @@ const styles = StyleSheet.create({
     ...FONTS.muktaBold,
     fontSize: 14,
     color: '#FFFFFF',
+  },
+  sectionHeaderRow: {
+    marginTop: 10,
+    marginBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 2,
+  },
+  sectionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  sectionBadgeText: {
+    ...FONTS.muktaBold,
+    fontSize: 10.5,
+    color: '#065F46',
+    letterSpacing: 0.6,
+  },
+  sectionSubtext: {
+    ...FONTS.muktaMedium,
+    fontSize: 11,
+    color: '#64748B',
   },
 });
