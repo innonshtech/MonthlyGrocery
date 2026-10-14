@@ -17,6 +17,7 @@ import { API_BASE } from '../../config/api';
 import { appendLocationParams } from '../../utils/locationParams';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
+import { ProductGridSkeleton } from '../../components/Skeleton';
 import { HomeSearchIcon, HomeMicIcon, HomeArrowRightIcon } from '../../components/home/HomeFigmaIcons';
 import {
   fetchSearchConfigWithStatus,
@@ -238,9 +239,7 @@ export default function SearchScreen({ navigation }: any) {
           )}
         </View>
       ) : loading && products.length === 0 ? (
-        <View style={styles.center}>
-          <AppLoader message="Searching..." />
-        </View>
+        <ProductGridSkeleton count={6} />
       ) : (
         <FlatList
           data={hasDeliveryArea ? products : []}

@@ -15,6 +15,7 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
+import { CartSkeleton } from '../../components/Skeleton';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
@@ -219,9 +220,7 @@ export default function CartScreen({
     return (
       <SafeAreaView style={styles.safe} edges={safeEdges}>
         <StatusBar barStyle="dark-content" />
-        <View style={styles.centeredState}>
-          <AppLoader message="Loading cart..." />
-        </View>
+        <CartSkeleton />
       </SafeAreaView>
     );
   }

@@ -14,6 +14,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
 import AppLoader from '../../components/AppLoader';
+import { CategoryGridSkeleton } from '../../components/Skeleton';
 import AppIcon from '../../components/AppIcon';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import {
@@ -294,9 +295,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       </View>
 
       {categoriesLoading ? (
-        <View style={styles.centeredState}>
-          <AppLoader message="Loading categories..." />
-        </View>
+        <CategoryGridSkeleton />
       ) : categoriesError ? (
         <View style={styles.centeredState}>
           <Text style={styles.errorText}>{loadErrorMessage}</Text>

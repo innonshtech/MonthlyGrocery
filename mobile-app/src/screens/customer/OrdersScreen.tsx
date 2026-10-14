@@ -18,6 +18,7 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import { COLORS, FONTS } from '../../constants/theme';
 import AppLoader from '../../components/AppLoader';
+import { OrderListSkeleton } from '../../components/Skeleton';
 import AppIcon from '../../components/AppIcon';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import {
@@ -282,9 +283,7 @@ export default function OrdersScreen({
   if (!screenConfig) {
     return (
       <SafeAreaView style={styles.safe} edges={['left', 'right']}>
-        <View style={styles.centered}>
-          <AppLoader message="Loading orders..." />
-        </View>
+        <OrderListSkeleton />
       </SafeAreaView>
     );
   }

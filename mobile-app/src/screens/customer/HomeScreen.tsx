@@ -44,6 +44,7 @@ import {
 import { fetchCategoryList } from '../../services/categoriesApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
 import AppLoader from '../../components/AppLoader';
+import { CategoryRailSkeleton, ProductRailSkeleton } from '../../components/Skeleton';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { HomeCategoryEmojiIcon, getCategoryEmojiKind } from '../../components/home/HomeEmojiIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
@@ -705,7 +706,9 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-              ) : null}
+              ) : (
+                <CategoryRailSkeleton />
+              )}
 
         <View style={[styles.sectionHeader, { marginTop: 6 }]}>
           <Text style={styles.sectionTitle}>{home?.deals_title}</Text>
@@ -726,7 +729,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             <Text style={styles.locationHintCta}>{home?.choose_location_label}</Text>
           </TouchableOpacity>
         ) : loading ? (
-          <AppLoader message={home?.loading_deals_label || 'Loading deals...'} />
+          <ProductRailSkeleton />
         ) : products.length > 0 ? (
           <ScrollView
             horizontal

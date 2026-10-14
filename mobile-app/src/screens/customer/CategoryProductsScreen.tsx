@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart, Product } from '../../context/CartContext';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
+import { ProductGridSkeleton } from '../../components/Skeleton';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import BrowseProductCard from '../../components/browse/BrowseProductCard';
 import {
@@ -311,9 +312,7 @@ export default function CategoryProductsScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
           ) : loading ? (
-            <View style={styles.centeredState}>
-              <AppLoader message="Loading items..." />
-            </View>
+            <ProductGridSkeleton count={6} />
           ) : productsError ? (
             <View style={styles.centeredState}>
               <Text style={styles.errorText}>{screenConfig?.load_error_message}</Text>
