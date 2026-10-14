@@ -125,6 +125,7 @@ export default function LoginPage() {
                 <span className="text-slate-500 font-bold mr-1.5 text-sm">+91</span>
                 <input
                   type="tel"
+                  placeholder="9876543210"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value.replace(/[^\d]/g, '').slice(0, 10))}
                   required

@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AppIcon from '../components/AppIcon';
 import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
@@ -77,15 +76,6 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
-
-  const handlePhotoPress = () => {
-    if (config?.photo_unavailable_message) {
-      showToast({
-        type: 'info',
-        message: config.photo_unavailable_message,
-      });
-    }
-  };
 
   const handleSave = async () => {
     if (!config) return;
@@ -206,19 +196,6 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
             <OnboardingBackButton onPress={handleBack} />
 
             <View style={styles.avatarSection}>
-              <TouchableOpacity
-                onPress={handlePhotoPress}
-                activeOpacity={0.85}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <View style={styles.avatarCircle}>
-                  <AppIcon name="user" size={44} color={COLORS.green700} />
-                  <View style={styles.cameraBadge}>
-                    <Text style={styles.cameraIcon}>📷</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>{config.title}</Text>
                 <Text style={styles.subtitle}>{config.subtitle}</Text>
@@ -303,35 +280,9 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: 14,
+    marginBottom: 28,
   },
-  avatarCircle: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: COLORS.green50,
-    borderWidth: 2,
-    borderColor: COLORS.green100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    position: 'relative',
-  },
-  cameraBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraIcon: { fontSize: 13 },
   headerBlock: {
     alignItems: 'center',
     gap: 6,
