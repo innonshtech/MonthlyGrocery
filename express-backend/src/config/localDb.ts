@@ -1036,11 +1036,11 @@ const defaultDb: LocalDbSchema = {
         center_emoji: '🍚',
         center_size: 88,
         emoji_chips: [
-          { emoji: '🫒', size: 70, left: 74, top: 116 },
-          { emoji: '🥬', size: 78, left: 258, top: 104 },
+          { emoji: '🌾', size: 70, left: 74, top: 116 },
+          { emoji: '🧈', size: 78, left: 258, top: 104 },
           { emoji: '🫘', size: 68, left: 72, top: 244 },
-          { emoji: '🍎', size: 66, left: 286, top: 236 },
-          { emoji: '🍞', size: 72, left: 214, top: 286 },
+          { emoji: '🧂', size: 66, left: 286, top: 236 },
+          { emoji: '☕', size: 72, left: 214, top: 286 },
         ],
       },
       {
@@ -1060,9 +1060,9 @@ const defaultDb: LocalDbSchema = {
         center_size: 112,
         emoji_chips: [
           { emoji: '🍚', size: 66, left: 58, top: 112 },
-          { emoji: '🫒', size: 64, left: 272, top: 116 },
+          { emoji: '🌾', size: 64, left: 272, top: 116 },
           { emoji: '🫘', size: 64, left: 66, top: 266 },
-          { emoji: '🥬', size: 68, left: 264, top: 260 },
+          { emoji: '🧈', size: 68, left: 264, top: 260 },
         ],
       },
       {
@@ -1084,7 +1084,7 @@ const defaultDb: LocalDbSchema = {
         center_emoji: '💰',
         center_size: 112,
         emoji_chips: [
-          { emoji: '🫒', size: 64, left: 74, top: 116 },
+          { emoji: '🌾', size: 64, left: 74, top: 116 },
           { emoji: '🍚', size: 64, left: 262, top: 262 },
         ],
       },

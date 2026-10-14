@@ -123,7 +123,12 @@ export function getProductFamilyKey(p: any): string {
   return `${brand}-${slugifyText(baseName)}`.replace(/--+/g, '-');
 }
 
-export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal = 100): any[] {
+export function groupProductsByFamily(
+  products: any[],
+  dealsOnly = false,
+  limitVal = 100,
+  offsetVal = 0,
+): any[] {
   if (!Array.isArray(products) || products.length === 0) return [];
 
   const familyMap = new Map<string, any[]>();
@@ -247,8 +252,8 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
     groupedList.sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0));
   }
 
-  if (limitVal !== undefined && limitVal > 0) {
-    return groupedList.slice(0, limitVal);
+  if (offsetVal > 0 || (limitVal !== undefined && limitVal > 0)) {
+    return groupedList.slice(offsetVal, offsetVal + limitVal);
   }
   return groupedList;
 }
@@ -260,14 +265,14 @@ router.get('/all', async (req, res) => {
   const { city, category, secondary, q, limit, deals, pincode, raw, group, page, offset } = req.query;
   const limitVal = parseInt(limit as string) || 30;
   const pageVal = Math.max(1, parseInt(page as string) || 1);
-  const offsetVal = offset !== undefined ? parseInt(offset as string) : (pageVal - 1) * limitVal;
+  const offsetVal = offset !== undefined ? (parseInt(offset as string) || 0) : ((pageVal - 1) * limitVal);
   const dealsOnly = deals === '1' || deals === 'true';
   const shouldGroup = raw !== 'true' && group !== 'false';
 
   const applyDealsFilter = (products: any[]) => {
     let processed: any[] = [];
     if (shouldGroup) {
-      processed = groupProductsByFamily(products, dealsOnly);
+      processed = groupProductsByFamily(products, dealsOnly, 10000, 0);
     } else if (!dealsOnly) {
       processed = products;
     } else {
@@ -289,7 +294,6 @@ router.get('/all', async (req, res) => {
 
     const totalCount = processed.length;
     const paged = processed.slice(offsetVal, offsetVal + limitVal);
-    // If offset + limit is within totalCount OR a full page was returned, there are more products to scroll
     const hasMore = offsetVal + limitVal < totalCount || paged.length === limitVal;
 
     return {
@@ -309,7 +313,7 @@ router.get('/all', async (req, res) => {
       category: category as string | undefined,
       secondary: secondary as string | undefined,
       q: q as string | undefined,
-      limit: limitVal,
+      limit: Math.max(limitVal + offsetVal, 100),
       page: pageVal,
       offset: offsetVal,
     });
@@ -323,6 +327,7 @@ router.get('/all', async (req, res) => {
       shop_id: catalog.shopId,
       shop_name: catalog.shopName,
       page: pageVal,
+      offset: offsetVal,
       limit: limitVal,
       total_count: filterResult.totalCount,
       has_more: filterResult.hasMore,

@@ -15,6 +15,7 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import AppIcon from '../../components/AppIcon';
 import AppLoader from '../../components/AppLoader';
+import { CartSkeleton } from '../../components/Skeleton';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
 import AuthGateModal, { AuthGateType } from '../../components/AuthGateModal';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
@@ -219,9 +220,7 @@ export default function CartScreen({
     return (
       <SafeAreaView style={styles.safe} edges={safeEdges}>
         <StatusBar barStyle="dark-content" />
-        <View style={styles.centeredState}>
-          <AppLoader message="Loading cart..." />
-        </View>
+        <CartSkeleton />
       </SafeAreaView>
     );
   }
@@ -515,7 +514,7 @@ export default function CartScreen({
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <View style={[styles.checkoutBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+      <View style={[styles.checkoutBar, { paddingBottom: setActiveTab ? 14 : Math.max(insets.bottom, 14) }]}>
         <View style={styles.checkoutBarInner}>
           <View style={styles.toPayCol}>
             <Text style={styles.toPayLabel}>{screenConfig?.sticky_to_pay_label || 'TO PAY'}</Text>

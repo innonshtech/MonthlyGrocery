@@ -66,8 +66,9 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
     const savedEmail = await AsyncStorage.getItem(EMAIL_KEY);
     const userName = user?.name?.trim();
     const initialName =
+      (userName && userName !== 'User' ? userName : '') ||
       savedName ||
-      (userName && userName !== 'User' ? userName : '');
+      '';
     setName(initialName);
     if (savedEmail) setEmail(savedEmail);
 
@@ -77,15 +78,6 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
   useEffect(() => {
     loadConfig();
   }, [loadConfig]);
-
-  const handlePhotoPress = () => {
-    if (config?.photo_unavailable_message) {
-      showToast({
-        type: 'info',
-        message: config.photo_unavailable_message,
-      });
-    }
-  };
 
   const handleSave = async () => {
     if (!config) return;
@@ -206,18 +198,9 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
             <OnboardingBackButton onPress={handleBack} />
 
             <View style={styles.avatarSection}>
-              <TouchableOpacity
-                onPress={handlePhotoPress}
-                activeOpacity={0.85}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <View style={styles.avatarCircle}>
-                  <AppIcon name="user" size={44} color={COLORS.green700} />
-                  <View style={styles.cameraBadge}>
-                    <Text style={styles.cameraIcon}>📷</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
+              <View style={styles.avatarCircle}>
+                <AppIcon name="user" size={42} color={COLORS.green700} />
+              </View>
 
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>{config.title}</Text>
@@ -307,31 +290,16 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   avatarCircle: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: COLORS.green50,
     borderWidth: 2,
     borderColor: COLORS.green100,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-    position: 'relative',
+    marginBottom: 16,
   },
-  cameraBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1.5,
-    borderColor: COLORS.line,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraIcon: { fontSize: 13 },
   headerBlock: {
     alignItems: 'center',
     gap: 6,

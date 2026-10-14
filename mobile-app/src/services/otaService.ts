@@ -22,13 +22,14 @@ export interface CurrentBundleInfo {
  * Get current bundle version on device
  */
 export async function getCurrentBundleInfo(): Promise<CurrentBundleInfo> {
-  if (Platform.OS !== 'android' || !OtaUpdateModule) {
-    return { version: 'base-apk', isOtaActive: false, bundleSizeBytes: 0 };
+  const fallbackVersion = Platform.OS === 'ios' ? 'base-ipa' : 'base-apk';
+  if (!OtaUpdateModule) {
+    return { version: fallbackVersion, isOtaActive: false, bundleSizeBytes: 0 };
   }
   try {
     return await OtaUpdateModule.getCurrentBundleInfo();
   } catch {
-    return { version: 'base-apk', isOtaActive: false, bundleSizeBytes: 0 };
+    return { version: fallbackVersion, isOtaActive: false, bundleSizeBytes: 0 };
   }
 }
 
@@ -39,13 +40,14 @@ export async function checkAndApplyOtaUpdate(options: {
   autoRestart?: boolean;
   onUpdateDownloaded?: (version: string, changelog?: string) => void;
 } = {}): Promise<{ updated: boolean; version?: string; changelog?: string }> {
-  if (Platform.OS !== 'android' || !OtaUpdateModule) {
+  if (!OtaUpdateModule) {
     return { updated: false };
   }
 
   try {
     const current = await getCurrentBundleInfo();
-    const checkUrl = `${API_BASE}/ota/check?platform=android&currentVersion=${encodeURIComponent(current.version)}`;
+    const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+    const checkUrl = `${API_BASE}/ota/check?platform=${platform}&currentVersion=${encodeURIComponent(current.version)}`;
 
     const res = await fetch(checkUrl);
     if (!res.ok) return { updated: false };
@@ -62,12 +64,12 @@ export async function checkAndApplyOtaUpdate(options: {
       fullBundleUrl = `${baseUrl}${data.bundleUrl}`;
     }
 
-    console.log(`[OTA] New bundle found: ${data.latestVersion}. Downloading in background...`);
+    console.log(`[OTA] New ${platform} bundle found: ${data.latestVersion}. Downloading in background...`);
 
     // Download and stage native bundle
     await OtaUpdateModule.downloadAndInstallBundle(fullBundleUrl, data.latestVersion);
 
-    console.log(`[OTA] Bundle ${data.latestVersion} successfully installed.`);
+    console.log(`[OTA] Bundle ${data.latestVersion} successfully installed on ${platform}.`);
 
     if (options.onUpdateDownloaded) {
       options.onUpdateDownloaded(data.latestVersion, data.changelog);
@@ -92,7 +94,7 @@ export async function checkAndApplyOtaUpdate(options: {
  * Restart the app to apply the newly downloaded bundle immediately
  */
 export function restartAppForOta() {
-  if (Platform.OS === 'android' && OtaUpdateModule?.restartApp) {
+  if (OtaUpdateModule?.restartApp) {
     OtaUpdateModule.restartApp();
   }
 }

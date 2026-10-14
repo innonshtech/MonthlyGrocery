@@ -32,17 +32,95 @@ import {
 } from '../services/onboardingApi';
 import { useAuth } from '../context/AuthContext';
 
-/**
- * A2 · Value Intro 1–3 — Redesign (Figma nodes 391:602, 392:602, 393:602)
- * All copy, gradients, and chip layout from /api/admin/onboarding.
- * Full touch swiping (left/right) with real-time active dot updates.
- */
+const VEGGIE_FRUIT_REPLACEMENTS: Record<string, string> = {
+  '🫒': '🌾', // Olive -> Wheat/Atta
+  '🥬': '🧈', // Lettuce/Cabbage -> Ghee/Oil
+  '🍎': '🧂', // Apple -> Spices/Salt
+  '🍞': '☕', // Bread -> Tea/Coffee
+};
+
+const sanitizeSlideEmoji = (emoji?: string): string => {
+  if (!emoji) return '';
+  return VEGGIE_FRUIT_REPLACEMENTS[emoji] || emoji;
+};
+
+const DEFAULT_SLIDES: ValueIntroSlideConfig[] = [
+  {
+    id: 'value-intro-1',
+    order: 1,
+    category: 'MONTHLY BASKET',
+    title: 'Plan your whole month in one go',
+    subtitle:
+      'Add everything your home needs for the month, order once, and skip the weekly grocery runs.',
+    badge_label: 'Save ₹340/mo',
+    badge_left: 250,
+    badge_top: 176,
+    show_skip: true,
+    gradient_start: '#E4F3EA',
+    gradient_end: '#C6E9D3',
+    center_emoji: '🍚',
+    center_size: 88,
+    emoji_chips: [
+      { emoji: '🌾', size: 70, left: 74, top: 116 },
+      { emoji: '🧈', size: 78, left: 258, top: 104 },
+      { emoji: '🫘', size: 68, left: 72, top: 244 },
+      { emoji: '🧂', size: 66, left: 286, top: 236 },
+      { emoji: '☕', size: 72, left: 214, top: 286 },
+    ],
+  },
+  {
+    id: 'value-intro-2',
+    order: 2,
+    category: 'REORDER',
+    title: 'Copy last month in one tap',
+    subtitle:
+      'Your last basket, ready to go. Tweak what you need and check out in seconds.',
+    badge_label: '1-tap reorder',
+    badge_left: 232,
+    badge_top: 182,
+    show_skip: true,
+    gradient_start: '#E7EEFB',
+    gradient_end: '#D3DFF6',
+    center_emoji: '📋',
+    center_size: 112,
+    emoji_chips: [
+      { emoji: '🍚', size: 66, left: 58, top: 112 },
+      { emoji: '🌾', size: 64, left: 272, top: 116 },
+      { emoji: '🫘', size: 64, left: 66, top: 266 },
+      { emoji: '🧈', size: 68, left: 264, top: 260 },
+    ],
+  },
+  {
+    id: 'value-intro-3',
+    order: 3,
+    category: 'BEST VALUE',
+    title: 'Save more on every order',
+    subtitle:
+      'We compare and pick the lowest area price for you, so your monthly basket always costs less.',
+    badge_label: '20% OFF',
+    badge_left: 250,
+    badge_top: 120,
+    secondary_badge_label: 'Lowest price',
+    secondary_badge_left: 60,
+    secondary_badge_top: 268,
+    show_skip: false,
+    gradient_start: '#FDEFD3',
+    gradient_end: '#FBE7B6',
+    center_emoji: '💰',
+    center_size: 112,
+    emoji_chips: [
+      { emoji: '🌾', size: 64, left: 74, top: 116 },
+      { emoji: '🍚', size: 64, left: 262, top: 262 },
+    ],
+  },
+];
+
 export default function ValueIntroScreen({ navigation }: any) {
   const { token, user, city, area } = useAuth();
   const { width: windowWidth } = useWindowDimensions();
-  const [slides, setSlides] = useState<ValueIntroSlideConfig[]>([]);
+  const [slides, setSlides] = useState<ValueIntroSlideConfig[]>(DEFAULT_SLIDES);
   const [introMeta, setIntroMeta] = useState<ValueIntroMetaConfig | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -50,17 +128,27 @@ export default function ValueIntroScreen({ navigation }: any) {
     useOnboardingLayout();
 
   const loadSlides = useCallback(async () => {
-    setLoading(true);
-    setLoadError(false);
-    const config = await fetchOnboardingConfig();
-    setIntroMeta(config?.value_intro_meta ?? null);
-    const list = config?.value_intro_slides
-      ? [...config.value_intro_slides].sort((a, b) => a.order - b.order)
-      : [];
-    setSlides(list);
-    setCurrentIndex(0);
-    setLoadError(list.length === 0);
-    setLoading(false);
+    try {
+      const config = await fetchOnboardingConfig();
+      if (config?.value_intro_meta) {
+        setIntroMeta(config.value_intro_meta);
+      }
+      if (config?.value_intro_slides && config.value_intro_slides.length > 0) {
+        const list = config.value_intro_slides
+          .map((slide) => ({
+            ...slide,
+            center_emoji: sanitizeSlideEmoji(slide.center_emoji),
+            emoji_chips: slide.emoji_chips.map((chip) => ({
+              ...chip,
+              emoji: sanitizeSlideEmoji(chip.emoji),
+            })),
+          }))
+          .sort((a, b) => a.order - b.order);
+        setSlides(list);
+      }
+    } catch {
+      // Keep DEFAULT_SLIDES on network error
+    }
   }, []);
 
   useEffect(() => {
@@ -196,7 +284,7 @@ export default function ValueIntroScreen({ navigation }: any) {
           {slide.emoji_chips.map((chip, chipIdx) => (
             <OnboardingEmojiChip
               key={`${slide.id}-chip-${chipIdx}`}
-              emoji={chip.emoji}
+              emoji={sanitizeSlideEmoji(chip.emoji)}
               size={chip.size * scale}
               style={{ left: chip.left * scale, top: chip.top * scale }}
             />
@@ -216,7 +304,7 @@ export default function ValueIntroScreen({ navigation }: any) {
               ]}
             >
               <Text style={{ fontSize: slide.center_size * scale * 0.42 }}>
-                {slide.center_emoji}
+                {sanitizeSlideEmoji(slide.center_emoji)}
               </Text>
             </View>
           ) : null}

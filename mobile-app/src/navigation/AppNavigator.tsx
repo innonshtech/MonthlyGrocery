@@ -25,6 +25,7 @@ import OrderDetailScreen from '../screens/customer/OrderDetailScreen';
 import TrackOrderScreen from '../screens/customer/TrackOrderScreen';
 import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
+import AboutTermsScreen from '../screens/customer/AboutTermsScreen';
 import EditProfileScreen from '../screens/customer/EditProfileScreen';
 import DeleteAccountScreen from '../screens/customer/DeleteAccountScreen';
 import SystemStateScreen from '../screens/customer/SystemStateScreen';
@@ -47,16 +48,6 @@ import AppLoader from '../components/AppLoader';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <AppLoader message="Initializing app..." />
-      </View>
-    );
-  }
-
   return (
     <NavigationContainer>
       <CartProvider>
@@ -81,7 +72,11 @@ export default function AppNavigator() {
           <Stack.Screen name="FamilyProfileSetup" component={FamilyProfileSetupScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
-          <Stack.Screen name="Cart" component={CartScreen} />
+          <Stack.Screen
+            name="Cart"
+            component={MainTabScreen}
+            initialParams={{ initialTab: 'Cart' }}
+          />
           <Stack.Screen name="Orders" component={OrdersScreen} />
           <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
           <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
@@ -95,6 +90,7 @@ export default function AppNavigator() {
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
           <Stack.Screen name="MyCoupons" component={MyCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+          <Stack.Screen name="AboutTerms" component={AboutTermsScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
           <Stack.Screen name="SystemState" component={SystemStateScreen} />

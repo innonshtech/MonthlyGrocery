@@ -16,7 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { CheckoutBackIcon } from '../../components/CheckoutFigmaIcons';
-import { AccountDeleteTrashIcon, AccountCameraIcon } from '../../components/account/AccountHubIcons';
+import { AccountDeleteTrashIcon } from '../../components/account/AccountHubIcons';
 import AppLoader from '../../components/AppLoader';
 import { COLORS, FONTS, RADIUS } from '../../constants/theme';
 import {
@@ -25,15 +25,7 @@ import {
   fetchProfile,
   formatDisplayPhone,
   updateProfile,
-  uploadAvatar,
 } from '../../services/profileApi';
-
-let imagePickerModule: any = null;
-try {
-  imagePickerModule = require('react-native-image-picker');
-} catch (e) {
-  imagePickerModule = null;
-}
 
 const SCREEN_BG = '#F8FAF8';
 
@@ -54,58 +46,7 @@ export default function EditProfileScreen({ navigation }: any) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const processImagePickerResult = async (res: any) => {
-    if (!res || res.didCancel) return;
-    if (res.errorMessage) {
-      showToast({
-        type: 'error',
-        title: 'Image Error',
-        message: res.errorMessage,
-      });
-      return;
-    }
-    const asset = res.assets && res.assets[0];
-    if (!asset || !asset.uri) return;
 
-    // Show local preview immediately
-    setAvatarUri(asset.uri);
-
-    // If base64 is available and token exists, upload to Supabase Storage bucket 'avatars'
-    if (token && asset.base64) {
-      const uploadRes = await uploadAvatar(token, asset.base64);
-      if (uploadRes.success && uploadRes.avatar_url) {
-        setAvatarUri(uploadRes.avatar_url);
-      }
-    }
-  };
-
-  const handleChangePhoto = async () => {
-    if (imagePickerModule?.launchImageLibrary) {
-      try {
-        const res = await imagePickerModule.launchImageLibrary({
-          mediaType: 'photo',
-          maxWidth: 800,
-          maxHeight: 800,
-          quality: 0.8,
-          includeBase64: true,
-          selectionLimit: 1,
-        });
-        await processImagePickerResult(res);
-      } catch (err: any) {
-        showToast({
-          type: 'error',
-          title: 'Gallery Error',
-          message: err?.message || 'Could not launch photo library',
-        });
-      }
-    } else {
-      showToast({
-        type: 'info',
-        title: 'Photo Upload',
-        message: 'Image library is ready.',
-      });
-    }
-  };
 
   const loadConfig = useCallback(async () => {
     setConfigLoading(true);
@@ -197,7 +138,11 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   };
 
-  const initialLetter = name.trim() ? name.trim().charAt(0).toUpperCase() : '';
+  const initialLetter = name.trim()
+    ? name.trim().charAt(0).toUpperCase()
+    : user?.name?.trim()
+    ? user.name.trim().charAt(0).toUpperCase()
+    : 'S';
   const formattedPhone = phone ? formatDisplayPhone(phone) : '';
 
   if (configLoading) {
@@ -264,27 +209,9 @@ export default function EditProfileScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.avatarWrap}>
-          <TouchableOpacity
-            style={styles.avatarCircleContainer}
-            onPress={handleChangePhoto}
-            activeOpacity={0.85}
-          >
-            <View style={styles.avatarCircle}>
-              {profileLoading ? (
-                <ActivityIndicator color={COLORS.green700} />
-              ) : avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
-              ) : initialLetter ? (
-                <Text style={styles.avatarLetter}>{initialLetter}</Text>
-              ) : null}
-            </View>
-            <View style={styles.cameraBadge}>
-              <AccountCameraIcon size={14} color="#FFFFFF" />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleChangePhoto} activeOpacity={0.7}>
-            <Text style={styles.changePhotoText}>{screenConfig.change_photo_label || 'Change photo'}</Text>
-          </TouchableOpacity>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarLetter}>{initialLetter}</Text>
+          </View>
         </View>
 
         <Text style={styles.fieldLabel}>

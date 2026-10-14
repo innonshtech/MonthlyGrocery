@@ -10,6 +10,7 @@ import {
   StatusBar
 } from 'react-native';
 import { useCart } from '../context/CartContext';
+import { EVER_LOGO_SOURCE } from '../constants/everLogoBase64';
 
 export default function LandingScreen({ navigation }: any) {
   const { minOrderLimit } = useCart();
@@ -21,9 +22,11 @@ export default function LandingScreen({ navigation }: any) {
         {/* Header */}
         <View style={styles.header}>
           <Image
-            source={require('../assets/ever-logo.png')}
+            source={EVER_LOGO_SOURCE}
+            defaultSource={EVER_LOGO_SOURCE}
             style={styles.headerLogo}
             resizeMode="contain"
+            fadeDuration={0}
           />
           <TouchableOpacity
             style={styles.signInBtn}

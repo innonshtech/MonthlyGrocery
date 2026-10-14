@@ -104,6 +104,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (res.status === 401 || res.status === 403) {
               await AsyncStorage.removeItem('@auth_token');
               await AsyncStorage.removeItem('@auth_user');
+              await AsyncStorage.removeItem('@user_display_name');
+              await AsyncStorage.removeItem('@user_email');
               setToken(null);
               setUser(null);
             } else if (res.ok) {
@@ -111,6 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (data.success && data.user) {
                 setUser(data.user);
                 await AsyncStorage.setItem('@auth_user', JSON.stringify(data.user));
+                if (data.user.name && data.user.name.trim() && data.user.name.trim() !== 'User') {
+                  await AsyncStorage.setItem('@user_display_name', data.user.name.trim());
+                }
+                if (data.user.email && data.user.email.trim()) {
+                  await AsyncStorage.setItem('@user_email', data.user.email.trim());
+                }
                 if (!savedCity && data.user.city) {
                   setCityState(data.user.city);
                   await AsyncStorage.setItem('@user_city', data.user.city);
@@ -182,6 +190,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.setItem('@auth_token', data.token);
       if (data.user) {
         await AsyncStorage.setItem('@auth_user', JSON.stringify(data.user));
+        if (data.user.name && data.user.name.trim() && data.user.name.trim() !== 'User') {
+          await AsyncStorage.setItem('@user_display_name', data.user.name.trim());
+        } else {
+          await AsyncStorage.removeItem('@user_display_name');
+        }
+        if (data.user.email && data.user.email.trim()) {
+          await AsyncStorage.setItem('@user_email', data.user.email.trim());
+        } else {
+          await AsyncStorage.removeItem('@user_email');
+        }
+      } else {
+        await AsyncStorage.removeItem('@user_display_name');
+        await AsyncStorage.removeItem('@user_email');
       }
       setToken(data.token);
       setUser(data.user);
@@ -247,6 +268,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(updated);
       try {
         await AsyncStorage.setItem('@auth_user', JSON.stringify(updated));
+        if (updated.name && updated.name.trim() && updated.name.trim() !== 'User') {
+          await AsyncStorage.setItem('@user_display_name', updated.name.trim());
+        }
+        if (updated.email && updated.email.trim()) {
+          await AsyncStorage.setItem('@user_email', updated.email.trim());
+        }
       } catch (e) {
         console.error('Failed to cache updated user:', e);
       }

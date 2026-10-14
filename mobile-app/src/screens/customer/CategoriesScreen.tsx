@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,6 +14,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
 import AppLoader from '../../components/AppLoader';
+import { CategoryGridSkeleton } from '../../components/Skeleton';
 import AppIcon from '../../components/AppIcon';
 import { HomeSearchIcon } from '../../components/home/HomeFigmaIcons';
 import {
@@ -123,7 +124,35 @@ function TileRow({
   );
 }
 
-export default function CategoriesScreen({ navigation, setActiveTab }: any) {
+export default function CategoriesScreen({ navigation, setActiveTab, onScrollDirection }: any) {
+  const lastScrollY = useRef(0);
+
+  const handleScroll = useCallback(
+    (event: any) => {
+      const currentY = event.nativeEvent.contentOffset.y;
+      const diff = currentY - lastScrollY.current;
+
+      // Always restore tab bar when near or at top
+      if (currentY <= 15) {
+        onScrollDirection?.('up');
+        lastScrollY.current = currentY;
+        return;
+      }
+
+      // Scrolling down into content (finger swipes up) -> hide bottom panel
+      if (diff > 10 && currentY > 40) {
+        onScrollDirection?.('down');
+      }
+      // Scrolling up towards top (finger swipes down) -> show bottom panel
+      else if (diff < -10) {
+        onScrollDirection?.('up');
+      }
+
+      lastScrollY.current = currentY;
+    },
+    [onScrollDirection],
+  );
+
   const [screenConfig, setScreenConfig] = useState<CategoriesScreenConfig | null>(null);
   const [configError, setConfigError] = useState(false);
   const [categories, setCategories] = useState<CategoryTile[]>([]);
@@ -294,9 +323,7 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
       </View>
 
       {categoriesLoading ? (
-        <View style={styles.centeredState}>
-          <AppLoader message="Loading categories..." />
-        </View>
+        <CategoryGridSkeleton />
       ) : categoriesError ? (
         <View style={styles.centeredState}>
           <Text style={styles.errorText}>{loadErrorMessage}</Text>
@@ -309,6 +336,8 @@ export default function CategoriesScreen({ navigation, setActiveTab }: any) {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onScroll={handleScroll}
         >
           {sections.map((section, sIdx) => (
             <View key={`${section.label}-${sIdx}`} style={styles.section}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,6 +11,7 @@ import {
   Platform,
   useWindowDimensions,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect, Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -43,7 +44,9 @@ import {
 } from '../../services/homeApi';
 import { fetchCategoryList } from '../../services/categoriesApi';
 import HomeDealCard from '../../components/home/HomeDealCard';
+import HomeProductCard from '../../components/home/HomeProductCard';
 import AppLoader from '../../components/AppLoader';
+import { CategoryRailSkeleton, ProductRailSkeleton, ProductGridSkeleton } from '../../components/Skeleton';
 import { CheckoutFallbackEmoji } from '../../components/CheckoutFigmaIcons';
 import { HomeCategoryEmojiIcon, getCategoryEmojiKind } from '../../components/home/HomeEmojiIcons';
 import { COLORS, RADIUS, FONTS } from '../../constants/theme';
@@ -95,11 +98,13 @@ function getReorderPreviewItems(lastOrder: any) {
   return pool.slice(0, 3);
 }
 
-export default function HomeScreen({ navigation, setActiveTab }: any) {
+export default function HomeScreen({ navigation, setActiveTab, onScrollDirection }: any) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = Math.max(windowWidth - H_PAD * 2, 280);
   const scrollY = React.useRef(new Animated.Value(0)).current;
+  const lastScrollY = React.useRef(0);
+
   const { city, area, pincode, token, user, selectedShop } = useAuth();
   const { addToCart, items, updateQuantity, syncActiveShop } = useCart();
   const [home, setHome] = useState<HomeScreenConfig | null>(null);
@@ -116,6 +121,96 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     lastOrder: any | null;
   }>({ orderCount: 0, lastOrder: null });
   const [livePincode, setLivePincode] = useState<string | null>(pincode || null);
+
+  // ── Infinite scroll catalog states ──
+  const [infiniteProducts, setInfiniteProducts] = useState<Product[]>([]);
+  const [displayLimit, setDisplayLimit] = useState(10);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreInfinite, setHasMoreInfinite] = useState(true);
+  const [isInitialInfiniteLoading, setIsInitialInfiniteLoading] = useState(true);
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>('all');
+
+  const filteredInfiniteProducts = useMemo(() => {
+    if (selectedFilterCategory === 'all') return infiniteProducts;
+    const filter = selectedFilterCategory.toLowerCase().trim();
+    return infiniteProducts.filter((p) => {
+      const cat = (p.primary_category || '').toLowerCase();
+      const sec = (p.secondary_category || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      return cat.includes(filter) || filter.includes(cat) || sec.includes(filter) || name.includes(filter);
+    });
+  }, [infiniteProducts, selectedFilterCategory]);
+
+  const displayedProducts = useMemo(() => {
+    return filteredInfiniteProducts.slice(0, displayLimit);
+  }, [filteredInfiniteProducts, displayLimit]);
+
+  const gridCardWidth = Math.max(Math.floor((contentWidth - 10) / 2), 140);
+
+  const productRows = useMemo(() => {
+    const rows: Product[][] = [];
+    for (let i = 0; i < displayedProducts.length; i += 2) {
+      rows.push(displayedProducts.slice(i, i + 2));
+    }
+    return rows;
+  }, [displayedProducts]);
+
+  const loadMoreProducts = useCallback(() => {
+    if (isLoadingMore || !hasMoreInfinite) return;
+    if (displayLimit >= filteredInfiniteProducts.length) {
+      setHasMoreInfinite(false);
+      return;
+    }
+
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setDisplayLimit((prev) => {
+        const next = prev + 10;
+        if (next >= filteredInfiniteProducts.length) {
+          setHasMoreInfinite(false);
+        }
+        return next;
+      });
+      setIsLoadingMore(false);
+    }, 250);
+  }, [isLoadingMore, hasMoreInfinite, displayLimit, filteredInfiniteProducts.length]);
+
+  const handleScroll = useCallback(
+    (event: any) => {
+      const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+      const currentY = contentOffset?.y ?? 0;
+      const diff = currentY - lastScrollY.current;
+
+      // Always restore tab bar when near or at top
+      if (currentY <= 15) {
+        onScrollDirection?.('up');
+        lastScrollY.current = currentY;
+        return;
+      }
+
+      // Scrolling down into content (finger swipes up) -> hide bottom panel
+      if (diff > 10 && currentY > 40) {
+        onScrollDirection?.('down');
+      }
+      // Scrolling up towards top (finger swipes down) -> show bottom panel
+      else if (diff < -10) {
+        onScrollDirection?.('up');
+      }
+
+      lastScrollY.current = currentY;
+
+      // Infinite scroll check: trigger when within 450px of bottom
+      if (
+        contentSize?.height > 0 &&
+        (layoutMeasurement?.height ?? 0) + currentY >= contentSize.height - 450 &&
+        hasMoreInfinite &&
+        !isLoadingMore
+      ) {
+        loadMoreProducts();
+      }
+    },
+    [onScrollDirection, hasMoreInfinite, isLoadingMore, loadMoreProducts],
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -157,35 +252,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
   // Shop picker slide (for "Change" from HomeScreen)
   const [shopPickerVisible, setShopPickerVisible] = React.useState(false);
   const { setSelectedShop } = useAuth();
-
-  // When idle (scrollY = 0), overlay is 100% transparent so the header is 1 continuous shade.
-  // As user scrolls, it transitions into frosted glass as content passes underneath.
-  const statusBarBg = scrollY.interpolate({
-    inputRange: [0, 60, 200, 320],
-    outputRange: [
-      'rgba(13, 79, 44, 0)',
-      'rgba(13, 79, 44, 0.45)',
-      'rgba(255, 255, 255, 0.92)',
-      'rgba(255, 255, 255, 0.98)',
-    ],
-    extrapolate: 'clamp',
-  });
-
-  const statusBarBorder = scrollY.interpolate({
-    inputRange: [0, 200, 320],
-    outputRange: [
-      'rgba(226, 232, 240, 0)',
-      'rgba(226, 232, 240, 0.4)',
-      'rgba(226, 232, 240, 0.9)',
-    ],
-    extrapolate: 'clamp',
-  });
-
-  const statusBarShadow = scrollY.interpolate({
-    inputRange: [0, 200, 320],
-    outputRange: [0, 1, 4],
-    extrapolate: 'clamp',
-  });
+  const [headerHeight, setHeaderHeight] = useState(insets.top > 0 ? insets.top + 160 : 168);
 
   const loadHomeConfig = async () => {
     const result = await fetchHomeConfigWithStatus();
@@ -268,6 +335,43 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
       }
     };
     fetchFeatured();
+  }, [city, area, pincode, hasDeliveryArea, selectedShop]);
+
+  useEffect(() => {
+    const fetchCatalog = async () => {
+      if (!hasDeliveryArea) {
+        setInfiniteProducts([]);
+        setIsInitialInfiniteLoading(false);
+        setHasMoreInfinite(false);
+        return;
+      }
+      setIsInitialInfiniteLoading(true);
+      try {
+        let url = appendLocationParams(`${API_BASE}/products/all?limit=250`, {
+          city,
+          area,
+          pincode,
+          shop_id: selectedShop?.id || null,
+        });
+        const res = await fetch(url);
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.products)) {
+          setInfiniteProducts(data.products);
+          setDisplayLimit(10);
+          setHasMoreInfinite(data.products.length > 10);
+        } else {
+          setInfiniteProducts([]);
+          setHasMoreInfinite(false);
+        }
+      } catch (err) {
+        console.error('Error fetching catalog products for infinite scroll:', err);
+        setInfiniteProducts([]);
+        setHasMoreInfinite(false);
+      } finally {
+        setIsInitialInfiniteLoading(false);
+      }
+    };
+    fetchCatalog();
   }, [city, area, pincode, hasDeliveryArea, selectedShop]);
 
   useEffect(() => {
@@ -400,37 +504,169 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
     <>
     <View style={styles.outerWrap}>
       <StatusBar barStyle="light-content" />
-      {/* Dynamic Frosted Glass Status Bar that adapts its color as user scrolls */}
-      {insets.top > 0 ? (
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: insets.top,
-            backgroundColor: statusBarBg,
-            borderBottomWidth: 1,
-            borderBottomColor: statusBarBorder,
-            zIndex: 999,
-            elevation: statusBarShadow,
-          }}
-        />
-      ) : null}
+
+      {/* ── Fixed Emerald Green Botanical Header ── */}
+      <View
+        style={styles.fixedHeaderContainer}
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.height);
+          if (h > 50 && Math.abs(h - headerHeight) > 1) {
+            setHeaderHeight(h);
+          }
+        }}
+      >
+        <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 14 : 16 }]}>
+          {/* Green Gradient Background */}
+          <Svg
+            style={StyleSheet.absoluteFill}
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            <Defs>
+              <LinearGradient id="headerGrad" x1="0" y1="0" x2="0.6" y2="1">
+                <Stop offset="0" stopColor="#0D4F2C" />
+                <Stop offset="0.5" stopColor="#136338" />
+                <Stop offset="1" stopColor="#1B7846" />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100" height="100" fill="url(#headerGrad)" />
+          </Svg>
+
+          {/* Botanical Leaf Overlay */}
+          <Svg
+            style={StyleSheet.absoluteFill}
+            viewBox="0 0 390 200"
+            preserveAspectRatio="none"
+            pointerEvents="none"
+          >
+            {/* Top-right branch stem */}
+            <Path
+              d="M 400 -10 Q 360 25 330 75"
+              stroke="rgba(255, 255, 255, 0.22)"
+              strokeWidth="2"
+              fill="none"
+            />
+            {/* Foliage leaves along stem */}
+            <Path
+              d="M 330 75 C 310 70 300 52 308 42 C 322 46 330 62 330 75 Z"
+              fill="rgba(255, 255, 255, 0.20)"
+            />
+            <Path
+              d="M 345 54 C 342 34 355 20 368 24 C 368 38 356 50 345 54 Z"
+              fill="rgba(255, 255, 255, 0.20)"
+            />
+            <Path
+              d="M 362 34 C 354 16 360 2 376 5 C 378 18 372 28 362 34 Z"
+              fill="rgba(255, 255, 255, 0.18)"
+            />
+            <Path
+              d="M 370 65 C 388 72 398 90 392 102 C 378 100 372 82 370 65 Z"
+              fill="rgba(255, 255, 255, 0.18)"
+            />
+            <Path
+              d="M 345 95 C 330 115 342 135 358 130 C 364 116 358 100 345 95 Z"
+              fill="rgba(255, 255, 255, 0.15)"
+            />
+            {/* Bottom-left leaf accent */}
+            <Path
+              d="M -10 150 C 18 135 35 152 40 175 C 18 180 -5 168 -10 150 Z"
+              fill="rgba(255, 255, 255, 0.14)"
+            />
+            <Path
+              d="M 12 178 C 32 166 48 180 50 200 C 30 204 15 194 12 178 Z"
+              fill="rgba(255, 255, 255, 0.12)"
+            />
+          </Svg>
+
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity
+              style={styles.locationBlock}
+              onPress={() => navigation.navigate('CitySelection')}
+              activeOpacity={0.75}
+            >
+              <View style={styles.locationHeaderRow}>
+                <HomeLocationPinIcon size={24} color="#FFFFFF" />
+                <View style={styles.locationTextGroup}>
+                  <Text style={styles.deliveringLabel}>{home?.delivering_label || 'DELIVERING TO'}</Text>
+                  <View style={styles.locationRow}>
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {displayLocation}
+                    </Text>
+                    <HomeChevronDownIcon size={16} color="#FFFFFF" />
+                  </View>
+                </View>
+              </View>
+              {selectedShop ? (
+                <View style={styles.shopBadgePill}>
+                  <View style={styles.calendarBadge}>
+                    <View style={styles.calendarHeader}>
+                      <View style={styles.calendarRing} />
+                      <View style={styles.calendarRing} />
+                    </View>
+                    <View style={styles.calendarBody}>
+                      <Text style={styles.calendarDayText}>24</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.shopNameLabel} numberOfLines={1}>
+                    {selectedShop.name}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={styles.changeShopBtn}
+                  >
+                    <Text style={styles.changeShopText}>Change</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
+              {user?.avatar_url ? (
+                <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
+              ) : userInitial ? (
+                <Text style={styles.avatarText}>{userInitial}</Text>
+              ) : (
+                <AppIcon name="account" size={20} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.searchBar}
+            onPress={() => navigation.navigate('Search')}
+            activeOpacity={0.85}
+          >
+            <HomeSearchIcon size={20} color="#156C3E" />
+            <Text style={styles.searchPlaceholder}>{home?.search_placeholder || 'Search atta, rice, oil…'}</Text>
+            <HomeMicIcon size={20} color="#156C3E" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <Animated.ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         bounces={false}
         scrollEventThrottle={16}
+        scrollIndicatorInsets={{ top: headerHeight }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
+          {
+            useNativeDriver: false,
+            listener: handleScroll,
+          }
         )}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: headerHeight,
+            paddingBottom: 76 + (insets.bottom > 0 ? insets.bottom : 8),
+          },
+        ]}
       >
         {homeLoadError ? (
-          <View style={[styles.homeErrorWrap, { paddingTop: insets.top + 20 }]}>
+          <View style={[styles.homeErrorWrap, { paddingTop: 30 }]}>
             <Text style={styles.homeErrorText}>
               {'Could not load home screen. Check that the backend is running.'}
             </Text>
@@ -440,134 +676,6 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
           </View>
         ) : (
           <View style={styles.mainContent}>
-            {/* ── Emerald Green Botanical Header ── */}
-            <View style={[styles.header, { paddingTop: insets.top > 0 ? insets.top + 14 : 16 }]}>
-              {/* Green Gradient Background */}
-              <Svg
-                style={StyleSheet.absoluteFill}
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                <Defs>
-                  <LinearGradient id="headerGrad" x1="0" y1="0" x2="0.6" y2="1">
-                    <Stop offset="0" stopColor="#0D4F2C" />
-                    <Stop offset="0.5" stopColor="#136338" />
-                    <Stop offset="1" stopColor="#1B7846" />
-                  </LinearGradient>
-                </Defs>
-                <Rect x="0" y="0" width="100" height="100" fill="url(#headerGrad)" />
-              </Svg>
-
-              {/* Botanical Leaf Overlay */}
-              <Svg
-                style={StyleSheet.absoluteFill}
-                viewBox="0 0 390 200"
-                preserveAspectRatio="none"
-                pointerEvents="none"
-              >
-                {/* Top-right branch stem */}
-                <Path
-                  d="M 400 -10 Q 360 25 330 75"
-                  stroke="rgba(255, 255, 255, 0.22)"
-                  strokeWidth="2"
-                  fill="none"
-                />
-                {/* Foliage leaves along stem */}
-                <Path
-                  d="M 330 75 C 310 70 300 52 308 42 C 322 46 330 62 330 75 Z"
-                  fill="rgba(255, 255, 255, 0.20)"
-                />
-                <Path
-                  d="M 345 54 C 342 34 355 20 368 24 C 368 38 356 50 345 54 Z"
-                  fill="rgba(255, 255, 255, 0.20)"
-                />
-                <Path
-                  d="M 362 34 C 354 16 360 2 376 5 C 378 18 372 28 362 34 Z"
-                  fill="rgba(255, 255, 255, 0.18)"
-                />
-                <Path
-                  d="M 370 65 C 388 72 398 90 392 102 C 378 100 372 82 370 65 Z"
-                  fill="rgba(255, 255, 255, 0.18)"
-                />
-                <Path
-                  d="M 345 95 C 330 115 342 135 358 130 C 364 116 358 100 345 95 Z"
-                  fill="rgba(255, 255, 255, 0.15)"
-                />
-                {/* Bottom-left leaf accent */}
-                <Path
-                  d="M -10 150 C 18 135 35 152 40 175 C 18 180 -5 168 -10 150 Z"
-                  fill="rgba(255, 255, 255, 0.14)"
-                />
-                <Path
-                  d="M 12 178 C 32 166 48 180 50 200 C 30 204 15 194 12 178 Z"
-                  fill="rgba(255, 255, 255, 0.12)"
-                />
-              </Svg>
-
-              <View style={styles.headerTopRow}>
-                <TouchableOpacity
-                  style={styles.locationBlock}
-                  onPress={() => navigation.navigate('CitySelection')}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.locationHeaderRow}>
-                    <HomeLocationPinIcon size={24} color="#FFFFFF" />
-                    <View style={styles.locationTextGroup}>
-                      <Text style={styles.deliveringLabel}>{home?.delivering_label || 'DELIVERING TO'}</Text>
-                      <View style={styles.locationRow}>
-                        <Text style={styles.locationText} numberOfLines={1}>
-                          {displayLocation}
-                        </Text>
-                        <HomeChevronDownIcon size={16} color="#FFFFFF" />
-                      </View>
-                    </View>
-                  </View>
-                  {selectedShop ? (
-                    <View style={styles.shopBadgePill}>
-                      <View style={styles.calendarBadge}>
-                        <View style={styles.calendarHeader}>
-                          <View style={styles.calendarRing} />
-                          <View style={styles.calendarRing} />
-                        </View>
-                        <View style={styles.calendarBody}>
-                          <Text style={styles.calendarDayText}>24</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.shopNameLabel} numberOfLines={1}>
-                        {selectedShop.name}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={(e) => { e.stopPropagation(); setShopPickerVisible(true); }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        style={styles.changeShopBtn}
-                      >
-                        <Text style={styles.changeShopText}>Change</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.avatarBtn} onPress={openAccount}>
-                  {user?.avatar_url ? (
-                    <Image source={{ uri: user.avatar_url }} style={styles.avatarImg} />
-                  ) : userInitial ? (
-                    <Text style={styles.avatarText}>{userInitial}</Text>
-                  ) : (
-                    <AppIcon name="account" size={20} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={styles.searchBar}
-                onPress={() => navigation.navigate('Search')}
-                activeOpacity={0.85}
-              >
-                <HomeSearchIcon size={20} color="#156C3E" />
-                <Text style={styles.searchPlaceholder}>{home?.search_placeholder || 'Search atta, rice, oil…'}</Text>
-                <HomeMicIcon size={20} color="#156C3E" />
-              </TouchableOpacity>
-            </View>
 
             {/* ── Banner Section (Clean White Background) ── */}
             {banners.length > 0 ? (
@@ -705,7 +813,9 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-              ) : null}
+              ) : (
+                <CategoryRailSkeleton />
+              )}
 
         <View style={[styles.sectionHeader, { marginTop: 6 }]}>
           <Text style={styles.sectionTitle}>{home?.deals_title}</Text>
@@ -726,7 +836,7 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             <Text style={styles.locationHintCta}>{home?.choose_location_label}</Text>
           </TouchableOpacity>
         ) : loading ? (
-          <AppLoader message={home?.loading_deals_label || 'Loading deals...'} />
+          <ProductRailSkeleton />
         ) : products.length > 0 ? (
           <ScrollView
             horizontal
@@ -813,6 +923,135 @@ export default function HomeScreen({ navigation, setActiveTab }: any) {
             </Text>
           </View>
         </TouchableOpacity>
+
+        {/* ── Infinite Scroll Products Grid ── */}
+        <View style={styles.infiniteSection}>
+          <View style={styles.infiniteHeaderRow}>
+            <View>
+              <Text style={styles.infiniteSectionTitle}>Explore all products</Text>
+              <Text style={styles.infiniteSectionSub}>
+                {selectedShop?.name ? `From ${selectedShop.name}` : 'Fresh stock & monthly essentials'}
+                {filteredInfiniteProducts.length > 0 ? ` · ${filteredInfiniteProducts.length} items` : ''}
+              </Text>
+            </View>
+          </View>
+
+          {/* Quick Category Filter Pills */}
+          {categories.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterPillsScroll}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.filterPill,
+                  selectedFilterCategory === 'all' && styles.filterPillActive,
+                ]}
+                onPress={() => {
+                  setSelectedFilterCategory('all');
+                  setDisplayLimit(10);
+                  setHasMoreInfinite(infiniteProducts.length > 10);
+                }}
+                activeOpacity={0.75}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    selectedFilterCategory === 'all' && styles.filterPillTextActive,
+                  ]}
+                >
+                  All Items
+                </Text>
+              </TouchableOpacity>
+
+              {categories.slice(0, 10).map((cat) => {
+                const isActive = selectedFilterCategory === cat.name;
+                return (
+                  <TouchableOpacity
+                    key={cat.id || cat.name}
+                    style={[styles.filterPill, isActive && styles.filterPillActive]}
+                    onPress={() => {
+                      setSelectedFilterCategory(isActive ? 'all' : cat.name);
+                      setDisplayLimit(10);
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[
+                        styles.filterPillText,
+                        isActive && styles.filterPillTextActive,
+                      ]}
+                    >
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          {/* 2-Column Product Grid */}
+          {isInitialInfiniteLoading ? (
+            <View style={{ marginTop: 12 }}>
+              <ProductGridSkeleton count={4} />
+            </View>
+          ) : productRows.length > 0 ? (
+            <View style={styles.productGrid}>
+              {productRows.map((row, rIdx) => (
+                <View key={`row-${rIdx}`} style={styles.productGridRow}>
+                  {row.map((item) => {
+                    const cartItem = items.find((i) => i.product?.id === item.id);
+                    const qty = cartItem?.quantity ?? 0;
+                    return (
+                      <HomeProductCard
+                        key={item.id}
+                        item={item}
+                        width={gridCardWidth}
+                        quantity={qty}
+                        onPress={() =>
+                          navigation.navigate('ProductDetail', {
+                            productId: item.id,
+                            initialProduct: item,
+                          })
+                        }
+                        onAdd={() => addToCart(item)}
+                        onIncrement={() => addToCart(item)}
+                        onDecrement={() => updateQuantity(item.id, qty - 1)}
+                      />
+                    );
+                  })}
+                  {row.length === 1 && <View style={{ width: gridCardWidth }} />}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyGridState}>
+              <AppIcon name="search" size={32} color={COLORS.ink300} />
+              <Text style={styles.emptyGridText}>No products found in this category</Text>
+              <TouchableOpacity
+                style={styles.resetFilterBtn}
+                onPress={() => setSelectedFilterCategory('all')}
+              >
+                <Text style={styles.resetFilterText}>View all products</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Bottom Loading / End Status */}
+          {isLoadingMore ? (
+            <View style={styles.loadingMoreRow}>
+              <ActivityIndicator size="small" color="#1E7A46" />
+              <Text style={styles.loadingMoreText}>Loading more products…</Text>
+            </View>
+          ) : !hasMoreInfinite && displayedProducts.length > 0 ? (
+            <View style={styles.endOfProductsWrap}>
+              <View style={styles.endOfProductsLine} />
+              <Text style={styles.endOfProductsText}>You've seen all products</Text>
+              <View style={styles.endOfProductsLine} />
+            </View>
+          ) : null}
+        </View>
       </View>
     </View>
     )}
@@ -855,18 +1094,29 @@ const styles = StyleSheet.create({
   mainContent: {
     flexGrow: 1,
   },
+  fixedHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
   header: {
-    position: 'relative',
     width: '100%',
     alignSelf: 'stretch',
     flexDirection: 'column',
     alignItems: 'flex-start',
     backgroundColor: '#0D4F2C',
-    paddingTop: 16,
     paddingBottom: 22,
     paddingHorizontal: 16,
     gap: 14,
-    flexShrink: 0,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     overflow: 'hidden',
@@ -1405,5 +1655,118 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.green700,
     marginTop: 6,
+  },
+  infiniteSection: {
+    width: '100%',
+    marginTop: 26,
+    marginBottom: 10,
+  },
+  infiniteHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 12,
+  },
+  infiniteSectionTitle: {
+    ...FONTS.muktaBold,
+    fontSize: 18,
+    lineHeight: 23,
+    color: '#17251E',
+  },
+  infiniteSectionSub: {
+    ...FONTS.muktaRegular,
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  filterPillsScroll: {
+    paddingBottom: 14,
+    gap: 8,
+  },
+  filterPill: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  filterPillActive: {
+    backgroundColor: '#156C3E',
+    borderColor: '#156C3E',
+  },
+  filterPillText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 12.5,
+    color: '#475569',
+  },
+  filterPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  productGrid: {
+    width: '100%',
+    gap: 12,
+  },
+  productGridRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 10,
+  },
+  emptyGridState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 36,
+    gap: 10,
+  },
+  emptyGridText: {
+    ...FONTS.muktaMedium,
+    fontSize: 13.5,
+    color: '#94A3B8',
+  },
+  resetFilterBtn: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#A7D7B8',
+  },
+  resetFilterText: {
+    ...FONTS.muktaBold,
+    fontSize: 12.5,
+    color: '#156C3E',
+  },
+  loadingMoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 18,
+  },
+  loadingMoreText: {
+    ...FONTS.muktaMedium,
+    fontSize: 13,
+    color: '#64748B',
+  },
+  endOfProductsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 12,
+  },
+  endOfProductsLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  endOfProductsText: {
+    ...FONTS.muktaSemiBold,
+    fontSize: 12,
+    color: '#94A3B8',
+    letterSpacing: 0.3,
   },
 });
