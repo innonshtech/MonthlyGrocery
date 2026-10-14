@@ -44,16 +44,6 @@ import AppLoader from '../components/AppLoader';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
-  const { loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <AppLoader message="Initializing app..." />
-      </View>
-    );
-  }
-
   return (
     <NavigationContainer>
       <CartProvider>
