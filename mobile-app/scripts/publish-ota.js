@@ -28,7 +28,7 @@ const args = process.argv.slice(2);
 let serverUrl = 'http://13.233.159.143'; // Default to live AWS EC2
 let version = `v${Date.now()}`;
 let changelog = 'UI improvements and bug fixes';
-let targetPlatform = 'all'; // Default to deploying both Android and iOS
+let targetPlatform = 'android'; // Safe default: deploys Android (use --platform=all or --platform=ios for iOS)
 
 for (const arg of args) {
   if (arg.startsWith('--server=')) {

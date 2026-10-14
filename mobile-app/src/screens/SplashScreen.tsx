@@ -99,7 +99,7 @@ export default function SplashScreen({ navigation }: any) {
   }
 
   // Exact location of the progress bar track matching the centered design
-  const barTop = offsetY + displayedHeight * (1389 / SPLASH_IMG_H);
+  const barTop = offsetY + displayedHeight * (1326 / SPLASH_IMG_H);
   const barWidth = Math.round(displayedWidth * 0.24);
   const barHeight = Math.max(Math.round(displayedHeight * (8.5 / SPLASH_IMG_H)), 7);
   const barRadius = barHeight / 2;
