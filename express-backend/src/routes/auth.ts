@@ -2,7 +2,7 @@ import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../config/supabase';
 import { AuthRequest, authMiddleware } from '../middleware/auth';
-import { sendOtp, verifyOtp, isTestPhoneNumber } from '../services/twilioOtpService';
+import { sendOtp, verifyOtp, isTestPhoneNumber, isProductionEnvironment } from '../services/twoFactorOtpService';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-token-key-change-me';
@@ -34,22 +34,16 @@ function normalizePhone(phone: string): string {
 
 // Check if a mobile number belongs to a registered merchant / store partner with status check
 async function checkMerchantStatus(normalizedPhone: string): Promise<{ registered: boolean; status?: string; shopName?: string; rejection_reason?: string | null }> {
-  if (normalizedPhone === SUPER_ADMIN_MOBILE_CLEAN || isTestPhoneNumber(normalizedPhone)) {
-    return { registered: true, status: 'approved', shopName: 'MonthlyGrocery Test Store' };
-  }
-
   try {
     // 1. Check profiles table
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, role')
-      .eq('phone', normalizedPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (profile) {
-      if (profile.role === 'super_admin') {
-        return { registered: true, status: 'approved' };
-      }
       // Check if user owns a shop
       const { data: shop } = await supabase
         .from('shops')
@@ -66,18 +60,13 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
           rejection_reason: shop.rejection_reason || null,
         };
       }
-
-      // Admin role without a linked shop is not a valid merchant partner (no OTP bypass).
-      if (profile.role === 'admin') {
-        return { registered: false };
-      }
     }
 
     // 2. Check shops table directly by phone number
     const { data: shopByPhone } = await supabase
       .from('shops')
       .select('id, shop_name, status, rejection_reason')
-      .eq('phone', normalizedPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
       .order('created_at', { ascending: false })
       .maybeSingle();
 
@@ -87,22 +76,6 @@ async function checkMerchantStatus(normalizedPhone: string): Promise<{ registere
         status: shopByPhone.status || 'approved',
         shopName: shopByPhone.shop_name,
         rejection_reason: shopByPhone.rejection_reason || null,
-      };
-    }
-
-    const { data: shopByPhonePlus } = await supabase
-      .from('shops')
-      .select('id, shop_name, status, rejection_reason')
-      .eq('phone', '+' + normalizedPhone)
-      .order('created_at', { ascending: false })
-      .maybeSingle();
-
-    if (shopByPhonePlus) {
-      return {
-        registered: true,
-        status: shopByPhonePlus.status || 'approved',
-        shopName: shopByPhonePlus.shop_name,
-        rejection_reason: shopByPhonePlus.rejection_reason || null,
       };
     }
   } catch (err) {
@@ -122,7 +95,8 @@ async function isAuthorizedSuperAdmin(normalizedPhone: string): Promise<boolean>
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, role')
-      .eq('phone', normalizedPhone)
+      .or(`phone.eq.${normalizedPhone},phone.eq.+${normalizedPhone}`)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (profile && profile.role === 'super_admin') {
@@ -187,7 +161,8 @@ router.post('/send-otp', async (req, res) => {
   }
 
   try {
-    const result = await sendOtp(normalized);
+    const targetRole = typeof role === 'string' && role.trim() ? role.trim() : 'consumer';
+    const result = await sendOtp(normalized, targetRole);
     if (!result.success) {
       return res.status(400).json({
         success: false,
@@ -199,7 +174,7 @@ router.post('/send-otp', async (req, res) => {
       success: true,
       message: result.message,
       mobile: normalized,
-      ...(result.devOtp ? { devOtp: result.devOtp } : {}),
+      ...(!isProductionEnvironment() && result.devOtp ? { devOtp: result.devOtp } : {}),
     });
   } catch (error: any) {
     console.error('[Auth send-otp] Error:', error);
@@ -229,7 +204,8 @@ router.post('/verify-otp', async (req, res) => {
   const normalized = normalizePhone(mobile);
 
   try {
-    const verification = await verifyOtp(normalized, code);
+    const expectedRole = typeof role === 'string' && role.trim() ? role.trim() : 'consumer';
+    const verification = await verifyOtp(normalized, code, expectedRole);
     if (!verification.success) {
       return res.status(400).json({
         success: false,
@@ -247,6 +223,7 @@ router.post('/verify-otp', async (req, res) => {
       .from('profiles')
       .select('*')
       .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+      .order('created_at', { ascending: false })
       .maybeSingle();
 
     if (fetchError) {
@@ -285,6 +262,7 @@ router.post('/verify-otp', async (req, res) => {
         .from('profiles')
         .select('*')
         .or(`phone.eq.${normalized},phone.eq.+${normalized}${createdUserId ? `,id.eq.${createdUserId}` : ''}`)
+        .order('created_at', { ascending: false })
         .maybeSingle();
 
       if (newProfile) {
@@ -312,6 +290,7 @@ router.post('/verify-otp', async (req, res) => {
             .from('profiles')
             .select('*')
             .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+            .order('created_at', { ascending: false })
             .maybeSingle();
 
           if (fallbackProfile) {

@@ -39,7 +39,7 @@ MonthlyGrocery is a **4-app monorepo** for a location-based monthly grocery mark
 
 | Area | Status | Notes |
 |------|--------|-------|
-| OTP auth (dev) | ✅ Done | `123456` bypass; Twilio stub |
+| OTP auth (dev) | ✅ Done | `123456` bypass; 2Factor test numbers |
 | JWT + roles | ✅ Done | consumer / admin / super_admin |
 | Products master catalog | ✅ Done | Supabase `products` |
 | Location-aware catalog | ✅ Partial | Works when `city`+`area` sent; global fallback without location |
@@ -59,7 +59,7 @@ MonthlyGrocery is a **4-app monorepo** for a location-based monthly grocery mark
 | Server-side price verify | ❌ Missing | Client `total_amount` trusted |
 | Stock check at checkout | ❌ Missing | |
 | `GET /products/:id` | ❌ Missing | Mobile loads full catalog to find one product |
-| Real OTP (Twilio) | ❌ Missing | |
+| Real OTP (2Factor) | ✅ Done | Production 2Factor.in AUTOGEN + VERIFY integration |
 | Single order source of truth | ❌ Missing | Split-brain design |
 
 ### 2.2 Customer App (`mobile-app`)
@@ -190,7 +190,7 @@ These block correct routing even when code works:
 | # | Task | Details |
 |---|------|---------|
 | 3.1 | Env-based config | `DEV_MACHINE_IP`, `API_BASE`, JWT secret, Supabase keys — `.env` all apps |
-| 3.2 | Real OTP (Twilio / MSG91) | `auth.ts` |
+| 3.2 | Real OTP (2Factor) | `routes/auth.ts` + `services/twoFactorOtpService.ts` |
 | 3.3 | Payment gateway (Razorpay / PhonePe) | mobile checkout + backend webhook |
 | 3.4 | Image CDN (S3 / Cloudinary) — already partial via Supabase Storage | |
 | 3.5 | WhatsApp order notifications | merchant + customer |

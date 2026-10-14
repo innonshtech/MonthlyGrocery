@@ -7,7 +7,8 @@
     "dev": "ts-node-dev --respawn --exit-child --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "seed": "npx ts-node src/seed.ts"
+    "seed": "npx ts-node src/seed.ts",
+    "test": "ts-node --transpile-only -e \"require('./test/twoFactorOtpService.test.ts'); require('./test/authRoutes.test.ts');\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1133.0",
@@ -19,7 +20,6 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.23.0",
-    "twilio": "^6.1.1",
     "xlsx": "^0.18.5",
     "zod": "^3.22.4"
   },

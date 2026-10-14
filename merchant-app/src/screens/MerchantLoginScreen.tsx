@@ -270,7 +270,7 @@ export default function MerchantLoginScreen({ navigation: _navigation }: any) {
     const res = await verifyOtp(mobile, code, name);
     setLoading(false);
     if (!res.success) {
-      const errMsg = res.error || 'Invalid OTP code. Please enter 123456 in dev mode.';
+      const errMsg = res.error || 'Invalid OTP code. Please check and try again.';
       setError(errMsg);
       if (res.code === 'PENDING_APPROVAL') {
         Alert.alert('Approval Pending', errMsg);

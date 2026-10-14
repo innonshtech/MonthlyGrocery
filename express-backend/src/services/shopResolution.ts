@@ -304,10 +304,28 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
     const cleanMobile = rawMobile.replace(/[^\d]/g, '');
     if (cleanMobile) {
       const normalized = cleanMobile.length === 10 ? '91' + cleanMobile : cleanMobile;
+      
+      // Check directly in shops table by phone
+      const { data: directShopByPhone } = await supabase
+        .from('shops')
+        .select('*')
+        .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+
+      if (directShopByPhone && String(directShopByPhone.status || '').toLowerCase() === 'approved') {
+        return {
+          ...directShopByPhone,
+          shop_name: directShopByPhone.shop_name || directShopByPhone.name || 'MonthlyGrocery',
+          status: 'approved',
+        };
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('phone', normalized)
+        .or(`phone.eq.${normalized},phone.eq.+${normalized}`)
+        .order('created_at', { ascending: false })
         .maybeSingle();
 
       if (profile) {
@@ -329,27 +347,6 @@ export async function getMerchantShopForUser(user: { id: string; role?: string; 
     }
   } catch (err) {
     console.warn('[getMerchantShopForUser] Profile phone check error:', err);
-  }
-
-  // 3. Super Admin console fallback only (never attach a random shop to a merchant admin)
-  if (user.role === 'super_admin') {
-    try {
-      const { data: firstShop } = await supabase
-        .from('shops')
-        .select('*')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (firstShop) {
-        return {
-          ...firstShop,
-          shop_name: firstShop.shop_name || firstShop.name || 'MonthlyGrocery',
-          status: 'approved',
-        };
-      }
-    } catch {}
   }
 
   return null;

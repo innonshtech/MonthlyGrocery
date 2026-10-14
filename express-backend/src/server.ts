@@ -17,6 +17,7 @@ import couponsRouter from './routes/coupons';
 import deliverySlotsRouter from './routes/deliverySlots';
 import addressesRouter from './routes/addresses';
 import aiRouter from './routes/ai';
+import otaRouter from './routes/ota';
 import { uploadsProxyMiddleware } from './middleware/uploadsProxy';
 
 const app = express();
@@ -69,11 +70,14 @@ app.use('/addresses', addressesRouter);
 app.use('/api/ai', aiRouter);
 app.use('/ai', aiRouter);
 
+app.use('/api/ota', otaRouter);
+app.use('/ota', otaRouter);
+
 // Public Config Endpoint
 const sendConfig = (req: express.Request, res: express.Response) => {
   res.json({
     success: true,
-    min_order_limit: parseInt(process.env.MIN_ORDER_LIMIT || '2500', 10)
+    min_order_limit: parseInt(process.env.MIN_ORDER_LIMIT || '1000', 10)
   });
 };
 app.get('/api/config', sendConfig);

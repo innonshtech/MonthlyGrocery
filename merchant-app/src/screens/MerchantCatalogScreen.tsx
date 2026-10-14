@@ -67,21 +67,6 @@ export interface MySkuRequest {
   created_at: string;
 }
 
-const DEFAULT_PLATFORM_CATEGORIES = [
-  'Atta & Rice',
-  'Oils & Ghee',
-  'Dals & Pulses',
-  'Spices & Masala',
-  'Dry Fruits',
-  'Snacks',
-  'Beverages',
-  'Biscuits',
-  'Cleaning',
-  'Personal Care',
-  'Home & Kitchen',
-  'Baby Care',
-];
-
 export default function MerchantCatalogScreen() {
   const [catalogTab, setCatalogTab] = useState<'master' | 'my_suggestions'>('master');
   const [masterProducts, setMasterProducts] = useState<MasterProduct[]>([]);
@@ -94,7 +79,7 @@ export default function MerchantCatalogScreen() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [categories, setCategories] = useState<string[]>(['All']);
-  const [suggestCategories, setSuggestCategories] = useState<string[]>(DEFAULT_PLATFORM_CATEGORIES);
+  const [suggestCategories, setSuggestCategories] = useState<string[]>([]);
   
   // Media Inspection Modal
   const [previewProduct, setPreviewProduct] = useState<ProductMediaItem | null>(null);
@@ -127,23 +112,30 @@ export default function MerchantCatalogScreen() {
   const { token } = useMerchantAuth();
 
   const syncCategories = useCallback((products: MasterProduct[], remoteCats: string[] = []) => {
-    const liveProductCategories = Array.from(
-      new Set(products.map((p) => p.primary_category).filter(Boolean)),
+    // Categories configured in Web Admin Manage Categories are the single source of truth
+    const adminCategoryNames = Array.from(
+      new Set(remoteCats.map((c) => String(c || '').trim()).filter(Boolean)),
     ).sort();
 
-    const allCats = Array.from(
-      new Set([
-        ...DEFAULT_PLATFORM_CATEGORIES,
-        ...remoteCats,
-        ...liveProductCategories,
-      ]),
-    ).sort();
+    // Suggest SKU modal only shows active categories from Web Admin
+    setSuggestCategories(adminCategoryNames);
 
-    setSuggestCategories(allCats);
-    setCategories(['All', ...(liveProductCategories.length > 0 ? liveProductCategories : allCats)]);
-
-    if (activeCategory !== 'All' && !liveProductCategories.includes(activeCategory)) {
-      setActiveCategory('All');
+    // Catalog filter pills: 'All' + active categories from Web Admin
+    if (adminCategoryNames.length > 0) {
+      setCategories(['All', ...adminCategoryNames]);
+      if (activeCategory !== 'All' && !adminCategoryNames.includes(activeCategory)) {
+        setActiveCategory('All');
+      }
+    } else {
+      // Fallback only if remote categories failed to load completely
+      const liveProductCategories = Array.from(
+        new Set(products.map((p) => p.primary_category).filter(Boolean)),
+      ).sort();
+      setCategories(['All', ...liveProductCategories]);
+      setSuggestCategories(liveProductCategories);
+      if (activeCategory !== 'All' && !liveProductCategories.includes(activeCategory)) {
+        setActiveCategory('All');
+      }
     }
   }, [activeCategory]);
 
@@ -166,7 +158,7 @@ export default function MerchantCatalogScreen() {
         fetch(`${API_BASE}/admin/shop-products`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_BASE}/products/categories`).catch(() => null),
+        fetch(`${API_BASE}/admin/categories`).catch(() => null),
         fetch(`${API_BASE}/admin/my-sku-requests`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null),
@@ -180,7 +172,24 @@ export default function MerchantCatalogScreen() {
         try {
           const catData = await catRes.json();
           if (catData?.categories && Array.isArray(catData.categories)) {
-            remoteCategories = catData.categories;
+            remoteCategories = catData.categories
+              .map((c: any) => (typeof c === 'string' ? c : c?.name || ''))
+              .filter(Boolean);
+          }
+        } catch {}
+      }
+
+      // Fallback to /products/categories if /admin/categories was empty
+      if (remoteCategories.length === 0) {
+        try {
+          const fallbackCatRes = await fetch(`${API_BASE}/products/categories`);
+          if (fallbackCatRes.ok) {
+            const fallbackData = await fallbackCatRes.json();
+            if (fallbackData?.categories && Array.isArray(fallbackData.categories)) {
+              remoteCategories = fallbackData.categories
+                .map((c: any) => (typeof c === 'string' ? c : c?.name || ''))
+                .filter(Boolean);
+            }
           }
         } catch {}
       }
@@ -1219,7 +1228,7 @@ export default function MerchantCatalogScreen() {
               style={styles.modalInput}
               value={newSkuCategory}
               onChangeText={setNewSkuCategory}
-              placeholder="Select from above or type custom category (e.g. Atta & Rice)"
+              placeholder="Select from above or type custom category (e.g. Atta & Flour)"
             />
 
             <Text style={styles.inputLabel}>Brand</Text>

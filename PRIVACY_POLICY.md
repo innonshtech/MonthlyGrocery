@@ -46,7 +46,7 @@ We use the collected information to:
 ## 4. Data Sharing and Disclosure
 We respect your privacy and **do not sell or rent** your personal data to any third party. Data is only shared in the following necessary circumstances:
 - **Delivery & Store Partners:** Only necessary delivery contact and address details are shared to fulfill orders.
-- **Service Providers:** Cloud hosting (AWS), database storage (PostgreSQL/Supabase), and SMS delivery services (Twilio) strictly for operational purposes.
+- **Service Providers:** Cloud hosting (AWS), database storage (PostgreSQL/Supabase), and SMS delivery services (2Factor) strictly for operational purposes.
 - **Legal Compliance:** When required by law or to protect user safety.
 
 ---

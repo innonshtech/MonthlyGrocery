@@ -88,8 +88,7 @@ async function createMerchant() {
   }
 
   console.log(`\nSuccess! Merchant login credentials for phone testing:`);
-  console.log(`- Mobile Number: ${mobile}`);
-  console.log(`- OTP Bypass Code: 123456`);
+  console.log(`- Mobile Number: ${mobile} (OTP will be sent via SMS)`);
   console.log(`Select the 'Admin' tab on the login screen of the mobile app to access the Merchant Console.`);
   process.exit(0);
 }

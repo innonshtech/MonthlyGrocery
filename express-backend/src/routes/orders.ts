@@ -235,6 +235,17 @@ const handleCheckout = async (req: AuthRequest, res: Response) => {
     }, 0);
 
     const baseAmount = rawItemsTotal > 0 ? rawItemsTotal : parseFloat(total_amount);
+
+    const minOrderLimit = parseInt(process.env.MIN_ORDER_LIMIT || '1000', 10);
+    if (baseAmount < minOrderLimit) {
+      return res.status(400).json({
+        success: false,
+        error: `Minimum order amount of ₹${minOrderLimit} is required to place an order. Please add more items to your cart.`,
+        code: 'MIN_ORDER_REQUIRED',
+        min_order_limit: minOrderLimit,
+      });
+    }
+
     let validatedDiscount = 0;
     let finalPayableAmount = baseAmount;
 

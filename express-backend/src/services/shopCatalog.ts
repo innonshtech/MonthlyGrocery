@@ -48,9 +48,9 @@ function mergeShopProduct(
       ? sp.discount_percentage
       : p.discount_percent || (mrp > price && mrp > 0 ? Math.round(((mrp - price) / mrp) * 100) : 0);
 
-  const stock = sp && sp.stock != null ? Number(sp.stock) : (p.stock != null ? Number(p.stock) : 50);
+  const stock = sp && sp.stock != null ? Number(sp.stock) : 0;
   const isStockEmpty = stock <= 0;
-  const isAvailable = (sp ? sp.available !== false : p.available !== false) && (!cp || cp.is_live !== false) && !isStockEmpty;
+  const isAvailable = Boolean(sp && sp.available === true && !isStockEmpty && (!cp || cp.is_live !== false));
   const media = parseProductMedia(p);
 
   return enrichProductPackFields({
@@ -143,10 +143,8 @@ export async function fetchProductsForShop(
     supaQuery = supaQuery.eq('secondary_category', query.secondary);
   }
 
-  // Dynamic fetch limit based on current pagination depth so infinite scrolling works seamlessly.
-  // Each product family has ~1.5 - 2.5 SKU variants; we scale the fetch limit with headroom
-  // so that grouping by family doesn't starve the requested offset and page limit.
-  const neededLimit = Math.max((offsetVal + limitVal) * 3 + 200, 1000);
+  // Dynamic fetch limit supporting both deep infinite scrolling and full catalog coverage
+  const neededLimit = Math.max((offsetVal + limitVal) * 3 + 200, 5000);
   const { data: masterProducts, error } = await supaQuery.limit(neededLimit);
   if (error) {
     throw new Error(error.message);
@@ -162,8 +160,8 @@ export async function fetchProductsForShop(
       continue;
     }
 
-    // If merchant explicitly disabled this item for their shop, omit it
-    if (sp && sp.available === false) {
+    // Only include products that the merchant has explicitly activated / enabled for their shop
+    if (!sp || sp.available !== true) {
       continue;
     }
     out.push(mergeShopProduct(shopId, sp, p, cp));

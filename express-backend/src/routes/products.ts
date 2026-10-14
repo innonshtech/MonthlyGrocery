@@ -80,20 +80,50 @@ function parseBool(val: any, defaultVal = false): boolean {
   return ['yes', 'y', 'true', '1', 'live'].includes(s);
 }
 
+export function cleanBaseName(name: string): string {
+  let clean = String(name || '').trim();
+  clean = clean.replace(/[\(\)©®™]/g, ' ');
+  clean = clean.replace(/\s+\d+(\.\d+)?\s*(kg|kgs|g|gm|gms|gram|grams|l|ltr|ltrs|litre|litres|liter|ml|pcs|pc|pack|packs|dozen)\b.*$/i, '');
+  clean = clean.replace(/\b\d+(\.\d+)?\s*(kg|kgs|g|gm|gms|gram|grams|l|ltr|ltrs|litre|litres|liter|ml|pcs|pc|pack|packs|dozen)\b.*$/i, '');
+  return clean.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+export function slugifyText(text: string): string {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function parseUnitFields(name: string, unitStr?: string): { qVal: number | null; qUnit: string | null; formatted: string } {
+  const str = `${unitStr || ''} ${name || ''}`;
+  const match = str.match(/\b(\d+(?:\.\d+)?)\s*(kg|kgs|g|gm|gms|gram|grams|l|ltr|ltrs|litre|litres|liter|ml|pcs|pc|pack|packs|dozen)\b/i);
+  if (!match) return { qVal: null, qUnit: null, formatted: unitStr || '1 units' };
+
+  const val = parseFloat(match[1]);
+  let u = match[2].toLowerCase();
+  if (['kg', 'kgs', 'kilogram'].includes(u)) u = 'kg';
+  else if (['g', 'gm', 'gms', 'gram', 'grams'].includes(u)) u = 'g';
+  else if (['l', 'ltr', 'ltrs', 'litre', 'litres', 'liter'].includes(u)) u = 'L';
+  else if (['ml'].includes(u)) u = 'ml';
+  else if (['pcs', 'pc', 'piece', 'pieces'].includes(u)) u = 'pcs';
+  else if (['pack', 'packs'].includes(u)) u = 'pack';
+  else if (['dozen', 'dz'].includes(u)) u = 'dozen';
+
+  return { qVal: val, qUnit: u, formatted: `${val} ${u}` };
+}
+
 // Helper to extract normalized product family key
 export function getProductFamilyKey(p: any): string {
   if (p?.family_key && typeof p.family_key === 'string' && p.family_key.trim()) {
     return p.family_key.trim().toLowerCase();
   }
-  const brand = String(p.brand || '').trim().toLowerCase();
-  const rawName = String(p.name || '')
-    .replace(/\s*\d+(\.\d+)?\s*(kg|g|l|ml|pcs|pack|units|dozen|ltr|gm|litre)\b.*/i, '')
-    .trim()
-    .toLowerCase();
-  return `${brand}::${rawName}`;
+  const brand = slugifyText(p?.brand || 'general');
+  const baseName = cleanBaseName(p?.name || 'product');
+  return `${brand}-${slugifyText(baseName)}`.replace(/--+/g, '-');
 }
 
-export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal?: number): any[] {
+export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal = 100): any[] {
   if (!Array.isArray(products) || products.length === 0) return [];
 
   const familyMap = new Map<string, any[]>();
@@ -141,6 +171,8 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
         unit: s.unit || s.pack_label,
         quantity_value: s.quantity_value,
         quantity_unit: s.quantity_unit,
+        pack_label: s.pack_label || s.unit,
+        family_key: s.family_key,
         mrp: s.mrp,
         price: s.price,
         stock: s.stock,
@@ -156,6 +188,15 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
         best_seller: s.best_seller,
         you_save: s.you_save || 0,
       };
+    });
+
+    fullVariants.sort((a, b) => {
+      const av = parseFloat(String(a.quantity_value)) || 0;
+      const bv = parseFloat(String(b.quantity_value)) || 0;
+      if (av > 0 && bv > 0 && av !== bv) return av - bv;
+      const pa = parseFloat(String(a.price)) || 0;
+      const pb = parseFloat(String(b.price)) || 0;
+      return pa - pb;
     });
 
     const dealSiblings = dealsOnly
@@ -434,44 +475,21 @@ router.get('/master', async (req, res) => {
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
-      .eq('available', true)
       .order('name', { ascending: true });
 
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
     }
 
-    // Build family image map
-    const familyMediaMap = new Map<string, { images: string[]; video_url: string | null }>();
-    (products || []).forEach((p: any) => {
-      const key = getProductFamilyKey(p);
-      const media = parseProductMedia(p);
-      if (!familyMediaMap.has(key)) {
-        familyMediaMap.set(key, { images: [], video_url: null });
-      }
-      const existing = familyMediaMap.get(key)!;
-      if (existing.images.length === 0 && media.images.length > 0) {
-        existing.images = media.images;
-      }
-      if (!existing.video_url && media.video_url) {
-        existing.video_url = media.video_url;
-      }
-    });
-
     const enriched = (products || []).map((p: any) => {
       const withPack = enrichProductPackFields(p);
       const media = parseProductMedia(withPack);
-      const key = getProductFamilyKey(p);
-      const family = familyMediaMap.get(key);
-      const finalImages = media.images && media.images.length > 0 ? media.images : (family?.images || []);
-      const finalImageUrl = media.primary_image_url || (family?.images?.[0] || '');
-      const finalVideoUrl = media.video_url || family?.video_url || null;
 
       return {
         ...withPack,
-        image_url: finalImageUrl,
-        images: finalImages,
-        video_url: finalVideoUrl,
+        image_url: media.primary_image_url || '',
+        images: media.images || [],
+        video_url: media.video_url || null,
         description: media.clean_description,
       };
     });
@@ -494,8 +512,7 @@ router.get('/categories', async (req, res) => {
 
     const { data: products, error } = await supabase
       .from('products')
-      .select('primary_category')
-      .eq('available', true);
+      .select('primary_category');
 
     if (error) {
       return res.status(500).json({ success: false, error: error.message });
@@ -525,21 +542,6 @@ router.get('/categories', async (req, res) => {
         subcategories,
       };
     });
-
-    // Ensure all active product primary categories are also represented in categoriesFull
-    const existingNames = new Set(categoriesFull.map((c: any) => String(c.name || '').trim().toLowerCase()));
-    for (const rawPName of productCategoryNames) {
-      const pName = String(rawPName || '').trim();
-      if (pName && !existingNames.has(pName.toLowerCase())) {
-        categoriesFull.push({
-          id: `cat-${pName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-          name: pName,
-          image_url: undefined,
-          subcategories: [],
-        });
-        existingNames.add(pName.toLowerCase());
-      }
-    }
 
     const categories = categoriesFull.map((c: any) => c.name);
 
@@ -883,6 +885,14 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           row.quantity_unit,
           String(row.unit || '').trim(),
         );
+        const unitParsed = parseUnitFields(name, packFromExcel.unit || String(row.unit || '').trim());
+        const finalQVal = packFromExcel.quantity_value ?? unitParsed.qVal;
+        const finalQUnit = packFromExcel.quantity_unit ?? unitParsed.qUnit;
+        const finalPackLabel = packFromExcel.unit || unitParsed.formatted;
+
+        const cleanBrand = String(row.brand || '').trim() || null;
+        const rawFamilyKey = String(row.family_key || '').trim().toLowerCase();
+        const familyKey = rawFamilyKey || getProductFamilyKey({ brand: cleanBrand, name });
 
         const productData: any = {
           shop_id: shopId,
@@ -891,7 +901,7 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           barcode: String(row.barcode || '').trim() || null,
           primary_category: rawCat,
           secondary_category: String(row.secondary_category || '').trim() || null,
-          brand: String(row.brand || '').trim() || null,
+          brand: cleanBrand,
           company: String(row.company || '').trim() || null,
           description: formattedDescription || null,
           short_description: String(row.short_description || '').trim() || null,
@@ -900,15 +910,18 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
           mrp: mrpVal,
           price: priceVal,
           stock: parseInt(row.stock) >= 0 ? parseInt(row.stock) : 100,
-          quantity_value: packFromExcel.quantity_value,
-          quantity_unit: packFromExcel.quantity_unit,
-          unit: packFromExcel.unit || String(row.unit || '').trim() || 'units',
-          available: parseBool(row.available, true),
+          quantity_value: finalQVal,
+          quantity_unit: finalQUnit,
+          pack_label: finalPackLabel,
+          unit: finalPackLabel || 'units',
+          family_key: familyKey,
+          available: false,
           is_veg: parseBool(row.is_veg, true),
           featured: parseBool(row.featured, false),
           todays_deal: parseBool(row.todays_deal, false),
           best_seller: parseBool(row.best_seller, false),
         };
+
 
         // Check if product already exists by SKU
         const { data: existingProduct } = await supabase
@@ -948,7 +961,7 @@ router.post('/import-excel', authMiddleware, requireRole(['admin', 'super_admin'
             mrp: mrpVal,
             price: priceVal,
             wholesaler_price: parseFloat(row.wholesaler_price) || 0.00,
-            is_live: parseBool(row.available, true),
+            is_live: false,
           };
 
           const { error: cityPriceError } = await supabase
@@ -1008,6 +1021,15 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
       return res.status(400).json({ success: false, error: 'Category is mandatory.' });
     }
 
+    const packFields = packUnitPayloadFromInput(data.quantity_value ?? data.unit, data.quantity_unit, data.unit);
+    const unitParsed = parseUnitFields(data.name, packFields.unit || data.unit);
+    const finalQVal = packFields.quantity_value ?? unitParsed.qVal;
+    const finalQUnit = packFields.quantity_unit ?? unitParsed.qUnit;
+    const finalPackLabel = packFields.unit || unitParsed.formatted;
+
+    const brandVal = data.brand ? String(data.brand).trim() : null;
+    const familyKey = data.family_key?.trim()?.toLowerCase() || getProductFamilyKey({ brand: brandVal, name: data.name });
+
     const newProduct = {
       shop_id: shop.id,
       name: String(data.name).trim(),
@@ -1015,7 +1037,7 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
       barcode: data.barcode || null,
       primary_category: String(data.primary_category).trim(),
       secondary_category: data.secondary_category || null,
-      brand: data.brand || null,
+      brand: brandVal,
       company: data.company || null,
       description: data.description || null,
       short_description: data.short_description || null,
@@ -1024,7 +1046,11 @@ router.post('/mine', authMiddleware, requireRole(['admin', 'super_admin']), asyn
       mrp: parsedMrp,
       price: parsedPrice,
       stock: parseInt(data.stock) >= 0 ? parseInt(data.stock) : 0,
-      unit: data.unit || 'units',
+      quantity_value: finalQVal,
+      quantity_unit: finalQUnit,
+      pack_label: finalPackLabel,
+      unit: finalPackLabel || data.unit || 'units',
+      family_key: familyKey,
       available: data.available !== false,
       is_veg: data.is_veg !== false,
       featured: !!data.featured,
@@ -1103,6 +1129,14 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
     }
 
     const packFields = packUnitPayloadFromInput(quantity_value ?? unit, quantity_unit, unit);
+    const unitParsed = parseUnitFields(name, packFields.unit || unit);
+    const finalQVal = packFields.quantity_value ?? unitParsed.qVal;
+    const finalQUnit = packFields.quantity_unit ?? unitParsed.qUnit;
+    const finalPackLabel = packFields.unit || unitParsed.formatted;
+
+    const brandVal = brand ? String(brand).trim() : null;
+    const familyKey = req.body.family_key?.trim()?.toLowerCase() || getProductFamilyKey({ brand: brandVal, name });
+
     const media = parseProductMedia({ image_url, images, video_url });
     const formattedDescription = formatProductDescriptionWithMedia(description, media.images, media.video_url);
 
@@ -1110,7 +1144,7 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       shop_id: shopId,
       name,
       sku,
-      brand: brand || null,
+      brand: brandVal,
       company: company || null,
       description: formattedDescription || null,
       short_description: short_description || null,
@@ -1119,9 +1153,11 @@ router.post('/create', authMiddleware, requireRole(['super_admin']), async (req:
       primary_category,
       secondary_category: secondary_category || null,
       image_url: media.primary_image_url || null,
-      quantity_value: packFields.quantity_value,
-      quantity_unit: packFields.quantity_unit,
-      unit: packFields.unit || unit || 'units',
+      quantity_value: finalQVal,
+      quantity_unit: finalQUnit,
+      pack_label: finalPackLabel,
+      unit: finalPackLabel || unit || 'units',
+      family_key: familyKey,
       available: available ?? true,
       is_veg: is_veg ?? true
     };
@@ -1201,13 +1237,19 @@ router.put('/:product_id', authMiddleware, requireRole(['admin', 'super_admin'])
       return res.status(404).json({ success: false, error: 'Product not found or access denied.' });
     }
 
+    const finalName = data.name !== undefined ? data.name : product.name;
+    const finalBrand = data.brand !== undefined ? data.brand : product.brand;
+    const familyKey = data.family_key !== undefined && String(data.family_key).trim()
+      ? String(data.family_key).trim().toLowerCase()
+      : (product.family_key || getProductFamilyKey({ brand: finalBrand, name: finalName }));
+
     const updatedData = {
-      name: data.name !== undefined ? data.name : product.name,
+      name: finalName,
       sku: data.sku !== undefined ? data.sku : product.sku,
       barcode: data.barcode !== undefined ? data.barcode : product.barcode,
       primary_category: data.primary_category !== undefined ? data.primary_category : product.primary_category,
       secondary_category: data.secondary_category !== undefined ? data.secondary_category : product.secondary_category,
-      brand: data.brand !== undefined ? data.brand : product.brand,
+      brand: finalBrand,
       company: data.company !== undefined ? data.company : product.company,
       description: data.description !== undefined ? data.description : product.description,
       short_description: data.short_description !== undefined ? data.short_description : product.short_description,
@@ -1217,6 +1259,7 @@ router.put('/:product_id', authMiddleware, requireRole(['admin', 'super_admin'])
       price: data.price !== undefined ? parseFloat(data.price) : product.price,
       stock: data.stock !== undefined ? parseInt(data.stock) : product.stock,
       unit: data.unit !== undefined ? data.unit : product.unit,
+      family_key: familyKey,
       available: data.available !== undefined ? !!data.available : product.available,
       is_veg: data.is_veg !== undefined ? !!data.is_veg : product.is_veg,
       featured: data.featured !== undefined ? !!data.featured : product.featured,
@@ -1285,10 +1328,16 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       data.video_url !== undefined ? data.video_url : media.video_url,
     );
 
+    const finalName = data.name !== undefined ? data.name : product.name;
+    const finalBrand = data.brand !== undefined ? data.brand : product.brand;
+    const familyKey = data.family_key !== undefined && String(data.family_key).trim()
+      ? String(data.family_key).trim().toLowerCase()
+      : (product.family_key || getProductFamilyKey({ brand: finalBrand, name: finalName }));
+
     const updatedData = {
-      name: data.name !== undefined ? data.name : product.name,
+      name: finalName,
       sku: data.sku !== undefined ? data.sku : product.sku,
-      brand: data.brand !== undefined ? data.brand : product.brand,
+      brand: finalBrand,
       company: data.company !== undefined ? data.company : product.company,
       description: formattedDescription,
       short_description: data.short_description !== undefined ? data.short_description : product.short_description,
@@ -1299,7 +1348,9 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
       image_url: media.primary_image_url || null,
       quantity_value,
       quantity_unit,
+      pack_label: unitLabel,
       unit: unitLabel,
+      family_key: familyKey,
       available: data.available !== undefined ? !!data.available : product.available,
       is_veg: data.is_veg !== undefined ? !!data.is_veg : product.is_veg,
     };
@@ -1313,6 +1364,36 @@ router.put('/master/:product_id', authMiddleware, requireRole(['super_admin']), 
 
     if (updateError) {
       return res.status(400).json({ success: false, error: updateError.message });
+    }
+
+    // Sync media to all sibling pack sizes in the same product family if media was updated
+    if (data.images !== undefined || data.image_url !== undefined) {
+      try {
+        const familyKeyToMatch = familyKey || product.family_key || getProductFamilyKey(product);
+        const { data: allSiblings } = await supabase
+          .from('products')
+          .select('id, name, brand, description, family_key')
+          .neq('id', product_id);
+
+        const matchedSiblings = (allSiblings || []).filter((s: any) => (s.family_key || getProductFamilyKey(s)) === familyKeyToMatch);
+        for (const sib of matchedSiblings) {
+          const sibCleanDesc = String(sib.description || '').replace(/<!--media:\{.*?\}-->/g, '').trim();
+          const sibFormattedDesc = formatProductDescriptionWithMedia(
+            sibCleanDesc,
+            media.images,
+            media.video_url
+          );
+          await supabase
+            .from('products')
+            .update({
+              image_url: media.primary_image_url || null,
+              description: sibFormattedDesc,
+            })
+            .eq('id', sib.id);
+        }
+      } catch (sibErr) {
+        console.warn('[PUT /master/:product_id] Sibling media sync warning:', sibErr);
+      }
     }
 
     return res.json({ success: true, product: enrichProductWithMedia(enrichProductPackFields(updatedProduct)) });

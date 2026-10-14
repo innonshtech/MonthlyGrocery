@@ -113,10 +113,9 @@ export function enrichProductPackFields<T extends Record<string, unknown>>(produ
   };
 }
 
-/** Supabase `products` rows only support pack size via `unit` — not separate quantity columns. */
+/** PostgreSQL products row helper - preserves quantity fields and family_key. */
 export function toSupabaseProductRow<T extends Record<string, unknown>>(
   row: T,
-): Omit<T, 'quantity_value' | 'quantity_unit'> {
-  const { quantity_value: _qv, quantity_unit: _qu, ...safe } = row;
-  return safe as Omit<T, 'quantity_value' | 'quantity_unit'>;
+): T {
+  return row;
 }

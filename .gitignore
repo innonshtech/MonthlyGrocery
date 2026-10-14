@@ -131,3 +131,12 @@ frontend/node_modules/.cache/default-development/34.pack
 express-backend/scratch/
 **/scratch/
 express-backend/ai_ocr.log
+
+# Category data folder
+categories/
+
+# Self-Hosted OTA Artifacts
+build-ota/
+**/build-ota/
+ota_storage/
+**/ota_storage/

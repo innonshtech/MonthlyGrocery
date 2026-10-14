@@ -517,21 +517,37 @@ export default function ProductDetailScreen({ route, navigation }: any) {
               <Text style={styles.outOfStockBottomBtnText}>OUT OF STOCK</Text>
             </View>
           ) : qty > 0 ? (
-            <View style={styles.stepperContainer}>
+            <View style={styles.bottomActionsRow}>
+              <View style={styles.stepperContainer}>
+                <TouchableOpacity
+                  style={styles.stepperBtn}
+                  onPress={() => updateQuantity(product.id, qty - 1)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.stepperBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.stepperCountText}>{qty}</Text>
+                <TouchableOpacity
+                  style={styles.stepperBtn}
+                  onPress={() => addToCart(product)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.stepperBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
-                style={styles.stepperBtn}
-                onPress={() => updateQuantity(product.id, qty - 1)}
-                activeOpacity={0.7}
+                style={styles.viewCartBtn}
+                onPress={() => {
+                  if (route.params?.fromScreen === 'Cart') {
+                    handleBack();
+                  } else {
+                    navigation.navigate('Cart');
+                  }
+                }}
+                activeOpacity={0.88}
               >
-                <Text style={styles.stepperBtnText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.stepperCountText}>{qty}</Text>
-              <TouchableOpacity
-                style={styles.stepperBtn}
-                onPress={() => addToCart(product)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.stepperBtnText}>+</Text>
+                <Text style={styles.viewCartBtnText}>View cart</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -1067,6 +1083,8 @@ const styles = StyleSheet.create({
   },
   bottomPriceCol: {
     gap: 2,
+    flexShrink: 1,
+    marginRight: 8,
   },
   bottomPriceText: {
     ...FONTS.balooBold,
@@ -1096,17 +1114,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#FFFFFF',
   },
+  bottomActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   stepperContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E7A46',
     borderRadius: 12,
     height: 48,
-    minWidth: 120,
+    minWidth: 108,
     justifyContent: 'space-between',
   },
   stepperBtn: {
-    width: 40,
+    width: 36,
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1123,6 +1146,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     minWidth: 26,
     textAlign: 'center',
+  },
+  viewCartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1E7A46',
+    borderRadius: 12,
+    height: 48,
+    paddingHorizontal: 16,
+  },
+  viewCartBtnText: {
+    ...FONTS.muktaBold,
+    fontSize: 14.5,
+    color: '#FFFFFF',
   },
   outOfStockBadgeHero: {
     position: 'absolute',
