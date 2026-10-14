@@ -75,7 +75,7 @@ export default function MainTabScreen({ route, navigation }: any) {
       case 'Categories':
         return <CategoriesScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Cart':
-        return <CartScreen navigation={navigation} setActiveTab={setActiveTab} />;
+        return <CartScreen navigation={navigation} setActiveTab={setActiveTab} route={route} />;
       case 'Orders':
         return <OrdersScreen navigation={navigation} setActiveTab={setActiveTab} />;
       case 'Account':
@@ -121,10 +121,9 @@ export default function MainTabScreen({ route, navigation }: any) {
       </View>
 
       {/* =========================================================================
-         EXACT FIGMA 5-TAB BOTTOM NAVIGATION (Hidden on Cart Screen)
+         EXACT FIGMA 5-TAB BOTTOM NAVIGATION
          ========================================================================= */}
-      {activeTab !== 'Cart' && (
-        <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
+      <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
           
           {/* Tab 1: Home */}
           <TouchableOpacity 
@@ -167,10 +166,10 @@ export default function MainTabScreen({ route, navigation }: any) {
             <AppIcon 
               name="cart" 
               size={22} 
-              color={INACTIVE_COLOR} 
+              color={activeTab === 'Cart' ? ACTIVE_COLOR : INACTIVE_COLOR} 
               badge={totalCartCount > 0 ? totalCartCount : undefined}
             />
-            <Text style={[styles.tabLabel, { color: INACTIVE_COLOR }]}>
+            <Text style={[styles.tabLabel, { color: activeTab === 'Cart' ? ACTIVE_COLOR : INACTIVE_COLOR }, activeTab === 'Cart' && styles.tabLabelActive]}>
               Cart
             </Text>
           </TouchableOpacity>
@@ -207,8 +206,7 @@ export default function MainTabScreen({ route, navigation }: any) {
             </Text>
           </TouchableOpacity>
 
-        </View>
-      )}
+      </View>
     </View>
   );
 }

@@ -514,7 +514,7 @@ export default function CartScreen({
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <View style={[styles.checkoutBar, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+      <View style={[styles.checkoutBar, { paddingBottom: setActiveTab ? 14 : Math.max(insets.bottom, 14) }]}>
         <View style={styles.checkoutBarInner}>
           <View style={styles.toPayCol}>
             <Text style={styles.toPayLabel}>{screenConfig?.sticky_to_pay_label || 'TO PAY'}</Text>

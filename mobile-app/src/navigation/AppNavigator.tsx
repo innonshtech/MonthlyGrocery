@@ -65,7 +65,11 @@ export default function AppNavigator() {
           <Stack.Screen name="SavedBaskets" component={SavedBasketsScreen} />
           <Stack.Screen name="Checkout" component={CheckoutScreen} />
           <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
-          <Stack.Screen name="Cart" component={CartScreen} />
+          <Stack.Screen
+            name="Cart"
+            component={MainTabScreen}
+            initialParams={{ initialTab: 'Cart' }}
+          />
           <Stack.Screen name="Orders" component={OrdersScreen} />
           <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
           <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
