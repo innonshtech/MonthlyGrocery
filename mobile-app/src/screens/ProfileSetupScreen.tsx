@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AppIcon from '../components/AppIcon';
 import AppLoader from '../components/AppLoader';
 import {
   OnboardingBackButton,
@@ -197,6 +198,10 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
             <OnboardingBackButton onPress={handleBack} />
 
             <View style={styles.avatarSection}>
+              <View style={styles.avatarCircle}>
+                <AppIcon name="user" size={42} color={COLORS.green700} />
+              </View>
+
               <View style={styles.headerBlock}>
                 <Text style={styles.mainTitle}>{config.title}</Text>
                 <Text style={styles.subtitle}>{config.subtitle}</Text>
@@ -281,8 +286,19 @@ const styles = StyleSheet.create({
   },
   avatarSection: {
     alignItems: 'center',
-    marginTop: 14,
-    marginBottom: 28,
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  avatarCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: COLORS.green50,
+    borderWidth: 2,
+    borderColor: COLORS.green100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   headerBlock: {
     alignItems: 'center',

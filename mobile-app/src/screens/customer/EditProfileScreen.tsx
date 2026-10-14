@@ -138,6 +138,11 @@ export default function EditProfileScreen({ navigation }: any) {
     }
   };
 
+  const initialLetter = name.trim()
+    ? name.trim().charAt(0).toUpperCase()
+    : user?.name?.trim()
+    ? user.name.trim().charAt(0).toUpperCase()
+    : 'S';
   const formattedPhone = phone ? formatDisplayPhone(phone) : '';
 
   if (configLoading) {
@@ -203,6 +208,12 @@ export default function EditProfileScreen({ navigation }: any) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.avatarWrap}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarLetter}>{initialLetter}</Text>
+          </View>
+        </View>
+
         <Text style={styles.fieldLabel}>
           {screenConfig.full_name_label ? screenConfig.full_name_label.toUpperCase() : 'FULL NAME'}
         </Text>

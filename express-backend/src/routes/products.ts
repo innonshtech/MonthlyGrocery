@@ -124,7 +124,12 @@ export function getProductFamilyKey(p: any): string {
 }
 
 
-export function groupProductsByFamily(products: any[], dealsOnly = false, limitVal = 100): any[] {
+export function groupProductsByFamily(
+  products: any[],
+  dealsOnly = false,
+  limitVal = 100,
+  offsetVal = 0,
+): any[] {
   if (!Array.isArray(products) || products.length === 0) return [];
 
   const familyMap = new Map<string, any[]>();
@@ -248,23 +253,25 @@ export function groupProductsByFamily(products: any[], dealsOnly = false, limitV
     groupedList.sort((a, b) => (b.discount_percent || 0) - (a.discount_percent || 0));
   }
 
-  return groupedList.slice(0, limitVal);
+  return groupedList.slice(offsetVal, offsetVal + limitVal);
 }
 
 // 1. GET /all: Consumer Catalog (location-aware & shop-aware, based on chosen shop, city, and area)
 router.get('/all', async (req, res) => {
   const area_name = (req.query.area_name as string) || (req.query.area as string);
   const shop_id = (req.query.shop_id as string) || (req.query.shopId as string);
-  const { city, category, secondary, q, limit, deals, pincode, raw, group } = req.query;
+  const { city, category, secondary, q, limit, deals, pincode, raw, group, offset, page } = req.query;
   const limitVal = parseInt(limit as string) || 100;
+  const pageVal = parseInt(page as string) || 1;
+  const offsetVal = offset !== undefined ? (parseInt(offset as string) || 0) : ((pageVal - 1) * limitVal);
   const dealsOnly = deals === '1' || deals === 'true';
   const shouldGroup = raw !== 'true' && group !== 'false';
 
   const applyDealsFilter = (products: any[]) => {
     if (shouldGroup) {
-      return groupProductsByFamily(products, dealsOnly, limitVal);
+      return groupProductsByFamily(products, dealsOnly, limitVal, offsetVal);
     }
-    if (!dealsOnly) return products.slice(0, limitVal);
+    if (!dealsOnly) return products.slice(offsetVal, offsetVal + limitVal);
     return products
       .filter(
         (p) =>
@@ -279,7 +286,7 @@ router.get('/all', async (req, res) => {
         const db = b.discount_percent || 0;
         return db - da;
       })
-      .slice(0, limitVal);
+      .slice(offsetVal, offsetVal + limitVal);
   };
 
   try {
@@ -292,14 +299,19 @@ router.get('/all', async (req, res) => {
       category: category as string | undefined,
       secondary: secondary as string | undefined,
       q: q as string | undefined,
-      limit: limitVal,
+      limit: Math.max(limitVal + offsetVal, 100),
     });
 
-    const products = mapProductsMediaForClient(applyDealsFilter(catalog.products), req);
+    const filtered = applyDealsFilter(catalog.products);
+    const products = mapProductsMediaForClient(filtered, req);
 
     return res.json({
       success: true,
       products,
+      page: pageVal,
+      offset: offsetVal,
+      limit: limitVal,
+      has_more: filtered.length === limitVal,
       shop_id: catalog.shopId,
       shop_name: catalog.shopName,
     });

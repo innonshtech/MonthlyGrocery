@@ -9,6 +9,8 @@ import {
   BackHandler,
   ToastAndroid,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -31,6 +33,49 @@ export default function MainTabScreen({ route, navigation }: any) {
   const [activeTab, setActiveTab] = useState<'Home' | 'Categories' | 'Cart' | 'Orders' | 'Account'>(initialTab);
   const lastBackPressRef = useRef<number>(0);
 
+  const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
+  const tabBarHeight = 56 + bottomInset;
+  const tabBarTranslateY = useRef(new Animated.Value(0)).current;
+  const isTabBarHiddenRef = useRef(false);
+
+  const hideTabBar = useCallback(() => {
+    if (isTabBarHiddenRef.current) return;
+    isTabBarHiddenRef.current = true;
+    Animated.timing(tabBarTranslateY, {
+      toValue: tabBarHeight + 16,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [tabBarHeight, tabBarTranslateY]);
+
+  const showTabBar = useCallback(() => {
+    if (!isTabBarHiddenRef.current) return;
+    isTabBarHiddenRef.current = false;
+    Animated.timing(tabBarTranslateY, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [tabBarTranslateY]);
+
+  const handleScrollDirection = useCallback(
+    (direction: 'up' | 'down') => {
+      if (direction === 'down') {
+        hideTabBar();
+      } else {
+        showTabBar();
+      }
+    },
+    [hideTabBar, showTabBar],
+  );
+
+  // Always show tab bar when switching tabs
+  useEffect(() => {
+    showTabBar();
+  }, [activeTab, showTabBar]);
+
   useEffect(() => {
     if (route?.params?.initialTab) {
       setActiveTab(route.params.initialTab);
@@ -39,6 +84,7 @@ export default function MainTabScreen({ route, navigation }: any) {
 
   useFocusEffect(
     useCallback(() => {
+      showTabBar();
       const onBackPress = () => {
         // If not on Home tab, switch back to Home tab first
         if (activeTab !== 'Home') {
@@ -62,7 +108,7 @@ export default function MainTabScreen({ route, navigation }: any) {
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [activeTab])
+    }, [activeTab, showTabBar])
   );
   const { items } = useCart();
 
@@ -71,9 +117,21 @@ export default function MainTabScreen({ route, navigation }: any) {
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'Home':
-        return <HomeScreen navigation={navigation} setActiveTab={setActiveTab} />;
+        return (
+          <HomeScreen
+            navigation={navigation}
+            setActiveTab={setActiveTab}
+            onScrollDirection={handleScrollDirection}
+          />
+        );
       case 'Categories':
-        return <CategoriesScreen navigation={navigation} setActiveTab={setActiveTab} />;
+        return (
+          <CategoriesScreen
+            navigation={navigation}
+            setActiveTab={setActiveTab}
+            onScrollDirection={handleScrollDirection}
+          />
+        );
       case 'Cart':
         return <CartScreen navigation={navigation} setActiveTab={setActiveTab} route={route} />;
       case 'Orders':
@@ -81,12 +139,18 @@ export default function MainTabScreen({ route, navigation }: any) {
       case 'Account':
         return <AccountScreen navigation={navigation} setActiveTab={setActiveTab} />;
       default:
-        return <HomeScreen navigation={navigation} setActiveTab={setActiveTab} />;
+        return (
+          <HomeScreen
+            navigation={navigation}
+            setActiveTab={setActiveTab}
+            onScrollDirection={handleScrollDirection}
+          />
+        );
     }
   };
 
   const isHome = activeTab === 'Home';
-  const bottomInset = insets.bottom > 0 ? insets.bottom : 8;
+  const isFullScreenTab = activeTab === 'Home' || activeTab === 'Categories';
 
   const getTabBgColor = () => {
     switch (activeTab) {
@@ -116,14 +180,28 @@ export default function MainTabScreen({ route, navigation }: any) {
       <StatusBar barStyle="dark-content" />
       
       {/* Active Screen Area */}
-      <View style={styles.screenContainer}>
+      <View
+        style={[
+          styles.screenContainer,
+          !isFullScreenTab && { paddingBottom: 56 + bottomInset },
+        ]}
+      >
         {renderActiveScreen()}
       </View>
 
       {/* =========================================================================
-         EXACT FIGMA 5-TAB BOTTOM NAVIGATION
+         EXACT FIGMA 5-TAB BOTTOM NAVIGATION (ANIMATED HIDE / REVEAL ON SCROLL)
          ========================================================================= */}
-      <View style={[styles.tabBar, { paddingBottom: bottomInset, height: 56 + bottomInset }]}>
+      <Animated.View
+        style={[
+          styles.tabBar,
+          {
+            paddingBottom: bottomInset,
+            height: 56 + bottomInset,
+            transform: [{ translateY: tabBarTranslateY }],
+          },
+        ]}
+      >
           
           {/* Tab 1: Home */}
           <TouchableOpacity 
@@ -206,7 +284,7 @@ export default function MainTabScreen({ route, navigation }: any) {
             </Text>
           </TouchableOpacity>
 
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -223,6 +301,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
     flexDirection: 'row',
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
@@ -233,7 +316,7 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 8,
   },
