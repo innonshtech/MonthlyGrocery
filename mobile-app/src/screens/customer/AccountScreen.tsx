@@ -276,13 +276,7 @@ export default function AccountScreen({ navigation, setActiveTab }: any) {
               <MenuRow
                 icon={<AccountMenuAboutIcon size={20} />}
                 label={screenConfig.menu_about_terms}
-                onPress={() =>
-                  showToast({
-                    type: 'info',
-                    title: screenConfig.about_alert_title || 'About & Terms',
-                    message: screenConfig.about_alert_message || 'Monthly Grocery v1.0.0',
-                  })
-                }
+                onPress={() => navigation.navigate('AboutTerms')}
                 isLast
               />
             </View>
@@ -337,13 +331,7 @@ export default function AccountScreen({ navigation, setActiveTab }: any) {
               <MenuRow
                 icon={<AccountMenuAboutIcon size={20} />}
                 label={screenConfig.menu_about_terms}
-                onPress={() =>
-                  showToast({
-                    type: 'info',
-                    title: screenConfig.about_alert_title || 'About & Terms',
-                    message: screenConfig.about_alert_message || 'Monthly Grocery v1.0.0',
-                  })
-                }
+                onPress={() => navigation.navigate('AboutTerms')}
                 isLast
               />
             </View>

@@ -25,6 +25,7 @@ import OrderDetailScreen from '../screens/customer/OrderDetailScreen';
 import TrackOrderScreen from '../screens/customer/TrackOrderScreen';
 import SavedAddressesScreen from '../screens/customer/SavedAddressesScreen';
 import HelpSupportScreen from '../screens/customer/HelpSupportScreen';
+import AboutTermsScreen from '../screens/customer/AboutTermsScreen';
 import EditProfileScreen from '../screens/customer/EditProfileScreen';
 import DeleteAccountScreen from '../screens/customer/DeleteAccountScreen';
 import SystemStateScreen from '../screens/customer/SystemStateScreen';
@@ -83,6 +84,7 @@ export default function AppNavigator() {
           <Stack.Screen name="OffersCoupons" component={OffersCouponsScreen} />
           <Stack.Screen name="MyCoupons" component={MyCouponsScreen} />
           <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+          <Stack.Screen name="AboutTerms" component={AboutTermsScreen} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
           <Stack.Screen name="SystemState" component={SystemStateScreen} />
