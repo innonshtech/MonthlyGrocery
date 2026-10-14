@@ -24,6 +24,7 @@ import {
   fetchOnboardingConfig,
   OnboardingSplashConfig,
 } from '../services/onboardingApi';
+import { EVER_LOGO_SOURCE } from '../constants/everLogoBase64';
 
 /**
  * A1 · Splash — Redesign (Figma node 390:603)
@@ -42,12 +43,17 @@ const TAGLINE = { left: 6.5, top: 105, width: 225, height: 20 };
 const FOOTNOTE = { left: 95, top: 792, width: 189, height: 20 };
 
 function EverLogo({ width, height }: { width: number; height: number }) {
+  const innerWidth = Math.max(Math.round(width - 24), 180);
+  const innerHeight = Math.max(Math.round(height - 14), 60);
+
   return (
     <View style={[styles.logoCard, { width, height }]}>
       <Image
-        source={require('../assets/ever-logo.png')}
-        style={styles.logoImage}
+        source={EVER_LOGO_SOURCE}
+        defaultSource={EVER_LOGO_SOURCE}
+        style={{ width: innerWidth, height: innerHeight }}
         resizeMode="contain"
+        fadeDuration={0}
       />
     </View>
   );
