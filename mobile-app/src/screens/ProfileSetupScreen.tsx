@@ -65,8 +65,9 @@ export default function ProfileSetupScreen({ route, navigation }: any) {
     const savedEmail = await AsyncStorage.getItem(EMAIL_KEY);
     const userName = user?.name?.trim();
     const initialName =
+      (userName && userName !== 'User' ? userName : '') ||
       savedName ||
-      (userName && userName !== 'User' ? userName : '');
+      '';
     setName(initialName);
     if (savedEmail) setEmail(savedEmail);
 

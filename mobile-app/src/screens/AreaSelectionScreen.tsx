@@ -199,7 +199,10 @@ export default function AreaSelectionScreen({ route, navigation }: any) {
     setShopPickerVisible(false);
 
     const savedDisplayName = await AsyncStorage.getItem('@user_display_name');
-    const hasPersonalName = Boolean(savedDisplayName && savedDisplayName.trim() !== '');
+    const hasPersonalName = Boolean(
+      (user?.name && user.name.trim() !== '' && user.name.trim() !== 'User') ||
+      (savedDisplayName && savedDisplayName.trim() !== '' && savedDisplayName.trim() !== 'User')
+    );
 
     if (token && hasPersonalName) {
       navigation.navigate('Shop');

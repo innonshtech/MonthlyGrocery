@@ -119,17 +119,26 @@ export default function AccountScreen({ navigation, setActiveTab }: any) {
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem('@user_display_name').then((stored) => {
-        if (stored && stored.trim()) {
-          setCustomDisplayName(stored.trim());
-        }
-      });
+      if (user?.name && user.name.trim() && user.name.trim() !== 'User') {
+        setCustomDisplayName(user.name.trim());
+      } else if (token) {
+        AsyncStorage.getItem('@user_display_name').then((stored) => {
+          if (stored && stored.trim() && stored.trim() !== 'User') {
+            setCustomDisplayName(stored.trim());
+          } else {
+            setCustomDisplayName('');
+          }
+        });
+      } else {
+        setCustomDisplayName('');
+      }
       loadConfig().then(() => loadSummary());
-    }, [loadConfig, loadSummary]),
+    }, [user?.name, token, loadConfig, loadSummary]),
   );
 
   const handleConfirmLogout = () => {
     setShowLogoutModal(false);
+    setCustomDisplayName('');
     logout();
     navigation.reset({
       index: 0,
@@ -159,7 +168,11 @@ export default function AccountScreen({ navigation, setActiveTab }: any) {
     );
   }
 
-  const displayName = customDisplayName || user?.name?.trim() || '';
+  const displayName =
+    (user?.name && user.name.trim() !== 'User' ? user.name.trim() : '') ||
+    customDisplayName ||
+    user?.name?.trim() ||
+    '';
   const displayPhone = formatDisplayPhone(user?.mobile);
   const initialLetter = displayName ? displayName.charAt(0).toUpperCase() : '';
 
