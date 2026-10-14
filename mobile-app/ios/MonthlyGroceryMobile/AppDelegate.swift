@@ -42,7 +42,17 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 #if DEBUG
     RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
 #else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    let fileManager = FileManager.default
+    if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+      let otaBundle = appSupport.appendingPathComponent("ota_bundle/main.jsbundle")
+      if fileManager.fileExists(atPath: otaBundle.path) {
+        if let attrs = try? fileManager.attributesOfItem(atPath: otaBundle.path),
+           let size = attrs[.size] as? UInt64, size > 1024 {
+          return otaBundle
+        }
+      }
+    }
+    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
 }

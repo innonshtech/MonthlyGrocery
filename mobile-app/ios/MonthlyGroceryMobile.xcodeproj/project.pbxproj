@@ -19,6 +19,7 @@
 		629F831491C94FAABBFB7C5F /* Mukta-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 18414DE972844FBEBD3B2C0A /* Mukta-Regular.ttf */; };
 		68DFCE80962649E2950B7014 /* OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 304887902F22435A91085718 /* OFL.txt */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		761780F02CA45674006654EE /* OtaUpdateModule.mm in Sources */ = {isa = PBXBuildFile; fileRef = 761780EF2CA45674006654EE /* OtaUpdateModule.mm */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		92F89204E4A54D53B96B087C /* Mukta-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 34CBB2EB52654D629835B670 /* Mukta-SemiBold.ttf */; };
 		96BEFD8CF8814FD688597488 /* Baloo2-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 9F52A629A4564507B10A86AE /* Baloo2-Regular.ttf */; };
@@ -44,6 +45,7 @@
 		62B691B775FB4318B4822E6D /* Baloo2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Baloo2-Medium.ttf"; path = "../src/assets/fonts/Baloo2-Medium.ttf"; sourceTree = "<group>"; };
 		702B1B9BEC7144F2A1140005 /* Baloo2[wght].ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Baloo2[wght].ttf"; path = "../src/assets/fonts/Baloo2[wght].ttf"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = MonthlyGroceryMobile/AppDelegate.swift; sourceTree = "<group>"; };
+		761780EF2CA45674006654EE /* OtaUpdateModule.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = OtaUpdateModule.mm; path = MonthlyGroceryMobile/OtaUpdateModule.mm; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MonthlyGroceryMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		84AA411EE6B649CC96489118 /* Baloo2-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Baloo2-ExtraBold.ttf"; path = "../src/assets/fonts/Baloo2-ExtraBold.ttf"; sourceTree = "<group>"; };
 		9F52A629A4564507B10A86AE /* Baloo2-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Baloo2-Regular.ttf"; path = "../src/assets/fonts/Baloo2-Regular.ttf"; sourceTree = "<group>"; };
@@ -72,6 +74,7 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				761780EF2CA45674006654EE /* OtaUpdateModule.mm */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -319,6 +322,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				761780F02CA45674006654EE /* OtaUpdateModule.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

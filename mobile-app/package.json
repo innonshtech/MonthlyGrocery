@@ -10,6 +10,9 @@
     "dev": "react-native start",
     "connect": "adb reverse tcp:8081 tcp:8081 && adb reverse tcp:8001 tcp:8001",
     "ota:publish": "node scripts/publish-ota.js",
+    "ota:publish:android": "node scripts/publish-ota.js --platform=android",
+    "ota:publish:ios": "node scripts/publish-ota.js --platform=ios",
+    "ota:publish:all": "node scripts/publish-ota.js --platform=all",
     "test": "jest"
   },
   "dependencies": {
