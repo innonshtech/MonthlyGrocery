@@ -10,19 +10,19 @@ import {
 } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { SPLASH_SCREEN_BASE64 } from '../constants/splashBase64';
 
 const SPLASH_IMG_W = 571;
 const SPLASH_IMG_H = 1024;
 const SPLASH_IMG_RATIO = SPLASH_IMG_W / SPLASH_IMG_H;
 
-const SPLASH_BG_IMAGE = require('../assets/splash_screen_clean.png');
+const SPLASH_SOURCE = { uri: SPLASH_SCREEN_BASE64 };
 
 export default function SplashScreen({ navigation }: any) {
   const { token, user, city, area } = useAuth();
   const { width, height } = useWindowDimensions();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.97)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0.4)).current;
   const hasNavigated = useRef(false);
@@ -30,46 +30,39 @@ export default function SplashScreen({ navigation }: any) {
   authRef.current = { token, user, city, area };
 
   useEffect(() => {
-    // 1. Entrance animation: smooth fade and cinematic scale in
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 550,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      // 2. Progress bar fills smoothly from 0 to 100%
-      Animated.timing(progressAnim, {
-        toValue: 1,
-        duration: 1650,
-        delay: 150,
-        easing: Easing.bezier(0.25, 0.7, 0.25, 1),
-        useNativeDriver: false,
-      }),
-    ]).start();
+    // 1. Fast entrance fade-in (180ms)
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
 
-    // Subtle leading-edge glow pulsing
+    // 2. Fast dynamic progress bar animation: fills from 0 to 100% in 650ms
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: 650,
+      delay: 80,
+      easing: Easing.bezier(0.2, 0.8, 0.25, 1),
+      useNativeDriver: false,
+    }).start();
+
+    // Subtle leading-edge pulse
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
           toValue: 1,
-          duration: 450,
+          duration: 250,
           useNativeDriver: true,
         }),
         Animated.timing(glowAnim, {
           toValue: 0.35,
-          duration: 450,
+          duration: 250,
           useNativeDriver: true,
         }),
       ])
     ).start();
 
-    // 3. Navigation transition after splash finishes
+    // 3. Fast navigation transition: opens app right at 900ms
     const timer = setTimeout(() => {
       if (hasNavigated.current) return;
       hasNavigated.current = true;
@@ -80,12 +73,12 @@ export default function SplashScreen({ navigation }: any) {
       } else {
         navigation.replace('ValueIntro');
       }
-    }, 2000);
+    }, 900);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [navigation, fadeAnim, scaleAnim, progressAnim, glowAnim]);
+  }, [navigation, fadeAnim, progressAnim, glowAnim]);
 
   // Compute exact coordinates of the progress bar in the scaled/covered image
   const screenRatio = width / (height || 1);
@@ -115,18 +108,17 @@ export default function SplashScreen({ navigation }: any) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Full-screen new splash screen design with smooth entrance */}
+      {/* Full-screen new splash screen design embedded via base64 for instant OTA loading */}
       <Animated.View
         style={[
           StyleSheet.absoluteFill,
           {
             opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
           },
         ]}
       >
         <Image
-          source={SPLASH_BG_IMAGE}
+          source={SPLASH_SOURCE}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
           fadeDuration={0}
@@ -203,9 +195,9 @@ const styles = StyleSheet.create({
   progressTrack: {
     position: 'absolute',
     alignSelf: 'center',
-    backgroundColor: 'rgba(30, 80, 50, 0.45)',
+    backgroundColor: 'rgba(47, 120, 78, 0.45)',
     borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     overflow: 'hidden',
   },
   progressFill: {
@@ -217,6 +209,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
   },
 });
