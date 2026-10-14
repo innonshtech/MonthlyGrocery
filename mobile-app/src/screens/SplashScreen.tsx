@@ -12,8 +12,8 @@ import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { SPLASH_SCREEN_BASE64 } from '../constants/splashBase64';
 
-const SPLASH_IMG_W = 571;
-const SPLASH_IMG_H = 1024;
+const SPLASH_IMG_W = 1080;
+const SPLASH_IMG_H = 2340;
 const SPLASH_IMG_RATIO = SPLASH_IMG_W / SPLASH_IMG_H;
 
 const SPLASH_SOURCE = { uri: SPLASH_SCREEN_BASE64 };
@@ -99,8 +99,8 @@ export default function SplashScreen({ navigation }: any) {
   }
 
   // Exact location of the progress bar track matching the design
-  const barTop = offsetY + displayedHeight * (579 / SPLASH_IMG_H);
-  const barWidth = Math.round(displayedWidth * (172 / SPLASH_IMG_W));
+  const barTop = offsetY + displayedHeight * (1242 / SPLASH_IMG_H);
+  const barWidth = Math.round(displayedWidth * 0.24);
   const barHeight = Math.max(Math.round(displayedHeight * (8.5 / SPLASH_IMG_H)), 7);
   const barRadius = barHeight / 2;
 
