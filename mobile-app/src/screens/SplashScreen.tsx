@@ -30,19 +30,19 @@ export default function SplashScreen({ navigation }: any) {
   authRef.current = { token, user, city, area };
 
   useEffect(() => {
-    // 1. Fast entrance fade-in (180ms)
+    // 1. Smooth entrance fade-in (280ms)
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 180,
+      duration: 280,
       useNativeDriver: true,
     }).start();
 
-    // 2. Fast dynamic progress bar animation: fills from 0 to 100% in 650ms
+    // 2. Dynamic progress bar animation: fills smoothly from 0 to 100% in 1150ms
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: 650,
-      delay: 80,
-      easing: Easing.bezier(0.2, 0.8, 0.25, 1),
+      duration: 1150,
+      delay: 100,
+      easing: Easing.bezier(0.25, 0.75, 0.25, 1),
       useNativeDriver: false,
     }).start();
 
@@ -51,18 +51,18 @@ export default function SplashScreen({ navigation }: any) {
       Animated.sequence([
         Animated.timing(glowAnim, {
           toValue: 1,
-          duration: 250,
+          duration: 350,
           useNativeDriver: true,
         }),
         Animated.timing(glowAnim, {
           toValue: 0.35,
-          duration: 250,
+          duration: 350,
           useNativeDriver: true,
         }),
       ])
     ).start();
 
-    // 3. Fast navigation transition: opens app right at 900ms
+    // 3. Navigation transition: opens app at 1450ms (~1.45s)
     const timer = setTimeout(() => {
       if (hasNavigated.current) return;
       hasNavigated.current = true;
@@ -73,7 +73,7 @@ export default function SplashScreen({ navigation }: any) {
       } else {
         navigation.replace('ValueIntro');
       }
-    }, 900);
+    }, 1450);
 
     return () => {
       clearTimeout(timer);
