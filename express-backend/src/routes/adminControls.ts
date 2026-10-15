@@ -2398,6 +2398,42 @@ router.post('/categories', authMiddleware, requireRole(['admin', 'super_admin'])
   }
 });
 
+// PUT /categories/reorder: Reorder master categories (Admin / Super Admin)
+const handleCategoriesReorder = async (req: AuthRequest, res: any) => {
+  const { orderedIds } = req.body;
+  if (!Array.isArray(orderedIds)) {
+    return res.status(400).json({ success: false, error: 'orderedIds must be an array of category IDs' });
+  }
+
+  try {
+    const db = readDb();
+    if (!Array.isArray(db.categories)) db.categories = [];
+    const idMap = new Map(db.categories.map((c: any) => [c.id, c]));
+    const newCategories: any[] = [];
+    for (const id of orderedIds) {
+      const cat = idMap.get(id);
+      if (cat) {
+        newCategories.push(cat);
+        idMap.delete(id);
+      }
+    }
+    for (const cat of idMap.values()) {
+      newCategories.push(cat);
+    }
+    newCategories.forEach((c: any, idx: number) => {
+      c.sort_order = idx + 1;
+    });
+    db.categories = newCategories;
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Categories reordered successfully', categories: db.categories });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+router.put('/categories/reorder', authMiddleware, requireRole(['admin', 'super_admin']), handleCategoriesReorder);
+router.post('/categories/reorder', authMiddleware, requireRole(['admin', 'super_admin']), handleCategoriesReorder);
+
 // PUT /categories/:id: Update category name or tile image (Admin / Super Admin)
 router.put('/categories/:id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
@@ -2421,7 +2457,16 @@ router.put('/categories/:id', authMiddleware, requireRole(['admin', 'super_admin
       if (duplicate) {
         return res.status(400).json({ success: false, error: 'Another category with this name already exists' });
       }
+      const oldName = db.categories[idx].name;
       db.categories[idx].name = normalized;
+
+      if (oldName && oldName !== normalized) {
+        try {
+          await supabase.from('products').update({ primary_category: normalized }).eq('primary_category', oldName);
+        } catch (supaErr) {
+          console.warn('[Categories] Could not cascade rename to products:', supaErr);
+        }
+      }
     }
 
     if (image_url !== undefined && image_url !== null) {
@@ -2540,6 +2585,38 @@ router.post('/subcategories', authMiddleware, requireRole(['admin', 'super_admin
   }
 });
 
+// PUT /subcategories/reorder: Reorder subcategories (Admin / Super Admin)
+const handleSubcategoriesReorder = async (req: AuthRequest, res: any) => {
+  const { orderedIds } = req.body;
+  if (!Array.isArray(orderedIds)) {
+    return res.status(400).json({ success: false, error: 'orderedIds must be an array of subcategory IDs' });
+  }
+
+  try {
+    const db = readDb();
+    if (!Array.isArray(db.subcategories)) db.subcategories = [];
+    const orderMap = new Map<string, number>();
+    orderedIds.forEach((id: string, idx: number) => {
+      orderMap.set(id, idx + 1);
+    });
+
+    db.subcategories.forEach((sub: any) => {
+      if (orderMap.has(sub.id)) {
+        sub.sort_order = orderMap.get(sub.id);
+      }
+    });
+
+    db.subcategories.sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0) || a.name.localeCompare(b.name));
+    writeDb(db);
+
+    return res.json({ success: true, message: 'Subcategories reordered successfully', subcategories: db.subcategories });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+router.put('/subcategories/reorder', authMiddleware, requireRole(['admin', 'super_admin']), handleSubcategoriesReorder);
+router.post('/subcategories/reorder', authMiddleware, requireRole(['admin', 'super_admin']), handleSubcategoriesReorder);
+
 // PUT /subcategories/:id: Update subcategory (Admin / Super Admin)
 router.put('/subcategories/:id', authMiddleware, requireRole(['admin', 'super_admin']), async (req: AuthRequest, res) => {
   const { id } = req.params;
@@ -2568,7 +2645,16 @@ router.put('/subcategories/:id', authMiddleware, requireRole(['admin', 'super_ad
       if (duplicate) {
         return res.status(400).json({ success: false, error: 'Another subcategory with this name already exists' });
       }
+      const oldSubName = current.name;
       current.name = normalized;
+
+      if (oldSubName && oldSubName !== normalized) {
+        try {
+          await supabase.from('products').update({ secondary_category: normalized }).eq('secondary_category', oldSubName);
+        } catch (supaErr) {
+          console.warn('[Subcategories] Could not cascade rename to products:', supaErr);
+        }
+      }
     }
 
     if (image_url !== undefined && image_url !== null) {

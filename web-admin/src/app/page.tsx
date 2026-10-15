@@ -827,6 +827,70 @@ export default function DashboardPage() {
     }
   };
 
+  // Update Category Name
+  const handleUpdateCategoryName = async (catId: string, name: string) => {
+    try {
+      await apiFetch(`/admin/categories/${catId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name }),
+      });
+      await fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Error updating category name');
+      throw err;
+    }
+  };
+
+  // Reorder Categories
+  const handleReorderCategories = async (orderedIds: string[]) => {
+    const reordered = orderedIds
+      .map((id) => categoriesList.find((c) => c.id === id))
+      .filter(Boolean);
+    setCategoriesList(reordered);
+
+    try {
+      await apiFetch('/admin/categories/reorder', {
+        method: 'PUT',
+        body: JSON.stringify({ orderedIds }),
+      });
+    } catch (err: any) {
+      alert(err.message || 'Error reordering categories');
+      fetchData();
+    }
+  };
+
+  // Update Subcategory Name
+  const handleUpdateSubcategoryName = async (subId: string, name: string) => {
+    try {
+      await apiFetch(`/admin/subcategories/${subId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name }),
+      });
+      await fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Error updating subcategory name');
+      throw err;
+    }
+  };
+
+  // Reorder Subcategories
+  const handleReorderSubcategories = async (orderedIds: string[]) => {
+    const orderMap = new Map(orderedIds.map((id, idx) => [id, idx + 1]));
+    setSubcategoriesList((prev) =>
+      [...prev].map((sub) => (orderMap.has(sub.id) ? { ...sub, sort_order: orderMap.get(sub.id) } : sub))
+    );
+
+    try {
+      await apiFetch('/admin/subcategories/reorder', {
+        method: 'PUT',
+        body: JSON.stringify({ orderedIds }),
+      });
+    } catch (err: any) {
+      alert(err.message || 'Error reordering subcategories');
+      fetchData();
+    }
+  };
+
   const handleCreateSubcategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubcategoryCategoryId || !newSubcategoryName.trim()) return;
@@ -1649,6 +1713,10 @@ export default function DashboardPage() {
               handleSubcategoryImageChange={handleSubcategoryImageChange}
               handleDeleteCategory={handleDeleteCategory}
               handleDeleteSubcategory={handleDeleteSubcategory}
+              handleUpdateCategoryName={handleUpdateCategoryName}
+              handleReorderCategories={handleReorderCategories}
+              handleUpdateSubcategoryName={handleUpdateSubcategoryName}
+              handleReorderSubcategories={handleReorderSubcategories}
               newCategoryName={newCategoryName}
               setNewCategoryName={setNewCategoryName}
               newCategoryImageUploading={newCategoryImageUploading}
